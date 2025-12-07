@@ -2,7 +2,7 @@
 
 # Doctrine Style Guide
 
-**Version: 2.0.0** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
+**Version: 2.0.1** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
