@@ -298,7 +298,7 @@ Projects **SHOULD** configure pre-commit hooks to run markdownlint[^1] and Prett
 ```yaml
 repos:
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.43.0
+    rev: v0.46.0
     hooks:
       - id: markdownlint
         args: [--disable, MD013, MD033, MD041, --]

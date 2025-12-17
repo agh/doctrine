@@ -289,12 +289,12 @@ You **SHOULD** configure pre-commit hooks[^5]:
 ```yaml
 repos:
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+    rev: v0.11.0.1
     hooks:
       - id: shellcheck
 
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.10.0-1
+    rev: v3.12.0-2
     hooks:
       - id: shfmt
         args: [-i, "2", -ci, -bn]

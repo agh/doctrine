@@ -16,7 +16,7 @@ All Python tooling applies. Projects **MUST** use the additional Django-specific
 | Lint | Ruff[^1] + django rules | `uv run ruff check .` |
 | Format | Ruff[^1] | `uv run ruff format .` |
 | Type check | django-stubs[^2] | `uv run mypy .` |
-| Security | django-csp[^3], bandit[^4] | `uv run bandit -r .` |
+| Security | Built-in CSP (6.0+), bandit[^4] | `uv run bandit -r .` |
 | Test | pytest-django[^5] | `uv run pytest` |
 | Coverage | pytest-cov[^6] | `uv run pytest --cov` |
 | Migrations | squawk[^7] | `squawk migrations/*.sql` |
@@ -262,12 +262,172 @@ def order_get(*, order_id: int, user: User) -> Order:
     return Order.objects.select_related("user").get(id=order_id, user=user)
 ```
 
+## Content Security Policy (Django 6.0+)
+
+Projects **SHOULD** use Django's built-in CSP framework instead of django-csp:
+
+```python
+# config/settings/base.py
+from django.utils.csp import CSP
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    # ...
+]
+
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.NONCE],
+    "style-src": [CSP.SELF, CSP.NONCE],
+    "img-src": [CSP.SELF, "https:"],
+    "connect-src": [CSP.SELF],
+}
+
+# Report-only mode for testing
+SECURE_CSP_REPORT_ONLY = {
+    "default-src": [CSP.SELF],
+    "report-uri": "/csp-report/",
+}
+```
+
+```html
+<!-- templates/base.html - use nonce for inline scripts -->
+{% load csp %}
+<script nonce="{{ csp_nonce }}">
+    // Inline script allowed by nonce
+</script>
+```
+
+**Why**: Django 6.0's built-in CSP support eliminates the need for third-party packages and provides first-class integration with Django's security middleware.
+
+## Background Tasks (Django 6.0+)
+
+Projects **MAY** use Django's built-in task framework for simple background jobs:
+
+```python
+# apps/orders/tasks.py
+from django.tasks import task
+
+@task
+def send_order_confirmation(order_id: int) -> None:
+    order = Order.objects.get(id=order_id)
+    send_email(order.user.email, "Order Confirmed", render_order_email(order))
+
+@task
+def process_refund(order_id: int, amount: int) -> dict:
+    # Long-running task
+    result = payment_gateway.refund(order_id, amount)
+    return {"status": result.status, "refund_id": result.id}
+```
+
+```python
+# apps/orders/views.py
+from apps.orders.tasks import send_order_confirmation
+
+def create_order(request):
+    order = order_create(user=request.user, items=request.data["items"])
+    send_order_confirmation.enqueue(order_id=order.id)  # Non-blocking
+    return Response(OrderSerializer(order).data)
+```
+
+```python
+# config/settings/production.py
+TASKS = {
+    "default": {
+        "BACKEND": "django.tasks.backends.database.DatabaseBackend",
+    }
+}
+```
+
+**Why**: For simple task queuing, Django's built-in framework reduces dependencies. For complex workflows (retries, scheduling, priorities), Celery remains the better choice.
+
+| Use Case | Recommended |
+|----------|-------------|
+| Simple email sending | Django Tasks |
+| Fire-and-forget jobs | Django Tasks |
+| Complex retry logic | Celery |
+| Scheduled/periodic tasks | Celery Beat |
+| Task chaining/workflows | Celery |
+
+## Template Partials (Django 6.0+)
+
+Projects **SHOULD** use template partials for reusable fragments:
+
+```html
+<!-- templates/components/card.html -->
+{% partialdef card %}
+<div class="card">
+    <h3>{{ title }}</h3>
+    <p>{{ content }}</p>
+</div>
+{% endpartialdef %}
+
+<!-- Can define multiple partials in one file -->
+{% partialdef card_header %}
+<div class="card-header">{{ title }}</div>
+{% endpartialdef %}
+```
+
+```html
+<!-- templates/orders/list.html -->
+{% for order in orders %}
+    {% partial "components/card.html#card" with title=order.name content=order.description %}
+{% endfor %}
+```
+
+**Why**: Template partials enable component-style reuse without separate files, reducing template sprawl while maintaining clear boundaries.
+
+## Composite Primary Keys (Django 5.2+)
+
+Projects **MAY** use composite primary keys for natural keys:
+
+```python
+class OrderItem(models.Model):
+    pk = models.CompositePrimaryKey("order_id", "product_id")
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = "order_items"
+```
+
+**Why**: Composite primary keys are useful for join tables and entities with natural multi-column identifiers. Use when the combination of fields is the true identity.
+
+## Async Views and Authentication (Django 5.2+)
+
+Projects using async views **SHOULD** use async authentication methods:
+
+```python
+# Async view with async auth
+from django.contrib.auth import aauthenticate, alogin
+
+async def login_view(request):
+    user = await aauthenticate(
+        request,
+        username=request.POST["username"],
+        password=request.POST["password"],
+    )
+    if user:
+        await alogin(request, user)
+        return JsonResponse({"status": "ok"})
+    return JsonResponse({"status": "error"}, status=401)
+
+# Async permission checking
+async def protected_view(request):
+    if not await request.user.ahas_perm("orders.view_order"):
+        return HttpResponseForbidden()
+    orders = [o async for o in Order.objects.filter(user=request.user)]
+    return JsonResponse({"orders": orders})
+```
+
+**Why**: Mixing sync auth calls in async views causes performance issues. Django 5.2+ provides native async variants for all authentication operations.
+
 ## Imports
 
 ```python
-# Order: future, stdlib, third-party, Django, local Django, relative
-from __future__ import annotations
-
+# Order: stdlib, third-party, Django, local Django, relative
 import logging
 from datetime import datetime
 
@@ -281,6 +441,8 @@ from apps.users.models import User
 
 from .services import order_create
 ```
+
+**Note**: `from __future__ import annotations` is no longer needed in Python 3.14+ (see [Python Guide](../languages/python.md#type-hint-conventions)).
 
 ## Testing with pytest-django
 
@@ -351,7 +513,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
@@ -568,12 +730,12 @@ def test_task_retries_on_failure():
 ```toml
 # tox.ini[^15] - Django/Python version matrix
 [tox]
-envlist = py{314,315}-django{50,51}
+envlist = py{314}-django{52,60}
 
 [testenv]
 deps =
-    django50: Django>=5.0,<5.1
-    django51: Django>=5.1,<5.2
+    django52: Django>=5.2,<5.3
+    django60: Django>=6.0,<6.1
 commands = pytest {posargs}
 ```
 
@@ -719,7 +881,7 @@ def test_feature_flag_percentage_rollout():
 
 [^1]: [Ruff](https://docs.astral.sh/ruff/) - An extremely fast Python linter and code formatter, written in Rust
 [^2]: [django-stubs](https://github.com/typeddjango/django-stubs) - Type stubs and mypy plugin for Django
-[^3]: [django-csp](https://django-csp.readthedocs.io/) - Content Security Policy for Django
+[^3]: [django-csp](https://django-csp.readthedocs.io/) - Content Security Policy for Django (legacy; use built-in CSP in Django 6.0+)
 [^4]: [Bandit](https://bandit.readthedocs.io/) - Security linter for Python
 [^5]: [pytest-django](https://pytest-django.readthedocs.io/) - A Django plugin for pytest
 [^6]: [pytest-cov](https://pytest-cov.readthedocs.io/) - Coverage plugin for pytest

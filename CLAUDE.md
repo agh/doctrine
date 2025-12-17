@@ -131,6 +131,15 @@ docs(readme): update navigation table
 chore: bump tool versions for Q4 2025
 ```
 
+## Time-Sensitive Information
+
+- **MUST** use Web Search for "current date and time" at the start of each session
+- **MUST** use Web Search to verify release dates, version status, and deprecation timelines
+- **MUST NOT** rely on model knowledge for current tool versions or release schedules
+- **SHOULD** search before making recommendations about "latest" or "current" versions
+
+**Why**: LLM training data has knowledge cutoffs and date/time awareness is unreliable. Always verify time-sensitive claims against current sources.
+
 ## Do Not
 
 - **MUST NOT** use vague language ("consider", "you might want to")

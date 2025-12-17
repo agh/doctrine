@@ -324,7 +324,7 @@ COMMENT ON COLUMN users.email_address IS 'Primary email, used for login';
 ```yaml
 repos:
   - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 3.0.0
+    rev: 3.5.0
     hooks:
       - id: sqlfluff-lint
         args: [--dialect, postgres]

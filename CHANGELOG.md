@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2025-12-17
+
+### Added
+
+- `guides/docs/specifications.md` - Specification writing guide for engineering docs
+- `scripts/validate_versions.py` - Tool version validation script
+- `SUMMARY.md` - Repository summary
+
+### Changed
+
+- `guides/frameworks/django.md` - Django 5.1 updates, async views, improved testing patterns
+- `guides/frameworks/README.md` - Updated framework navigation
+- `guides/docs/README.md`, `guides/docs/markdown.md` - Documentation improvements
+- `guides/languages/shell.md`, `guides/languages/sql.md` - Minor updates
+- `configs/pre-commit/.pre-commit-config.yaml` - Updated hook versions
+- `configs/prettier/.prettierrc` - Configuration refinements
+- `CLAUDE.md` - Project instructions updates
+
 ## [2.7.0] - 2025-12-17
 
 ### Added
