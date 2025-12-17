@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2025-12-17
+
+### Added
+
+- **Ruby Framework Guides**
+  - `guides/frameworks/sinatra.md` - Sinatra DSL for lightweight web apps and APIs
+  - `guides/frameworks/hanami.md` - Hanami clean architecture framework
+
+### Changed
+
+- `guides/frameworks/rails.md` - Rails 8.0 updates, Solid Queue/Cache/Cable, Kamal deployment
+
 ## [2.2.0] - 2025-12-17
 
 ### Added

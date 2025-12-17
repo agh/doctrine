@@ -7,6 +7,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 Extends [Ruby style guide](ruby.md) with Rails-specific conventions from
 [Rails Style Guide](https://rails.rubystyle.guide/).
 
+**Target Version**: Rails 8.1+ with Ruby 3.4
+
 ## Quick Reference
 
 All Ruby tooling applies. Additional tools are **REQUIRED**:
@@ -239,6 +241,152 @@ module Orders
 end
 ```
 
+## Authentication (Rails 8+)
+
+Projects **SHOULD** use the built-in authentication generator for new applications:
+
+```bash
+bin/rails generate authentication
+```
+
+This generates:
+- `User` model with `has_secure_password`
+- `Session` model for session tracking
+- `SessionsController` for login/logout
+- Password reset flow with secure tokens
+- Current session helpers
+
+```ruby
+# Generated authentication provides:
+class User < ApplicationRecord
+  has_secure_password
+  has_many :sessions, dependent: :destroy
+
+  normalizes :email_address, with: ->(e) { e.strip.downcase }
+end
+
+# In controllers:
+class ApplicationController < ActionController::Base
+  include Authentication
+end
+
+# Usage in views:
+<% if authenticated? %>
+  Logged in as <%= Current.user.email_address %>
+<% end %>
+```
+
+**Why**: Rails 8's authentication generator provides secure defaults including session tracking, password resets, and rate limiting without third-party gems like Devise.
+
+## Background Jobs: Solid Queue (Rails 8+)
+
+Projects **SHOULD** use Solid Queue[^21] instead of Sidekiq for most background job processing:
+
+```ruby
+# Gemfile (included by default in Rails 8+)
+gem "solid_queue"
+
+# config/database.yml
+production:
+  primary:
+    <<: *default
+    database: myapp_production
+  queue:
+    <<: *default
+    database: myapp_queue
+    migrations_paths: db/queue_migrate
+```
+
+```ruby
+# app/jobs/order_notification_job.rb
+class OrderNotificationJob < ApplicationJob
+  queue_as :default
+
+  def perform(order_id)
+    order = Order.find(order_id)
+    OrderMailer.confirmation(order).deliver_now
+  end
+end
+
+# Enqueue
+OrderNotificationJob.perform_later(order.id)
+```
+
+**Why Solid Queue over Sidekiq?**
+
+| Feature | Solid Queue | Sidekiq |
+|---------|-------------|---------|
+| Redis required | No | Yes |
+| Database backend | PostgreSQL, MySQL, SQLite | Redis only |
+| Concurrency controls | Built-in | Requires sidekiq-unique-jobs |
+| Recurring jobs | Built-in | Requires sidekiq-cron |
+| Infrastructure | Simpler | Requires Redis |
+
+**When to use Sidekiq**: High-throughput applications (10,000+ jobs/minute) or when Redis is already in the stack.
+
+### Job Continuations (Rails 8.1+)
+
+Long-running jobs **SHOULD** use continuations for graceful shutdown:
+
+```ruby
+class DataExportJob < ApplicationJob
+  include ActiveJob::Continuations
+
+  def perform(export_id)
+    export = Export.find(export_id)
+
+    step :fetch_records do
+      @records = export.user.records.to_a
+    end
+
+    step :process_records do
+      @records.each_with_index do |record, i|
+        export.process_record(record)
+        checkpoint! if i % 100 == 0  # Allow graceful interruption
+      end
+    end
+
+    step :finalize do
+      export.complete!
+      ExportMailer.ready(export).deliver_later
+    end
+  end
+end
+```
+
+**Why**: Job continuations allow jobs to resume from the last checkpoint after deployment restarts, preventing work loss during Kamal's 30-second shutdown window.
+
+## Caching: Solid Cache (Rails 8+)
+
+Projects **SHOULD** use Solid Cache[^22] instead of Redis/Memcached for caching:
+
+```ruby
+# config/environments/production.rb
+config.cache_store = :solid_cache_store
+
+# config/cache.yml
+production:
+  database: cache
+  max_size: 256.megabytes
+  max_age: 1.week
+```
+
+**Why**: Solid Cache uses disk storage, enabling much larger caches than memory-based solutions. It supports encryption for privacy compliance and requires no additional infrastructure.
+
+## WebSockets: Solid Cable (Rails 8+)
+
+Projects using Action Cable **SHOULD** use Solid Cable[^23] instead of Redis:
+
+```ruby
+# config/cable.yml
+production:
+  adapter: solid_cable
+  polling_interval: 0.1.seconds
+  message_retention: 1.day
+```
+
+**Why**: Solid Cable eliminates Redis dependency for Action Cable while retaining messages for debugging.
+
 ## Security: Brakeman
 
 All Rails projects **MUST** use Brakeman[^3] for static security analysis.
@@ -261,7 +409,7 @@ bundle exec brakeman --exit-on-warn --no-pager
 Migrations **MUST** include NOT NULL constraints and indexes where appropriate.
 
 ```ruby
-class CreateUsers < ActiveRecord::Migration[7.1]
+class CreateUsers < ActiveRecord::Migration[8.1]
   def change
     create_table :users do |t|
       t.string :email, null: false
@@ -347,7 +495,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: postgres
     steps:
@@ -639,16 +787,12 @@ end
 
 ```ruby
 # Appraisals
-appraise "rails-7.0" do
-  gem "rails", "~> 7.0.0"
+appraise "rails-8.0" do
+  gem "rails", "~> 8.0.0"
 end
 
-appraise "rails-7.1" do
-  gem "rails", "~> 7.1.0"
-end
-
-appraise "rails-7.2" do
-  gem "rails", "~> 7.2.0"
+appraise "rails-8.1" do
+  gem "rails", "~> 8.1.0"
 end
 ```
 
@@ -664,8 +808,8 @@ bundle exec appraisal rspec
 # .github/workflows/test.yml
 strategy:
   matrix:
-    ruby: ["3.2", "3.3"]
-    rails: ["7.0", "7.1", "7.2"]
+    ruby: ["3.4", "4.0"]
+    rails: ["8.0", "8.1"]
 steps:
   - uses: ruby/setup-ruby@v1
     with:
@@ -937,3 +1081,9 @@ end
 [^19]: **Flipper** - Feature flag library for Ruby applications. Supports various backends and rollout strategies. [https://www.flippercloud.io/](https://www.flippercloud.io/) | [GitHub](https://github.com/flippercloud/flipper)
 
 [^20]: **Split** - Rack-based A/B testing framework for Ruby. Enables experimentation and conversion tracking. [https://github.com/splitrb/split](https://github.com/splitrb/split)
+
+[^21]: **Solid Queue** - Database-backed Active Job backend. Replaces Redis/Sidekiq for most use cases in Rails 8+. [https://github.com/rails/solid_queue](https://github.com/rails/solid_queue)
+
+[^22]: **Solid Cache** - Database-backed Rails cache store. Replaces Redis/Memcached with disk-based caching. [https://github.com/rails/solid_cache](https://github.com/rails/solid_cache)
+
+[^23]: **Solid Cable** - Database-backed Action Cable adapter. Replaces Redis for WebSocket pubsub in Rails 8+. [https://github.com/rails/solid_cable](https://github.com/rails/solid_cable)
