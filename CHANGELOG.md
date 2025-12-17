@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-12-17
+
+### Added
+
+- **JavaScript/Frontend Framework Guides**
+  - `guides/frameworks/react.md` - React 19 component patterns and hooks
+  - `guides/frameworks/nextjs.md` - Next.js 15 App Router and server components
+  - `guides/frameworks/tailwind.md` - Tailwind CSS 4.0 utility-first styling
+
 ## [2.4.0] - 2025-12-17
 
 ### Added
