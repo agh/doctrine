@@ -62,7 +62,7 @@ Projects **MUST** use Ruff[^1] for linting.
 
 ```toml
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 100
 src = ["src", "tests"]
 
@@ -111,7 +111,7 @@ Projects **MUST** enable Mypy strict mode.
 ```toml
 [tool.mypy]
 strict = true
-python_version = "3.12"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -125,7 +125,7 @@ Projects **MUST** enable Pyright strict mode.
 ```toml
 [tool.pyright]
 include = ["src"]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 typeCheckingMode = "strict"
 ```
 
@@ -141,10 +141,105 @@ def get_user(id: int) -> User | None: ...
 
 # MUST use collections.abc, not typing
 def process(items: Sequence[str]) -> Mapping[str, int]: ...
-
-# All files MUST start with
-from __future__ import annotations
 ```
+
+**Note**: As of Python 3.14, PEP 649 deferred annotation evaluation is enabled by default. The `from __future__ import annotations` import is **no longer required** for forward references or avoiding import cycles in type hints.
+
+### PEP 695 Type Parameter Syntax (Python 3.12+)
+
+Projects targeting Python 3.12+ **SHOULD** use the new type parameter syntax for generics and type aliases.
+
+**Why**: PEP 695 provides a cleaner, more concise syntax for defining generic classes, functions, and type aliases. The new syntax eliminates boilerplate imports and makes type parameters more explicit and easier to read.
+
+```python
+# Old style (pre-3.12)
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+K = TypeVar('K')
+V = TypeVar('V')
+
+class Box(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+def first(items: list[T]) -> T:
+    return items[0]
+
+# New style (3.12+) - RECOMMENDED
+class Box[T]:
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+def first[T](items: list[T]) -> T:
+    return items[0]
+
+def process_mapping[K, V](data: dict[K, V]) -> list[V]:
+    return list(data.values())
+
+# Type aliases with type parameters
+type Point[T] = tuple[T, T]
+type JSONDict = dict[str, str | int | float | bool | None]
+type Result[T, E] = T | Exception
+```
+
+### PEP 742 TypeIs for Type Narrowing (Python 3.13+)
+
+Projects targeting Python 3.13+ **SHOULD** use `TypeIs` for user-defined type guards that narrow types.
+
+**Why**: `TypeIs` provides more accurate type narrowing than `TypeGuard`. It correctly narrows the type in the else branch and works better with union types, improving type checker accuracy.
+
+```python
+from typing import TypeIs
+
+def is_string(val: object) -> TypeIs[str]:
+    return isinstance(val, str)
+
+def process(value: str | int) -> None:
+    if is_string(value):
+        # Type checker knows value is str here
+        print(value.upper())
+    else:
+        # Type checker knows value is int here
+        print(value + 1)
+
+# More complex example
+def is_non_empty_list[T](val: list[T] | None) -> TypeIs[list[T]]:
+    return val is not None and len(val) > 0
+```
+
+### PEP 750 Template Strings (Python 3.14+)
+
+Projects targeting Python 3.14+ **MAY** use template strings (t-strings) for safe string interpolation.
+
+**Why**: Template strings provide a safer alternative to f-strings for user-generated content, enabling validation and escaping before interpolation. They return `Template` objects rather than strings, allowing deferred evaluation and security checks.
+
+```python
+from string.templatelib import Template
+
+name = "world"
+template = t"Hello {name}"  # Returns Template, not str
+
+# Template can be validated before interpolation
+if template.is_safe():
+    result = str(template)  # "Hello world"
+
+# Useful for SQL query building, HTML generation, etc.
+user_input = get_user_input()
+query_template = t"SELECT * FROM users WHERE name = {user_input}"
+# Can validate/escape before converting to string
+```
+
+### Standard Library Changes (Python 3.13+)
+
+**PEP 594 "Dead Batteries" Removal**: Python 3.13 removed deprecated standard library modules. Projects **MUST NOT** rely on removed modules and **SHOULD** migrate to recommended alternatives:
+
+- `aifc`, `audioop`, `chunk`, `cgi`, `cgitb`, `crypt`, `imghdr`, `mailcap`, `msilib`, `nis`, `nntplib`, `ossaudiodev`, `pipes`, `sndhdr`, `spwd`, `sunau`, `telnetlib`, `uu`, `xdrlib`
+
+**New Modules**: Python 3.14 introduces new standard library modules:
+- `annotationlib`: Low-level utilities for working with type annotations and introspection
+
+**Why**: Removing unmaintained modules reduces the standard library maintenance burden and security surface. New modules like `annotationlib` provide better tools for runtime type introspection and metaprogramming.
 
 ## Semantic Analysis: Semgrep
 
@@ -509,6 +604,8 @@ strategy:
     os: [ubuntu-latest, macos-latest, windows-latest]
 ```
 
+**Note**: Python 3.13+ includes experimental support for free-threading (PEP 703), removing the Global Interpreter Lock (GIL). Python 3.14 includes JIT compilation improvements for performance gains. Consider testing with free-threading enabled if your application has CPU-bound parallel workloads.
+
 ## Internationalization Testing
 
 Projects with international users **SHOULD** test UTF-8 handling and **MAY** test locale-specific behavior.
@@ -576,7 +673,9 @@ if flags.has_feature("new_checkout"):
 
 ## See Also
 
-- [Django Guide](../frameworks/django.md) - Python web framework best practices
+- [Django Guide](../frameworks/django.md) - Full-featured Python web framework
+- [Flask Guide](../frameworks/flask.md) - Lightweight microframework for web apps
+- [FastAPI Guide](../frameworks/fastapi.md) - High-performance async API framework
 - [Testing Guide](../process/testing.md) - Comprehensive testing strategies and patterns
 - [CI Guide](../process/ci.md) - Continuous integration setup and configuration
 
