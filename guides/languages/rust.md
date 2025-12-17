@@ -101,6 +101,139 @@ group_imports = "StdExternalCrate"
 reorder_imports = true
 ```
 
+## Common Trait Implementations
+
+Types **MUST** eagerly implement common traits. Rust's orphan rule prevents adding trait implementations later if you don't control both the trait and the type.
+
+### Why This Matters
+
+- **Orphan rule lock-in**: Once your crate is published, users can't add `Debug` or `Clone` to your types
+- **Ecosystem compatibility**: Types without `Debug` can't be used in `Result` error positions
+- **User expectations**: Rust developers expect types to be debuggable, cloneable, and comparable
+
+### Required Traits Checklist
+
+All public types **MUST** implement these traits where applicable:
+
+```rust
+// MINIMUM: Every public type needs Debug
+#[derive(Debug)]
+pub struct Config {
+    timeout: Duration,
+    retries: u32,
+}
+
+// RECOMMENDED: Add Clone, PartialEq, Eq when semantically valid
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserId(pub u64);
+
+// FOR HASH MAPS: Add Hash when type will be used as a key
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CacheKey {
+    namespace: String,
+    id: u64,
+}
+
+// FOR VALUE OBJECTS: Add Copy when the type is small and Copy-safe
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+### Trait Implementation Guide
+
+| Trait | When to Implement | Notes |
+|-------|-------------------|-------|
+| `Debug` | **Always** | Required for error messages and debugging |
+| `Clone` | When duplication makes sense | Skip for types with unique ownership (file handles) |
+| `PartialEq`, `Eq` | When equality is meaningful | `Eq` requires `PartialEq` |
+| `Hash` | When used as HashMap/HashSet key | Requires `Eq` |
+| `Default` | When there's a sensible default | Enables `..Default::default()` syntax |
+| `Copy` | Small, stack-only types | Implies `Clone`, changes move semantics |
+| `Send`, `Sync` | Usually automatic | Override only when unsafe is involved |
+
+### Error Types
+
+Error types have additional requirements:
+
+```rust
+use std::error::Error;
+use std::fmt;
+
+#[derive(Debug)]
+pub struct ParseError {
+    line: usize,
+    message: String,
+}
+
+// Error types MUST implement Display
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "parse error at line {}: {}", self.line, self.message)
+    }
+}
+
+// Error types MUST implement std::error::Error
+impl Error for ParseError {}
+
+// Error types SHOULD be Send + Sync for use across threads
+// (This is automatic if all fields are Send + Sync)
+```
+
+### Conversion Traits
+
+Implement standard conversion traits for interoperability:
+
+```rust
+// From for infallible conversions
+impl From<u16> for PortNumber {
+    fn from(value: u16) -> Self {
+        PortNumber(value)
+    }
+}
+
+// TryFrom for fallible conversions
+impl TryFrom<u32> for PortNumber {
+    type Error = PortRangeError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        if value > 65535 {
+            Err(PortRangeError(value))
+        } else {
+            Ok(PortNumber(value as u16))
+        }
+    }
+}
+
+// NEVER implement Into or TryInto directly - use From/TryFrom instead
+// The blanket impl provides Into automatically
+```
+
+### Serde Support
+
+Libraries **SHOULD** provide Serde support behind a feature flag:
+
+```toml
+# Cargo.toml
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"], optional = true }
+```
+
+```rust
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Config {
+    pub timeout_ms: u64,
+    pub retries: u32,
+}
+```
+
 ## Security Analysis: cargo-audit
 
 Projects **MUST** run cargo-audit[^3] to check for known vulnerabilities in dependencies.

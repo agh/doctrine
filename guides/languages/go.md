@@ -103,6 +103,154 @@ goimports -w .
 
 There are no configuration options. This is intentional.
 
+## Context Patterns
+
+Projects **MUST** propagate context through the call stack. Context carries deadlines, cancellation signals, and request-scoped values.
+
+### Why Context Matters
+
+- **Cancellation**: Allows graceful shutdown when requests are cancelled
+- **Timeouts**: Prevents runaway operations from consuming resources
+- **Tracing**: Carries request IDs and tracing information across service boundaries
+
+### Context Rules
+
+```go
+// Context MUST be the first parameter, named ctx
+func ProcessOrder(ctx context.Context, orderID string) error {
+    // Check for cancellation before expensive operations
+    select {
+    case <-ctx.Done():
+        return ctx.Err()
+    default:
+    }
+
+    // Pass context to downstream calls
+    user, err := fetchUser(ctx, orderID)
+    if err != nil {
+        return err
+    }
+    return chargePayment(ctx, user)
+}
+```
+
+### Anti-patterns
+
+```go
+// BAD: Storing context in a struct
+type Service struct {
+    ctx context.Context  // Never do this
+}
+
+// BAD: Using context.Background() deep in the call stack
+func deepFunction() {
+    doSomething(context.Background())  // Loses cancellation signal
+}
+
+// GOOD: Accept context as parameter
+func deepFunction(ctx context.Context) {
+    doSomething(ctx)
+}
+```
+
+## Error Wrapping
+
+Projects **SHOULD** wrap errors with context using `fmt.Errorf` and `%w`. This preserves the error chain for debugging while adding context.
+
+### Why Wrap Errors
+
+- **Debugging**: Stack of context shows where errors originated
+- **Programmatic handling**: `errors.Is()` and `errors.As()` work through wrapped errors
+- **User messages**: Can extract user-friendly messages at API boundaries
+
+### Error Wrapping Patterns
+
+```go
+import (
+    "errors"
+    "fmt"
+)
+
+// Wrap with context using %w
+func LoadConfig(path string) (*Config, error) {
+    data, err := os.ReadFile(path)
+    if err != nil {
+        return nil, fmt.Errorf("load config %s: %w", path, err)
+    }
+
+    var cfg Config
+    if err := json.Unmarshal(data, &cfg); err != nil {
+        return nil, fmt.Errorf("parse config %s: %w", path, err)
+    }
+    return &cfg, nil
+}
+
+// Check wrapped errors with errors.Is()
+if errors.Is(err, os.ErrNotExist) {
+    // Handle missing file
+}
+
+// Extract typed errors with errors.As()
+var pathErr *os.PathError
+if errors.As(err, &pathErr) {
+    log.Printf("path error on %s: %v", pathErr.Path, pathErr.Err)
+}
+```
+
+### Sentinel Errors
+
+Define sentinel errors for conditions callers need to check programmatically:
+
+```go
+var (
+    ErrNotFound     = errors.New("not found")
+    ErrUnauthorized = errors.New("unauthorized")
+)
+
+func GetUser(id string) (*User, error) {
+    user := db.Find(id)
+    if user == nil {
+        return nil, fmt.Errorf("user %s: %w", id, ErrNotFound)
+    }
+    return user, nil
+}
+
+// Caller can check
+if errors.Is(err, ErrNotFound) {
+    return http.StatusNotFound
+}
+```
+
+### Handle Errors Once
+
+**MUST NOT** both log and return an error. Choose one:
+
+```go
+// BAD: Logs AND returns - error gets logged multiple times
+func process() error {
+    if err := doThing(); err != nil {
+        log.Printf("failed: %v", err)  // Logged here
+        return err                      // And logged by caller
+    }
+    return nil
+}
+
+// GOOD: Return with context, let caller decide
+func process() error {
+    if err := doThing(); err != nil {
+        return fmt.Errorf("process: %w", err)
+    }
+    return nil
+}
+
+// GOOD: Log at the top level only
+func main() {
+    if err := process(); err != nil {
+        log.Fatalf("fatal: %v", err)
+    }
+}
+```
+
 ## Dead Code Detection
 
 Projects **SHOULD** use deadcode[^5] to identify unused functions and methods.

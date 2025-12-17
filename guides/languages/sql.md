@@ -345,6 +345,104 @@ jobs:
       - run: sqlfluff lint --dialect postgres .
 ```
 
+## Schema Anti-Patterns
+
+These patterns cause real production problems that linters cannot catch.
+
+### Entity-Attribute-Value (EAV) Tables
+
+You **MUST NOT** use EAV tables for structured data. EAV destroys type safety, prevents foreign keys, and makes queries complex.
+
+```sql
+-- BAD: EAV pattern - loses type safety, can't use foreign keys
+CREATE TABLE product_attributes (
+    product_id BIGINT,
+    attribute_name TEXT,    -- "price", "weight", "color"
+    attribute_value TEXT    -- Everything is a string!
+);
+
+-- Querying EAV is painful
+SELECT
+    p.name,
+    MAX(CASE WHEN a.attribute_name = 'price' THEN a.attribute_value END) AS price,
+    MAX(CASE WHEN a.attribute_name = 'color' THEN a.attribute_value END) AS color
+FROM products AS p
+LEFT JOIN product_attributes AS a ON p.id = a.product_id
+GROUP BY p.id, p.name;
+
+-- GOOD: Use proper columns with real types
+CREATE TABLE products (
+    id BIGINT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price NUMERIC(10,2) NOT NULL,  -- Real type!
+    weight_kg NUMERIC(8,3),
+    color TEXT
+);
+
+-- Use JSONB for truly dynamic attributes
+CREATE TABLE products (
+    id BIGINT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    custom_attributes JSONB DEFAULT '{}'  -- For genuinely variable data
+);
+```
+
+### Time-Partitioned Table Names
+
+You **MUST NOT** encode time periods in table names. This creates maintenance burden and breaks queries when periods change.
+
+```sql
+-- BAD: Table names encode time
+CREATE TABLE events_2024_01 (...);
+CREATE TABLE events_2024_02 (...);
+-- Now every query needs UNION ALL across all tables
+-- Adding a new month requires schema changes
+
+-- GOOD: Use database-native partitioning
+CREATE TABLE events (
+    id BIGINT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    event_type TEXT,
+    payload JSONB
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE events_2024_q1 PARTITION OF events
+    FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
+CREATE TABLE events_2024_q2 PARTITION OF events
+    FOR VALUES FROM ('2024-04-01') TO ('2024-07-01');
+
+-- Queries work on the parent table automatically
+SELECT * FROM events WHERE created_at >= '2024-02-15';
+```
+
+### Separate Value and Unit Columns
+
+You **SHOULD NOT** store numeric values separately from their units. This leads to unit mismatch bugs.
+
+```sql
+-- BAD: Unit stored separately - easy to mix up
+CREATE TABLE measurements (
+    id BIGINT PRIMARY KEY,
+    value NUMERIC,
+    unit TEXT  -- "kg", "lb", "g" - which is it?
+);
+
+-- GOOD: Unit in column name, single canonical unit
+CREATE TABLE measurements (
+    id BIGINT PRIMARY KEY,
+    weight_kg NUMERIC(10,3),  -- Always kilograms
+    distance_m NUMERIC(12,2)  -- Always meters
+);
+
+-- GOOD: For multi-unit storage, use composite type or normalize on write
+CREATE TABLE shipments (
+    id BIGINT PRIMARY KEY,
+    weight_kg NUMERIC(10,3) NOT NULL,  -- Canonical unit
+    weight_display_unit TEXT DEFAULT 'kg'  -- For UI only
+);
+```
+
 ## References
 
 [^1]: SQL Style Guide - <https://www.sqlstyle.guide/>

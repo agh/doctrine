@@ -520,6 +520,81 @@ Ruby 4.0 updates to Unicode 17.0.0. This may affect:
 
 Projects handling internationalized text **SHOULD** test Unicode-dependent functionality after upgrading.
 
+## Time Zone Handling
+
+Projects **MUST** use time zone-aware methods when working with dates and times. Using `Time.now` instead of `Time.zone.now` is a common source of production bugs.
+
+### Why Time Zones Matter
+
+- **Silent failures**: `Time.now` uses system time zone, not application time zone
+- **Inconsistent data**: Database stores UTC, but queries use local time
+- **User confusion**: Timestamps display incorrectly across time zones
+- **Testing brittleness**: Tests pass locally but fail in CI (different time zones)
+
+### Time Zone Rules
+
+```ruby
+# BAD: Ignores configured time zone
+Time.now
+Date.today
+DateTime.now
+
+# GOOD: Uses application time zone
+Time.current          # or Time.zone.now
+Date.current          # or Time.zone.today
+DateTime.current
+
+# BAD: Parses in system time zone
+Time.parse("2024-01-15 10:00:00")
+
+# GOOD: Parses in application time zone
+Time.zone.parse("2024-01-15 10:00:00")
+```
+
+### Database Queries
+
+```ruby
+# BAD: Uses system time, may miss records
+User.where("created_at > ?", Time.now - 1.day)
+
+# GOOD: Uses application time zone
+User.where("created_at > ?", 1.day.ago)
+User.where(created_at: 1.day.ago..)
+
+# GOOD: For date ranges
+User.where(created_at: Date.current.all_day)
+User.where(created_at: Date.current.beginning_of_day..Date.current.end_of_day)
+```
+
+### Configuration
+
+```ruby
+# config/application.rb
+config.time_zone = "America/New_York"
+
+# Store all times in UTC in the database (default, recommended)
+config.active_record.default_timezone = :utc
+```
+
+### Testing Time-Dependent Code
+
+```ruby
+RSpec.describe Subscription do
+  it "expires after 30 days" do
+    # Use travel_to for deterministic time tests
+    travel_to Time.zone.parse("2024-01-15 12:00:00") do
+      subscription = Subscription.create!
+
+      travel 29.days
+      expect(subscription).not_to be_expired
+
+      travel 2.days
+      expect(subscription).to be_expired
+    end
+  end
+end
+```
+
 ## Semantic Analysis: Reek
 
 Projects **SHOULD** use Reek[^3] for semantic analysis and code smell detection.
