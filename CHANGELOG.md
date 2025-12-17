@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.0] - 2025-12-17
+
+### Added
+
+- **Vendored Industry Style Guides** (`reference/`)
+  - Airbnb: JavaScript (148k stars), React, CSS-in-JS, Ruby
+  - Uber: Go style guide (17.2k stars)
+  - RuboCop: Ruby and Rails community guides
+  - Shopify: Ruby style guide
+  - Holywell: SQL style guide
+  - Rust API Guidelines (14 files)
+  - Google: JavaScript, JSON
+- **Critical Guide Sections** (patterns linters cannot catch)
+  - Go: Context propagation and error wrapping patterns
+  - Ruby: Time zone handling (`Time.zone.now` vs `Time.now`)
+  - Rust: Common trait implementations (orphan rule awareness)
+  - SQL: Schema anti-patterns (EAV tables, time-partitioned names, unit separation)
+
 ## [2.9.0] - 2025-12-17
 
 ### Added
@@ -187,7 +205,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendored Google style guides (Python, Markdown, Shell, C#, HTML/CSS, Go,
   TypeScript)
 
-[Unreleased]: https://github.com/agh/doctrine/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/agh/doctrine/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/agh/doctrine/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/agh/doctrine/compare/v2.8.0...v2.9.0
 [2.1.0]: https://github.com/agh/doctrine/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/agh/doctrine/compare/v2.0.0...v2.0.1

@@ -2,7 +2,7 @@
 
 # Doctrine Style Guide
 
-**Version: 2.9.0** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
+**Version: 2.10.0** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -182,3 +182,11 @@ Ready-to-copy configuration files:
 ## Attribution
 
 Google style guides are licensed under CC-BY 3.0. Vendored copies in `reference/google/`.
+
+Industry style guides vendored in `reference/` for comparison:
+- [Airbnb](reference/airbnb/) - JavaScript, React, CSS-in-JS, Ruby
+- [Uber](reference/uber/) - Go
+- [RuboCop](reference/rubocop/) - Ruby, Rails
+- [Shopify](reference/shopify/) - Ruby
+- [Holywell](reference/holywell/) - SQL
+- [Rust API Guidelines](reference/rust/) - Rust
