@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2025-12-17
+
+### Added
+
+- **Python 3.14 Support**
+  - Updated `guides/languages/python.md` to target Python 3.14
+  - PEP 695: Type parameter syntax (`class Box[T]:`)
+  - PEP 742: `TypeIs` for type narrowing
+  - PEP 750: Template strings (t-strings)
+  - PEP 649: Deferred annotation evaluation
+  - PEP 594: Dead batteries removal documentation
+  - Free-threading and JIT compiler notes
+- **Python Framework Guides**
+  - `guides/frameworks/fastapi.md` - FastAPI 0.115+ async API framework
+  - `guides/frameworks/flask.md` - Flask 3.x microframework
+- **Ruby 4.0 Support**
+  - Updated `guides/languages/ruby.md` to target Ruby 4.0
+  - `it` keyword, frozen strings by default, Pathname/Set as core classes
+  - Array#find/rfind, String#strip selectors, Prism parser
+  - YJIT/ZJIT JIT compilers, Ractor::Port API
+  - Breaking changes and migration guide
+
 ## [2.1.0] - 2025-12-17
 
 ### Added
