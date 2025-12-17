@@ -2,7 +2,7 @@
 
 # Doctrine Style Guide
 
-**Version: 2.8.0** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
+**Version: 2.9.0** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -64,6 +64,13 @@ See [versioning guide](guides/process/versioning.md) for details.
 | CLAUDE.md | [guides/ai/claude-md.md](guides/ai/claude-md.md) | Project instruction files |
 | Cursor Rules | [guides/ai/cursor-rules.md](guides/ai/cursor-rules.md) | .cursorrules patterns |
 | Security | [guides/ai/security.md](guides/ai/security.md) | LLM security considerations |
+
+## API Design Guides
+
+| Protocol | Guide | Description |
+|----------|-------|-------------|
+| GraphQL | [guides/api/graphql.md](guides/api/graphql.md) | Schema design, queries, mutations, security |
+| REST | [guides/api/rest.md](guides/api/rest.md) | Resources, HTTP methods, status codes, pagination |
 
 ## Process Guides
 

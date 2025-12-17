@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] - 2025-12-17
+
+### Added
+
+- **API Design Guides** (NEW SECTION)
+  - `guides/api/README.md` - API design patterns overview
+  - `guides/api/graphql.md` - GraphQL best practices (schema design, queries, mutations, security, performance)
+  - `guides/api/rest.md` - REST best practices (resources, HTTP methods, status codes, pagination, caching)
+- **Strawberry GraphQL Framework Guide**
+  - `guides/frameworks/strawberry.md` - Python GraphQL with Strawberry (schemas, resolvers, DataLoaders, permissions, FastAPI/Django integration)
+
 ## [2.8.0] - 2025-12-17
 
 ### Added
@@ -176,7 +187,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendored Google style guides (Python, Markdown, Shell, C#, HTML/CSS, Go,
   TypeScript)
 
-[Unreleased]: https://github.com/agh/doctrine/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/agh/doctrine/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/agh/doctrine/compare/v2.8.0...v2.9.0
 [2.1.0]: https://github.com/agh/doctrine/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/agh/doctrine/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/agh/doctrine/compare/v1.0.0...v2.0.0
