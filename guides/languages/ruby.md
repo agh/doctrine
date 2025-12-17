@@ -4,6 +4,8 @@
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html).
 
+**Target Version**: Ruby 4.0
+
 Based on the [community Ruby Style Guide](https://rubystyle.guide/).
 
 ## Quick Reference
@@ -56,7 +58,7 @@ inherit_gem:
 
 # Your customizations here
 AllCops:
-  TargetRubyVersion: 3.2
+  TargetRubyVersion: 4.0
 ```
 
 ## Type Checking: Sorbet
@@ -128,6 +130,395 @@ class User
   end
 end
 ```
+
+## Ruby 4.0 Language Features
+
+### The `it` Keyword (Ruby 3.4+)
+
+Ruby 3.4 introduced the `it` keyword as the default block parameter, providing a more readable alternative to numbered parameters (`_1`) and explicit block parameters.
+
+#### Why `it`?
+
+The `it` keyword was introduced because it:
+
+- **Improves readability**: More intuitive than `_1`, especially for developers from other languages
+- **Reduces boilerplate**: Eliminates the need for explicit `|param|` syntax in simple blocks
+- **Maintains clarity**: Makes the code intention clearer than numbered parameters
+- **Language consistency**: Aligns Ruby with modern functional programming conventions
+
+```ruby
+# Ruby 4.0+ recommended style
+users.map { it.name }
+numbers.select { it > 10 }
+posts.filter { it.published? }
+items.sort_by { it.priority }
+
+# Still valid but less idiomatic now
+users.map { _1.name }
+users.map { |user| user.name }
+
+# Use explicit parameters when you need multiple or clearer naming
+users.each_with_index { |user, index| puts "#{index}: #{user.name}" }
+pairs.map { |key, value| "#{key}=#{value}" }
+```
+
+Projects **SHOULD** prefer `it` over `_1` for single-parameter blocks in Ruby 4.0+. Explicit parameters **MAY** still be used when parameter naming adds clarity or when multiple parameters are needed.
+
+### Data Class for Immutable Value Objects (Ruby 3.2+)
+
+The `Data` class provides a lightweight way to create immutable value objects with named attributes.
+
+#### Why Data?
+
+Data classes were introduced because they:
+
+- **Enforce immutability**: All instances are frozen by default, preventing accidental mutations
+- **Reduce boilerplate**: Automatic attribute readers, equality, and pattern matching
+- **Value semantics**: Equality based on attribute values, not object identity
+- **Performance**: More memory-efficient than Struct for immutable data
+- **Type safety**: Works seamlessly with pattern matching and deconstruction
+
+```ruby
+# Define immutable value object
+Point = Data.define(:x, :y)
+
+point = Point.new(1, 2)
+point.x  # => 1
+point.y  # => 2
+
+# Create modified copy with #with
+point2 = point.with(x: 3)  # => Point(x: 3, y: 2)
+
+# Pattern matching support
+case point
+in Point(x: 0, y: 0)
+  puts "Origin"
+in Point(x:, y:)
+  puts "Point at #{x}, #{y}"
+end
+
+# Value equality
+Point.new(1, 2) == Point.new(1, 2)  # => true
+
+# Multiple attributes
+User = Data.define(:id, :name, :email)
+user = User.new(1, "Alice", "alice@example.com")
+updated = user.with(email: "newemail@example.com")
+```
+
+Projects **SHOULD** use `Data.define` for immutable value objects instead of `Struct` when immutability is desired. Use `Struct` only when you need mutable objects.
+
+### Frozen String Literals by Default (Ruby 4.0)
+
+Ruby 4.0 makes frozen string literals the default behavior. All string literals are now frozen by default, improving performance and preventing accidental mutations.
+
+#### Why Frozen by Default?
+
+Frozen string literals became the default because they:
+
+- **Improve performance**: Identical frozen strings can share memory
+- **Prevent bugs**: Eliminates accidental string mutations
+- **Thread safety**: Frozen strings are inherently thread-safe
+- **Reduce memory**: String deduplication works automatically
+- **Modern best practice**: Aligns with immutability principles
+
+```ruby
+# Ruby 4.0: All string literals are frozen by default
+name = "Alice"
+name.frozen?  # => true
+
+# No longer need magic comment
+# frozen_string_literal: true  # Not needed in Ruby 4.0+
+
+# Create mutable strings when needed
+mutable_name = String.new("Alice")
+mutable_name.frozen?  # => false
+
+# Or use unary plus operator
+mutable_name = +"Alice"
+mutable_name.frozen?  # => false
+mutable_name << " Smith"  # Works
+
+# Concatenation creates new frozen strings
+greeting = "Hello, " + name  # => "Hello, Alice" (frozen)
+
+# String interpolation creates frozen strings
+message = "User: #{name}"
+message.frozen?  # => true
+```
+
+Projects **MUST** remove `# frozen_string_literal: true` magic comments in Ruby 4.0+. When mutable strings are needed, **MUST** use `String.new` or the unary plus operator `+`.
+
+### Set as Core Class (Ruby 3.2+)
+
+The `Set` class is now built into Ruby core, eliminating the need to `require 'set'`.
+
+```ruby
+# Ruby 3.2+: Set is built-in, no require needed
+set = Set[1, 2, 3]
+set.add(4)
+set.include?(2)  # => true
+
+# Set operations
+set1 = Set[1, 2, 3]
+set2 = Set[2, 3, 4]
+set1 | set2  # => Set[1, 2, 3, 4] (union)
+set1 & set2  # => Set[2, 3] (intersection)
+set1 - set2  # => Set[1] (difference)
+```
+
+Projects **MUST NOT** use `require 'set'` in Ruby 3.2+, as `Set` is now a core class.
+
+### Pathname as Core Class (Ruby 4.0)
+
+The `Pathname` class is now built into Ruby core, eliminating the need to `require 'pathname'`.
+
+```ruby
+# Ruby 4.0: Pathname is built-in, no require needed
+path = Pathname.new("/usr/local/bin")
+path.directory?     # => true
+path.children       # => [Pathname:/usr/local/bin/ruby, ...]
+
+# Path manipulation
+config = Pathname.new("/app") / "config" / "database.yml"
+config.to_s         # => "/app/config/database.yml"
+config.basename     # => Pathname:database.yml
+config.dirname      # => Pathname:/app/config
+config.extname      # => ".yml"
+
+# Reading and writing
+path.read           # Read file contents
+path.write("data")  # Write to file
+path.exist?         # Check existence
+```
+
+Projects **MUST NOT** use `require 'pathname'` in Ruby 4.0+, as `Pathname` is now a core class.
+
+### Array#find and Array#rfind (Ruby 4.0)
+
+Ruby 4.0 adds `Array#find` and `Array#rfind` as optimized alternatives to `Enumerable#find` and `Enumerable#reverse_each.find`.
+
+#### Why Array#find?
+
+These methods were added because they:
+
+- **Improve performance**: Native Array implementation is faster than Enumerable
+- **Provide symmetry**: `rfind` searches from the end without creating a reversed copy
+- **Reduce allocations**: No intermediate enumerator objects needed
+
+```ruby
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+# Find first match (searches from beginning)
+numbers.find { it > 5 }   # => 6
+
+# Find last match (searches from end)
+numbers.rfind { it < 5 }  # => 4
+
+# With default value
+numbers.find(0) { it > 100 }   # => 0
+numbers.rfind(0) { it > 100 }  # => 0
+
+# Practical example: find most recent valid record
+logs = [log1, log2, log3, log4]
+logs.rfind { it.valid? }  # Efficiently finds last valid log
+```
+
+Projects **SHOULD** prefer `Array#find` and `Array#rfind` over `Enumerable#find` when working with arrays in Ruby 4.0+.
+
+### String#strip with Selectors (Ruby 4.0)
+
+Ruby 4.0 extends `String#strip`, `#lstrip`, and `#rstrip` to accept selector arguments for custom character stripping.
+
+```ruby
+# Default behavior (whitespace)
+"  hello  ".strip     # => "hello"
+
+# Strip specific characters
+"###hello###".strip("#")           # => "hello"
+"...hello...".strip(".")           # => "hello"
+"##--hello--##".strip("#", "-")    # => "hello"
+
+# Left and right variants
+"###hello".lstrip("#")             # => "hello"
+"hello###".rstrip("#")             # => "hello"
+
+# Strip character classes
+"123hello456".strip("0-9")         # => "hello"
+"AAAhelloBBB".strip("A-Z")         # => "hello"
+
+# Combine with other operations
+csv_value = "  \"hello\"  "
+csv_value.strip.strip("\"")        # => "hello"
+```
+
+Projects **MAY** use the selector arguments to `strip`, `lstrip`, and `rstrip` when custom character removal is needed.
+
+### Prism Parser (Ruby 3.4+)
+
+Prism is the new default parser in Ruby 3.4+, replacing the legacy Ripper parser.
+
+#### Why Prism?
+
+Prism was introduced because it:
+
+- **Faster parsing**: Significantly improved parsing performance
+- **Better error messages**: More helpful syntax error diagnostics
+- **Consistent AST**: Unified abstract syntax tree representation
+- **Portable**: Pure Ruby implementation works across platforms
+- **Maintainable**: Cleaner codebase for future Ruby development
+
+Projects using Ruby 3.4+ automatically benefit from Prism. No configuration changes are needed.
+
+### YJIT Performance (Ruby 3.3+)
+
+YJIT (Yet another Ruby JIT) is enabled by default in Ruby 3.3+, providing significant performance improvements.
+
+#### Why YJIT?
+
+YJIT provides:
+
+- **20-40% performance improvement**: Real-world Rails applications see significant speedups
+- **Low memory overhead**: Minimal memory cost compared to performance gains
+- **Production-ready**: Stable and tested in production at Shopify
+- **Zero configuration**: Enabled by default, works transparently
+
+```bash
+# YJIT is enabled by default in Ruby 3.3+
+ruby --yjit script.rb  # Explicitly enable (redundant in 3.3+)
+
+# Check YJIT stats
+ruby --yjit-stats script.rb
+
+# Disable YJIT if needed
+ruby --disable-yjit script.rb
+```
+
+#### ZJIT Experimental (Ruby 4.0)
+
+Ruby 4.0 introduces ZJIT as an experimental alternative JIT compiler.
+
+```bash
+# Enable experimental ZJIT
+ruby --zjit script.rb
+
+# ZJIT with aggressive optimizations
+ruby --zjit --zjit-max-versions=10 script.rb
+```
+
+Projects **SHOULD** use default YJIT in production. ZJIT **MAY** be evaluated for specific performance-critical workloads but is not recommended for general use.
+
+### Ractor Improvements (Ruby 4.0)
+
+Ruby 4.0 introduces significant changes to the Ractor API for better actor-based concurrency.
+
+#### Ractor::Port for Message Passing
+
+The new `Ractor::Port` class provides a cleaner synchronization mechanism:
+
+```ruby
+# Ruby 4.0: Using Ractor::Port
+port = Ractor::Port.new
+
+worker = Ractor.new(port) do |p|
+  result = expensive_computation
+  p.send(result)
+end
+
+# Receive from port
+result = port.receive
+
+# Close when done
+port.close
+```
+
+#### Ractor#join and Ractor#value
+
+New methods for waiting on Ractor completion:
+
+```ruby
+# Wait for Ractor to terminate
+worker = Ractor.new { compute_something }
+worker.join  # Blocks until completion
+
+# Get the return value
+worker = Ractor.new { 42 }
+worker.value  # => 42 (blocks until complete, returns result)
+
+# Practical pattern: parallel computation
+ractors = data_chunks.map do |chunk|
+  Ractor.new(chunk) { |c| process(c) }
+end
+
+results = ractors.map(&:value)  # Collect all results
+```
+
+#### Removed Ractor Methods
+
+The following methods were **removed** in Ruby 4.0:
+
+- `Ractor.yield` - Use `Ractor::Port#send` instead
+- `Ractor#take` - Use `Ractor#value` or `Ractor::Port#receive` instead
+- `Ractor#close_incoming` - Use `Ractor::Port#close` instead
+- `Ractor#close_outgoing` - Use `Ractor::Port#close` instead
+
+```ruby
+# Ruby 3.x (deprecated)
+r = Ractor.new { Ractor.yield(42) }
+r.take  # => 42
+
+# Ruby 4.0 (recommended)
+port = Ractor::Port.new
+r = Ractor.new(port) { |p| p.send(42) }
+port.receive  # => 42
+```
+
+Projects using Ractors **MUST** migrate from the removed methods to the new `Ractor::Port` API.
+
+## Ruby 4.0 Breaking Changes
+
+### Removed Features
+
+Ruby 4.0 removes several deprecated features. Projects **MUST** update code using these features before upgrading.
+
+| Removed | Migration |
+|---------|-----------|
+| `--rjit` option | Use `--yjit` (default) or experimental `--zjit` |
+| `CGI` library (most of it) | Only `cgi/escape` retained; use `Rack` or `rack-utils` for CGI functionality |
+| `SortedSet` autoload | Add `gem 'sorted_set'` to Gemfile |
+| `Process::Status#&` | Use `Process::Status#to_i & value` |
+| `Process::Status#>>` | Use `Process::Status#to_i >> value` |
+| `ObjectSpace._id2ref` | Deprecated; avoid relying on object IDs |
+
+### Changed Behaviors
+
+```ruby
+# *nil no longer calls nil.to_a (aligns with **nil)
+# Ruby 3.x: *nil => []
+# Ruby 4.0: *nil => raises TypeError
+
+# Use explicit conversion if needed
+values = nil
+args = values&.to_a || []
+
+# Binding#local_variables excludes numbered parameters
+binding.local_variables  # No longer includes _1, _2, etc.
+
+# Proc#parameters shows anonymous optionals differently
+proc { |a = 1| }.parameters
+# Ruby 3.x: [[:opt, nil]]
+# Ruby 4.0: [[:opt]]
+```
+
+### Unicode 17.0.0
+
+Ruby 4.0 updates to Unicode 17.0.0. This may affect:
+
+- String comparison and sorting
+- Regular expression character classes
+- Case conversion methods
+
+Projects handling internationalized text **SHOULD** test Unicode-dependent functionality after upgrading.
 
 ## Semantic Analysis: Reek
 
@@ -676,7 +1067,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: ["3.1", "3.2", "3.3"]
+        ruby: ["3.3", "3.4", "4.0"]
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -967,5 +1358,7 @@ end
 ## See Also
 
 - [Rails Guide](../frameworks/rails.md) - Ruby on Rails specific conventions and tooling
+- [Sinatra Guide](../frameworks/sinatra.md) - Lightweight DSL for simple APIs and microservices
+- [Hanami Guide](../frameworks/hanami.md) - Clean architecture web framework
 - [Testing Guide](../process/testing.md) - General testing practices and strategies
 - [CI Guide](../process/ci.md) - Continuous integration setup and best practices
