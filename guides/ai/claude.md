@@ -30,7 +30,7 @@ This guide provides comprehensive best practices for working with Anthropic's Cl
 This guide covers:
 
 - Strategic model selection across Opus, Sonnet, and Haiku tiers
-- Claude Code CLI patterns and CLAUDE.md conventions
+- Claude Code CLI patterns and AGENTS.md conventions
 - API usage including system prompts, temperature settings, and token management
 - Extended thinking triggers and reasoning patterns
 - Multi-agent workflow design and orchestration
@@ -458,13 +458,13 @@ claude "Now add rate limiting to those endpoints"
 # (Claude remembers previous analysis, no re-reading needed)
 ```
 
-### CLAUDE.md Pattern
+### AGENTS.md Pattern
 
-The CLAUDE.md file is a critical component of Claude Code workflow. It MUST be used to provide essential codebase context.
+The AGENTS.md file is a critical component of Claude Code workflow. It MUST be used to provide essential codebase context. For Claude Code compatibility, create a `CLAUDE.md` symlink pointing to `AGENTS.md`.
 
-#### What is CLAUDE.md
+#### What is AGENTS.md
 
-CLAUDE.md is a markdown file at the root of your repository that provides:
+AGENTS.md is a markdown file at the root of your repository that provides:
 1. **Project overview**: What the project does and why
 2. **Technical stack**: Languages, frameworks, key dependencies
 3. **Development commands**: Build, test, run, deploy
@@ -472,9 +472,9 @@ CLAUDE.md is a markdown file at the root of your repository that provides:
 5. **Architecture notes**: Key design decisions and structure
 6. **Gotchas**: Common pitfalls and known issues
 
-#### CLAUDE.md Structure
+#### AGENTS.md Structure
 
-A well-structured CLAUDE.md MUST include these sections:
+A well-structured AGENTS.md MUST include these sections:
 
 ```markdown
 # Project Name
@@ -585,7 +585,7 @@ Be careful with 'use client' directive. Only use for interactive components.
 - [Contributing Guide](./CONTRIBUTING.md)
 ```
 
-#### CLAUDE.md Best Practices
+#### AGENTS.md Best Practices
 
 **DO**:
 ```markdown
@@ -614,7 +614,7 @@ Be careful with 'use client' directive. Only use for interactive components.
 #### Pattern 1: Feature Implementation
 
 ```bash
-# Step 1: Provide context via CLAUDE.md (already in repo)
+# Step 1: Provide context via AGENTS.md (already in repo)
 # Step 2: Start implementation conversation
 
 claude "I need to add user profile editing functionality. \
@@ -629,7 +629,7 @@ Start by analyzing existing user profile code and \
 suggesting the implementation approach."
 
 # Claude will:
-1. Read CLAUDE.md for context
+1. Read AGENTS.md for context
 2. Search for existing user profile code
 3. Analyze current patterns
 4. Propose implementation approach
@@ -750,7 +750,7 @@ for caching user sessions in our high-traffic application?"
 <thinking>
 Let me analyze this caching decision systematically.
 
-Current context from CLAUDE.md:
+Current context from AGENTS.md:
 - Next.js 14 application
 - PostgreSQL database
 - Deployed on Vercel
@@ -829,7 +829,7 @@ crypto library and update to new API"
 
 # Method 4: Reference external context
 claude "Implement the feature described in docs/feature-specs/
-user-profiles.md following our patterns in CLAUDE.md"
+user-profiles.md following our patterns in AGENTS.md"
 ```
 
 #### Context Optimization
@@ -2293,8 +2293,8 @@ Generate the code, and before finalizing, verify that all imported
 functions actually exist in the codebase. If uncertain, ask me.
 """
 
-# ✓ Solution 3: Use CLAUDE.md to document APIs
-# Include in CLAUDE.md:
+# ✓ Solution 3: Use AGENTS.md to document APIs
+# Include in AGENTS.md:
 ## Available Utilities
 
 ### Validators (@/lib/validators)
@@ -2665,11 +2665,11 @@ Output:
 ✗ Skip model selection evaluation
 ```
 
-### CLAUDE.md Files
+### AGENTS.md Files
 
 **DO**:
 ```
-✓ Create CLAUDE.md at repository root
+✓ Create AGENTS.md at repository root (with CLAUDE.md symlink)
 ✓ Include: project overview, tech stack, commands, conventions
 ✓ Keep under 500-1000 lines
 ✓ Update when project changes
@@ -2738,7 +2738,7 @@ Output:
 ✓ Prioritize context: target file > dependencies > similar files
 ✓ Use hierarchical structuring (broad → narrow → specific)
 ✓ Leverage prompt caching for repeated context
-✓ Provide CLAUDE.md for project-wide context
+✓ Provide AGENTS.md for project-wide context
 ✓ Include relevant code examples
 ✓ Summarize distant context instead of full inclusion
 ```
@@ -2842,7 +2842,7 @@ Output:
 Claude's models (Opus, Sonnet, Haiku) provide powerful capabilities when used correctly. Success requires:
 
 1. **Strategic Model Selection**: Match model tier to task complexity and criticality
-2. **Effective Context**: Use CLAUDE.md, prioritize relevant files, leverage caching
+2. **Effective Context**: Use AGENTS.md, prioritize relevant files, leverage caching
 3. **Smart Prompting**: Be specific, provide examples, request reasoning
 4. **Extended Thinking**: Use for complex problems requiring deep analysis
 5. **Multi-Agent Workflows**: Orchestrate specialized agents for large tasks

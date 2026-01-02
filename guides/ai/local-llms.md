@@ -2731,7 +2731,7 @@ Organizations that follow this guide will successfully deploy production-grade s
 **Related Documentation:**
 - [AI-Assisted Development Overview](./README.md)
 - [Prompt Engineering Guide](./prompt-engineering.md)
-- [CLAUDE.md Patterns](./claude-md.md)
+- [AGENTS.md Patterns](./agents-md.md)
 
 ---
 

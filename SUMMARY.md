@@ -30,7 +30,7 @@
     * [Gemini](guides/ai/gemini.md)
     * [Local LLMs](guides/ai/local-llms.md)
     * [Prompt Engineering](guides/ai/prompt-engineering.md)
-    * [CLAUDE.md](guides/ai/claude-md.md)
+    * [AGENTS.md](guides/ai/agents-md.md)
     * [Cursor Rules](guides/ai/cursor-rules.md)
     * [Security](guides/ai/security.md)
 * [Infrastructure](guides/infrastructure/README.md)

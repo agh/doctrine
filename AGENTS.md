@@ -1,4 +1,4 @@
-# CLAUDE.md - Doctrine Style Guide
+# AGENTS.md - Doctrine Style Guide
 
 ## Overview
 

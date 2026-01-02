@@ -15,7 +15,7 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 | **Format** | Plain text, markdown-like structure |
 | **Size** | 200-1000 lines recommended |
 | **Update** | When project conventions change |
-| **Priority** | Lower precedence than CLAUDE.md |
+| **Priority** | Lower precedence than AGENTS.md |
 
 ## What is .cursorrules
 
@@ -48,13 +48,13 @@ Projects **MAY** omit `.cursorrules` when:
 
 - Codebase strictly follows well-known style guides (e.g., Google[^2], Airbnb[^3])
 - Project is small (< 1000 lines) with straightforward structure
-- Team relies exclusively on CLAUDE.md for AI instructions
+- Team relies exclusively on AGENTS.md for AI instructions
 
-### Relationship to CLAUDE.md
+### Relationship to AGENTS.md
 
-`.cursorrules` and `CLAUDE.md` serve complementary but distinct purposes:
+`.cursorrules` and `AGENTS.md` serve complementary but distinct purposes:
 
-| Aspect | .cursorrules | CLAUDE.md |
+| Aspect | .cursorrules | AGENTS.md |
 |--------|-------------|-----------|
 | **Scope** | Cursor editor only | All AI assistants |
 | **Audience** | Code completion, inline edits | Chat, code review, planning |
@@ -65,10 +65,10 @@ Projects **MAY** omit `.cursorrules` when:
 
 Projects **SHOULD** maintain both files:
 
-- **CLAUDE.md**: Project overview, architecture, key decisions
+- **AGENTS.md**: Project overview, architecture, key decisions
 - **.cursorrules**: Detailed coding conventions and patterns
 
-When instructions conflict, `CLAUDE.md` takes precedence as the source of truth.
+When instructions conflict, `AGENTS.md` takes precedence as the source of truth.
 
 ## File Structure and Format
 
@@ -79,7 +79,9 @@ The `.cursorrules` file **MUST** be placed in the project root directory:
 ```
 myproject/
 ├── .cursorrules          # AI rules (this file)
-├── CLAUDE.md             # Project context
+├── AGENTS.md             # Project context (canonical)
+├── CLAUDE.md             # Symlink → AGENTS.md
+├── GEMINI.md             # Symlink → AGENTS.md
 ├── .gitignore
 ├── README.md
 └── src/
@@ -814,7 +816,7 @@ Changes to `.cursorrules` **SHOULD** follow this process:
 1. **Propose**: Create PR with rationale for changes
 2. **Review**: Team reviews for accuracy and necessity
 3. **Test**: Validate AI generates code matching new rules
-4. **Document**: Update related CLAUDE.md if needed
+4. **Document**: Update related AGENTS.md if needed
 5. **Merge**: Require approval from tech lead or team consensus
 
 ### Keeping Rules Current
@@ -929,14 +931,14 @@ Specific, measurable criteria produce consistent results.
 
 **Why**: Outdated rules guide AI toward deprecated patterns, creating technical debt.
 
-### 6. Duplicating CLAUDE.md
+### 6. Duplicating AGENTS.md
 
-**Don't**: Repeat high-level project context from CLAUDE.md.
+**Don't**: Repeat high-level project context from AGENTS.md.
 
 **Wrong**: Including architecture overview, database schema, deployment process in both files.
 
 **Right**:
-- **CLAUDE.md**: Architecture, database, deployment, team contacts
+- **AGENTS.md**: Architecture, database, deployment, team contacts
 - **.cursorrules**: Coding patterns, testing conventions, style preferences
 
 **Why**: Reduces maintenance burden and prevents conflicting information.
@@ -1545,7 +1547,7 @@ guidance for AI-assisted development while avoiding common anti-patterns.
 
 ## See Also
 
-- [CLAUDE.md Guide](claude-md.md) - Project context files for AI assistants
+- [AGENTS.md Guide](agents-md.md) - Project context files for AI assistants
 - [Prompt Engineering Guide](prompt-engineering.md) - Effective prompting strategies
 - [AI Development Overview](README.md) - When and how to use AI assistance
 - [Python Style Guide](../languages/python.md) - Python conventions

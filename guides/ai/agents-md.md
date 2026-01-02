@@ -1,6 +1,6 @@
-# CLAUDE.md Patterns Guide
+# AGENTS.md Patterns Guide
 
-> [Doctrine](../../README.md) > [AI](../README.md) > CLAUDE.md Patterns
+> [Doctrine](../../README.md) > [AI](../README.md) > AGENTS.md Patterns
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -8,26 +8,27 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ## Table of Contents
 
-1. [What is CLAUDE.md](#what-is-claudemd)
-2. [File Placement Strategies](#file-placement-strategies)
-3. [Essential Sections](#essential-sections)
-4. [Templates by Project Type](#templates-by-project-type)
-5. [Integration with Other Tools](#integration-with-other-tools)
-6. [Maintenance Best Practices](#maintenance-best-practices)
-7. [Anti-Patterns](#anti-patterns)
-8. [Complete Example Templates](#complete-example-templates)
+1. [What is AGENTS.md](#what-is-agentsmd)
+2. [Tool Compatibility via Symlinks](#tool-compatibility-via-symlinks)
+3. [File Placement Strategies](#file-placement-strategies)
+4. [Essential Sections](#essential-sections)
+5. [Templates by Project Type](#templates-by-project-type)
+6. [Integration with Other Tools](#integration-with-other-tools)
+7. [Maintenance Best Practices](#maintenance-best-practices)
+8. [Anti-Patterns](#anti-patterns)
+9. [Complete Example Templates](#complete-example-templates)
 
 ---
 
-## What is CLAUDE.md
+## What is AGENTS.md
 
 ### Definition
 
-CLAUDE.md is a markdown file that serves as a structured briefing document for AI assistants working with a codebase[^1]. It provides essential context that AI assistants cannot easily infer from code alone.
+AGENTS.md is a markdown file that serves as a structured briefing document for AI assistants working with a codebase[^1]. It provides essential context that AI assistants cannot easily infer from code alone.
 
 ### Core Principles
 
-A CLAUDE.md file **MUST**:
+An AGENTS.md file **MUST**:
 
 1. **Be concise** - Provide necessary context without overwhelming detail (200-500 lines ideal)
 2. **Be actionable** - Include concrete commands and examples
@@ -35,18 +36,65 @@ A CLAUDE.md file **MUST**:
 4. **Be version-controlled** - Tracked in git alongside code
 5. **Be current** - Updated as the project evolves
 
-A CLAUDE.md file **MUST NOT**:
+An AGENTS.md file **MUST NOT**:
 
 1. **Replace comprehensive documentation** - It's a briefing, not a manual
 2. **Include secrets** - Never include credentials or sensitive data
 3. **Be auto-generated** - Manual curation ensures quality
 4. **Duplicate style guides** - Link to external guides instead
 
-### Why CLAUDE.md Matters
+### Why AGENTS.md Matters
 
-**The Context Problem:** AI assistants lack persistent memory. Without CLAUDE.md, they must infer project structure, guess at conventions, and discover commands through trial and error. This wastes time, introduces errors, and creates inconsistency.
+**The Context Problem:** AI assistants lack persistent memory. Without AGENTS.md, they must infer project structure, guess at conventions, and discover commands through trial and error. This wastes time, introduces errors, and creates inconsistency.
 
-**The Solution:** A well-crafted CLAUDE.md accelerates onboarding, ensures consistency, prevents mistakes, and preserves tribal knowledge.
+**The Solution:** A well-crafted AGENTS.md accelerates onboarding, ensures consistency, prevents mistakes, and preserves tribal knowledge.
+
+---
+
+## Tool Compatibility via Symlinks
+
+Different AI coding tools look for different filenames. To support multiple tools with a single source of truth, **MUST** use symlinks:
+
+### Recommended Setup
+
+```bash
+# AGENTS.md is the canonical file
+# Create symlinks for tool-specific discovery
+
+ln -s AGENTS.md CLAUDE.md   # Claude Code, Aider
+ln -s AGENTS.md GEMINI.md   # Google Gemini tools
+```
+
+### Repository Structure
+
+```
+my-project/
+├── AGENTS.md          ← Canonical file (edit this one)
+├── CLAUDE.md          ← Symlink → AGENTS.md
+├── GEMINI.md          ← Symlink → AGENTS.md
+├── README.md          ← Human documentation
+├── src/
+└── tests/
+```
+
+### Why Symlinks
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| Symlinks | Single source of truth, no drift | Requires symlink support |
+| Duplicates | Works everywhere | Content drift, maintenance burden |
+| Single name | Simple | Some tools won't find it |
+
+**Symlinks are the recommended approach** because they ensure all tools read identical instructions while requiring only one file to maintain.
+
+### Tool Discovery
+
+| Tool | Files Checked |
+|------|---------------|
+| Claude Code | `CLAUDE.md`, `AGENTS.md` |
+| Aider | `CLAUDE.md`, `.aider` |
+| Cursor | `.cursorrules` |
+| Gemini | `GEMINI.md`, `AGENTS.md` |
 
 ---
 
@@ -54,11 +102,13 @@ A CLAUDE.md file **MUST NOT**:
 
 ### Single Project Repository
 
-For a single project, **MUST** place CLAUDE.md at repository root:
+For a single project, **MUST** place AGENTS.md at repository root:
 
 ```
 my-project/
-├── CLAUDE.md          ← AI context here
+├── AGENTS.md          ← AI context here
+├── CLAUDE.md          ← Symlink
+├── GEMINI.md          ← Symlink
 ├── README.md          ← Human documentation
 ├── src/
 └── tests/
@@ -70,26 +120,28 @@ For monorepos, **MUST** use hierarchical placement:
 
 ```
 monorepo/
-├── CLAUDE.md          ← Monorepo-level context
+├── AGENTS.md          ← Monorepo-level context
+├── CLAUDE.md          ← Symlink
+├── GEMINI.md          ← Symlink
 ├── services/
 │   ├── api/
-│   │   └── CLAUDE.md  ← API-specific context
+│   │   └── AGENTS.md  ← API-specific context
 │   └── worker/
-│       └── CLAUDE.md  ← Worker-specific context
+│       └── AGENTS.md  ← Worker-specific context
 └── libs/
     └── shared/
-        └── CLAUDE.md  ← Shared library context
+        └── AGENTS.md  ← Shared library context
 ```
 
 **Hierarchical Rules:**
 
-- **Root CLAUDE.md** contains: Monorepo structure, cross-cutting commands, shared conventions
-- **Child CLAUDE.md** contains: Service-specific context, commands, conventions
+- **Root AGENTS.md** contains: Monorepo structure, cross-cutting commands, shared conventions
+- **Child AGENTS.md** contains: Service-specific context, commands, conventions
 - **Child files** link back to parent for shared information
 
 ### Microservices Architecture
 
-Each repository **MUST** have its own CLAUDE.md. Include cross-service references:
+Each repository **MUST** have its own AGENTS.md. Include cross-service references:
 
 ```markdown
 ## Related Services
@@ -103,7 +155,7 @@ Each repository **MUST** have its own CLAUDE.md. Include cross-service reference
 
 ## Essential Sections
 
-Every CLAUDE.md **MUST** contain these sections:
+Every AGENTS.md **MUST** contain these sections:
 
 ### 1. Overview
 
@@ -279,7 +331,7 @@ FEATURE_NEW_UI=false        # Feature flags
 ### Python (FastAPI)
 
 ```markdown
-# CLAUDE.md - [Project Name]
+# AGENTS.md - [Project Name]
 
 ## Overview
 
@@ -332,7 +384,7 @@ SECRET_KEY=your-secret-key
 ### TypeScript (Express)
 
 ```markdown
-# CLAUDE.md - [Project Name]
+# AGENTS.md - [Project Name]
 
 ## Overview
 
@@ -382,7 +434,7 @@ JWT_SECRET=your-secret-key
 ### Go (Gin)
 
 ```markdown
-# CLAUDE.md - [Project Name]
+# AGENTS.md - [Project Name]
 
 ## Overview
 
@@ -433,7 +485,7 @@ JWT_SECRET=your-secret-key
 ### Rails
 
 ```markdown
-# CLAUDE.md - [Project Name]
+# AGENTS.md - [Project Name]
 
 ## Overview
 
@@ -489,31 +541,31 @@ SECRET_KEY_BASE=your-secret-key
 
 ### .cursorrules
 
-CLAUDE.md and .cursorrules serve different purposes[^2]:
+AGENTS.md and .cursorrules serve different purposes[^2]:
 
-- **CLAUDE.md:** Comprehensive project context, commands, architecture
+- **AGENTS.md:** Comprehensive project context, commands, architecture
 - **.cursorrules:** IDE-specific rules, linting preferences, code generation
 
-**Best Practice:** Reference CLAUDE.md from .cursorrules:
+**Best Practice:** Reference AGENTS.md from .cursorrules:
 
 ```
 # .cursorrules
-# Read CLAUDE.md for comprehensive context
+# Read AGENTS.md for comprehensive context
 
 - Follow TypeScript strict mode
 - Use async/await, not callbacks
-- See CLAUDE.md for full conventions
+- See AGENTS.md for full conventions
 ```
 
-### .aider
+### Aider
 
-Aider automatically reads CLAUDE.md in repository root[^3]:
+Aider automatically reads CLAUDE.md (symlinked to AGENTS.md) in repository root[^3]:
 
 ```bash
-aider --read CLAUDE.md src/users/service.ts
+aider --read AGENTS.md src/users/service.ts
 ```
 
-Keep CLAUDE.md concise (< 1000 lines) so Aider can include it in context.
+Keep AGENTS.md concise (< 1000 lines) so Aider can include it in context.
 
 ### IDE Integration
 
@@ -522,7 +574,9 @@ Add to `.vscode/settings.json`:
 ```json
 {
   "files.associations": {
-    "CLAUDE.md": "markdown"
+    "AGENTS.md": "markdown",
+    "CLAUDE.md": "markdown",
+    "GEMINI.md": "markdown"
   }
 }
 ```
@@ -543,7 +597,7 @@ Add to `.vscode/settings.json`:
 ### Update Process
 
 1. **Review quarterly** - Schedule regular reviews
-2. **Track in git** - Commit CLAUDE.md changes with code changes
+2. **Track in git** - Commit AGENTS.md changes with code changes
 3. **Test with AI** - Verify AI assistants understand updates
 4. **Keep concise** - Remove outdated content, don't just append
 
@@ -553,20 +607,27 @@ Add to CI/CD:
 
 ```yaml
 # .github/workflows/lint.yml
-- name: Check CLAUDE.md exists
+- name: Check AGENTS.md exists
   run: |
-    if [ ! -f CLAUDE.md ]; then
-      echo "CLAUDE.md not found"
+    if [ ! -f AGENTS.md ]; then
+      echo "AGENTS.md not found"
       exit 1
     fi
 
 - name: Validate markdown
-  run: npx markdownlint-cli2 CLAUDE.md
+  run: npx markdownlint-cli2 AGENTS.md
 
 - name: Check for secrets
   run: |
-    if grep -r "password.*=.*[^example]" CLAUDE.md; then
-      echo "Possible secret in CLAUDE.md"
+    if grep -r "password.*=.*[^example]" AGENTS.md; then
+      echo "Possible secret in AGENTS.md"
+      exit 1
+    fi
+
+- name: Verify symlinks
+  run: |
+    if [ -f CLAUDE.md ] && [ ! -L CLAUDE.md ]; then
+      echo "CLAUDE.md should be a symlink to AGENTS.md"
       exit 1
     fi
 ```
@@ -577,7 +638,7 @@ Add to CI/CD:
 
 ### 1. The Novel (15,000 lines)
 
-**Problem:** CLAUDE.md becomes comprehensive documentation replacement
+**Problem:** AGENTS.md becomes comprehensive documentation replacement
 
 **Solution:**
 - Keep under 1000 lines (200-500 ideal)
@@ -634,7 +695,7 @@ Add to CI/CD:
 **Problem:** Auto-generated from code comments
 
 **Solution:**
-- Manually curate CLAUDE.md
+- Manually curate AGENTS.md
 - Focus on high-level patterns
 - Link to API docs for details
 
@@ -647,6 +708,15 @@ Add to CI/CD:
 - Include only essential information
 - Link to comprehensive sources
 
+### 9. The Duplicate Files
+
+**Problem:** Separate CLAUDE.md, GEMINI.md, etc. with different content
+
+**Solution:**
+- Use single AGENTS.md as source of truth
+- Create symlinks for tool compatibility
+- Never duplicate content across files
+
 ---
 
 ## Complete Example Templates
@@ -654,7 +724,7 @@ Add to CI/CD:
 ### Minimal Example (200 lines)
 
 ```markdown
-# CLAUDE.md - Todo API
+# AGENTS.md - Todo API
 
 ## Overview
 
@@ -729,14 +799,14 @@ Key additions for medium projects:
 
 For large projects (> 5 services), split into:
 
-1. **Main CLAUDE.md** (500 lines) - Overview, quick start, architecture
-2. **Service-specific CLAUDE.md** (200-300 lines each)
+1. **Main AGENTS.md** (500 lines) - Overview, quick start, architecture
+2. **Service-specific AGENTS.md** (200-300 lines each)
 3. **External docs links**
 
-**Main CLAUDE.md structure:**
+**Main AGENTS.md structure:**
 
 ```markdown
-# CLAUDE.md - [Platform Name]
+# AGENTS.md - [Platform Name]
 
 ## Overview
 [High-level description]
@@ -752,9 +822,9 @@ npm run dev:all
 
 ## Service Navigation
 
-- **API Gateway:** [services/api-gateway/CLAUDE.md](services/api-gateway/CLAUDE.md)
-- **User Service:** [services/users/CLAUDE.md](services/users/CLAUDE.md)
-- **Order Service:** [services/orders/CLAUDE.md](services/orders/CLAUDE.md)
+- **API Gateway:** [services/api-gateway/AGENTS.md](services/api-gateway/AGENTS.md)
+- **User Service:** [services/users/AGENTS.md](services/users/AGENTS.md)
+- **Order Service:** [services/orders/AGENTS.md](services/orders/AGENTS.md)
 
 ## Cross-Cutting Concerns
 [Shared patterns, auth, logging, monitoring]
@@ -778,6 +848,6 @@ npm run dev:all
 
 ## References
 
-[^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) - Official Anthropic documentation for Claude Code CLI and CLAUDE.md patterns
+[^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) - Official Anthropic documentation for Claude Code CLI and AGENTS.md patterns
 [^2]: [Cursor AI Documentation](https://docs.cursor.com/) - Documentation for .cursorrules and Cursor IDE integration
 [^3]: [Aider Documentation](https://aider.chat/docs/usage.html) - Aider AI pair programming tool documentation

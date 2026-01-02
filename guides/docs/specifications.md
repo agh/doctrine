@@ -961,6 +961,6 @@ Modern specifications serve dual audiences—humans and AI—without compromise.
 ## See Also
 
 - [Markdown Guide](markdown.md) — Markdown formatting standards
-- [CLAUDE.md Patterns](../ai/claude-md.md) — AI assistant context files
+- [AGENTS.md Patterns](../ai/agents-md.md) — AI assistant context files
 - [GitHub Templates](../process/github-templates.md) — Issue and PR templates
 - [CI/CD Guide](../process/ci.md) — Automation pipelines

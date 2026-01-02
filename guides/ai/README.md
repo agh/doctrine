@@ -3001,7 +3001,7 @@ Please:
 
 ## References
 
-[^1]: [Claude/Anthropic Best Practices Guide](./CLAUDE.md)
+[^1]: [Claude/Anthropic Best Practices Guide](./claude.md)
 [^2]: [Anthropic Claude Models Documentation](https://docs.anthropic.com/claude/docs/models-overview)
 [^3]: [OpenAI GPT Models Documentation](https://platform.openai.com/docs/models)
 [^4]: [Google Gemini Models Documentation](https://ai.google.dev/gemini-api/docs/models/gemini)

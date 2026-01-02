@@ -1,4 +1,4 @@
-# CLAUDE.md - {Project Name}
+# AGENTS.md - {Project Name}
 
 ## Overview
 
@@ -52,7 +52,7 @@
 
 ## Code Style
 
-This project follows the [{Language} Style Guide](https://github.com/agh/doctrine/blob/main/guides/languages/{language}.md).
+This project follows the [{Language} Style Guide](https://github.com/welshwandering/doctrine/blob/main/guides/languages/{language}.md).
 
 Key conventions:
 - {Convention 1}
@@ -147,3 +147,14 @@ Key conventions:
 - [Project Documentation]({link})
 - [API Reference]({link})
 - [Contributing Guide]({link})
+
+---
+
+## Tool Compatibility
+
+Create symlinks for AI tool discovery:
+
+```bash
+ln -s AGENTS.md CLAUDE.md   # Claude Code, Aider
+ln -s AGENTS.md GEMINI.md   # Google Gemini tools
+```

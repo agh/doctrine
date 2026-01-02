@@ -2,7 +2,7 @@
 
 # Doctrine Style Guide
 
-**Version: 2.10.0** | [Changelog](CHANGELOG.md) | [CLAUDE.md](CLAUDE.md)
+**Version: 2.10.0** | [Changelog](CHANGELOG.md) | [AGENTS.md](AGENTS.md)
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -61,7 +61,7 @@ See [versioning guide](guides/process/versioning.md) for details.
 | Gemini | [guides/ai/gemini.md](guides/ai/gemini.md) | Google Gemini best practices |
 | Local LLMs | [guides/ai/local-llms.md](guides/ai/local-llms.md) | Ollama, vLLM, Docker Model Runner |
 | Prompts | [guides/ai/prompt-engineering.md](guides/ai/prompt-engineering.md) | Prompt engineering patterns |
-| CLAUDE.md | [guides/ai/claude-md.md](guides/ai/claude-md.md) | Project instruction files |
+| AGENTS.md | [guides/ai/agents-md.md](guides/ai/agents-md.md) | Project instruction files |
 | Cursor Rules | [guides/ai/cursor-rules.md](guides/ai/cursor-rules.md) | .cursorrules patterns |
 | Security | [guides/ai/security.md](guides/ai/security.md) | LLM security considerations |
 
@@ -171,7 +171,7 @@ Ready-to-copy configuration files:
 | Config | Path | Purpose |
 |--------|------|---------|
 | Ansible | [configs/ansible/](configs/ansible/) | Ansible configuration templates |
-| CLAUDE.md | [configs/claude/CLAUDE.md.template](configs/claude/CLAUDE.md.template) | AI assistant context |
+| AGENTS.md | [configs/agents/AGENTS.md.template](configs/agents/AGENTS.md.template) | AI assistant context |
 | Cursor | [configs/cursor/.cursorrules.template](configs/cursor/.cursorrules.template) | Cursor AI rules |
 | EditorConfig | [configs/editorconfig/.editorconfig](configs/editorconfig/.editorconfig) | Editor settings |
 | Pre-commit | [configs/pre-commit/.pre-commit-config.yaml](configs/pre-commit/.pre-commit-config.yaml) | Git hooks |
