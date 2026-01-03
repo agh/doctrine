@@ -2,7 +2,7 @@
 
 # Doctrine Style Guide
 
-**Version: 2.10.0** | [Changelog](CHANGELOG.md) | [AGENTS.md](AGENTS.md)
+**Version: 2.11.0** | [Changelog](CHANGELOG.md) | [AGENTS.md](AGENTS.md)
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -56,13 +56,16 @@ See [versioning guide](guides/process/versioning.md) for details.
 | Topic | Guide | Description |
 |-------|-------|-------------|
 | Overview | [guides/ai/README.md](guides/ai/README.md) | When and how to use AI assistance |
+| **AI Workflows** | [guides/ai/ai-workflows.md](guides/ai/ai-workflows.md) | Hero Flow, TDD, Visual Iteration |
 | Claude | [guides/ai/claude.md](guides/ai/claude.md) | Anthropic Claude best practices |
+| **Claude Code** | [guides/ai/claude-code.md](guides/ai/claude-code.md) | CLI config: hooks, agents, commands |
+| **Code Agents** | [guides/ai/code-agents.md](guides/ai/code-agents.md) | 8 agents: review, perf, a11y, API |
+| **Security Agents** | [guides/ai/security-agents.md](guides/ai/security-agents.md) | 16 agents: threat modeling, compliance |
+| **System Agents** | [guides/ai/system-agents.md](guides/ai/system-agents.md) | 14 agents: Docker, Ansible, networking |
 | OpenAI | [guides/ai/openai.md](guides/ai/openai.md) | GPT-4 and OpenAI API patterns |
 | Gemini | [guides/ai/gemini.md](guides/ai/gemini.md) | Google Gemini best practices |
 | Local LLMs | [guides/ai/local-llms.md](guides/ai/local-llms.md) | Ollama, vLLM, Docker Model Runner |
-| Prompts | [guides/ai/prompt-engineering.md](guides/ai/prompt-engineering.md) | Prompt engineering patterns |
 | AGENTS.md | [guides/ai/agents-md.md](guides/ai/agents-md.md) | Project instruction files |
-| Cursor Rules | [guides/ai/cursor-rules.md](guides/ai/cursor-rules.md) | .cursorrules patterns |
 | Security | [guides/ai/security.md](guides/ai/security.md) | LLM security considerations |
 
 ## API Design Guides
@@ -172,10 +175,12 @@ Ready-to-copy configuration files:
 |--------|------|---------|
 | Ansible | [configs/ansible/](configs/ansible/) | Ansible configuration templates |
 | AGENTS.md | [configs/agents/AGENTS.md.template](configs/agents/AGENTS.md.template) | AI assistant context |
+| **Claude Code** | [configs/claude/](configs/claude/) | 53 agents across 6 families, hooks |
 | Cursor | [configs/cursor/.cursorrules.template](configs/cursor/.cursorrules.template) | Cursor AI rules |
 | EditorConfig | [configs/editorconfig/.editorconfig](configs/editorconfig/.editorconfig) | Editor settings |
 | Pre-commit | [configs/pre-commit/.pre-commit-config.yaml](configs/pre-commit/.pre-commit-config.yaml) | Git hooks |
 | Prettier | [configs/prettier/.prettierrc](configs/prettier/.prettierrc) | Code formatting |
+| **Doctrine Sync** | [.github/workflows/sync-doctrine.yml](.github/workflows/sync-doctrine.yml) | Auto-sync configs to projects |
 
 ---
 
