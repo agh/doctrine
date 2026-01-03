@@ -152,6 +152,502 @@ Projects **MUST** enable all strict type checking options:
 }
 ```
 
+## Decorators
+
+Projects **MAY** use decorators for cross-cutting concerns like logging, validation, and dependency injection. TypeScript 5.0+ supports ECMAScript decorators natively.
+
+### Why Decorators
+
+- **Separation of concerns**: Keep business logic clean by extracting cross-cutting behavior
+- **Reusability**: Apply common patterns (logging, caching, authorization) declaratively
+- **Metaprogramming**: Modify or extend class behavior at design time
+- **Framework support**: Required for frameworks like NestJS[^17], TypeORM[^18], and Angular[^19]
+
+### Enabling Decorators
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    // For TC39 decorators (TypeScript 5.0+)
+    // No flag needed - enabled by default
+
+    // For legacy/experimental decorators (older frameworks)
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+### Class Decorators
+
+```typescript
+// Modern TC39 decorator (TypeScript 5.0+)
+function Singleton<T extends new (...args: any[]) => object>(
+  target: T,
+  context: ClassDecoratorContext
+) {
+  let instance: InstanceType<T>;
+  return class extends target {
+    constructor(...args: any[]) {
+      if (instance) return instance;
+      super(...args);
+      instance = this as InstanceType<T>;
+    }
+  };
+}
+
+@Singleton
+class Database {
+  constructor(private url: string) {}
+}
+
+// Same instance
+const db1 = new Database('postgres://...');
+const db2 = new Database('mysql://...');
+console.log(db1 === db2); // true
+```
+
+### Method Decorators
+
+```typescript
+function Log(
+  target: any,
+  context: ClassMethodDecoratorContext
+) {
+  const methodName = String(context.name);
+  return function (this: any, ...args: any[]) {
+    console.log(`[${methodName}] called with:`, args);
+    const result = target.call(this, ...args);
+    console.log(`[${methodName}] returned:`, result);
+    return result;
+  };
+}
+
+class Calculator {
+  @Log
+  add(a: number, b: number): number {
+    return a + b;
+  }
+}
+```
+
+### Field Decorators
+
+```typescript
+function Validate(min: number, max: number) {
+  return function (
+    target: undefined,
+    context: ClassFieldDecoratorContext
+  ) {
+    return function (initialValue: number): number {
+      if (initialValue < min || initialValue > max) {
+        throw new Error(`Value must be between ${min} and ${max}`);
+      }
+      return initialValue;
+    };
+  };
+}
+
+class Product {
+  @Validate(0, 100)
+  quantity = 10;
+}
+```
+
+### Legacy Decorators (NestJS, TypeORM)
+
+```typescript
+// Legacy experimental decorators for frameworks
+import { Controller, Get, Injectable } from '@nestjs/common';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+
+// NestJS controller
+@Controller('users')
+class UserController {
+  @Get()
+  findAll() {
+    return [];
+  }
+}
+
+// TypeORM entity
+@Entity()
+class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  name: string;
+}
+
+// Dependency injection
+@Injectable()
+class UserService {
+  constructor(private readonly repo: UserRepository) {}
+}
+```
+
+### Decorator Patterns
+
+```typescript
+// Memoization decorator
+function Memoize(
+  target: any,
+  context: ClassMethodDecoratorContext
+) {
+  const cache = new Map<string, any>();
+  return function (this: any, ...args: any[]) {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) return cache.get(key);
+    const result = target.call(this, ...args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+// Retry decorator
+function Retry(attempts: number) {
+  return function (target: any, context: ClassMethodDecoratorContext) {
+    return async function (this: any, ...args: any[]) {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          return await target.call(this, ...args);
+        } catch (e) {
+          if (i === attempts - 1) throw e;
+        }
+      }
+    };
+  };
+}
+
+class ApiClient {
+  @Memoize
+  @Retry(3)
+  async fetchUser(id: string) {
+    return await fetch(`/api/users/${id}`);
+  }
+}
+```
+
+## Declaration Files
+
+Projects **MUST** provide type declarations for any public JavaScript APIs. Declaration files (`.d.ts`) describe the shape of existing JavaScript code.
+
+### Why Declaration Files
+
+- **Type safety**: Enable TypeScript to type-check usage of JavaScript libraries
+- **IDE support**: Provide autocomplete and documentation for JavaScript APIs
+- **Interoperability**: Bridge untyped JavaScript with typed TypeScript
+- **Documentation**: Serve as machine-readable API documentation
+
+### Generating Declarations
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "declaration": true,
+    "declarationDir": "./types",
+    "declarationMap": true,  // Enables "Go to Definition" to source
+    "emitDeclarationOnly": true  // Only emit .d.ts files
+  }
+}
+```
+
+### Writing Declaration Files
+
+```typescript
+// types/mylib.d.ts
+
+// Module declaration
+declare module 'mylib' {
+  export function greet(name: string): string;
+  export const VERSION: string;
+
+  export interface Config {
+    debug: boolean;
+    timeout: number;
+  }
+
+  export class Client {
+    constructor(config: Config);
+    connect(): Promise<void>;
+    disconnect(): void;
+  }
+
+  // Default export
+  export default function init(config: Config): Client;
+}
+
+// Ambient declarations for global variables
+declare global {
+  interface Window {
+    myApp: {
+      version: string;
+      init(): void;
+    };
+  }
+
+  const __DEV__: boolean;
+  const __VERSION__: string;
+}
+
+// Module augmentation (extending existing types)
+declare module 'express' {
+  interface Request {
+    userId?: string;
+    sessionId?: string;
+  }
+}
+```
+
+### Package Type Declarations
+
+```json
+// package.json
+{
+  "name": "my-package",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.cjs"
+    }
+  }
+}
+```
+
+### DefinitelyTyped
+
+For third-party JavaScript libraries without types, use types from DefinitelyTyped[^20]:
+
+```bash
+# Install types for a library
+npm install --save-dev @types/lodash
+npm install --save-dev @types/express
+npm install --save-dev @types/node
+
+# Types are automatically used by TypeScript
+```
+
+### Triple-Slash Directives
+
+```typescript
+// Reference another declaration file
+/// <reference path="./other-types.d.ts" />
+
+// Reference built-in lib types
+/// <reference lib="dom" />
+/// <reference lib="es2022" />
+
+// Reference types package
+/// <reference types="node" />
+```
+
+### Declaration File Patterns
+
+```typescript
+// types/utils.d.ts
+
+// Function overloads
+export function parse(input: string): object;
+export function parse(input: Buffer): object;
+export function parse(input: string, options: ParseOptions): object;
+
+// Generic functions
+export function identity<T>(value: T): T;
+export function map<T, U>(array: T[], fn: (item: T) => U): U[];
+
+// Utility types
+export type Nullable<T> = T | null;
+export type DeepReadonly<T> = {
+  readonly [P in keyof T]: DeepReadonly<T[P]>;
+};
+
+// Conditional types
+export type Unwrap<T> = T extends Promise<infer U> ? U : T;
+export type ElementOf<T> = T extends (infer E)[] ? E : never;
+```
+
+## Module Resolution
+
+Projects **MUST** configure module resolution to match their runtime environment and bundler requirements.
+
+### Why Module Resolution Matters
+
+- **Correctness**: Ensures TypeScript finds the same modules as the runtime
+- **Compatibility**: Different environments (Node.js, browsers, bundlers) have different resolution rules
+- **Performance**: Proper configuration reduces failed resolution attempts
+- **Predictability**: Eliminates "works on my machine" module resolution issues
+
+### Module Resolution Strategies
+
+| Strategy | Use Case | tsconfig Setting |
+|----------|----------|------------------|
+| Node16/NodeNext | Modern Node.js (ESM + CJS) | `"moduleResolution": "NodeNext"` |
+| Bundler | Webpack, Vite, esbuild | `"moduleResolution": "Bundler"` |
+| Node10 (legacy) | Older Node.js CJS only | `"moduleResolution": "Node"` |
+
+### Modern Node.js (Recommended)
+
+```json
+// tsconfig.json for Node.js 16+
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022"
+  }
+}
+```
+
+```typescript
+// With NodeNext, extensions are required for relative imports
+import { foo } from './foo.js';  // Note: .js extension even for .ts files
+import { bar } from './utils/bar.js';
+
+// Package imports work as expected
+import express from 'express';
+import { z } from 'zod';
+```
+
+### Bundler Mode (Vite, Webpack)
+
+```json
+// tsconfig.json for bundler environments
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+```
+
+```typescript
+// With Bundler, extensions are optional
+import { foo } from './foo';
+import { bar } from './utils/bar';
+
+// Bundler-specific features work
+import styles from './styles.module.css';
+import data from './data.json';
+```
+
+### Path Aliases
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@components/*": ["src/components/*"],
+      "@utils/*": ["src/utils/*"]
+    }
+  }
+}
+```
+
+```typescript
+// Use path aliases instead of relative paths
+import { Button } from '@components/Button';
+import { formatDate } from '@utils/date';
+import { config } from '@/config';
+
+// Instead of:
+import { Button } from '../../../components/Button';
+```
+
+### Package.json Exports
+
+```json
+// package.json
+{
+  "name": "my-lib",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "utils": ["./dist/utils.d.ts"]
+    }
+  }
+}
+```
+
+### Subpath Imports
+
+```json
+// package.json
+{
+  "imports": {
+    "#utils/*": "./src/utils/*.js",
+    "#components/*": "./src/components/*.js",
+    "#config": {
+      "development": "./src/config/dev.js",
+      "production": "./src/config/prod.js"
+    }
+  }
+}
+```
+
+```typescript
+// Use subpath imports (private to package)
+import { logger } from '#utils/logger';
+import { Button } from '#components/Button';
+```
+
+### Module Resolution Debugging
+
+```bash
+# Trace module resolution
+npx tsc --traceResolution
+
+# Check specific module
+npx tsc --traceResolution 2>&1 | grep "some-module"
+
+# Explain why a file is included
+npx tsc --explainFiles
+```
+
+### Common Resolution Issues
+
+```typescript
+// Issue: "Cannot find module './foo'"
+// Solution 1: Add extension for NodeNext
+import { foo } from './foo.js';
+
+// Solution 2: Check paths in tsconfig.json
+// Solution 3: Verify file exists and casing matches
+
+// Issue: "Cannot find type definitions for 'express'"
+// Solution: Install @types package
+// npm install --save-dev @types/express
+
+// Issue: Module works at runtime but TypeScript errors
+// Solution: Check moduleResolution matches your runtime
+```
+
 ## Dead Code Detection: ts-prune
 
 Projects **SHOULD** regularly check for unused exports using ts-prune[^3].
@@ -628,6 +1124,10 @@ test.each([
 [^14]: [Zod](https://zod.dev/) - TypeScript-first schema validation library
 [^15]: [Unleash](https://www.getunleash.io/) - Open-source feature management platform
 [^16]: [i18next](https://www.i18next.com/) - Internationalization framework for JavaScript
+[^17]: [NestJS](https://nestjs.com/) - Progressive Node.js framework for building server-side applications
+[^18]: [TypeORM](https://typeorm.io/) - ORM for TypeScript and JavaScript
+[^19]: [Angular](https://angular.io/) - Platform for building web applications
+[^20]: [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) - Repository for high-quality TypeScript type definitions
 
 ## See Also
 

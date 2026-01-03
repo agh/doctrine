@@ -340,6 +340,107 @@ go test -fuzz=FuzzReverse -fuzztime=30s
 go test -fuzz=FuzzReverse -fuzztime=1m ./...
 ```
 
+## Benchmarking
+
+Projects **SHOULD** write benchmarks for performance-critical code.
+
+### Why Benchmarking Matters
+
+- **Optimization validation**: Prove that optimizations actually improve performance
+- **Regression detection**: Catch performance regressions in CI
+- **Memory profiling**: Identify allocation-heavy code paths
+- **Comparison**: Compare implementations objectively
+
+### Writing Benchmarks
+
+```go
+func BenchmarkFibonacci(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        Fibonacci(20)
+    }
+}
+
+// Benchmark with different input sizes
+func BenchmarkSort(b *testing.B) {
+    sizes := []int{100, 1000, 10000}
+    for _, size := range sizes {
+        b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
+            data := generateRandomSlice(size)
+            b.ResetTimer() // Exclude setup time
+            for i := 0; i < b.N; i++ {
+                sort.Ints(data)
+            }
+        })
+    }
+}
+
+// Benchmark with memory allocation reporting
+func BenchmarkConcat(b *testing.B) {
+    b.ReportAllocs()
+    for i := 0; i < b.N; i++ {
+        concat("hello", "world")
+    }
+}
+```
+
+### Running Benchmarks
+
+```bash
+# Run all benchmarks
+go test -bench=. ./...
+
+# Run specific benchmark with memory stats
+go test -bench=BenchmarkSort -benchmem ./...
+
+# Run benchmarks for 10 seconds each
+go test -bench=. -benchtime=10s ./...
+
+# Run benchmarks multiple times for statistical validity
+go test -bench=. -count=5 ./...
+
+# Compare benchmarks with benchstat
+go install golang.org/x/perf/cmd/benchstat@latest
+go test -bench=. -count=10 > old.txt
+# Make changes...
+go test -bench=. -count=10 > new.txt
+benchstat old.txt new.txt
+```
+
+### Benchmark Best Practices
+
+```go
+// GOOD: Reset timer after expensive setup
+func BenchmarkProcessFile(b *testing.B) {
+    data, err := os.ReadFile("testdata/large.json")
+    if err != nil {
+        b.Fatal(err)
+    }
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        processJSON(data)
+    }
+}
+
+// GOOD: Use b.RunParallel for concurrent benchmarks
+func BenchmarkConcurrentMap(b *testing.B) {
+    m := &sync.Map{}
+    b.RunParallel(func(pb *testing.PB) {
+        for pb.Next() {
+            m.Store("key", "value")
+            m.Load("key")
+        }
+    })
+}
+
+// BAD: Setup cost included in benchmark
+func BenchmarkBad(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        data, _ := os.ReadFile("large.json") // Setup in loop!
+        processJSON(data)
+    }
+}
+```
+
 ## Test Performance
 
 Projects **SHOULD** run tests in parallel mode. Projects **MUST** run tests with the race detector in CI.
@@ -599,6 +700,186 @@ func TestFeatures(t *testing.T) {
         t.Fatal("non-zero status returned")
     }
 }
+```
+
+## Mocking with gomock
+
+Projects **SHOULD** use gomock[^16] for generating mock implementations of interfaces in unit tests.
+
+### Why gomock?
+
+- **Type-safe**: Generated mocks are type-checked at compile time
+- **Interface-based**: Works with Go's interface system, promoting testable design
+- **Flexible expectations**: Support for exact, any, and custom matchers
+- **Ordered verification**: Can verify call order when needed
+- **Official**: Maintained by the Go team (uber-go/mock fork is also popular)
+
+### Installation and Code Generation
+
+```bash
+# Install mockgen
+go install go.uber.org/mock/mockgen@latest
+
+# Generate mocks from interface (source mode)
+mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks
+
+# Generate mocks from package (reflect mode)
+mockgen -destination=mocks/client_mock.go -package=mocks github.com/user/app Client
+```
+
+### Interface Design for Testability
+
+```go
+// Define interfaces for dependencies
+type UserRepository interface {
+    FindByID(ctx context.Context, id string) (*User, error)
+    Save(ctx context.Context, user *User) error
+}
+
+type EmailSender interface {
+    Send(ctx context.Context, to, subject, body string) error
+}
+
+// Service depends on interfaces, not implementations
+type UserService struct {
+    repo   UserRepository
+    mailer EmailSender
+}
+
+func NewUserService(repo UserRepository, mailer EmailSender) *UserService {
+    return &UserService{repo: repo, mailer: mailer}
+}
+```
+
+### Using Generated Mocks
+
+```go
+import (
+    "testing"
+    "go.uber.org/mock/gomock"
+    "github.com/user/app/mocks"
+)
+
+func TestUserService_GetUser(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    // Create mock
+    mockRepo := mocks.NewMockUserRepository(ctrl)
+
+    // Set expectations
+    mockRepo.EXPECT().
+        FindByID(gomock.Any(), "user-123").
+        Return(&User{ID: "user-123", Name: "Alice"}, nil)
+
+    // Create service with mock
+    svc := NewUserService(mockRepo, nil)
+
+    // Test
+    user, err := svc.GetUser(context.Background(), "user-123")
+    if err != nil {
+        t.Fatal(err)
+    }
+    if user.Name != "Alice" {
+        t.Errorf("got name %q, want Alice", user.Name)
+    }
+}
+
+func TestUserService_SendWelcomeEmail(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockRepo := mocks.NewMockUserRepository(ctrl)
+    mockMailer := mocks.NewMockEmailSender(ctrl)
+
+    // Expect repo lookup
+    mockRepo.EXPECT().
+        FindByID(gomock.Any(), "user-123").
+        Return(&User{ID: "user-123", Email: "alice@example.com"}, nil)
+
+    // Expect email to be sent with specific arguments
+    mockMailer.EXPECT().
+        Send(gomock.Any(), "alice@example.com", "Welcome!", gomock.Any()).
+        Return(nil)
+
+    svc := NewUserService(mockRepo, mockMailer)
+    err := svc.SendWelcomeEmail(context.Background(), "user-123")
+    if err != nil {
+        t.Fatal(err)
+    }
+}
+```
+
+### Advanced Matchers
+
+```go
+func TestAdvancedMatchers(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockRepo := mocks.NewMockUserRepository(ctrl)
+
+    // gomock.Any() matches any value
+    mockRepo.EXPECT().
+        FindByID(gomock.Any(), gomock.Any()).
+        Return(&User{}, nil)
+
+    // Custom matcher
+    mockRepo.EXPECT().
+        Save(gomock.Any(), gomock.Cond(func(u any) bool {
+            user := u.(*User)
+            return user.Email != "" && user.Name != ""
+        })).
+        Return(nil)
+
+    // Times() for call count expectations
+    mockRepo.EXPECT().
+        FindByID(gomock.Any(), "user-456").
+        Return(&User{}, nil).
+        Times(3)
+
+    // AnyTimes() for optional calls
+    mockRepo.EXPECT().
+        FindByID(gomock.Any(), "cached-user").
+        Return(&User{}, nil).
+        AnyTimes()
+}
+```
+
+### Call Order Verification
+
+```go
+func TestCallOrder(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockRepo := mocks.NewMockUserRepository(ctrl)
+
+    // InOrder ensures calls happen in sequence
+    gomock.InOrder(
+        mockRepo.EXPECT().FindByID(gomock.Any(), "1").Return(&User{}, nil),
+        mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil),
+        mockRepo.EXPECT().FindByID(gomock.Any(), "1").Return(&User{}, nil),
+    )
+
+    // Test code that should make calls in this order
+}
+```
+
+### go:generate for Mock Generation
+
+```go
+//go:generate mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks
+
+type UserRepository interface {
+    FindByID(ctx context.Context, id string) (*User, error)
+    Save(ctx context.Context, user *User) error
+}
+```
+
+```bash
+# Regenerate all mocks
+go generate ./...
 ```
 
 ## Thread Safety Testing
@@ -929,6 +1210,216 @@ func TestLinuxSpecific(t *testing.T) {
 func TestWindowsSpecific(t *testing.T) {
     // Windows-only test
 }
+```
+
+## cgo: C Interoperability
+
+Projects **MAY** use cgo[^17] to call C code from Go when necessary, but **SHOULD** prefer pure Go alternatives when available.
+
+### Why cgo?
+
+- **Legacy integration**: Interface with existing C libraries and system APIs
+- **Performance**: Call highly optimized C code for compute-intensive operations
+- **System access**: Access platform-specific functionality not exposed in Go
+
+### When to Avoid cgo
+
+- **Cross-compilation**: cgo requires a C compiler for the target platform
+- **Complexity**: Debugging across Go/C boundary is harder
+- **Performance cost**: Each cgo call has ~150ns overhead vs pure Go calls
+- **CGO_ENABLED=0**: Many deployments (scratch containers) disable cgo
+
+### Basic cgo Usage
+
+```go
+package main
+
+/*
+#include <stdlib.h>
+#include <string.h>
+
+// C function definition
+int add(int a, int b) {
+    return a + b;
+}
+
+// Using system headers
+#include <math.h>
+*/
+import "C"
+import (
+    "fmt"
+    "unsafe"
+)
+
+func main() {
+    // Call C function
+    result := C.add(40, 2)
+    fmt.Println("40 + 2 =", result)
+
+    // Call standard library
+    sqrt := C.sqrt(16.0)
+    fmt.Println("sqrt(16) =", sqrt)
+}
+```
+
+### Memory Management
+
+```go
+/*
+#include <stdlib.h>
+#include <string.h>
+*/
+import "C"
+import "unsafe"
+
+// String conversion - MUST free C strings
+func goStringToC(s string) *C.char {
+    return C.CString(s)  // Caller must free!
+}
+
+func cStringToGo(cs *C.char) string {
+    return C.GoString(cs)
+}
+
+func processString(input string) string {
+    // Convert Go string to C string
+    cInput := C.CString(input)
+    defer C.free(unsafe.Pointer(cInput))  // MUST free
+
+    // Call C function that returns new string
+    cOutput := C.some_c_function(cInput)
+    defer C.free(unsafe.Pointer(cOutput))
+
+    // Convert back to Go string
+    return C.GoString(cOutput)
+}
+
+// Passing slices to C
+func processBytes(data []byte) {
+    if len(data) == 0 {
+        return
+    }
+    // Get pointer to first element
+    cData := (*C.char)(unsafe.Pointer(&data[0]))
+    cLen := C.int(len(data))
+
+    C.process_buffer(cData, cLen)
+}
+```
+
+### Linking External Libraries
+
+```go
+/*
+#cgo CFLAGS: -I/usr/local/include
+#cgo LDFLAGS: -L/usr/local/lib -lmylibrary
+
+#include <mylibrary.h>
+*/
+import "C"
+
+// Platform-specific flags
+/*
+#cgo linux LDFLAGS: -lm -lpthread
+#cgo darwin LDFLAGS: -framework CoreFoundation
+#cgo windows LDFLAGS: -lws2_32
+*/
+import "C"
+
+// pkg-config integration
+/*
+#cgo pkg-config: libpng openssl
+#include <png.h>
+#include <openssl/ssl.h>
+*/
+import "C"
+```
+
+### Error Handling
+
+```go
+/*
+#include <errno.h>
+#include <stdlib.h>
+
+int divide(int a, int b, int* result) {
+    if (b == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    *result = a / b;
+    return 0;
+}
+*/
+import "C"
+import (
+    "errors"
+    "fmt"
+)
+
+func Divide(a, b int) (int, error) {
+    var result C.int
+    _, err := C.divide(C.int(a), C.int(b), &result)
+    if err != nil {
+        return 0, fmt.Errorf("divide: %w", err)
+    }
+    return int(result), nil
+}
+```
+
+### cgo Best Practices
+
+```go
+// GOOD: Minimize cgo calls by batching work
+func ProcessBatch(items []Item) {
+    cItems := convertToCArray(items)
+    defer freeCArray(cItems)
+    C.process_batch(cItems, C.int(len(items)))  // One cgo call
+}
+
+// BAD: Many small cgo calls
+func ProcessBatchSlow(items []Item) {
+    for _, item := range items {
+        C.process_single(convertToC(item))  // N cgo calls
+    }
+}
+
+// GOOD: Keep cgo isolated to specific packages
+// internal/clib/wrapper.go
+package clib
+
+/*
+#include <mylib.h>
+*/
+import "C"
+
+func DoThing() { C.do_thing() }
+
+// GOOD: Provide pure Go fallback with build tags
+//go:build !cgo
+
+package mylib
+
+func DoThing() {
+    // Pure Go implementation
+}
+```
+
+### Build and Test with cgo
+
+```bash
+# Enable cgo (default on most platforms)
+CGO_ENABLED=1 go build
+
+# Disable cgo for static binary
+CGO_ENABLED=0 go build
+
+# Cross-compile with cgo requires C cross-compiler
+CC=x86_64-linux-musl-gcc CGO_ENABLED=1 GOOS=linux go build
+
+# Test with race detector (requires cgo on some platforms)
+CGO_ENABLED=1 go test -race ./...
 ```
 
 ## Internationalization Testing
@@ -1264,6 +1755,8 @@ func TestFeatureBehavior(t *testing.T) {
 [^13]: [golang.org/x/text](https://pkg.go.dev/golang.org/x/text) - Go supplementary text processing packages for internationalization
 [^14]: [golang-migrate](https://github.com/golang-migrate/migrate) - Database migration tool with support for multiple databases
 [^15]: [gobreaker](https://github.com/sony/gobreaker) - Circuit breaker implementation for Go
+[^16]: [gomock](https://github.com/uber-go/mock) - Mock framework for Go interfaces (uber-go fork of official golang/mock)
+[^17]: [cgo](https://pkg.go.dev/cmd/cgo) - Go tool for calling C code from Go programs
 
 ## See Also
 

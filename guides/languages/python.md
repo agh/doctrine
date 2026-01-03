@@ -22,6 +22,12 @@ Extends [Google Python Style Guide](google/python.md).
 | Complexity | Radon[^7] | `uv run radon cc src/ -a` |
 | Fuzz | Hypothesis[^8] | `uv run pytest` (with hypothesis tests) |
 | Test perf | pytest-xdist[^9] | `uv run pytest -n auto` |
+| Password hash | argon2-cffi[^34] | `PasswordHasher().hash(password)` |
+| Encryption | cryptography[^35] | `Fernet(key).encrypt(data)` |
+| Rate limit | limits[^37] | `strategies.MovingWindowRateLimiter()` |
+| Circuit break | pybreaker[^39] | `@CircuitBreaker(fail_max=5)` |
+| Cache (memory) | cachetools[^41] | `@cached(TTLCache(maxsize=100, ttl=300))` |
+| Cache (disk) | diskcache[^42] | `Cache("/path").memoize()` |
 
 ## Package Management: uv
 
@@ -852,6 +858,811 @@ async def test_with_anyio() -> None:
 asyncio_mode = "auto"
 ```
 
+## Security
+
+Projects **MUST** follow secure coding practices for cryptography, secrets management, and password hashing.
+
+**Why**: Security vulnerabilities in cryptographic code can expose user data, enable authentication bypass, and cause catastrophic breaches. Using well-audited libraries with secure defaults prevents common cryptographic mistakes.
+
+### Secrets Generation
+
+Projects **MUST** use the `secrets` module (standard library) for generating cryptographically secure random values.
+
+```python
+import secrets
+
+# Generate secure random token
+token = secrets.token_urlsafe(32)  # 256 bits of entropy
+
+# Generate secure random bytes
+random_bytes = secrets.token_bytes(32)
+
+# Generate secure random hex string
+hex_token = secrets.token_hex(32)
+
+# Compare secrets in constant time to prevent timing attacks
+if secrets.compare_digest(user_token, stored_token):
+    authenticate_user()
+```
+
+**Why**: The `random` module is **NOT** cryptographically secure and **MUST NOT** be used for security-sensitive values like tokens, passwords, or API keys. The `secrets` module[^33] provides cryptographically strong random numbers suitable for security purposes.
+
+### Password Hashing
+
+Projects **MUST** use argon2-cffi[^34] for password hashing.
+
+```python
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+ph = PasswordHasher(
+    time_cost=3,        # Number of iterations
+    memory_cost=65536,  # 64 MB memory
+    parallelism=4,      # Parallel threads
+)
+
+# Hash password
+hash = ph.hash("user_password")
+
+# Verify password
+try:
+    ph.verify(hash, "user_password")
+except VerifyMismatchError:
+    raise AuthenticationError("Invalid password")
+
+# Check if rehash needed (parameters changed)
+if ph.check_needs_rehash(hash):
+    new_hash = ph.hash("user_password")
+```
+
+**Why**: Argon2 won the Password Hashing Competition and provides memory-hard hashing that resists GPU and ASIC attacks. The argon2-cffi library wraps the official Argon2 C implementation with a safe Python API.
+
+### Cryptographic Operations
+
+Projects **SHOULD** use the cryptography library[^35] for encryption, signing, and key management.
+
+```python
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import base64
+import os
+
+# Symmetric encryption with Fernet (AES-128-CBC + HMAC)
+key = Fernet.generate_key()
+fernet = Fernet(key)
+
+# Encrypt
+encrypted = fernet.encrypt(b"secret message")
+
+# Decrypt
+decrypted = fernet.decrypt(encrypted)
+
+# Key derivation from password
+salt = os.urandom(16)
+kdf = PBKDF2HMAC(
+    algorithm=hashes.SHA256(),
+    length=32,
+    salt=salt,
+    iterations=600_000,  # OWASP 2023 recommendation
+)
+key = base64.urlsafe_b64encode(kdf.derive(b"password"))
+```
+
+### Security Anti-Patterns
+
+```python
+# BAD: Using random for security
+import random
+token = random.randint(0, 999999)  # Predictable!
+
+# GOOD: Using secrets
+import secrets
+token = secrets.randbelow(1000000)
+
+# BAD: Rolling your own crypto
+import hashlib
+hash = hashlib.sha256(password.encode()).hexdigest()  # No salt, too fast!
+
+# GOOD: Using argon2
+from argon2 import PasswordHasher
+hash = PasswordHasher().hash(password)
+
+# BAD: Hardcoding secrets
+API_KEY = "sk-1234567890abcdef"  # Never commit secrets!
+
+# GOOD: Environment variables
+import os
+API_KEY = os.environ["API_KEY"]
+```
+
+## WebSocket Patterns
+
+Projects using WebSockets **SHOULD** use the websockets library[^36] for async WebSocket communication.
+
+**Why**: The websockets library is built on asyncio, provides a simple coroutine-based API, handles connection management automatically, and includes production-ready features like ping/pong, compression, and proper close handling.
+
+### Server Implementation
+
+```python
+import asyncio
+import websockets
+from websockets.server import serve
+
+async def handler(websocket):
+    async for message in websocket:
+        # Echo back with processing
+        response = process_message(message)
+        await websocket.send(response)
+
+async def main():
+    async with serve(handler, "localhost", 8765):
+        await asyncio.Future()  # Run forever
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Client Implementation
+
+```python
+import asyncio
+import websockets
+
+async def client():
+    uri = "ws://localhost:8765"
+    async with websockets.connect(uri) as websocket:
+        await websocket.send("Hello, Server!")
+        response = await websocket.recv()
+        print(f"Received: {response}")
+
+asyncio.run(client())
+```
+
+### Broadcast Pattern
+
+```python
+import asyncio
+import websockets
+from websockets.server import serve
+
+CLIENTS: set[websockets.WebSocketServerProtocol] = set()
+
+async def register(websocket):
+    CLIENTS.add(websocket)
+    try:
+        await websocket.wait_closed()
+    finally:
+        CLIENTS.discard(websocket)
+
+async def broadcast(message: str):
+    websockets.broadcast(CLIENTS, message)
+
+async def handler(websocket):
+    await register(websocket)
+```
+
+### Connection Management
+
+```python
+import asyncio
+import websockets
+
+async def robust_client(uri: str):
+    """Reconnecting WebSocket client with exponential backoff."""
+    backoff = 1
+    while True:
+        try:
+            async with websockets.connect(uri) as ws:
+                backoff = 1  # Reset on successful connection
+                async for message in ws:
+                    await process_message(message)
+        except websockets.ConnectionClosed:
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60)  # Max 60 seconds
+```
+
+## Rate Limiting
+
+Projects making external API calls or exposing APIs **SHOULD** implement rate limiting using the limits library[^37] or pyrate-limiter[^38].
+
+**Why**: Rate limiting prevents API abuse, protects against denial of service, ensures fair resource usage, and helps comply with upstream API provider limits.
+
+### Using limits Library
+
+```python
+from limits import storage, strategies, parse
+
+# In-memory storage (use Redis for distributed systems)
+memory_storage = storage.MemoryStorage()
+moving_window = strategies.MovingWindowRateLimiter(memory_storage)
+
+# Define rate limit: 100 requests per minute
+rate_limit = parse("100/minute")
+
+def check_rate_limit(user_id: str) -> bool:
+    """Check if request is allowed."""
+    if moving_window.hit(rate_limit, user_id):
+        return True
+    return False
+
+# With Redis storage for distributed systems
+# redis_storage = storage.RedisStorage("redis://localhost:6379")
+```
+
+### Token Bucket Implementation
+
+```python
+import time
+from dataclasses import dataclass, field
+
+@dataclass
+class TokenBucket:
+    """Thread-safe token bucket rate limiter."""
+    capacity: int
+    refill_rate: float  # tokens per second
+    tokens: float = field(init=False)
+    last_refill: float = field(init=False)
+
+    def __post_init__(self):
+        self.tokens = float(self.capacity)
+        self.last_refill = time.monotonic()
+
+    def acquire(self, tokens: int = 1) -> bool:
+        """Try to acquire tokens. Returns True if successful."""
+        now = time.monotonic()
+        elapsed = now - self.last_refill
+        self.tokens = min(self.capacity, self.tokens + elapsed * self.refill_rate)
+        self.last_refill = now
+
+        if self.tokens >= tokens:
+            self.tokens -= tokens
+            return True
+        return False
+
+# Usage: 10 requests per second with burst of 20
+bucket = TokenBucket(capacity=20, refill_rate=10)
+if bucket.acquire():
+    make_api_call()
+else:
+    raise RateLimitExceeded()
+```
+
+### Async Rate Limiting with pyrate-limiter
+
+```python
+from pyrate_limiter import Duration, Limiter, Rate
+
+# 5 requests per second, 100 per minute
+limiter = Limiter(
+    Rate(5, Duration.SECOND),
+    Rate(100, Duration.MINUTE),
+)
+
+async def rate_limited_call(user_id: str):
+    # Blocks until rate limit allows
+    async with limiter.ratelimit(user_id, delay=True):
+        return await make_api_call()
+```
+
+### Decorator Pattern
+
+```python
+from functools import wraps
+from limits import storage, strategies, parse
+
+memory = storage.MemoryStorage()
+limiter = strategies.FixedWindowRateLimiter(memory)
+
+def rate_limit(limit_string: str):
+    """Decorator for rate limiting functions."""
+    rate = parse(limit_string)
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key = func.__name__
+            if not limiter.hit(rate, key):
+                raise Exception("Rate limit exceeded")
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+@rate_limit("10/minute")
+def send_email(to: str, subject: str):
+    # Limited to 10 emails per minute
+    ...
+```
+
+## Circuit Breakers
+
+Projects calling external services **SHOULD** implement circuit breakers using pybreaker[^39] to prevent cascading failures.
+
+**Why**: Circuit breakers prevent your application from repeatedly calling a failing service, allowing it to recover and preventing resource exhaustion. They enable graceful degradation and faster failure detection.
+
+### Basic Usage
+
+```python
+import pybreaker
+
+# Create circuit breaker with 5 failure threshold
+breaker = pybreaker.CircuitBreaker(
+    fail_max=5,              # Open after 5 failures
+    reset_timeout=60,        # Try again after 60 seconds
+    exclude=[ValueError],    # Don't count these as failures
+)
+
+@breaker
+def call_external_service(data: dict) -> dict:
+    response = requests.post("https://api.example.com/v1/data", json=data)
+    response.raise_for_status()
+    return response.json()
+
+# Handle circuit breaker state
+try:
+    result = call_external_service({"key": "value"})
+except pybreaker.CircuitBreakerError:
+    # Circuit is open, use fallback
+    result = get_cached_response()
+except requests.RequestException:
+    # Request failed but circuit may still be closed
+    result = handle_failure()
+```
+
+### With Listeners for Monitoring
+
+```python
+import pybreaker
+import logging
+
+class LoggingListener(pybreaker.CircuitBreakerListener):
+    def state_change(self, cb, old_state, new_state):
+        logging.warning(
+            f"Circuit {cb.name}: {old_state.name} -> {new_state.name}"
+        )
+
+    def failure(self, cb, exc):
+        logging.error(f"Circuit {cb.name} failure: {exc}")
+
+    def success(self, cb):
+        logging.debug(f"Circuit {cb.name} success")
+
+breaker = pybreaker.CircuitBreaker(
+    fail_max=5,
+    reset_timeout=60,
+    listeners=[LoggingListener()],
+    name="payment_service",
+)
+```
+
+### Async Circuit Breaker
+
+For async code, use aiobreaker[^40]:
+
+```python
+from aiobreaker import CircuitBreaker
+
+breaker = CircuitBreaker(fail_max=5, timeout_duration=60)
+
+@breaker
+async def async_external_call(data: dict) -> dict:
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            return await response.json()
+```
+
+### Redis State Storage (Distributed)
+
+```python
+import pybreaker
+import redis
+
+redis_client = redis.Redis(host="localhost", port=6379, db=0)
+
+breaker = pybreaker.CircuitBreaker(
+    fail_max=5,
+    reset_timeout=60,
+    state_storage=pybreaker.CircuitRedisStorage(
+        pybreaker.STATE_CLOSED,
+        redis_client,
+        namespace="payment_breaker",
+    ),
+)
+```
+
+## Caching
+
+Projects **SHOULD** implement caching for expensive operations using cachetools[^41] for in-memory caching, diskcache[^42] for persistent caching, or aiocache[^43] for async caching.
+
+**Why**: Caching reduces latency, decreases load on databases and external services, and improves application throughput. Choosing the right caching strategy depends on data freshness requirements, memory constraints, and whether caching needs to persist across restarts.
+
+### In-Memory Caching with cachetools
+
+```python
+from cachetools import TTLCache, LRUCache, cached
+from cachetools.keys import hashkey
+import threading
+
+# TTL cache: expire after 300 seconds, max 1000 items
+cache = TTLCache(maxsize=1000, ttl=300)
+lock = threading.Lock()  # cachetools is not thread-safe by default
+
+@cached(cache, lock=lock)
+def get_user(user_id: int) -> User:
+    return db.query(User).filter_by(id=user_id).first()
+
+# LRU cache with custom key function
+@cached(LRUCache(maxsize=100), key=lambda x, y: hashkey(x.id, y))
+def compute_score(user: User, category: str) -> float:
+    return expensive_calculation(user, category)
+
+# Manual cache operations
+cache["custom_key"] = expensive_result
+if "custom_key" in cache:
+    result = cache["custom_key"]
+```
+
+### Persistent Caching with diskcache
+
+```python
+import diskcache
+
+# File-backed cache (persists across restarts)
+cache = diskcache.Cache("/tmp/my_cache")
+
+# Store with TTL
+cache.set("api_response", response_data, expire=3600)
+
+# Memoization decorator
+@cache.memoize(expire=600)
+def fetch_data(url: str) -> dict:
+    return requests.get(url).json()
+
+# Atomic operations
+with cache.transact():
+    cache["key1"] = value1
+    cache["key2"] = value2
+
+# Cleanup
+cache.expire()  # Remove expired items
+cache.close()
+```
+
+### Async Caching with aiocache
+
+```python
+from aiocache import cached, Cache
+from aiocache.serializers import JsonSerializer
+
+# Simple async caching
+@cached(ttl=300, cache=Cache.MEMORY)
+async def get_user_async(user_id: int) -> dict:
+    return await db.fetch_user(user_id)
+
+# With Redis backend
+@cached(
+    ttl=300,
+    cache=Cache.REDIS,
+    serializer=JsonSerializer(),
+    endpoint="localhost",
+    port=6379,
+)
+async def get_external_data(key: str) -> dict:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://api.example.com/{key}") as resp:
+            return await resp.json()
+```
+
+### Cache Invalidation Patterns
+
+```python
+from cachetools import TTLCache
+
+cache = TTLCache(maxsize=1000, ttl=300)
+
+def invalidate_user_cache(user_id: int):
+    """Invalidate specific cache entry."""
+    cache.pop(f"user:{user_id}", None)
+
+def invalidate_by_prefix(prefix: str):
+    """Invalidate all entries matching prefix."""
+    keys_to_delete = [k for k in cache if k.startswith(prefix)]
+    for key in keys_to_delete:
+        del cache[key]
+
+# Event-driven invalidation
+def on_user_updated(user_id: int):
+    invalidate_user_cache(user_id)
+    invalidate_by_prefix(f"user_scores:{user_id}")
+```
+
+## Background Jobs
+
+Projects **SHOULD** use `concurrent.futures`[^44] for simple parallelism and `multiprocessing`[^45] for CPU-bound work.
+
+**Why**: Background jobs enable non-blocking execution of long-running tasks. Using standard library tools provides framework-agnostic patterns that work across all Python applications without external dependencies.
+
+### Thread Pool for I/O-Bound Work
+
+```python
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Callable
+
+def process_urls(urls: list[str]) -> list[dict]:
+    """Fetch multiple URLs in parallel."""
+    results = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(fetch_url, url): url for url in urls}
+        for future in as_completed(futures):
+            url = futures[future]
+            try:
+                result = future.result(timeout=30)
+                results.append({"url": url, "data": result})
+            except Exception as e:
+                results.append({"url": url, "error": str(e)})
+    return results
+
+def run_with_timeout(fn: Callable, timeout: float, *args, **kwargs):
+    """Run function with timeout."""
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fn, *args, **kwargs)
+        return future.result(timeout=timeout)
+```
+
+### Process Pool for CPU-Bound Work
+
+```python
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing
+
+def cpu_intensive_task(data: bytes) -> bytes:
+    """CPU-bound processing (runs in separate process)."""
+    return heavy_computation(data)
+
+def process_batch(items: list[bytes]) -> list[bytes]:
+    """Process items in parallel across CPU cores."""
+    # Use number of CPUs minus 1 to leave headroom
+    max_workers = max(1, multiprocessing.cpu_count() - 1)
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(cpu_intensive_task, items))
+    return results
+```
+
+### Async Background Tasks
+
+```python
+import asyncio
+from typing import Coroutine, Any
+
+class BackgroundTasks:
+    """Manager for fire-and-forget async tasks."""
+
+    def __init__(self):
+        self._tasks: set[asyncio.Task] = set()
+
+    def add(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task:
+        """Add background task with automatic cleanup."""
+        task = asyncio.create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
+    async def shutdown(self, timeout: float = 30):
+        """Wait for all tasks to complete."""
+        if self._tasks:
+            await asyncio.wait(self._tasks, timeout=timeout)
+
+# Usage
+background = BackgroundTasks()
+
+async def handle_request(data: dict):
+    # Fire and forget
+    background.add(send_notification(data["user_id"]))
+    return {"status": "accepted"}
+
+async def shutdown():
+    await background.shutdown()
+```
+
+### Work Queue Pattern
+
+```python
+import asyncio
+from collections.abc import Callable, Coroutine
+from typing import Any
+
+class WorkQueue:
+    """Async work queue with configurable concurrency."""
+
+    def __init__(self, max_workers: int = 10):
+        self._queue: asyncio.Queue = asyncio.Queue()
+        self._workers: list[asyncio.Task] = []
+        self._max_workers = max_workers
+
+    async def start(self):
+        """Start worker tasks."""
+        for _ in range(self._max_workers):
+            task = asyncio.create_task(self._worker())
+            self._workers.append(task)
+
+    async def _worker(self):
+        while True:
+            func, args, kwargs = await self._queue.get()
+            try:
+                await func(*args, **kwargs)
+            except Exception as e:
+                logging.error(f"Worker error: {e}")
+            finally:
+                self._queue.task_done()
+
+    async def submit(
+        self,
+        func: Callable[..., Coroutine[Any, Any, Any]],
+        *args,
+        **kwargs,
+    ):
+        """Submit work to the queue."""
+        await self._queue.put((func, args, kwargs))
+
+    async def shutdown(self):
+        """Wait for queue to drain and stop workers."""
+        await self._queue.join()
+        for worker in self._workers:
+            worker.cancel()
+```
+
+## Feature Flags
+
+Projects **SHOULD** implement feature flags for gradual rollouts and A/B testing using a provider-agnostic pattern.
+
+**Why**: Feature flags enable controlled rollouts, quick rollbacks, and A/B testing without deployment. A provider-agnostic interface allows switching between services (LaunchDarkly, PostHog, Flagsmith)[^46] without code changes.
+
+### Abstract Interface
+
+```python
+from abc import ABC, abstractmethod
+from typing import Any
+
+class FeatureFlagProvider(ABC):
+    """Abstract interface for feature flag providers."""
+
+    @abstractmethod
+    def is_enabled(
+        self,
+        flag_name: str,
+        user_id: str | None = None,
+        default: bool = False,
+    ) -> bool:
+        """Check if feature flag is enabled."""
+        ...
+
+    @abstractmethod
+    def get_value(
+        self,
+        flag_name: str,
+        user_id: str | None = None,
+        default: Any = None,
+    ) -> Any:
+        """Get feature flag value (for multivariate flags)."""
+        ...
+```
+
+### Simple Implementation
+
+```python
+import os
+import json
+from pathlib import Path
+
+class EnvFeatureFlags(FeatureFlagProvider):
+    """Environment variable-based feature flags."""
+
+    def __init__(self, prefix: str = "FEATURE_"):
+        self._prefix = prefix
+
+    def is_enabled(
+        self,
+        flag_name: str,
+        user_id: str | None = None,
+        default: bool = False,
+    ) -> bool:
+        env_name = f"{self._prefix}{flag_name.upper()}"
+        value = os.environ.get(env_name, "").lower()
+        if value in ("1", "true", "yes", "on"):
+            return True
+        if value in ("0", "false", "no", "off"):
+            return False
+        return default
+
+    def get_value(
+        self,
+        flag_name: str,
+        user_id: str | None = None,
+        default: Any = None,
+    ) -> Any:
+        env_name = f"{self._prefix}{flag_name.upper()}"
+        value = os.environ.get(env_name)
+        if value is None:
+            return default
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+
+# Usage
+flags = EnvFeatureFlags()
+if flags.is_enabled("new_checkout"):
+    return new_checkout_flow()
+else:
+    return legacy_checkout_flow()
+```
+
+### Percentage Rollout
+
+```python
+import hashlib
+
+class RolloutFeatureFlags(FeatureFlagProvider):
+    """Feature flags with percentage-based rollout."""
+
+    def __init__(self, config: dict[str, dict]):
+        # Config: {"flag_name": {"enabled": True, "percentage": 50}}
+        self._config = config
+
+    def _get_bucket(self, flag_name: str, user_id: str) -> int:
+        """Deterministic bucket assignment (0-99)."""
+        key = f"{flag_name}:{user_id}"
+        hash_value = hashlib.sha256(key.encode()).hexdigest()
+        return int(hash_value[:8], 16) % 100
+
+    def is_enabled(
+        self,
+        flag_name: str,
+        user_id: str | None = None,
+        default: bool = False,
+    ) -> bool:
+        config = self._config.get(flag_name, {})
+        if not config.get("enabled", False):
+            return False
+
+        percentage = config.get("percentage", 100)
+        if percentage >= 100:
+            return True
+        if percentage <= 0 or user_id is None:
+            return False
+
+        bucket = self._get_bucket(flag_name, user_id)
+        return bucket < percentage
+
+    def get_value(
+        self,
+        flag_name: str,
+        user_id: str | None = None,
+        default: Any = None,
+    ) -> Any:
+        config = self._config.get(flag_name, {})
+        return config.get("value", default)
+```
+
+### Testing with Feature Flags
+
+```python
+import pytest
+from unittest.mock import patch
+
+@pytest.fixture
+def feature_flags():
+    """Fixture for testing with feature flags."""
+    return {"new_checkout": True, "beta_feature": False}
+
+@pytest.mark.parametrize("flag_enabled", [True, False])
+def test_feature_behavior(flag_enabled: bool, mocker):
+    mocker.patch.object(flags, "is_enabled", return_value=flag_enabled)
+    result = feature_under_test()
+    assert result.uses_new_behavior == flag_enabled
+```
+
 ## See Also
 
 - [Django Guide](../frameworks/django.md) - Full-featured Python web framework
@@ -894,3 +1705,17 @@ asyncio_mode = "auto"
 [^30]: [pytest-bdd Documentation](https://pytest-bdd.readthedocs.io/)
 [^31]: [Playwright - Reliable End-to-End Testing](https://playwright.dev/python/docs/intro)
 [^32]: [Gherkin Syntax Reference](https://cucumber.io/docs/gherkin/reference/)
+[^33]: [secrets - Generate Secure Random Numbers](https://docs.python.org/3/library/secrets.html)
+[^34]: [argon2-cffi - Secure Password Hashing](https://argon2-cffi.readthedocs.io/)
+[^35]: [cryptography - Cryptographic Recipes](https://cryptography.io/)
+[^36]: [websockets - WebSocket Library](https://websockets.readthedocs.io/)
+[^37]: [limits - Rate Limiting Utilities](https://limits.readthedocs.io/)
+[^38]: [pyrate-limiter - Leaky Bucket Rate Limiter](https://github.com/vutran1710/PyrateLimiter)
+[^39]: [pybreaker - Circuit Breaker Pattern](https://github.com/danielfm/pybreaker)
+[^40]: [aiobreaker - Async Circuit Breaker](https://github.com/arlyon/aiobreaker)
+[^41]: [cachetools - Extensible Memoizing Collections](https://cachetools.readthedocs.io/)
+[^42]: [diskcache - Disk and File Backed Cache](https://grantjenks.com/docs/diskcache/)
+[^43]: [aiocache - Async Cache Library](https://aiocache.readthedocs.io/)
+[^44]: [concurrent.futures - Launching Parallel Tasks](https://docs.python.org/3/library/concurrent.futures.html)
+[^45]: [multiprocessing - Process-Based Parallelism](https://docs.python.org/3/library/multiprocessing.html)
+[^46]: [Feature Flag Providers - LaunchDarkly](https://launchdarkly.com/), [PostHog](https://posthog.com/feature-flags), [Flagsmith](https://flagsmith.com/)
