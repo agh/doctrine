@@ -98,11 +98,18 @@ All scripts **MUST** follow this template structure:
 #
 # Brief description of what this script does.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # Constants
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly LOG_FILE="/tmp/script.log"
+
+# Cleanup
+cleanup() {
+  local exit_code=$?
+  # Add cleanup logic here
+  exit "$exit_code"
+}
+trap cleanup EXIT ERR
 
 # Functions
 log() {
@@ -174,9 +181,10 @@ All scripts **MUST** include:
 
 ```bash
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
 ```
 
+- `set -E`: Inherit ERR trap in functions (**REQUIRED**)
 - `set -e`: Exit on error (**REQUIRED**)
 - `set -u`: Error on undefined variables (**REQUIRED**)
 - `set -o pipefail`: Pipelines fail on first error (**REQUIRED**)
@@ -259,6 +267,57 @@ fi
 # Or with ||
 command || { err "Failed"; exit 1; }
 ```
+
+## Defensive Patterns
+
+### Trap-Based Cleanup
+
+Scripts **SHOULD** implement cleanup handlers for reliable resource management:
+
+```bash
+cleanup() {
+  local exit_code=$?
+  # Cleanup logic here
+  rm -rf -- "${TMPDIR:-}"
+  exit "$exit_code"
+}
+
+trap cleanup EXIT ERR
+```
+
+### Why
+
+The `-E` flag in `set -Eeuo pipefail` ensures ERR traps propagate into functions. Without cleanup traps, scripts may leak temporary files, leave processes running, or fail to release locks when errors occur.
+
+### Safe Temporary Files
+
+You **SHOULD** use `mktemp` with cleanup traps for temporary files:
+
+```bash
+TMPDIR="$(mktemp -d)" || { err "Failed to create temp dir"; exit 1; }
+trap 'rm -rf -- "$TMPDIR"' EXIT
+```
+
+### Dependency Checking
+
+Scripts **SHOULD** verify required commands exist before use:
+
+```bash
+check_deps() {
+  local -a missing=()
+  for cmd in "$@"; do
+    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    err "Missing dependencies: ${missing[*]}"
+    exit 1
+  fi
+}
+
+check_deps jq curl git
+```
+
+**Note**: Use `command -v` instead of `which`—it's a shell builtin and more portable.
 
 ### Pipelines
 
