@@ -4,10 +4,10 @@
 
 Guides for writing documentation.
 
-| Topic | Guide | Description |
-|-------|-------|-------------|
+| Topic          | Guide                                  | Description                      |
+| -------------- | -------------------------------------- | -------------------------------- |
 | Specifications | [specifications.md](specifications.md) | RFCs, ADRs, Design Docs, PR/FAQs |
-| Markdown | [markdown.md](markdown.md) | Markdown formatting standards |
+| Markdown       | [markdown.md](markdown.md)             | Markdown formatting standards    |
 
 ## See Also
 

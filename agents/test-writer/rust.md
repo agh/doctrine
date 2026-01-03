@@ -13,7 +13,7 @@ Rust-specific guidance for test generation.
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Run tests | cargo | `cargo test` |
 | Run specific | cargo | `cargo test test_name` |
 | Coverage | tarpaulin | `cargo tarpaulin` |

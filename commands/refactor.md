@@ -4,7 +4,7 @@ Simplify and improve code while preserving functionality using comprehensive ana
 
 ## Usage
 
-```
+```text
 /refactor [file or function] [options]
 ```
 
@@ -17,7 +17,7 @@ Simplify and improve code while preserving functionality using comprehensive ana
 
 ## Examples
 
-```
+```text
 /refactor src/legacy/parser.ts
 /refactor processData --explain
 /refactor src/utils/ --metrics

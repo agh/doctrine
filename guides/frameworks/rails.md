@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Rails
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Ruby style guide](ruby.md) with Rails-specific conventions from
 [Rails Style Guide](https://rails.rubystyle.guide/).
@@ -14,7 +18,7 @@ Extends [Ruby style guide](ruby.md) with Rails-specific conventions from
 All Ruby tooling applies. Additional tools are **REQUIRED**:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | StandardRB[^1] + standard-rails[^2] | `bundle exec standardrb` |
 | Security | Brakeman[^3] | `bundle exec brakeman` |
 | Test | RSpec Rails[^4] | `bundle exec rspec` |
@@ -48,13 +52,15 @@ Rails-specific RuboCop rules. You **SHOULD** add
 standard-sorbet[^6] if your Rails
 app uses Sorbet[^7] for type checking.
 
-**Why StandardRB?** StandardRB eliminates style debates with zero configuration. The standard-rails plugin extends this philosophy to Rails idioms, catching common anti-patterns like N+1 queries and improper use of callbacks while maintaining zero-config simplicity.
+**Why StandardRB?** StandardRB eliminates style debates with zero configuration. The
+standard-rails plugin extends this philosophy to Rails idioms, catching common anti-patterns
+like N+1 queries and improper use of callbacks while maintaining zero-config simplicity.
 
 ## Project Structure
 
 Rails projects **SHOULD** organize code using this structure:
 
-```
+```text
 app/
 ├── controllers/
 ├── models/
@@ -65,7 +71,8 @@ app/
 └── validators/        # Custom validators
 ```
 
-Service objects **SHOULD** be used for complex business logic. Query objects **MAY** be used for complex database queries that don't belong in models.
+Service objects **SHOULD** be used for complex business logic. Query objects **MAY** be used for
+complex database queries that don't belong in models.
 
 ## Models
 
@@ -173,7 +180,9 @@ class OrdersController < ApplicationController
 end
 ```
 
-**Why Service Objects?** Thin controllers improve testability by isolating business logic from HTTP concerns. Service objects are easier to test in isolation and can be reused across controllers, jobs, and rake tasks.
+**Why Service Objects?** Thin controllers improve testability by isolating business logic from
+HTTP concerns. Service objects are easier to test in isolation and can be reused across
+controllers, jobs, and rake tasks.
 
 ### Strong Parameters
 
@@ -253,6 +262,7 @@ bin/rails generate authentication
 ```
 
 This generates:
+
 - `User` model with `has_secure_password`
 - `Session` model for session tracking
 - `SessionsController` for login/logout
@@ -279,7 +289,8 @@ end
 <% end %>
 ```
 
-**Why**: Rails 8's authentication generator provides secure defaults including session tracking, password resets, and rate limiting without third-party gems like Devise.
+**Why**: Rails 8's authentication generator provides secure defaults including session tracking,
+password resets, and rate limiting without third-party gems like Devise.
 
 ## Background Jobs: Solid Queue (Rails 8+)
 
@@ -325,7 +336,8 @@ OrderNotificationJob.perform_later(order.id)
 | Recurring jobs | Built-in | Requires sidekiq-cron |
 | Infrastructure | Simpler | Requires Redis |
 
-**When to use Sidekiq**: High-throughput applications (10,000+ jobs/minute) or when Redis is already in the stack.
+**When to use Sidekiq**: High-throughput applications (10,000+ jobs/minute) or when Redis is
+already in the stack.
 
 ### Job Continuations (Rails 8.1+)
 
@@ -357,7 +369,8 @@ class DataExportJob < ApplicationJob
 end
 ```
 
-**Why**: Job continuations allow jobs to resume from the last checkpoint after deployment restarts, preventing work loss during Kamal's 30-second shutdown window.
+**Why**: Job continuations allow jobs to resume from the last checkpoint after deployment
+restarts, preventing work loss during Kamal's 30-second shutdown window.
 
 ## Caching: Solid Cache (Rails 8+)
 
@@ -374,7 +387,8 @@ production:
   max_age: 1.week
 ```
 
-**Why**: Solid Cache uses disk storage, enabling much larger caches than memory-based solutions. It supports encryption for privacy compliance and requires no additional infrastructure.
+**Why**: Solid Cache uses disk storage, enabling much larger caches than memory-based solutions.
+It supports encryption for privacy compliance and requires no additional infrastructure.
 
 ## WebSockets: Solid Cable (Rails 8+)
 
@@ -388,11 +402,14 @@ production:
   message_retention: 1.day
 ```
 
-**Why**: Solid Cable eliminates Redis dependency for Action Cable while retaining messages for debugging.
+**Why**: Solid Cable eliminates Redis dependency for Action Cable while retaining messages for
+debugging.
 
 ## Hotwire: Turbo + Stimulus
 
-Projects **SHOULD** use Hotwire[^34] for modern, interactive UIs without writing custom JavaScript. Hotwire combines Turbo[^35] for HTML-over-the-wire updates with Stimulus[^36] for lightweight JavaScript sprinkles.
+Projects **SHOULD** use Hotwire[^34] for modern, interactive UIs without writing custom
+JavaScript. Hotwire combines Turbo[^35] for HTML-over-the-wire updates with Stimulus[^36] for
+lightweight JavaScript sprinkles.
 
 ### Why Hotwire
 
@@ -597,7 +614,8 @@ end
 
 ## ViewComponent
 
-Projects with complex views **SHOULD** use ViewComponent[^37] to encapsulate view logic in testable, reusable components.
+Projects with complex views **SHOULD** use ViewComponent[^37] to encapsulate view logic in
+testable, reusable components.
 
 ### Why ViewComponent
 
@@ -863,7 +881,9 @@ class Api::V1::BaseController < ApplicationController
 end
 ```
 
-**Why**: Rails 8's built-in rate limiting requires no additional gems and uses your existing cache store (Redis, Memcached, or Solid Cache). It integrates seamlessly with Action Controller.
+**Why**: Rails 8's built-in rate limiting requires no additional gems and uses your existing
+cache store (Redis, Memcached, or Solid Cache). It integrates seamlessly with Action
+Controller.
 
 ### Rack::Attack for Advanced Scenarios
 
@@ -984,7 +1004,9 @@ end
 | Distributed (Redis) | Via cache store | Native support |
 | Request inspection | Limited | Full Rack access |
 
-**Why Rack::Attack?** Rack::Attack operates at the Rack middleware layer, blocking malicious requests before they reach your Rails controllers. This protects against credential stuffing attacks (often 1,000-10,000x normal traffic) and reduces load on your application stack.
+**Why Rack::Attack?** Rack::Attack operates at the Rack middleware layer, blocking malicious
+requests before they reach your Rails controllers. This protects against credential stuffing
+attacks (often 1,000-10,000x normal traffic) and reduces load on your application stack.
 
 ## Security: Brakeman
 
@@ -1001,7 +1023,9 @@ bundle exec brakeman
 bundle exec brakeman --exit-on-warn --no-pager
 ```
 
-**Why Brakeman?** Brakeman performs static analysis to detect common Rails security vulnerabilities including SQL injection, XSS, CSRF, and mass assignment. It runs without executing code, making it safe for CI and pre-commit hooks.
+**Why Brakeman?** Brakeman performs static analysis to detect common Rails security
+vulnerabilities including SQL injection, XSS, CSRF, and mass assignment. It runs without
+executing code, making it safe for CI and pre-commit hooks.
 
 ### Authentication: Devise + OmniAuth
 
@@ -1041,7 +1065,9 @@ class User < ApplicationRecord
 end
 ```
 
-**Why**: While Rails 8 includes built-in authentication, Devise remains the standard for applications requiring OAuth providers, two-factor authentication, or advanced account management features.
+**Why**: While Rails 8 includes built-in authentication, Devise remains the standard for
+applications requiring OAuth providers, two-factor authentication, or advanced account
+management features.
 
 ### Authorization: Pundit
 
@@ -1109,7 +1135,9 @@ class PostsController < ApplicationController
 end
 ```
 
-**Why Pundit?** Pundit encapsulates authorization logic in plain Ruby policy classes, keeping controllers thin and making access rules testable. It enforces the principle of least privilege by requiring explicit authorization for each action.
+**Why Pundit?** Pundit encapsulates authorization logic in plain Ruby policy classes, keeping
+controllers thin and making access rules testable. It enforces the principle of least privilege
+by requiring explicit authorization for each action.
 
 ## Performance
 
@@ -1142,13 +1170,16 @@ end
 ```
 
 Access profiling features by appending query parameters:
+
 - `?pp=help` - Show all available profiling options
 - `?pp=flamegraph` - Generate flame graph visualization
 - `?pp=profile-memory` - Show memory allocations
 - `?pp=profile-gc` - Show garbage collection stats
 - `?pp=analyze-memory` - Detailed memory analysis
 
-**Why rack-mini-profiler?** It provides real-time performance visibility with minimal overhead, showing SQL queries, view rendering times, and memory usage directly in the browser during development.
+**Why rack-mini-profiler?** It provides real-time performance visibility with minimal overhead,
+showing SQL queries, view rendering times, and memory usage directly in the browser during
+development.
 
 ### N+1 Query Detection
 
@@ -1191,7 +1222,9 @@ Rails.application.configure do
 end
 ```
 
-**Why Bullet?** N+1 queries are the most common performance issue in Rails applications. Bullet detects them during development and can fail tests, preventing performance regressions from reaching production.
+**Why Bullet?** N+1 queries are the most common performance issue in Rails applications. Bullet
+detects them during development and can fail tests, preventing performance regressions from
+reaching production.
 
 ### Memory Profiling
 
@@ -1276,7 +1309,9 @@ end
 | Skylight[^32] | Rails-only, simple performance tuning | Request-based ($20+/month) |
 | New Relic | Enterprise, polyglot environments | Host-based (varies) |
 
-**Why APM in production?** Development profiling misses issues that only appear under production load. APM tools provide continuous monitoring, alerting on performance regressions, slow queries, and error spikes before users complain.
+**Why APM in production?** Development profiling misses issues that only appear under
+production load. APM tools provide continuous monitoring, alerting on performance regressions,
+slow queries, and error spikes before users complain.
 
 ### Query Tracing
 
@@ -1299,7 +1334,8 @@ if defined?(ActiveRecordQueryTrace) && Rails.env.development?
 end
 ```
 
-**Why**: When Bullet identifies an N+1 query, active_record_query_trace shows exactly where in your code the query originates, making it easier to add eager loading.
+**Why**: When Bullet identifies an N+1 query, active_record_query_trace shows exactly where in
+your code the query originates, making it easier to add eager loading.
 
 ### Benchmarking
 
@@ -1341,7 +1377,7 @@ bundle exec derailed exec perf:stackprof PATH_TO_HIT=/users
 
 ## Migrations
 
-Migrations **MUST** include NOT NULL constraints and indexes where appropriate.
+Migrations **MUST** include NOT NULL constraints and indexes where appropriate:
 
 ```ruby
 class CreateUsers < ActiveRecord::Migration[8.1]
@@ -1360,7 +1396,8 @@ end
 
 ### Safe Migration Patterns
 
-Production migrations **MUST** use the strong_migrations[^8] gem to prevent zero-downtime deployment issues:
+Production migrations **MUST** use the strong_migrations[^8] gem to prevent zero-downtime
+deployment issues:
 
 ```ruby
 # Gemfile
@@ -1376,7 +1413,9 @@ disable_ddl_transaction!
 add_index :users, :email, algorithm: :concurrently
 ```
 
-**Why strong_migrations?** The gem catches dangerous migrations that can cause downtime or lock tables during deployment, such as adding columns with defaults, removing columns still in use, or creating indexes on large tables without concurrency.
+**Why strong_migrations?** The gem catches dangerous migrations that can cause downtime or lock
+tables during deployment, such as adding columns with defaults, removing columns still in use,
+or creating indexes on large tables without concurrency.
 
 ## Testing with RSpec
 
@@ -1408,7 +1447,9 @@ RSpec.describe User do
 end
 ```
 
-**Why RSpec Rails?** RSpec Rails provides Rails-specific matchers and helpers that make testing models, controllers, and system tests more expressive and maintainable. It integrates seamlessly with fixtures, factories, and database cleaners.
+**Why RSpec Rails?** RSpec Rails provides Rails-specific matchers and helpers that make testing
+models, controllers, and system tests more expressive and maintainable. It integrates
+seamlessly with fixtures, factories, and database cleaners.
 
 ## CI Pipeline
 
@@ -1444,7 +1485,8 @@ jobs:
 
 ## E2E & Acceptance Testing
 
-Projects with user-facing interfaces **SHOULD** include end-to-end tests using Capybara[^10]. Cucumber[^11] **MAY** be used for BDD-style acceptance tests.
+Projects with user-facing interfaces **SHOULD** include end-to-end tests using Capybara[^10].
+Cucumber[^11] **MAY** be used for BDD-style acceptance tests.
 
 ```ruby
 # Gemfile
@@ -1561,7 +1603,8 @@ end
 
 ## Idempotence Testing
 
-Background jobs and API endpoints **SHOULD** be idempotent. Critical operations **MUST** be tested for idempotence.
+Background jobs and API endpoints **SHOULD** be idempotent. Critical operations **MUST** be
+tested for idempotence.
 
 ```ruby
 # Gemfile
@@ -1631,7 +1674,8 @@ end
 
 ## Reliability & Resilience Testing
 
-Applications with external dependencies **SHOULD** test failure scenarios using chaos engineering tools like Toxiproxy[^16].
+Applications with external dependencies **SHOULD** test failure scenarios using chaos
+engineering tools like Toxiproxy[^16].
 
 ```ruby
 # Gemfile
@@ -1889,7 +1933,8 @@ end
 
 ## A/B Testing & Feature Flags
 
-Applications using feature flags or A/B tests **MUST** test both enabled and disabled states using tools like Flipper[^19] and Split[^20].
+Applications using feature flags or A/B tests **MUST** test both enabled and disabled states
+using tools like Flipper[^19] and Split[^20].
 
 ```ruby
 # Gemfile

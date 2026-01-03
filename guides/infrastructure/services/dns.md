@@ -9,7 +9,7 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Query | dig | `dig example.com` |
 | Trace | dig | `dig +trace example.com` |
 | Check resolver | resolvectl | `resolvectl status` |

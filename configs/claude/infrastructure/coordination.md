@@ -5,6 +5,7 @@ Patterns for multi-agent coordination, shared state, and swarm behavior.
 ## Overview
 
 When multiple agents work together, they need:
+
 1. **Shared State**: What do we collectively know?
 2. **Task Coordination**: Who's working on what?
 3. **Communication**: How do agents signal each other?
@@ -16,108 +17,108 @@ When multiple agents work together, they need:
 
 Agents read from and write to a shared knowledge store:
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           BLACKBOARD                                     │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────────────────────────────────────────────────────────────┐  │
-│   │                      SHARED STATE                                 │  │
-│   │                                                                   │  │
-│   │  context:                                                         │  │
-│   │    task: "investigate incident INC-1234"                          │  │
-│   │    started: 2025-01-02T10:30:00Z                                  │  │
-│   │                                                                   │  │
-│   │  findings:                                                        │  │
-│   │    - agent: ops/deploy-validator                                  │  │
-│   │      finding: "deployment v1.2.3 at 10:15 UTC"                    │  │
-│   │    - agent: security/incident-response-lead                       │  │
-│   │      finding: "error rate spike correlates with deploy"           │  │
-│   │                                                                   │  │
-│   │  hypotheses:                                                      │  │
-│   │    - "database connection pool exhaustion" (confidence: 0.7)      │  │
-│   │    - "memory leak in new feature" (confidence: 0.3)               │  │
-│   │                                                                   │  │
-│   │  actions_taken:                                                   │  │
-│   │    - agent: ops/rollback-advisor                                  │  │
-│   │      action: "recommended rollback"                               │  │
-│   │      status: awaiting_approval                                    │  │
-│   └──────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
-│        ▲              ▲              ▲              ▲                   │
-│        │              │              │              │                   │
-│   ┌────┴────┐   ┌────┴────┐   ┌────┴────┐   ┌────┴────┐               │
-│   │ Agent A │   │ Agent B │   │ Agent C │   │ Agent D │               │
-│   │ (read/  │   │ (read/  │   │ (read/  │   │ (read/  │               │
-│   │  write) │   │  write) │   │  write) │   │  write) │               │
-│   └─────────┘   └─────────┘   └─────────┘   └─────────┘               │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++---------------------------------------------------------------------------+
+|                           BLACKBOARD                                      |
++---------------------------------------------------------------------------+
+|                                                                           |
+|   +-------------------------------------------------------------------+   |
+|   |                      SHARED STATE                                 |   |
+|   |                                                                   |   |
+|   |  context:                                                         |   |
+|   |    task: "investigate incident INC-1234"                          |   |
+|   |    started: 2025-01-02T10:30:00Z                                  |   |
+|   |                                                                   |   |
+|   |  findings:                                                        |   |
+|   |    - agent: ops/deploy-validator                                  |   |
+|   |      finding: "deployment v1.2.3 at 10:15 UTC"                    |   |
+|   |    - agent: security/incident-response-lead                       |   |
+|   |      finding: "error rate spike correlates with deploy"           |   |
+|   |                                                                   |   |
+|   |  hypotheses:                                                      |   |
+|   |    - "database connection pool exhaustion" (confidence: 0.7)      |   |
+|   |    - "memory leak in new feature" (confidence: 0.3)               |   |
+|   |                                                                   |   |
+|   |  actions_taken:                                                   |   |
+|   |    - agent: ops/rollback-advisor                                  |   |
+|   |      action: "recommended rollback"                               |   |
+|   |      status: awaiting_approval                                    |   |
+|   +-------------------------------------------------------------------+   |
+|                                                                           |
+|        ^              ^              ^              ^                     |
+|        |              |              |              |                     |
+|   +----+----+   +----+----+   +----+----+   +----+----+                   |
+|   | Agent A |   | Agent B |   | Agent C |   | Agent D |                   |
+|   | (read/  |   | (read/  |   | (read/  |   | (read/  |                   |
+|   |  write) |   |  write) |   |  write) |   |  write) |                   |
+|   +---------+   +---------+   +---------+   +---------+                   |
+|                                                                           |
++---------------------------------------------------------------------------+
 ```
 
 ### Pattern 2: Coordinator (Orchestrator)
 
 One agent coordinates, others execute:
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          COORDINATOR                                     │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│                      ┌──────────────────┐                               │
-│                      │   ops/architect  │                               │
-│                      │   (coordinator)  │                               │
-│                      └────────┬─────────┘                               │
-│                               │                                          │
-│              ┌────────────────┼────────────────┐                        │
-│              │                │                │                        │
-│              ▼                ▼                ▼                        │
-│   ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐       │
-│   │ release-manager  │ │ deploy-validator │ │ rollback-advisor │       │
-│   │    (worker)      │ │    (worker)      │ │    (worker)      │       │
-│   └──────────────────┘ └──────────────────┘ └──────────────────┘       │
-│                                                                          │
-│   Coordinator:                                                           │
-│   1. Receives task                                                       │
-│   2. Decomposes into subtasks                                           │
-│   3. Assigns to workers                                                 │
-│   4. Aggregates results                                                 │
-│   5. Makes final decision                                               │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++---------------------------------------------------------------------------+
+|                          COORDINATOR                                      |
++---------------------------------------------------------------------------+
+|                                                                           |
+|                      +------------------+                                 |
+|                      |   ops/architect  |                                 |
+|                      |   (coordinator)  |                                 |
+|                      +--------+---------+                                 |
+|                               |                                           |
+|              +----------------+----------------+                          |
+|              |                |                |                          |
+|              v                v                v                          |
+|   +------------------+ +------------------+ +------------------+          |
+|   | release-manager  | | deploy-validator | | rollback-advisor |          |
+|   |    (worker)      | |    (worker)      | |    (worker)      |          |
+|   +------------------+ +------------------+ +------------------+          |
+|                                                                           |
+|   Coordinator:                                                            |
+|   1. Receives task                                                        |
+|   2. Decomposes into subtasks                                             |
+|   3. Assigns to workers                                                   |
+|   4. Aggregates results                                                   |
+|   5. Makes final decision                                                 |
+|                                                                           |
++---------------------------------------------------------------------------+
 ```
 
 ### Pattern 3: Event-Driven (Pub/Sub)
 
 Agents communicate via events:
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         EVENT BUS                                        │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────────────────────────────────────────────────────────────┐  │
-│   │                      MESSAGE BUS                                  │  │
-│   │                                                                   │  │
-│   │  Topics:                                                          │  │
-│   │  • agent.task.assigned                                           │  │
-│   │  • agent.finding.reported                                        │  │
-│   │  • agent.action.proposed                                         │  │
-│   │  • agent.action.completed                                        │  │
-│   │  • agent.error.occurred                                          │  │
-│   └──────────────────────────────────────────────────────────────────┘  │
-│        │              │              │              │                   │
-│        │ subscribe    │ subscribe    │ subscribe    │ publish           │
-│        ▼              ▼              ▼              ▼                   │
-│   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐               │
-│   │ Agent A │   │ Agent B │   │ Agent C │   │ Agent D │               │
-│   │         │   │         │   │         │   │         │               │
-│   │ listens │   │ listens │   │ listens │   │ publishes│               │
-│   │ to:     │   │ to:     │   │ to:     │   │ findings │               │
-│   │ tasks   │   │ findings│   │ actions │   │         │               │
-│   └─────────┘   └─────────┘   └─────────┘   └─────────┘               │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++---------------------------------------------------------------------------+
+|                         EVENT BUS                                         |
++---------------------------------------------------------------------------+
+|                                                                           |
+|   +-------------------------------------------------------------------+   |
+|   |                      MESSAGE BUS                                  |   |
+|   |                                                                   |   |
+|   |  Topics:                                                          |   |
+|   |  - agent.task.assigned                                            |   |
+|   |  - agent.finding.reported                                         |   |
+|   |  - agent.action.proposed                                          |   |
+|   |  - agent.action.completed                                         |   |
+|   |  - agent.error.occurred                                           |   |
+|   +-------------------------------------------------------------------+   |
+|        |              |              |              |                     |
+|        | subscribe    | subscribe    | subscribe    | publish             |
+|        v              v              v              v                     |
+|   +---------+   +---------+   +---------+   +---------+                   |
+|   | Agent A |   | Agent B |   | Agent C |   | Agent D |                   |
+|   |         |   |         |   |         |   |         |                   |
+|   | listens |   | listens |   | listens |   | publishes|                  |
+|   | to:     |   | to:     |   | to:     |   | findings |                  |
+|   | tasks   |   | findings|   | actions |   |         |                   |
+|   +---------+   +---------+   +---------+   +---------+                   |
+|                                                                           |
++---------------------------------------------------------------------------+
 ```
 
 ## Implementation
@@ -480,6 +481,7 @@ swarm:
 ```
 
 **Capabilities:**
+
 - `swarm.join_session` - Join a coordination session
 - `swarm.post_finding` - Share a finding
 - `swarm.get_findings` - Read others' findings

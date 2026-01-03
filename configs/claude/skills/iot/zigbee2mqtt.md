@@ -1,11 +1,12 @@
 # Zigbee2MQTT Skill
 
-Provides direct access to Zigbee devices via Zigbee2MQTT, enabling device management, monitoring, and debugging beyond what Home Assistant exposes.
+Provides direct access to Zigbee devices via Zigbee2MQTT, enabling device
+management, monitoring, and debugging beyond what Home Assistant exposes.
 
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | IoT / Zigbee |
 | **Protocol** | MQTT (via Zigbee2MQTT bridge) |
 | **Default Access** | subscribe (readonly) |
@@ -13,23 +14,23 @@ Provides direct access to Zigbee devices via Zigbee2MQTT, enabling device manage
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      ZIGBEE2MQTT ARCHITECTURE                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────┐     ┌──────────────┐     ┌──────────┐     ┌──────────┐  │
-│   │  Zigbee  │────▶│  Zigbee2MQTT │────▶│   MQTT   │────▶│  Agent   │  │
-│   │ Devices  │     │   Bridge     │     │  Broker  │     │          │  │
-│   └──────────┘     └──────────────┘     └──────────┘     └──────────┘  │
-│                                                                          │
-│   Topics:                                                                │
-│   • zigbee2mqtt/{device}           - Device state                       │
-│   • zigbee2mqtt/{device}/set       - Control device                     │
-│   • zigbee2mqtt/{device}/get       - Request state                      │
-│   • zigbee2mqtt/bridge/...         - Bridge management                  │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++-------------------------------------------------------------------------+
+|                      ZIGBEE2MQTT ARCHITECTURE                           |
++-------------------------------------------------------------------------+
+|                                                                         |
+|   +----------+     +--------------+     +----------+     +----------+   |
+|   |  Zigbee  |---->|  Zigbee2MQTT |---->|   MQTT   |---->|  Agent   |   |
+|   | Devices  |     |   Bridge     |     |  Broker  |     |          |   |
+|   +----------+     +--------------+     +----------+     +----------+   |
+|                                                                         |
+|   Topics:                                                               |
+|   - zigbee2mqtt/{device}           - Device state                       |
+|   - zigbee2mqtt/{device}/set       - Control device                     |
+|   - zigbee2mqtt/{device}/get       - Request state                      |
+|   - zigbee2mqtt/bridge/...         - Bridge management                  |
+|                                                                         |
++-------------------------------------------------------------------------+
 ```
 
 ## Configuration
@@ -74,7 +75,7 @@ mosquitto_pub -h emqx.local -t "zigbee2mqtt/kitchen_light/set" \
 ## Access Levels
 
 | Level | Topics | Use Case |
-|-------|--------|----------|
+| ----- | ------ | -------- |
 | `subscribe` | `zigbee2mqtt/+`, `zigbee2mqtt/bridge/state` | Monitoring |
 | `publish-get` | Above + `zigbee2mqtt/+/get` | Active polling |
 | `publish-set` | Above + `zigbee2mqtt/+/set` | Device control |
@@ -311,18 +312,19 @@ Agent task: "Report on Zigbee network health"
 
 ### Troubleshooting Device
 
-```markdown
 Agent task: "The kitchen motion sensor isn't triggering automations"
 
-## Investigation: kitchen_motion
+Investigation: `kitchen_motion`
 
-### Device Info
+Device Info:
+
 - Model: Philips Hue Motion (9290012607)
 - IEEE: 0x00178801088...
 - Type: EndDevice
 - Power: Battery (67%)
 
-### Current State
+Current State:
+
 ```json
 {
   "occupancy": false,
@@ -333,28 +335,29 @@ Agent task: "The kitchen motion sensor isn't triggering automations"
 }
 ```
 
-### Message History (last hour)
+Message History (last hour):
+
 | Time | Occupancy | LQI |
-|------|-----------|-----|
+| ---- | --------- | --- |
 | 10:15 | true | 89 |
 | 10:16 | false | 87 |
 | 10:45 | true | 91 |
 | 10:46 | false | 89 |
 
-### Analysis
+Analysis:
+
 - Device IS reporting occupancy changes
 - Good link quality (89)
 - Battery adequate (67%)
 
-### Root Cause
-The device is working correctly at the Zigbee level.
-The issue is likely in Home Assistant automation, not the device.
+Root Cause: The device is working correctly at the Zigbee level. The issue is
+likely in Home Assistant automation, not the device.
 
-Check:
-1. Home Assistant automation state
-2. Automation trigger conditions
-3. Recent HA config changes
-```
+Next steps:
+
+1. Check Home Assistant automation state
+2. Verify automation trigger conditions
+3. Review recent HA config changes
 
 ### Network Visualization
 
@@ -392,7 +395,7 @@ the mesh connection to outdoor devices.
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `system/iot-monitor` | subscribe | Device health monitoring |
 | `ops/home-automation` | publish-get | Debugging, testing |
 | `security/iot-security` | subscribe | Anomaly detection |
@@ -400,7 +403,7 @@ the mesh connection to outdoor devices.
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | Z2M bridge offline | Alert, check coordinator |
 | Specific device offline | Check battery, signal, last seen |
 | MQTT broker down | Query Home Assistant API |

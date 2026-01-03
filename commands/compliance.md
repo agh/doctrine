@@ -4,14 +4,14 @@ Assess code and infrastructure against regulatory frameworks.
 
 ## Usage
 
-```
+```text
 /compliance <framework> [scope]
 ```
 
 ## Frameworks
 
 | Framework | Alias | Description |
-|-----------|-------|-------------|
+| --------- | ----- | ----------- |
 | `gdpr` | `privacy` | EU General Data Protection Regulation |
 | `hipaa` | `healthcare` | US Health Insurance Portability and Accountability |
 | `pci-dss` | `pci` | Payment Card Industry Data Security Standard |
@@ -39,7 +39,7 @@ Assess code and infrastructure against regulatory frameworks.
 ## Options
 
 | Option | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `--audit-prep` | Generate audit evidence checklist |
 | `--gaps-only` | Show only compliance gaps |
 | `--evidence` | Include evidence locations |
@@ -61,8 +61,9 @@ Assess code and infrastructure against regulatory frameworks.
 [Why this framework applies]
 
 ## Compliance Matrix
+
 | Control | Requirement | Status | Evidence |
-|---------|-------------|--------|----------|
+| ------- | ----------- | ------ | -------- |
 | [ID] | [Description] | ✅/⚠️/❌ | [Link] |
 
 ## Gap Analysis

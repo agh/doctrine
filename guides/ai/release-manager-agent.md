@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [AI](README.md) > **Release Manager Agent**
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Table of Contents
 
@@ -26,16 +28,23 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ### Purpose
 
-The Release Manager Agent is an AI-native tool that provides intelligent release management, quality gate enforcement, and automated changelog generation. Unlike traditional release automation tools that operate on rigid rules, this agent uses LLM-powered analysis to understand context, assess readiness, and provide actionable recommendations.
+The Release Manager Agent is an AI-native tool that provides intelligent release
+management, quality gate enforcement, and automated changelog generation. Unlike
+traditional release automation tools that operate on rigid rules, this agent
+uses LLM-powered analysis to understand context, assess readiness, and provide
+actionable recommendations.
 
 ### Why
 
 Existing release management tools fall into two categories:
 
-1. **Fully Automated** (semantic-release, release-please): Execute mechanical workflows without understanding context or quality
-2. **Fully Manual** (changesets): Require human decisions at every step without intelligent guidance
+1. **Fully Automated** (semantic-release, release-please): Execute mechanical
+   workflows without understanding context or quality
+2. **Fully Manual** (changesets): Require human decisions at every step without
+   intelligent guidance
 
-Neither approach provides what engineering teams actually need: **intelligent decision support with automation capabilities**.
+Neither approach provides what engineering teams actually need: **intelligent
+decision support with automation capabilities**.
 
 The Release Manager Agent bridges this gap by:
 
@@ -68,7 +77,7 @@ This specification covers:
 
 ### System Design
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      RELEASE MANAGER AGENT                          │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -123,7 +132,8 @@ The agent MUST adhere to these principles:
 
 ## Signal Collectors
 
-Signal collectors gather information from various sources to inform release decisions. Each collector MUST implement the `SignalCollector` interface.
+Signal collectors gather information from various sources to inform release
+decisions. Each collector MUST implement the `SignalCollector` interface.
 
 ### Git Collector
 
@@ -255,7 +265,7 @@ The Security Collector aggregates vulnerability and security scan data.
 
 #### Severity Levels
 
-```
+```text
 CRITICAL  → Blocks release, requires immediate fix
 HIGH      → Blocks release by default, configurable
 MEDIUM    → Warning, does not block
@@ -458,13 +468,15 @@ The engine SHOULD systematically track what happens *after* each release to lear
 #### Why Outcome Tracking
 
 Traditional release tools only know if the release *happened*. They don't know:
+
 - Did it cause production incidents?
 - Was it rolled back?
 - Did error rates increase?
 - Did performance degrade?
 - Were hotfixes needed?
 
-Outcome tracking closes this loop, enabling the agent to learn which pre-release signals actually predict post-release problems.
+Outcome tracking closes this loop, enabling the agent to learn which pre-release
+signals actually predict post-release problems.
 
 #### Tracked Outcomes
 
@@ -637,6 +649,7 @@ The engine SHOULD use historical outcomes to predict release risk before release
 #### Why Prediction
 
 Instead of reactive checks, predict problems before they occur:
+
 - "PRs like this have 73% incident rate"
 - "Friday releases have 2.1x rollback rate"
 - "This author's changes to payment/ need extra review"
@@ -645,7 +658,7 @@ Prediction enables proactive intervention, not just reactive detection.
 
 #### Prediction Model
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                   PREDICTION ENGINE                          │
 ├─────────────────────────────────────────────────────────────┤
@@ -854,7 +867,7 @@ prediction:
 
 #### Learning Loop
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    LEARNING LOOP                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -889,7 +902,7 @@ Every release assessment MUST include a confidence score.
 
 #### Score Calculation
 
-```
+```text
 Confidence Score = weighted_average(
   test_score      × 0.30,
   security_score  × 0.25,
@@ -1523,12 +1536,14 @@ advanced:
 ### Secrets Management
 
 The agent MUST NOT:
+
 - Log API keys or tokens
 - Include secrets in changelogs
 - Expose secrets in error messages
 - Store secrets in plaintext
 
 The agent MUST:
+
 - Use environment variables for secrets
 - Support secret managers (Vault, AWS Secrets Manager)
 - Mask secrets in output

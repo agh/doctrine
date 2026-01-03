@@ -4,7 +4,8 @@
 
 ## The Problem
 
-Security agents historically duplicated reference data (OWASP, CWE, etc.) directly in their prompts. This causes:
+Security agents historically duplicated reference data (OWASP, CWE, etc.)
+directly in their prompts. This causes:
 
 1. **Data staleness** - Agent prompts have 2021/2024 versions while JSON has 2025
 2. **Maintenance burden** - Updates must be made in multiple places
@@ -80,7 +81,7 @@ When a finding maps to CWE-89 (SQL Injection):
 ## Reference Matrix by Agent Type
 
 | Agent | Primary References | Supporting References |
-|-------|-------------------|----------------------|
+| ----- | ------------------ | --------------------- |
 | Code Security Reviewer | `cwe/cwe-top-25-2025.json` | `owasp/top10-web-2025.json` |
 | Threat Modeler | `mitre/capec/capec-summary.json` | `mitre/attack/techniques-summary.json`, `mitre/d3fend/d3fend-summary.json` |
 | Compliance Assessor | `compliance/frameworks.json` | `compliance/control-mappings.json`, `compliance/technical-requirements.json` |

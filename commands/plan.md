@@ -4,13 +4,13 @@ Create an implementation plan before coding.
 
 ## Usage
 
-```
+```text
 /plan [feature or task description]
 ```
 
 ## Examples
 
-```
+```text
 /plan Add user authentication with OAuth
 /plan Migrate database from Postgres to SQLite
 /plan Refactor the API to use REST conventions

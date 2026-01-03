@@ -12,14 +12,14 @@ The **single entry point** for all security analysis. Routes automatically to sp
 
 ## Usage
 
-```
+```text
 /security [mode] [scope] [options]
 ```
 
 ## Modes
 
 | Mode | Speed | Model | Use Case |
-|------|-------|-------|----------|
+| ---- | ----- | ----- | -------- |
 | (default) | Medium | Sonnet | Staged changes, balanced analysis |
 | `quick` | Fast | Haiku | Rapid iteration, pre-commit check |
 | `full` | Slow | Opus | Pre-merge gate, comprehensive review |
@@ -87,7 +87,7 @@ Route to specialized analysis with domain keywords:
 When run without a domain, the Security Architect analyzes changes and routes:
 
 | Change Type | Auto-Routed To |
-|-------------|----------------|
+| ----------- | -------------- |
 | `.ts`, `.js`, `.py`, etc. | Code Security Reviewer |
 | `package.json`, `go.mod`, etc. | Supply Chain Auditor |
 | `.tf`, `k8s.yaml`, `Dockerfile` | Infrastructure Security |
@@ -97,7 +97,7 @@ When run without a domain, the Security Architect analyzes changes and routes:
 ## Options
 
 | Option | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `--format json` | Output as JSON |
 | `--severity <level>` | Filter minimum severity (critical/high/medium/low) |
 | `--fix` | Auto-generate fixes with Remediation Generator |
@@ -115,7 +115,7 @@ All findings include:
 
 ## Agent Routing
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         /security                                        │
 │                    Security Architect                                    │
@@ -147,7 +147,7 @@ All findings include:
 ## Cost Optimization
 
 | Mode | Typical Cost | Use When |
-|------|--------------|----------|
+| ---- | ------------ | -------- |
 | `quick` | ~$0.02 | Every commit, rapid iteration |
 | (default) | ~$0.20 | PR review, focused analysis |
 | `full` | ~$1.00 | Pre-merge, release review |
@@ -155,7 +155,7 @@ All findings include:
 ## Related Commands
 
 | Command | Shortcut | Description |
-|---------|----------|-------------|
+| ------- | -------- | ----------- |
 | `/threat-model` | `/security threat` | Design-time threat analysis |
 | `/compliance` | `/security compliance` | Regulatory compliance |
 | `/incident` | - | Incident response mode |

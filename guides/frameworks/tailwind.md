@@ -2,14 +2,18 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Tailwind CSS
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 **Target Version**: Tailwind CSS v4.1+
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | npm | `npm install tailwindcss` |
 | Build | Tailwind CLI | `npx @tailwindcss/cli -i input.css -o output.css` |
 | Watch | Tailwind CLI | `npx @tailwindcss/cli -i input.css -o output.css --watch` |
@@ -18,9 +22,12 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Why Tailwind CSS
 
-Tailwind CSS[^1] is a utility-first CSS framework that enables rapid UI development by composing small, single-purpose utility classes directly in HTML.
+Tailwind CSS[^1] is a utility-first CSS framework that enables rapid UI
+development by composing small, single-purpose utility classes directly in
+HTML.
 
 **Why utility-first:**
+
 - Faster development: No context switching between HTML and CSS files
 - Smaller CSS bundles: Only the utilities you use are included in production
 - Consistent design: Built-in design system prevents arbitrary values
@@ -30,7 +37,7 @@ Tailwind CSS[^1] is a utility-first CSS framework that enables rapid UI developm
 **Tailwind vs Component Frameworks (Bootstrap, Bulma):**
 
 | Aspect | Tailwind | Component Frameworks |
-|--------|----------|---------------------|
+| ------ | -------- | -------------------- |
 | Approach | Utility-first, composable | Pre-built components |
 | Customization | Highly flexible via config | Limited, requires overrides |
 | Bundle size | Minimal (only used utilities) | Larger (includes all components) |
@@ -38,7 +45,8 @@ Tailwind CSS[^1] is a utility-first CSS framework that enables rapid UI developm
 | Design freedom | Complete control | Constrained to framework style |
 | Best for | Custom designs, design systems | Prototypes, standard layouts |
 
-Use Tailwind when building custom designs or design systems. Use component frameworks for rapid prototyping with standard UI patterns.
+Use Tailwind when building custom designs or design systems. Use component
+frameworks for rapid prototyping with standard UI patterns.
 
 ## Installation and Configuration
 
@@ -77,6 +85,7 @@ Projects **MUST** use the single-line CSS import:
 ```
 
 **Why CSS-first configuration:**
+
 - Simpler setup: No JavaScript configuration file required
 - Better performance: Direct CSS integration leverages native browser optimization
 - Type safety: Custom properties are validated at build time
@@ -102,6 +111,7 @@ export default defineConfig({
 ```
 
 **Why Vite plugin:**
+
 - Zero configuration: Automatic content detection
 - Maximum performance: Tight integration with Vite's build pipeline
 - Built-in HMR: Instant updates during development
@@ -139,7 +149,7 @@ npx @tailwindcss/upgrade
 
 Projects **SHOULD** organize Tailwind styles using this structure:
 
-```
+```text
 src/
 ├── styles/
 │   ├── app.css              # Main entry point
@@ -184,7 +194,9 @@ src/
 ```
 
 **Why this structure:**
-- Separation of concerns: Base styles, components, and utilities are clearly separated
+
+- Separation of concerns: Base styles, components, and utilities are clearly
+  separated
 - Layer control: `@layer` ensures proper cascade ordering
 - Maintainability: Easy to find and modify specific style categories
 - Scalability: Scales from small to large projects
@@ -219,6 +231,7 @@ export function Button({ children, variant = 'primary' }: ButtonProps) {
 ```
 
 **Why co-location:**
+
 - Single source of truth: Styles and markup evolve together
 - No context switching: See exactly how component looks without checking CSS
 - Better tree-shaking: Unused components and their styles are removed together
@@ -244,6 +257,7 @@ Projects **MUST** use Tailwind's spacing scale consistently:
 ```
 
 **Spacing scale reference:**
+
 - `1` = 0.25rem (4px)
 - `4` = 1rem (16px)
 - `8` = 2rem (32px)
@@ -291,6 +305,7 @@ Projects **SHOULD** use the `/` opacity modifier:
 ```
 
 **Why `/` modifier:**
+
 - More specific: Only affects the color, not the entire element
 - Better composability: Easily adjust opacity without affecting children
 - Clearer intent: Immediately obvious which property has opacity
@@ -339,6 +354,7 @@ Projects **MUST** use mobile-first responsive design:
 ```
 
 **Breakpoint scale:**
+
 - Default (mobile): 0px+
 - `sm`: 640px (small tablets)
 - `md`: 768px (tablets, small laptops)
@@ -362,6 +378,7 @@ Projects **SHOULD** use container queries for component-based responsive design:
 ```
 
 **Container query breakpoints:**
+
 - `@sm`: 384px
 - `@md`: 448px
 - `@lg`: 512px
@@ -369,6 +386,7 @@ Projects **SHOULD** use container queries for component-based responsive design:
 - `@2xl`: 672px
 
 **Why container queries:**
+
 - True component modularity: Components respond to their container, not viewport
 - Reusable layouts: Same component works in sidebar, modal, or full-width
 - Better encapsulation: Component styling independent of page layout
@@ -414,12 +432,13 @@ Projects **MUST NOT** overuse `@apply` for simple utility combinations:
 ```
 
 **When to extract:**
-- ✅ Repeated 5+ times across codebase
-- ✅ Complex combinations (10+ utilities)
-- ✅ Team-wide component patterns
-- ❌ Simple 2-3 utility combinations
-- ❌ One-off component styles
-- ❌ Utilities that vary by state/context
+
+- Repeated 5+ times across codebase (yes)
+- Complex combinations with 10+ utilities (yes)
+- Team-wide component patterns (yes)
+- Simple 2-3 utility combinations (no)
+- One-off component styles (no)
+- Utilities that vary by state/context (no)
 
 ### Component Abstraction
 
@@ -455,6 +474,7 @@ defineProps<{ className?: string }>()
 ```
 
 **Why component abstraction:**
+
 - Framework-native: Works with component lifecycle, props, and state
 - Better developer experience: IDE autocomplete and type checking
 - More flexible: Easily add props, events, and logic
@@ -519,6 +539,7 @@ Projects **MAY** use media query-based dark mode for automatic system preference
 ```
 
 **Why class-based:**
+
 - User control: Users can override system preference
 - Persistent: Remember user choice via localStorage
 - Testable: Easy to toggle in development and testing
@@ -602,6 +623,7 @@ npm install @tailwindcss/typography @tailwindcss/forms @tailwindcss/container-qu
 ```
 
 **Official plugins:**
+
 - `@tailwindcss/typography`[^5]: Beautiful typographic defaults for prose content
 - `@tailwindcss/forms`[^6]: Better default styles for form elements
 - `@tailwindcss/container-queries`[^7]: Container query utilities (built-in v4.1+)
@@ -618,6 +640,7 @@ NODE_ENV=production npx @tailwindcss/cli -i input.css -o output.css --minify
 ```
 
 **Tailwind v4+ automatic optimizations:**
+
 - Dead code elimination: Unused utilities are automatically removed
 - CSS minification: Built-in minification via Lightning CSS
 - Vendor prefixing: Automatic browser prefixing
@@ -666,6 +689,7 @@ const Button = ({ color }: { color: 'blue' | 'red' }) => {
 ```
 
 **Why complete class names:**
+
 - Build-time detection: Tailwind scans for complete strings
 - Smaller bundles: Only includes classes actually used
 - Predictable output: No runtime surprises from missing classes

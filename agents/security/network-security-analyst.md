@@ -6,7 +6,8 @@ model: sonnet
 
 # Network Security Analyst Agent
 
-You are the **Network Security Analyst**, a specialist in network architecture security, zero trust implementation, micro-segmentation, and network-layer defenses.
+You are the **Network Security Analyst**, a specialist in network architecture security,
+zero trust implementation, micro-segmentation, and network-layer defenses.
 
 ## Model Selection
 
@@ -19,7 +20,7 @@ You are the **Network Security Analyst**, a specialist in network architecture s
 
 #### Zero Trust Principles
 
-```
+```text
 Never Trust, Always Verify
 
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -49,7 +50,7 @@ Never Trust, Always Verify
 #### Zero Trust Maturity Model
 
 | Pillar | Traditional | Advanced | Optimal |
-|--------|-------------|----------|---------|
+| ------ | ----------- | -------- | ------- |
 | **Identity** | Password auth | MFA, SSO | Continuous auth, risk-based |
 | **Devices** | Domain-joined | MDM managed | Real-time posture |
 | **Networks** | Perimeter firewall | Micro-segmentation | Software-defined perimeter |
@@ -111,7 +112,7 @@ Never Trust, Always Verify
 
 #### Segmentation Strategies
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    SEGMENTATION LEVELS                                  │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -216,7 +217,7 @@ resource "aws_security_group" "api_tier" {
 #### DNS Attack Vectors
 
 | Attack | Description | Mitigation |
-|--------|-------------|------------|
+| ------ | ----------- | ---------- |
 | **DNS Spoofing** | Fake DNS responses | DNSSEC validation |
 | **DNS Cache Poisoning** | Corrupt resolver cache | DNSSEC, secure resolvers |
 | **DNS Tunneling** | Exfiltrate data via DNS | DNS monitoring, block long queries |
@@ -266,7 +267,7 @@ resource "aws_security_group" "api_tier" {
 
 #### Detection Strategies
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    DETECTION APPROACHES                                 │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -288,7 +289,7 @@ resource "aws_security_group" "api_tier" {
 
 #### IDS/IPS Placement
 
-```
+```text
 Internet
     │
     ▼

@@ -41,6 +41,7 @@ SELECT file_hash  -- stored ssdeep hash
   FROM file_system
  WHERE file_name = '.vimrc';
 ```
+
 ```sql
 /* Updating the file record after writing to the file */
 UPDATE file_system
@@ -115,6 +116,7 @@ SELECT first_name AS fn
   JOIN students AS s2
     ON s2.mentor_id = s1.staff_num;
 ```
+
 ```sql
 SELECT SUM(s.monitor_tally) AS monitor_total
   FROM staff AS s;
@@ -434,12 +436,12 @@ CREATE TABLE staff (
   organisation. Later queries must then work across multiple tables with `UNION`
   rather than just simply querying one table.
 
-
 ## Appendix
 
 ### Reserved keyword reference
 
-A list of ANSI SQL (92, 99 and 2003), MySQL 3 to 5.x, PostgreSQL 8.1, MS SQL Server 2000, MS ODBC and Oracle 10.2 reserved keywords.
+A list of ANSI SQL (92, 99 and 2003), MySQL 3 to 5.x, PostgreSQL 8.1,
+MS SQL Server 2000, MS ODBC and Oracle 10.2 reserved keywords.
 
 ```sql
 A
@@ -1273,7 +1275,7 @@ ZONE
 
 These are some suggested column data types to use for maximum compatibility between database engines.
 
-#### Character types:
+#### Character types
 
 * CHAR
 * CLOB
@@ -1282,16 +1284,16 @@ These are some suggested column data types to use for maximum compatibility betw
 #### Numeric types
 
 * Exact numeric types
-    * BIGINT
-    * DECIMAL
-    * DECFLOAT
-    * INTEGER
-    * NUMERIC
-    * SMALLINT
+  * BIGINT
+  * DECIMAL
+  * DECFLOAT
+  * INTEGER
+  * NUMERIC
+  * SMALLINT
 * Approximate numeric types
-    * DOUBLE PRECISION
-    * FLOAT
-    * REAL
+  * DOUBLE PRECISION
+  * FLOAT
+  * REAL
 
 #### Datetime types
 
@@ -1299,7 +1301,7 @@ These are some suggested column data types to use for maximum compatibility betw
 * TIME
 * TIMESTAMP
 
-#### Binary types:
+#### Binary types
 
 * BINARY
 * BLOB
@@ -1310,7 +1312,6 @@ These are some suggested column data types to use for maximum compatibility betw
 * BOOLEAN
 * INTERVAL
 * XML
-
 
 [simon]: https://www.simonholywell.com/?utm_source=sqlstyle.guide&utm_medium=link&utm_campaign=md-document
     "SimonHolywell.com"

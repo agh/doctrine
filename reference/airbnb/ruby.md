@@ -2,41 +2,44 @@
 
 This is Airbnb's Ruby Style Guide.
 
-It was inspired by [GitHub's guide](https://web.archive.org/web/20160410033955/https://github.com/styleguide/ruby) and [RuboCop's guide][rubocop-guide].
+It was inspired by [GitHub's guide][github-ruby-archive] and [RuboCop's guide][rubocop-guide].
+
+[github-ruby-archive]: https://web.archive.org/web/20160410033955/https://github.com/styleguide/ruby
 
 Airbnb also maintains a [JavaScript Style Guide][airbnb-javascript].
 
 ## Table of Contents
-  1. [Whitespace](#whitespace)
-      1. [Indentation](#indentation)
-      1. [Inline](#inline)
-      1. [Newlines](#newlines)
-  1. [Line Length](#line-length)
-  1. [Commenting](#commenting)
-      1. [File/class-level comments](#fileclass-level-comments)
-      1. [Function comments](#function-comments)
-      1. [Block and inline comments](#block-and-inline-comments)
-      1. [Punctuation, spelling, and grammar](#punctuation-spelling-and-grammar)
-      1. [TODO comments](#todo-comments)
-      1. [Commented-out code](#commented-out-code)
-  1. [Methods](#methods)
-      1. [Method definitions](#method-definitions)
-      1. [Method calls](#method-calls)
-  1. [Conditional Expressions](#conditional-expressions)
-      1. [Conditional keywords](#conditional-keywords)
-      1. [Ternary operator](#ternary-operator)
-  1. [Syntax](#syntax)
-  1. [Naming](#naming)
-  1. [Classes](#classes)
-  1. [Exceptions](#exceptions)
-  1. [Collections](#collections)
-  1. [Strings](#strings)
-  1. [Regular Expressions](#regular-expressions)
-  1. [Percent Literals](#percent-literals)
-  1. [Rails](#rails)
-      1. [Scopes](#scopes)
-  1. [Be Consistent](#be-consistent)
-  1. [Translation](#translation)
+
+1. [Whitespace](#whitespace)
+   1. [Indentation](#indentation)
+   1. [Inline](#inline)
+   1. [Newlines](#newlines)
+1. [Line Length](#line-length)
+1. [Commenting](#commenting)
+   1. [File/class-level comments](#fileclass-level-comments)
+   1. [Function comments](#function-comments)
+   1. [Block and inline comments](#block-and-inline-comments)
+   1. [Punctuation, spelling, and grammar](#punctuation-spelling-and-grammar)
+   1. [TODO comments](#todo-comments)
+   1. [Commented-out code](#commented-out-code)
+1. [Methods](#methods)
+   1. [Method definitions](#method-definitions)
+   1. [Method calls](#method-calls)
+1. [Conditional Expressions](#conditional-expressions)
+   1. [Conditional keywords](#conditional-keywords)
+   1. [Ternary operator](#ternary-operator)
+1. [Syntax](#syntax)
+1. [Naming](#naming)
+1. [Classes](#classes)
+1. [Exceptions](#exceptions)
+1. [Collections](#collections)
+1. [Strings](#strings)
+1. [Regular Expressions](#regular-expressions)
+1. [Percent Literals](#percent-literals)
+1. [Rails](#rails)
+   1. [Scopes](#scopes)
+1. [Be Consistent](#be-consistent)
+1. [Translation](#translation)
 
 ## Whitespace
 
@@ -303,7 +306,7 @@ Airbnb also maintains a [JavaScript Style Guide][airbnb-javascript].
 > remember: while comments are very important, the best code is
 > self-documenting. Giving sensible names to types and variables is much better
 > than using obscure names that you must then explain through comments.
-
+>
 > When writing your comments, write for your audience: the next contributor who
 > will need to understand your code. Be generous — the next one may be you!
 
@@ -734,7 +737,9 @@ In either case:
       end
     ```
 
-* <a name="unless-with-comparison-operator"></a>Avoid `unless` with comparison operators if you can use `if` with an opposing comparison operator.<sup>[[link](#unless-with-comparison-operator)]</sup>
+* <a name="unless-with-comparison-operator"></a>Avoid `unless` with comparison
+    operators if you can use `if` with an opposing comparison operator.
+    <sup>[[link](#unless-with-comparison-operator)]</sup>
 
     ```ruby
       # bad
@@ -1246,6 +1251,7 @@ In either case:
         ...
       end
     ```
+
 * <a name="no-class-self"></a>Avoid `class << self` except when necessary,
     e.g. single accessors and aliased attributes.
     <sup>[[link](#no-class-self)]</sup>
@@ -1360,7 +1366,6 @@ In either case:
     raise MyExplicitError
     ```
 
-
 * <a name="exception-class-messages"></a>
     Prefer supplying an exception class and a message as two separate arguments
     to `raise`, instead of an exception instance.
@@ -1375,7 +1380,6 @@ In either case:
     raise SomeException, 'message'
     # Consistent with `raise SomeException, 'message', backtrace`.
     ```
-
 
 * <a name="rescue-as-modifier"></a>Avoid using rescue in its modifier form.
     <sup>[[link](#rescue-as-modifier)]</sup>
@@ -1708,6 +1712,7 @@ In either case:
     ```
 
 ### Scopes
+
 * <a name="scope-lambda"></a>When defining ActiveRecord model scopes, wrap the
     relation in a `lambda`.  A naked relation forces a database connection to be
     established at class load time (instance startup).
@@ -1728,7 +1733,7 @@ In either case:
 > operators, you should too. If their comments have little boxes of hash marks
 > around them, make your comments have little boxes of hash marks around them
 > too.
-
+>
 > The point of having style guidelines is to have a common vocabulary of coding
 > so people can concentrate on what you're saying rather than on how you're
 > saying it. We present global style rules here so people know the vocabulary,
@@ -1740,7 +1745,6 @@ In either case:
 
 [airbnb-javascript]: https://github.com/airbnb/javascript
 [rubocop-guide]: https://github.com/rubocop-hq/ruby-style-guide
-[github-ruby]: https://github.com/styleguide/ruby
 [google-c++]: https://google.github.io/styleguide/cppguide.html
 [google-c++-comments]: https://google.github.io/styleguide/cppguide.html#Comments
 [google-python-comments]: https://google.github.io/styleguide/pyguide.html#Comments
@@ -1750,6 +1754,7 @@ In either case:
 
 ## Translation
 
-  This style guide is also available in other languages:
+This style guide is also available in other languages:
 
-  - ![cn](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/24/China.png) **Chinese (Simplified)**: [1c7/ruby-airbnb](https://github.com/1c7/ruby-airbnb)
+* ![cn](https://raw.githubusercontent.com/gosquared/flags/master/flags/flags/shiny/24/China.png)
+  **Chinese (Simplified)**: [1c7/ruby-airbnb](https://github.com/1c7/ruby-airbnb)

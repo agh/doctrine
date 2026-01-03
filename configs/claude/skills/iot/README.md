@@ -1,48 +1,49 @@
 # IoT Skills
 
-Skills for interacting with IoT devices, home automation systems, and sensor networks.
+Skills for interacting with IoT devices, home automation systems, and sensor
+networks.
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          IOT SKILL STACK                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    HOME ASSISTANT                                    │   │
-│   │              (Unified Smart Home Platform)                           │   │
-│   │   • Entity management    • Automations    • Dashboards              │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                    │                    │                    │              │
-│                    ▼                    ▼                    ▼              │
-│   ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐       │
-│   │   ZIGBEE2MQTT    │   │     ESPHOME      │   │   OTHER ADD-ONS  │       │
-│   │  (Zigbee Bridge) │   │  (ESP Devices)   │   │  (Z-Wave, etc.)  │       │
-│   └──────────────────┘   └──────────────────┘   └──────────────────┘       │
-│           │                      │                      │                   │
-│           └──────────────────────┼──────────────────────┘                   │
-│                                  ▼                                          │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                        MQTT / EMQX                                   │   │
-│   │                    (Message Transport)                               │   │
-│   │   • Pub/Sub messaging    • Topic routing    • Device telemetry      │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                  │                                          │
-│                                  ▼                                          │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                      PHYSICAL DEVICES                                │   │
-│   │  Zigbee: Sensors, Lights, Switches    ESP: Custom sensors, relays  │   │
-│   │  WiFi: Smart plugs, cameras           Other: Z-Wave, Thread, etc.  │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+```text
++-----------------------------------------------------------------------------+
+|                          IOT SKILL STACK                                    |
++-----------------------------------------------------------------------------+
+|                                                                             |
+|   +---------------------------------------------------------------------+   |
+|   |                    HOME ASSISTANT                                   |   |
+|   |              (Unified Smart Home Platform)                          |   |
+|   |   - Entity management    - Automations    - Dashboards              |   |
+|   +---------------------------------------------------------------------+   |
+|                    |                    |                    |              |
+|                    v                    v                    v              |
+|   +------------------+   +------------------+   +------------------+        |
+|   |   ZIGBEE2MQTT    |   |     ESPHOME      |   |   OTHER ADD-ONS  |        |
+|   |  (Zigbee Bridge) |   |  (ESP Devices)   |   |  (Z-Wave, etc.)  |        |
+|   +------------------+   +------------------+   +------------------+        |
+|           |                      |                      |                   |
+|           +----------------------+----------------------+                   |
+|                                  v                                          |
+|   +---------------------------------------------------------------------+   |
+|   |                        MQTT / EMQX                                  |   |
+|   |                    (Message Transport)                              |   |
+|   |   - Pub/Sub messaging    - Topic routing    - Device telemetry     |   |
+|   +---------------------------------------------------------------------+   |
+|                                  |                                          |
+|                                  v                                          |
+|   +---------------------------------------------------------------------+   |
+|   |                      PHYSICAL DEVICES                               |   |
+|   |  Zigbee: Sensors, Lights, Switches    ESP: Custom sensors, relays  |   |
+|   |  WiFi: Smart plugs, cameras           Other: Z-Wave, Thread, etc.  |   |
+|   +---------------------------------------------------------------------+   |
+|                                                                             |
++-----------------------------------------------------------------------------+
 ```
 
 ## Available Skills
 
 | Skill | Protocol | Primary Use Case |
-|-------|----------|------------------|
+| ----- | -------- | ---------------- |
 | [MQTT / EMQX](mqtt.md) | MQTT 3.1.1/5.0 | Raw device messaging, telemetry |
 | [Home Assistant](homeassistant.md) | REST/WebSocket | Unified home control, automations |
 | [Zigbee2MQTT](zigbee2mqtt.md) | MQTT | Zigbee device management |
@@ -54,7 +55,7 @@ Skills for interacting with IoT devices, home automation systems, and sensor net
 ### Query Flow by Task
 
 | Task | Primary Skill | Fallback |
-|------|---------------|----------|
+| ---- | ------------- | -------- |
 | "What's the temperature?" | Home Assistant | MQTT direct |
 | "Why won't the light turn on?" | Zigbee2MQTT | Home Assistant logs |
 | "Is the sensor online?" | MQTT (LWT) | ESPHome logs |
@@ -64,26 +65,26 @@ Skills for interacting with IoT devices, home automation systems, and sensor net
 
 ### Protocol Selection
 
-```
+```text
 Home Assistant API
-├── Best for: Unified queries, automation state, entity history
-├── Access: REST API with long-lived token
-└── Example: "Show all lights that are on"
++-- Best for: Unified queries, automation state, entity history
++-- Access: REST API with long-lived token
++-- Example: "Show all lights that are on"
 
 MQTT Direct
-├── Best for: Real-time telemetry, raw device data
-├── Access: MQTT subscribe/publish
-└── Example: "Stream temperature sensor data"
++-- Best for: Real-time telemetry, raw device data
++-- Access: MQTT subscribe/publish
++-- Example: "Stream temperature sensor data"
 
 Zigbee2MQTT
-├── Best for: Zigbee-specific diagnostics, network topology
-├── Access: MQTT (zigbee2mqtt/# topics)
-└── Example: "Show Zigbee mesh network health"
++-- Best for: Zigbee-specific diagnostics, network topology
++-- Access: MQTT (zigbee2mqtt/# topics)
++-- Example: "Show Zigbee mesh network health"
 
 ESPHome
-├── Best for: ESP device debugging, firmware, OTA
-├── Access: Dashboard API, Native API, or MQTT
-└── Example: "Check ESP device memory usage"
++-- Best for: ESP device debugging, firmware, OTA
++-- Access: Dashboard API, Native API, or MQTT
++-- Example: "Check ESP device memory usage"
 ```
 
 ## Common Agent Tasks
@@ -132,7 +133,7 @@ Tasks:
 ### Access Levels by Skill
 
 | Skill | Default | Elevated | Admin |
-|-------|---------|----------|-------|
+| ----- | ------- | -------- | ----- |
 | MQTT | subscribe | publish-get | publish-set |
 | Home Assistant | readonly | automation | control |
 | Zigbee2MQTT | subscribe | publish-get | bridge-admin |
@@ -185,27 +186,27 @@ vlans:
 
 ## Graceful Degradation
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    DEGRADATION CHAIN                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   Home Assistant Down?                                          │
-│   └── Query MQTT directly for device states                    │
-│       └── Query ESPHome devices directly via Native API        │
-│           └── Check Zigbee2MQTT for Zigbee devices             │
-│                                                                  │
-│   MQTT Broker Down?                                             │
-│   └── Query Home Assistant API (if available)                  │
-│       └── Query ESPHome REST API directly                      │
-│           └── SSH to HA and check local state                  │
-│                                                                  │
-│   Specific Device Offline?                                      │
-│   └── Check last known state in Home Assistant                 │
-│       └── Check MQTT retained messages                         │
-│           └── Report as unavailable with last seen time        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+```text
++-------------------------------------------------------------+
+|                    DEGRADATION CHAIN                        |
++-------------------------------------------------------------+
+|                                                             |
+|   Home Assistant Down?                                      |
+|   +-- Query MQTT directly for device states                 |
+|       +-- Query ESPHome devices directly via Native API     |
+|           +-- Check Zigbee2MQTT for Zigbee devices          |
+|                                                             |
+|   MQTT Broker Down?                                         |
+|   +-- Query Home Assistant API (if available)               |
+|       +-- Query ESPHome REST API directly                   |
+|           +-- SSH to HA and check local state               |
+|                                                             |
+|   Specific Device Offline?                                  |
+|   +-- Check last known state in Home Assistant              |
+|       +-- Check MQTT retained messages                      |
+|           +-- Report as unavailable with last seen time     |
+|                                                             |
++-------------------------------------------------------------+
 ```
 
 ## Example: Full Stack Debug
@@ -245,8 +246,8 @@ Agent Investigation:
 ## Agents Using IoT Skills
 
 | Agent | Skills | Purpose |
-|-------|--------|---------|
-| `system/iot-monitor` | mqtt, homeassistant, zigbee2mqtt, esphome | Device health, availability |
+| ----- | ------ | ------- |
+| `system/iot-monitor` | mqtt, homeassistant, zigbee2mqtt, esphome | Device health |
 | `ops/home-automation` | homeassistant, zigbee2mqtt, esphome | Automation debugging |
 | `security/iot-security` | mqtt, zigbee2mqtt | Anomaly detection, rogue devices |
 | `code/esphome-dev` | esphome | Help write ESPHome YAML |

@@ -4,14 +4,14 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
 
 ## Usage
 
-```
+```text
 /code [target] [subcommand] [options]
 ```
 
 ## Subcommands
 
 | Subcommand | Agent | Model | Description |
-|------------|-------|-------|-------------|
+| ---------- | ----- | ----- | ----------- |
 | (none) | Code Architect | Opus | Full code assessment |
 | `quick` | Code Reviewer | Haiku | Fast scan, critical only |
 | `review` | Code Reviewer | Sonnet | Standard code review |
@@ -25,7 +25,7 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
 
 ## Examples
 
-```
+```text
 /code src/auth/                       # Full assessment of auth module
 /code quick                           # Quick review of staged changes
 /code review src/auth.ts              # Standard review of file
@@ -53,64 +53,60 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
 ## Review Modes
 
 | Mode | Command | Focus | Cost |
-|------|---------|-------|------|
+| ---- | ------- | ----- | ---- |
 | **Quick** | `/code quick` | Critical issues only | ~$0.02 |
 | **Standard** | `/code review` | Security, performance, quality | ~$0.20 |
 | **Full** | `/code` | All specialists, comprehensive | ~$0.80 |
 
 ## Implementation
 
-```markdown
-Analyze the code at: $ARGUMENTS
+    Analyze the code at: $ARGUMENTS
 
-## Mode Selection
+    ## Mode Selection
 
-Based on subcommand:
-- (none) → Full assessment: Use Code Architect to coordinate all relevant specialists
-- `quick` → Quick mode: Critical issues only (Haiku)
-- `review` → Standard mode: Security, performance, quality (Sonnet)
-- `perf` → Use Performance Reviewer
-- `a11y` → Use Accessibility Reviewer
-- `api` → Use REST API Reviewer (or GraphQL if --graphql)
-- `tests` → Use Test Writer
-- `simplify` → Use Code Simplifier
-- `docs` → Use Doc Writer
+    Based on subcommand:
+    - (none) → Full assessment: Use Code Architect to coordinate all relevant
+      specialists
+    - `quick` → Quick mode: Critical issues only (Haiku)
+    - `review` → Standard mode: Security, performance, quality (Sonnet)
+    - `perf` → Use Performance Reviewer
+    - `a11y` → Use Accessibility Reviewer
+    - `api` → Use REST API Reviewer (or GraphQL if --graphql)
+    - `tests` → Use Test Writer
+    - `simplify` → Use Code Simplifier
+    - `docs` → Use Doc Writer
 
-## Output Format
+    ## Output Format
 
-Start with metrics:
+    Start with metrics:
 
-| Metric | Value |
-|--------|-------|
-| **Review Effort** | [1-5] |
-| **Risk Level** | Low / Medium / High / Critical |
-| **Change Size** | XS / S / M / L / XL |
+    | Metric | Value |
+    |--------|-------|
+    | **Review Effort** | [1-5] |
+    | **Risk Level** | Low / Medium / High / Critical |
+    | **Change Size** | XS / S / M / L / XL |
 
-Then findings by severity:
+    Then findings by severity:
 
-### 🔴 Critical (must fix before merge)
+    ### Critical (must fix before merge)
 
-- [ ] **[Category]**: [description] (`file:line`) — **[confidence]%**
+    - [ ] **[Category]**: [description] (`file:line`) — **[confidence]%**
 
-  **Before**:
-  ```[lang]
-  [problematic code]
-  ```
+      **Before**: [problematic code]
 
-  **After**:
-  ```[lang]
-  [fixed code]
-  ```
+      **After**: [fixed code]
 
-  **Why**: [explanation]
+      **Why**: [explanation]
 
-### 🟡 Warning (should fix)
-### 🔵 Suggestion (consider)
-### ✅ Positive Observations
+    ### Warning (should fix)
 
-### Summary
-[1-2 sentence overall assessment]
-```
+    ### Suggestion (consider)
+
+    ### Positive Observations
+
+    ### Summary
+
+    [1-2 sentence overall assessment]
 
 ## See Also
 

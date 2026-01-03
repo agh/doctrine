@@ -4,12 +4,12 @@
 
 Guides for development processes and infrastructure.
 
-| Topic | Guide | Description |
-|-------|-------|-------------|
-| Testing | [testing.md](testing.md) | Testing pyramid, test types, coverage |
-| Versioning | [versioning.md](versioning.md) | SemVer, changelogs, releases |
-| CI/CD | [ci.md](ci.md) | GitHub Actions workflows |
-| GitHub | [github-templates.md](github-templates.md) | Issue templates, CODEOWNERS |
+| Topic      | Guide                                      | Description                           |
+| ---------- | ------------------------------------------ | ------------------------------------- |
+| Testing    | [testing.md](testing.md)                   | Testing pyramid, test types, coverage |
+| Versioning | [versioning.md](versioning.md)             | SemVer, changelogs, releases          |
+| CI/CD      | [ci.md](ci.md)                             | GitHub Actions workflows              |
+| GitHub     | [github-templates.md](github-templates.md) | Issue templates, CODEOWNERS           |
 
 ## See Also
 

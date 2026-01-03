@@ -16,12 +16,12 @@ decoration—it is communication, confidence-building, and craft.
 
 ## Guides in This Section
 
-| Guide | Description |
-|-------|-------------|
-| [Design Systems](./design-systems.md) | Tokens, theming, and systematic consistency |
-| [Components](./components.md) | Reusable component patterns and architecture |
-| [Accessibility](./accessibility.md) | WCAG compliance and inclusive design |
-| [Motion](./motion.md) | Animation, transitions, and interaction feedback |
+| Guide                                 | Description                                      |
+| ------------------------------------- | ------------------------------------------------ |
+| [Design Systems](./design-systems.md) | Tokens, theming, and systematic consistency      |
+| [Components](./components.md)         | Reusable component patterns and architecture     |
+| [Accessibility](./accessibility.md)   | WCAG compliance and inclusive design             |
+| [Motion](./motion.md)                 | Animation, transitions, and interaction feedback |
 
 ---
 
@@ -37,7 +37,7 @@ comprehension, guide action, or provide feedback, remove it.
 **Why**: Visual noise increases cognitive load. Users should understand
 interfaces instantly, not decode them.
 
-```
+```text
 ✓ DO: Use color to indicate status (green = healthy)
 ✗ DON'T: Use color for aesthetic variation without meaning
 ```
@@ -50,7 +50,7 @@ introduced when existing patterns fail to serve the use case.
 **Why**: Consistency builds trust. Users learn patterns once and apply them
 everywhere. Novelty forces relearning.
 
-```
+```text
 ✓ DO: Use the same button style across all pages
 ✗ DON'T: Create unique button designs per feature
 ```
@@ -64,7 +64,7 @@ meet WCAG 2.1 AA standards at minimum.
 users. High contrast helps users in bright environments. Captions help users
 in noisy environments.
 
-```
+```text
 ✓ DO: Design keyboard navigation from the start
 ✗ DON'T: Add accessibility "later" or "if time permits"
 ```
@@ -77,7 +77,7 @@ with elaborate visuals. Performance budgets MUST be established and enforced.
 **Why**: Speed is a feature. A beautiful interface that takes 5 seconds to
 load feels broken. A simple interface that loads instantly feels professional.
 
-```
+```text
 ✓ DO: Set a 100KB JavaScript budget and optimize to meet it
 ✗ DON'T: Add animations that block interactivity
 ```
@@ -90,7 +90,7 @@ Every user action MUST produce visible feedback. Users MUST never wonder
 **Why**: Feedback builds confidence. Silence creates anxiety. Even a subtle
 animation confirming a click reduces user stress.
 
-```
+```text
 ✓ DO: Show loading states, success confirmations, error messages
 ✗ DON'T: Perform actions silently without acknowledgment
 ```
@@ -103,7 +103,7 @@ on demand. Users SHOULD NOT face all options simultaneously.
 **Why**: Simplicity at first glance welcomes new users. Depth on demand
 serves power users. Both can coexist.
 
-```
+```text
 ✓ DO: Show primary actions prominently, secondary in menus
 ✗ DON'T: Display every possible action in the main interface
 ```
@@ -146,17 +146,17 @@ Every interface MUST pass this checklist before shipping:
 
 ### Essential Tools
 
-| Purpose | Tool | Notes |
-|---------|------|-------|
-| Design tokens | CSS Custom Properties | See [Design Systems](./design-systems.md) |
-| Icons | Lucide, Heroicons, Phosphor | Consistent stroke width required |
-| Typography | Inter, system fonts | See [Design Systems](./design-systems.md) |
-| Color | OKLCH color space | Perceptually uniform |
-| Accessibility testing | axe, WAVE, Lighthouse | Automated + manual testing required |
+| Purpose               | Tool                        | Notes                                     |
+| --------------------- | --------------------------- | ----------------------------------------- |
+| Design tokens         | CSS Custom Properties       | See [Design Systems](./design-systems.md) |
+| Icons                 | Lucide, Heroicons, Phosphor | Consistent stroke width required          |
+| Typography            | Inter, system fonts         | See [Design Systems](./design-systems.md) |
+| Color                 | OKLCH color space           | Perceptually uniform                      |
+| Accessibility testing | axe, WAVE, Lighthouse       | Automated + manual testing required       |
 
 ### File Structure
 
-```
+```text
 static/css/
 ├── tokens/
 │   ├── colors.css         # Color primitives and semantic tokens
@@ -178,13 +178,13 @@ static/css/
 
 ### Quantitative Metrics
 
-| Metric | Target | Tool |
-|--------|--------|------|
-| Lighthouse Accessibility | >95 | Chrome DevTools |
-| Lighthouse Performance | >90 | Chrome DevTools |
-| First Contentful Paint | <1.5s | WebPageTest |
-| Cumulative Layout Shift | <0.1 | Chrome DevTools |
-| WCAG violations | 0 | axe-core |
+| Metric                   | Target | Tool            |
+| ------------------------ | ------ | --------------- |
+| Lighthouse Accessibility | >95    | Chrome DevTools |
+| Lighthouse Performance   | >90    | Chrome DevTools |
+| First Contentful Paint   | <1.5s  | WebPageTest     |
+| Cumulative Layout Shift  | <0.1   | Chrome DevTools |
+| WCAG violations          | 0      | axe-core        |
 
 ### Qualitative Signals
 

@@ -4,14 +4,14 @@ Comprehensive infrastructure assessment using the Doctrine System Agent Family.
 
 ## Usage
 
-```
+```text
 /system [target] [subcommand] [options]
 ```
 
 ## Subcommands
 
 | Subcommand | Agent | Model | Description |
-|------------|-------|-------|-------------|
+| ---------- | ----- | ----- | ----------- |
 | (none) | System Architect | Opus | Full infrastructure assessment |
 | `docker` | Docker Reviewer | Sonnet | Container/Compose review |
 | `ansible` | Ansible Reviewer | Sonnet | Playbook/role review |
@@ -20,7 +20,7 @@ Comprehensive infrastructure assessment using the Doctrine System Agent Family.
 
 ## Examples
 
-```
+```text
 /system                               # Full assessment of infrastructure
 /system stacks/                       # Full assessment of stacks directory
 /system docker stacks/platform/       # Docker review of platform stack
@@ -44,7 +44,7 @@ Comprehensive infrastructure assessment using the Doctrine System Agent Family.
 ## Review Modes
 
 | Mode | Command | Focus | Cost |
-|------|---------|-------|------|
+| ---- | ------- | ----- | ---- |
 | **Docker** | `/system docker` | Container security | ~$0.25 |
 | **Ansible** | `/system ansible` | Playbook best practices | ~$0.25 |
 | **Linux** | `/system linux` | OS hardening | ~$0.25 |
@@ -52,56 +52,53 @@ Comprehensive infrastructure assessment using the Doctrine System Agent Family.
 
 ## Implementation
 
-```markdown
-Analyze the infrastructure at: $ARGUMENTS
+    Analyze the infrastructure at: $ARGUMENTS
 
-## Mode Selection
+    ## Mode Selection
 
-Based on subcommand:
-- (none) → Full assessment: Use System Architect to coordinate all relevant specialists
-- `docker` → Use Docker Reviewer
-- `ansible` → Use Ansible Reviewer
-- `linux` → Use Linux Reviewer
-- `verify` → Use Verify Build
+    Based on subcommand:
+    - (none) → Full assessment: Use System Architect to coordinate all
+      relevant specialists
+    - `docker` → Use Docker Reviewer
+    - `ansible` → Use Ansible Reviewer
+    - `linux` → Use Linux Reviewer
+    - `verify` → Use Verify Build
 
-## Output Format
+    ## Output Format
 
-Start with metrics:
+    Start with metrics:
 
-| Metric | Value |
-|--------|-------|
-| **Review Effort** | [1-5] |
-| **Risk Level** | Low / Medium / High / Critical |
-| **Environment** | Development / Staging / Production |
+    | Metric | Value |
+    | ------ | ----- |
+    | **Review Effort** | [1-5] |
+    | **Risk Level** | Low / Medium / High / Critical |
+    | **Environment** | Development / Staging / Production |
 
-Then findings by severity:
+    Then findings by severity:
 
-### 🔴 Critical (must fix before deployment)
+    ### Critical (must fix before deployment)
 
-- [ ] **[Category]**: [description] (`file:line`)
+    - [ ] **[Category]**: [description] (`file:line`)
 
-  **Current**:
-  ```[lang]
-  [problematic config]
-  ```
+      **Current**: [problematic config]
 
-  **Recommended**:
-  ```[lang]
-  [fixed config]
-  ```
+      **Recommended**: [fixed config]
 
-  **Why**: [explanation with Doctrine reference]
+      **Why**: [explanation with Doctrine reference]
 
-### 🟡 Warning (should fix)
-### 🔵 Suggestion (consider)
-### ✅ Positive Observations
+    ### Warning (should fix)
 
-### Cross-System Observations (full assessment only)
-[Patterns across Docker, Ansible, Linux]
+    ### Suggestion (consider)
 
-### Summary
-[1-2 sentence overall assessment]
-```
+    ### Positive Observations
+
+    ### Cross-System Observations (full assessment only)
+
+    [Patterns across Docker, Ansible, Linux]
+
+    ### Summary
+
+    [1-2 sentence overall assessment]
 
 ## See Also
 

@@ -4,7 +4,7 @@ Generate documentation in multiple output formats.
 
 ## Usage
 
-```
+```text
 /doc-publish [source]
 /doc-publish docs/               # Publish all docs
 /doc-publish --llms              # Generate llms.txt only
@@ -24,20 +24,26 @@ Generate documentation in multiple output formats.
 ## Output Formats
 
 ### llms.txt
+
 Optimized for AI assistant consumption:
+
 - Dense, information-rich
 - Minimal formatting overhead
 - Executable examples
 - Token-efficient
 
 ### MCP (Model Context Protocol)
+
 Structured JSON for AI tool integration:
+
 - Function signatures
 - Parameter schemas
 - Tool descriptions
 
 ### Mermaid Diagrams
+
 Visual documentation as code:
+
 - Architecture flowcharts
 - Sequence diagrams
 - State machines
@@ -60,52 +66,47 @@ Validate each output format and include all in response.
 
 ## Example
 
-```
-> /doc-publish docs/auth.md --all
+    > /doc-publish docs/auth.md --all
 
-## Published: docs/auth.md
+    ## Published: docs/auth.md
 
-### llms.txt
-```txt
-# Authentication API
-> JWT-based authentication with refresh tokens
+    ### llms.txt
 
-## Functions
-login(email: string, password: string): Promise<TokenPair>
-  Authenticate user, returns access + refresh tokens.
-  Throws: AuthError (invalid credentials), RateLimitError (too many attempts)
+        # Authentication API
+        > JWT-based authentication with refresh tokens
 
-refresh(token: string): Promise<TokenPair>
-  Exchange refresh token for new token pair.
+        ## Functions
+        login(email: string, password: string): Promise<TokenPair>
+          Authenticate user, returns access + refresh tokens.
+          Throws: AuthError (invalid credentials), RateLimitError (too many attempts)
 
-logout(token: string): Promise<void>
-  Invalidate refresh token.
-```
+        refresh(token: string): Promise<TokenPair>
+          Exchange refresh token for new token pair.
 
-### MCP Tools
-```json
-{
-  "tools": [
-    {
-      "name": "login",
-      "description": "Authenticate user with credentials",
-      "parameters": {
-        "email": {"type": "string"},
-        "password": {"type": "string"}
-      }
-    }
-  ]
-}
-```
+        logout(token: string): Promise<void>
+          Invalidate refresh token.
 
-### Architecture Diagram
-```mermaid
-sequenceDiagram
-    Client->>+API: POST /login
-    API->>+Auth: validate(credentials)
-    Auth->>+DB: findUser(email)
-    DB-->>-Auth: user
-    Auth-->>-API: tokens
-    API-->>-Client: 200 + TokenPair
-```
-```
+    ### MCP Tools
+
+        {
+          "tools": [
+            {
+              "name": "login",
+              "description": "Authenticate user with credentials",
+              "parameters": {
+                "email": {"type": "string"},
+                "password": {"type": "string"}
+              }
+            }
+          ]
+        }
+
+    ### Architecture Diagram
+
+        sequenceDiagram
+            Client->>+API: POST /login
+            API->>+Auth: validate(credentials)
+            Auth->>+DB: findUser(email)
+            DB-->>-Auth: user
+            Auth-->>-API: tokens
+            API-->>-Client: 200 + TokenPair

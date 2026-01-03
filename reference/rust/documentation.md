@@ -1,15 +1,15 @@
 # Documentation
 
-
 <a id="c-crate-doc"></a>
+
 ## Crate level docs are thorough and include examples (C-CRATE-DOC)
 
 See [RFC 1687].
 
 [RFC 1687]: https://github.com/rust-lang/rfcs/pull/1687
 
-
 <a id="c-example"></a>
+
 ## All items have a rustdoc example (C-EXAMPLE)
 
 Every public module, trait, struct, enum, function, method, macro, and type
@@ -36,8 +36,8 @@ fn main() {
 }
 ```
 
-
 <a id="c-question-mark"></a>
+
 ## Examples use `?`, not `try!`, not `unwrap` (C-QUESTION-MARK)
 
 Like it or not, example code is often copied verbatim by users. Unwrapping an
@@ -47,7 +47,7 @@ A common way of structuring fallible example code is the following. The lines
 beginning with `#` are compiled by `cargo test` when building the example but
 will not appear in user-visible rustdoc.
 
-```
+```text
 /// ```rust
 /// # use std::error::Error;
 /// #
@@ -61,8 +61,8 @@ will not appear in user-visible rustdoc.
 /// ```
 ```
 
-
 <a id="c-failure"></a>
+
 ## Function docs include error, panic, and safety considerations (C-FAILURE)
 
 Error conditions should be documented in an "Errors" section. This applies to
@@ -74,7 +74,7 @@ For example in the standard library, Some implementations of the
 
 [`std::io::Read::read`]: https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read
 
-```
+```text
 /// Pull some bytes from this source into the specified buffer, returning
 /// how many bytes were read.
 ///
@@ -95,7 +95,7 @@ In the standard library the [`Vec::insert`] method may panic.
 
 [`Vec::insert`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.insert
 
-```
+```text
 /// Inserts an element at position `index` within the vector, shifting all
 /// elements after it to the right.
 ///
@@ -126,7 +126,7 @@ The unsafe [`std::ptr::read`] requires the following of the caller.
 
 [`std::ptr::read`]: https://doc.rust-lang.org/std/ptr/fn.read.html
 
-```
+```text
 /// Reads the value from `src` without moving it. This leaves the
 /// memory in `src` unchanged.
 ///
@@ -142,8 +142,8 @@ The unsafe [`std::ptr::read`] requires the following of the caller.
 /// The pointer must be aligned; use `read_unaligned` if that is not the case.
 ```
 
-
 <a id="c-link"></a>
+
 ## Prose contains hyperlinks to relevant things (C-LINK)
 
 Regular links can be added inline with the usual markdown syntax of
@@ -176,8 +176,8 @@ all the things"].
 
 ["Link all the things"]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#link-all-the-things
 
-
 <a id="c-metadata"></a>
+
 ## Cargo.toml includes all common metadata (C-METADATA)
 
 The `[package]` section of `Cargo.toml` should include the following
@@ -205,9 +205,10 @@ shared library that is not available in the build environment of *docs.rs*.
 The `homepage` metadata should only be set if there is a unique website for the
 crate other than the source repository or API documentation. Do not make
 `homepage` redundant with either the `documentation` or `repository` values. For
-example, serde sets `homepage` to *https://serde.rs*, a dedicated website.
+example, serde sets `homepage` to `https://serde.rs`, a dedicated website.
 
 <a id="c-relnotes"></a>
+
 ## Release notes document all significant changes (C-RELNOTES)
 
 Users of the crate can read the release notes to find a summary of what
@@ -240,8 +241,8 @@ if any annotated tags exist.
 - [Serde 0.9.0 release notes](https://github.com/serde-rs/serde/releases/tag/v0.9.0)
 - [Diesel change log](https://github.com/diesel-rs/diesel/blob/master/CHANGELOG.md)
 
-
 <a id="c-hidden"></a>
+
 ## Rustdoc does not show unhelpful implementation details (C-HIDDEN)
 
 Rustdoc is supposed to include everything users need to use the crate fully and

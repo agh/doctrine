@@ -2,14 +2,17 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > Shell
 
-The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**", "**SHALL NOT**", "**SHOULD**", "**SHOULD NOT**", "**RECOMMENDED**", "**MAY**", and "**OPTIONAL**" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**",
+"**SHALL NOT**", "**SHOULD**", "**SHOULD NOT**", "**RECOMMENDED**", "**MAY**",
+and "**OPTIONAL**" in this document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Extends [Google Shell Style Guide](google/shell.md)[^1].
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | shellcheck[^2] | `shellcheck *.sh` |
 | Format | shfmt[^3] | `shfmt -w *.sh` |
 | Test | bats[^4] | `bats tests/` |
@@ -24,12 +27,14 @@ Extends [Google Shell Style Guide](google/shell.md)[^1].
 ## When to Use Shell
 
 Shell **MAY** be appropriate for:
+
 - Small utilities under 100 lines
 - Simple wrapper scripts
 - Glue between other programs
 - Build/CI scripts
 
-Scripts **MUST NOT** exceed 100 lines. If your script grows beyond 100 lines or needs complex logic, you **MUST** rewrite it in Python.
+Scripts **MUST NOT** exceed 100 lines. If your script grows beyond 100 lines
+or needs complex logic, you **MUST** rewrite it in Python.
 
 ## Linting: shellcheck
 
@@ -37,7 +42,9 @@ You **MUST** use shellcheck[^2] for linting shell scripts.
 
 ### Why shellcheck
 
-shellcheck is the world-class shell linter, catching bugs and suggesting best practices. It identifies common pitfalls like unquoted variables, incorrect conditionals, and portability issues before they cause runtime failures.
+shellcheck is the world-class shell linter, catching bugs and suggesting best
+practices. It identifies common pitfalls like unquoted variables, incorrect
+conditionals, and portability issues before they cause runtime failures.
 
 ```bash
 # Install
@@ -72,7 +79,9 @@ You **MUST** use shfmt[^3] for formatting shell scripts.
 
 ### Why shfmt
 
-shfmt provides consistent, automated formatting for shell scripts, eliminating style debates and ensuring readability across your codebase. It handles complex cases like heredocs and pipeline formatting correctly.
+shfmt provides consistent, automated formatting for shell scripts, eliminating
+style debates and ensuring readability across your codebase. It handles
+complex cases like heredocs and pipeline formatting correctly.
 
 ```bash
 # Install
@@ -86,6 +95,7 @@ shfmt -i 2 -ci -bn -w script.sh
 ```
 
 You **MUST** use these options:
+
 - `-i 2`: 2-space indent
 - `-ci`: Indent switch cases
 - `-bn`: Binary ops on newline
@@ -288,7 +298,9 @@ trap cleanup EXIT ERR
 
 ### Why
 
-The `-E` flag in `set -Eeuo pipefail` ensures ERR traps propagate into functions. Without cleanup traps, scripts may leak temporary files, leave processes running, or fail to release locks when errors occur.
+The `-E` flag in `set -Eeuo pipefail` ensures ERR traps propagate into
+functions. Without cleanup traps, scripts may leak temporary files, leave
+processes running, or fail to release locks when errors occur.
 
 ### Safe Temporary Files
 
@@ -326,7 +338,9 @@ You **SHOULD** use bats[^4] (Bash Automated Testing System) for testing shell sc
 
 ### Why bats
 
-bats provides a simple, TAP-compliant testing framework purpose-built for shell scripts. It offers clean syntax, setup/teardown hooks, and integrates with CI systems out of the box.
+bats provides a simple, TAP-compliant testing framework purpose-built for
+shell scripts. It offers clean syntax, setup/teardown hooks, and integrates
+with CI systems out of the box.
 
 ```bash
 # Install
@@ -342,7 +356,7 @@ bats --version
 
 ### Project Structure
 
-```
+```text
 project/
 ├── bin/
 │   └── script.sh

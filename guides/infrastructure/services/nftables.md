@@ -9,7 +9,7 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | List rules | nft | `nft list ruleset` |
 | Apply config | nft | `nft -f /etc/nftables.conf` |
 | Flush rules | nft | `nft flush ruleset` |

@@ -5,7 +5,7 @@ Provides access to ESPHome devices for monitoring, debugging, configuration mana
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | IoT / ESP32/ESP8266 |
 | **Protocol** | Native API, MQTT, REST |
 | **Default Access** | readonly |
@@ -13,33 +13,33 @@ Provides access to ESPHome devices for monitoring, debugging, configuration mana
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        ESPHOME ARCHITECTURE                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────────────────────────────────────────────────────────────┐  │
-│   │                     ESPHome Dashboard                             │  │
-│   │                    (YAML configs, OTA)                            │  │
-│   └──────────────────────────────────────────────────────────────────┘  │
-│                              │                                           │
-│              ┌───────────────┼───────────────┐                          │
-│              ▼               ▼               ▼                          │
-│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
-│   │   ESP32      │  │   ESP8266    │  │   ESP32-C3   │                 │
-│   │   Device     │  │   Device     │  │   Device     │                 │
-│   └──────────────┘  └──────────────┘  └──────────────┘                 │
-│          │                 │                 │                          │
-│          └─────────────────┴─────────────────┘                          │
-│                            │                                             │
-│              ┌─────────────┴─────────────┐                              │
-│              ▼                           ▼                              │
-│   ┌──────────────────┐        ┌──────────────────┐                     │
-│   │   Native API     │        │      MQTT        │                     │
-│   │  (Home Assistant)│        │   (Optional)     │                     │
-│   └──────────────────┘        └──────────────────┘                     │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++-------------------------------------------------------------------------+
+|                        ESPHOME ARCHITECTURE                             |
++-------------------------------------------------------------------------+
+|                                                                         |
+|   +-------------------------------------------------------------------+ |
+|   |                     ESPHome Dashboard                             | |
+|   |                    (YAML configs, OTA)                            | |
+|   +-------------------------------------------------------------------+ |
+|                              |                                          |
+|              +---------------+---------------+                          |
+|              v               v               v                          |
+|   +--------------+  +--------------+  +--------------+                  |
+|   |   ESP32      |  |   ESP8266    |  |   ESP32-C3   |                  |
+|   |   Device     |  |   Device     |  |   Device     |                  |
+|   +--------------+  +--------------+  +--------------+                  |
+|          |                 |                 |                          |
+|          +-----------------+-----------------+                          |
+|                            |                                            |
+|              +-------------+-------------+                              |
+|              v                           v                              |
+|   +------------------+        +------------------+                      |
+|   |   Native API     |        |      MQTT        |                      |
+|   |  (Home Assistant)|        |   (Optional)     |                      |
+|   +------------------+        +------------------+                      |
+|                                                                         |
++-------------------------------------------------------------------------+
 ```
 
 ## Access Methods
@@ -166,7 +166,7 @@ ssh homeassistant 'esphome logs /config/esphome/living_room_sensor.yaml'
 ## Access Levels
 
 | Level | Permissions | Use Case |
-|-------|-------------|----------|
+| ----- | ----------- | -------- |
 | `readonly` | View configs, logs, states | Monitoring, debugging |
 | `logs` | Above + live log streaming | Deep debugging |
 | `control` | Above + entity control | Automation testing |
@@ -176,7 +176,7 @@ ssh homeassistant 'esphome logs /config/esphome/living_room_sensor.yaml'
 ## Capabilities
 
 | Capability | Method | Description |
-|------------|--------|-------------|
+| ---------- | ------ | ----------- |
 | `list_devices` | Dashboard API | List all ESPHome devices |
 | `get_device_info` | Native API | Device details, version |
 | `get_logs` | Dashboard/CLI | Live or historical logs |
@@ -368,40 +368,41 @@ Agent task: "Report on all ESPHome devices"
 
 ### Debugging Device
 
-```markdown
 Agent task: "The kitchen power monitor is showing incorrect readings"
 
-## Investigation: kitchen_power
+Investigation: `kitchen_power`
 
-### Device Info
+Device Info:
+
 - Platform: ESP8266 (Sonoff POW R2)
 - ESPHome: 2024.2.0
 - Uptime: 8 days, 12 hours
 - WiFi: -61 dBm (good)
 - Free Heap: 24KB (healthy)
 
-### Current Readings
-```yaml
-Voltage: 242.3 V  # Reasonable
-Current: 0.02 A   # Very low
-Power: 4.8 W      # Matches V*I
-Energy: 12.4 kWh  # Total since boot
-```
+Current Readings:
 
-### Configuration Check
+| Metric | Value | Notes |
+| ------ | ----- | ----- |
+| Voltage | 242.3 V | Reasonable |
+| Current | 0.02 A | Very low |
+| Power | 4.8 W | Matches V*I |
+| Energy | 12.4 kWh | Total since boot |
+
+Configuration Check - default values detected:
+
 ```yaml
 sensor:
   - platform: hlw8012
-    current_resistor: 0.001  # ← Default value
-    voltage_divider: 2351    # ← Default value
+    current_resistor: 0.001  # Default value
+    voltage_divider: 2351    # Default value
 ```
 
-### Diagnosis
-The HLW8012 calibration values are defaults. This sensor needs
+Diagnosis: The HLW8012 calibration values are defaults. This sensor needs
 calibration for accurate readings.
 
-### Recommended Fix
-1. Calibrate with known load:
+Recommended Fix - Option 1, calibrate with known load:
+
 ```yaml
 sensor:
   - platform: hlw8012
@@ -410,56 +411,55 @@ sensor:
     voltage_divider: 2400      # Adjust based on multimeter
 ```
 
-2. Or use calibrate_linear filter:
+Recommended Fix - Option 2, use calibrate_linear filter:
+
 ```yaml
 filters:
   - calibrate_linear:
       - 0.0 -> 0.0
       - 5.0 -> 4.85  # Measured: 5A reads as 4.85A
 ```
-```
 
 ### Bulk Configuration Update
 
-```markdown
 Agent task: "Add a restart button to all ESPHome devices"
 
-## Configuration Update Plan
+Change Required - add to all device configs:
 
-### Change Required
-Add to all device configs:
 ```yaml
 button:
   - platform: restart
     name: "${device_name} Restart"
 ```
 
-### Devices to Update (23 total)
+Devices to Update (23 total):
 
-#### Phase 1: Test on 3 devices
+Phase 1: Test on 3 devices:
+
 - living_room_sensor
 - kitchen_power
 - garage_door
 
-#### Phase 2: Roll out to remaining 20
+Phase 2: Roll out to remaining 20
 
-### Procedure
+Procedure:
+
 1. Edit YAML configs (SSH)
 2. Validate each config
 3. Compile to check for errors
 4. OTA flash during low-usage hours (2-4 AM)
 5. Verify device comes back online
 
-### Rollback Plan
+Rollback Plan:
+
 - Keep backup of original configs
 - If device fails OTA, physical access required
 - Serial flash as last resort
-```
 
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `system/iot-monitor` | readonly | Device health monitoring |
 | `ops/home-automation` | logs | Debugging automations |
 | `code/esphome-dev` | config | Help write ESPHome YAML |
@@ -468,7 +468,7 @@ button:
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | Dashboard offline | Direct device API access |
 | Device offline | Check last known state in HA |
 | Native API timeout | Try MQTT or REST if configured |

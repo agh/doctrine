@@ -13,7 +13,7 @@ Go-specific guidance for test generation.
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Run tests | go test | `go test ./...` |
 | Verbose | go test | `go test -v ./...` |
 | Coverage | go test | `go test -cover ./...` |
@@ -288,7 +288,7 @@ go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
 
 Parse `coverage.out`:
 
-```
+```text
 mode: set
 github.com/user/repo/pkg/calculator.go:10.32,12.2 1 1
 github.com/user/repo/pkg/calculator.go:14.32,16.2 1 0

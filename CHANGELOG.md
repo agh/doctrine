@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Security Reference Library** (`reference/security/`) - Vendored security knowledge base
+- **Security Reference Library** (`reference/security/`) - Vendored security
+  knowledge base
   - OWASP: Top 10, ASVS, Cheat Sheets, API Security
   - MITRE: ATT&CK framework, CWE mappings
   - NIST: Cybersecurity Framework, 800-53 controls
@@ -47,7 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `guides/ai/system-agents.md` - Comprehensive family guide
 - **Code Agent Family** - 8 code quality agents
   - `configs/claude/agents/code/architect.md` - Opus coordinator
-  - `configs/claude/agents/code/reviewer.md` - Multi-mode review with confidence scoring
+  - `configs/claude/agents/code/reviewer.md` - Multi-mode review with confidence
+  scoring
   - `configs/claude/agents/code/performance.md` - N+1, caching, pooling patterns
   - `configs/claude/agents/code/accessibility.md` - WCAG 2.1 AA compliance
   - `configs/claude/agents/code/api-rest.md` - REST design review
@@ -56,26 +58,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `configs/claude/agents/code/test-writer.md` - Mutation-first testing
   - `guides/ai/code-agents.md` - Comprehensive family guide
 - **Test Writer Agent v2** - Comprehensive AI-powered test generation
-  - `configs/claude/agents/test-writer.md` - Enhanced with coverage targeting, validation loop, mutation testing
-  - `configs/claude/agents/test-writer/python.md` - pytest patterns, coverage.py, mutmut
-  - `configs/claude/agents/test-writer/javascript.md` - Jest/Vitest, React Testing Library, c8
-  - `configs/claude/agents/test-writer/go.md` - go test, testify, table-driven tests, tarpaulin
-  - `configs/claude/agents/test-writer/java.md` - JUnit 5, Mockito, AssertJ, JaCoCo, Spring Boot
-  - `configs/claude/agents/test-writer/rust.md` - cargo test, mockall, proptest, tarpaulin/llvm-cov
-- **Mutation-First Testing Philosophy** - Coverage is a byproduct, mutation score is the goal
-  - Mutation score targets: 70% minimum, 80% standard, 90% critical, 95% comprehensive
-  - Mutation tools by language: mutmut, Stryker, go-mutesting, PIT, cargo-mutants
+  - `configs/claude/agents/test-writer.md` - Enhanced with coverage targeting,
+    validation loop, mutation testing
+  - `configs/claude/agents/test-writer/python.md` - pytest patterns,
+    coverage.py, mutmut
+  - `configs/claude/agents/test-writer/javascript.md` - Jest/Vitest, React
+    Testing Library, c8
+  - `configs/claude/agents/test-writer/go.md` - go test, testify, table-driven
+    tests, tarpaulin
+  - `configs/claude/agents/test-writer/java.md` - JUnit 5, Mockito, AssertJ,
+    JaCoCo, Spring Boot
+  - `configs/claude/agents/test-writer/rust.md` - cargo test, mockall, proptest,
+    tarpaulin/llvm-cov
+- **Mutation-First Testing Philosophy** - Coverage is a byproduct, mutation
+  score is the goal
+  - Mutation score targets: 70% minimum, 80% standard, 90% critical,
+    95% comprehensive
+  - Mutation tools by language: mutmut, Stryker, go-mutesting, PIT,
+    cargo-mutants
   - Mutation targeting workflow diagram with iterative mutant killing
-- **Property-Based Testing Integration** - Cross-language property testing patterns
-  - Common properties: Roundtrip, Idempotence, Commutativity, Associativity, Identity, Monotonicity
-  - Libraries: Hypothesis (Python), proptest (Rust), fast-check (JS), gopter (Go), jqwik (Java)
-- **Agent Composition** - Test-writer integrates with verify-build, code-reviewer, code-simplifier
+- **Property-Based Testing Integration** - Cross-language property testing
+  patterns
+  - Common properties: Roundtrip, Idempotence, Commutativity, Associativity,
+    Identity, Monotonicity
+  - Libraries: Hypothesis (Python), proptest (Rust), fast-check (JS),
+    gopter (Go), jqwik (Java)
+- **Agent Composition** - Test-writer integrates with verify-build,
+  code-reviewer, code-simplifier
 - **Documentation Agent Suite** - Multi-agent documentation system
-  - `configs/claude/agents/doc-architect.md` - Analyze codebase, create documentation plans
-  - `configs/claude/agents/doc-writer.md` - Enhanced with Mermaid diagram generation
-  - `configs/claude/agents/doc-reviewer.md` - Review docs for accuracy and completeness
+  - `configs/claude/agents/doc-architect.md` - Analyze codebase, create
+    documentation plans
+  - `configs/claude/agents/doc-writer.md` - Enhanced with Mermaid diagram
+    generation
+  - `configs/claude/agents/doc-reviewer.md` - Review docs for accuracy and
+    completeness
   - `configs/claude/agents/doc-sync.md` - Detect stale documentation
-  - `configs/claude/agents/doc-publisher.md` - Multi-format output (llms.txt, MCP, Mermaid)
+  - `configs/claude/agents/doc-publisher.md` - Multi-format output (llms.txt,
+    MCP, Mermaid)
 - **Documentation Commands**
   - `/doc-plan` - Create prioritized documentation plan
   - `/doc-review` - Review documentation for accuracy
@@ -86,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.github/workflows/doc-sync.yml` - PR documentation sync checking
   - `.github/workflows/doc-lint.yml` - Documentation linting and validation
 - **Documentation Quick Wins** (God Tier foundations)
-  - Executable code examples in CI - validates Python, JS/TS, Shell code blocks with `# doctest: verify`
+  - Executable code examples in CI - validates Python, JS/TS, Shell code blocks
+    with `# doctest: verify`
   - Version drift detection - compares documented versions vs package manifests
   - Documentation debt inventory - prioritized backlog with P0/P1/P2 classification
   - Self-healing documentation - `--fix` mode auto-repairs stale docs, creates PRs
@@ -109,9 +129,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `guides/ai/claude-code.md` - CLI configuration, hooks, agents, MCP
   - Enhanced `guides/ai/agents-md.md` with advanced patterns
 - **Framework Guide Expansions** - Production patterns for 7 frameworks
-  - Axum: Auth (axum-login, JWT), WebSocket, rate limiting, caching (+1,853 lines)
+  - Axum: Auth (axum-login, JWT), WebSocket, rate limiting, caching
+    (+1,853 lines)
   - Django: Async views, Celery, caching, security middleware (+1,585 lines)
-  - FastAPI: Background tasks, caching, rate limiting, WebSocket (+1,079 lines)
+  - FastAPI: Background tasks, caching, rate limiting, WebSocket
+    (+1,079 lines)
   - Flask: Blueprints, extensions, caching, background jobs (+1,027 lines)
   - Gin: Middleware, auth, caching, rate limiting, WebSocket (+2,643 lines)
   - Next.js: Server components, caching, middleware, auth (+1,157 lines)
@@ -130,19 +152,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **README.md** - Updated agent inventory
   - Corrected count from "9 review agents" to "53 agents across 6 families"
-  - Added Code Agents, Security Agents, System Agents to AI-Assisted Development table
-- **Code Reviewer Agent** (`configs/claude/agents/code-reviewer.md`) - Mutation score integration
+  - Added Code Agents, Security Agents, System Agents to AI-Assisted
+    Development table
+- **Code Reviewer Agent** (`configs/claude/agents/code-reviewer.md`) - Mutation
+  score integration
   - Added mutation score to review metrics header
-  - Mutation score thresholds: <70% blocks merge, 70-79% warning, ≥80% acceptable, ≥90% for critical
-  - Example review updated with mutation score analysis and surviving mutant details
-- `configs/claude/agents/doc-writer.md` - Added diagram generation, tutorials, enhanced templates
-- `configs/claude/agents/doc-sync.md` - Added version drift detection, self-healing protocol, `--fix` mode
-- `configs/claude/commands/doc-sync.md` - Added `--versions`, `--fix`, `--dry-run` options with examples
-- `configs/claude/commands/doc-status.md` - Added `--debt`, `--trends`, `--export` options with dashboards
-- `.github/workflows/doc-lint.yml` - Added code example validation, version drift detection jobs
-- **Code Simplifier Agent** (`configs/claude/agents/code-simplifier.md`) - Major enhancement
-  - Comprehensive complexity metrics (cyclomatic, cognitive, Halstead, maintainability index)
-  - Semantic preservation verification (I/O contracts, side effects, exceptions)
+  - Mutation score thresholds: <70% blocks merge, 70-79% warning,
+    >=80% acceptable, >=90% for critical
+  - Example review updated with mutation score analysis and surviving mutant
+    details
+- `configs/claude/agents/doc-writer.md` - Added diagram generation, tutorials,
+  enhanced templates
+- `configs/claude/agents/doc-sync.md` - Added version drift detection,
+  self-healing protocol, `--fix` mode
+- `configs/claude/commands/doc-sync.md` - Added `--versions`, `--fix`,
+  `--dry-run` options with examples
+- `configs/claude/commands/doc-status.md` - Added `--debt`, `--trends`,
+  `--export` options with dashboards
+- `.github/workflows/doc-lint.yml` - Added code example validation, version
+  drift detection jobs
+- **Code Simplifier Agent** (`configs/claude/agents/code-simplifier.md`) -
+  Major enhancement
+  - Comprehensive complexity metrics (cyclomatic, cognitive, Halstead,
+    maintainability index)
+  - Semantic preservation verification (I/O contracts, side effects,
+    exceptions)
   - Confidence scoring (High/Medium/Low with percentages) and risk assessment
   - Fowler refactoring pattern catalog (Extract Method, Compose Method, etc.)
   - Multi-file dependency analysis with impact graphs
@@ -169,7 +203,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Go: Context propagation and error wrapping patterns
   - Ruby: Time zone handling (`Time.zone.now` vs `Time.now`)
   - Rust: Common trait implementations (orphan rule awareness)
-  - SQL: Schema anti-patterns (EAV tables, time-partitioned names, unit separation)
+  - SQL: Schema anti-patterns (EAV tables, time-partitioned names, unit
+    separation)
 
 ## [2.9.0] - 2025-12-17
 
@@ -177,24 +212,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **API Design Guides** (NEW SECTION)
   - `guides/api/README.md` - API design patterns overview
-  - `guides/api/graphql.md` - GraphQL best practices (schema design, queries, mutations, security, performance)
-  - `guides/api/rest.md` - REST best practices (resources, HTTP methods, status codes, pagination, caching)
+  - `guides/api/graphql.md` - GraphQL best practices (schema design, queries,
+    mutations, security, performance)
+  - `guides/api/rest.md` - REST best practices (resources, HTTP methods, status
+    codes, pagination, caching)
 - **Strawberry GraphQL Framework Guide**
-  - `guides/frameworks/strawberry.md` - Python GraphQL with Strawberry (schemas, resolvers, DataLoaders, permissions, FastAPI/Django integration)
+  - `guides/frameworks/strawberry.md` - Python GraphQL with Strawberry
+    (schemas, resolvers, DataLoaders, permissions, FastAPI/Django integration)
 
 ## [2.8.0] - 2025-12-17
 
 ### Added
 
-- `guides/docs/specifications.md` - Specification writing guide for engineering docs
+- `guides/docs/specifications.md` - Specification writing guide for engineering
+  docs
 - `scripts/validate_versions.py` - Tool version validation script
 - `SUMMARY.md` - Repository summary
 
 ### Changed
 
-- `guides/frameworks/django.md` - Django 5.1 updates, async views, improved testing patterns
+- `guides/frameworks/django.md` - Django 5.1 updates, async views, improved
+  testing patterns
 - `guides/frameworks/README.md` - Updated framework navigation
-- `guides/docs/README.md`, `guides/docs/markdown.md` - Documentation improvements
+- `guides/docs/README.md`, `guides/docs/markdown.md` - Documentation
+  improvements
 - `guides/languages/shell.md`, `guides/languages/sql.md` - Minor updates
 - `configs/pre-commit/.pre-commit-config.yaml` - Updated hook versions
 - `configs/prettier/.prettierrc` - Configuration refinements
@@ -206,17 +247,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Infrastructure Guides** (NEW SECTION)
   - `guides/infrastructure/README.md` - Infrastructure overview
-  - `guides/infrastructure/ansible.md` - Ansible automation and configuration management
+  - `guides/infrastructure/ansible.md` - Ansible automation and configuration
+    management
   - `guides/infrastructure/docker.md` - Docker containerization best practices
 - **Ansible Configuration Templates**
-  - `configs/ansible/` - ansible.cfg, .ansible-lint, .yamllint, .sops.yaml, requirements.yml
+  - `configs/ansible/` - ansible.cfg, .ansible-lint, .yamllint, .sops.yaml,
+    requirements.yml
 
 ## [2.6.0] - 2025-12-17
 
 ### Changed
 
 - **C# Guide Updates**
-  - C# 13 and .NET 9 features (params collections, partial properties, ref struct interfaces)
+  - C# 13 and .NET 9 features (params collections, partial properties, ref
+    struct interfaces)
   - Enhanced pattern matching and collection expressions
   - Updated analyzer and formatting configurations
 - **dotnet Guide Updates**
@@ -252,7 +296,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `guides/frameworks/rails.md` - Rails 8.0 updates, Solid Queue/Cache/Cable, Kamal deployment
+- `guides/frameworks/rails.md` - Rails 8.0 updates, Solid Queue/Cache/Cable,
+  Kamal deployment
 
 ## [2.2.0] - 2025-12-17
 
@@ -282,10 +327,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Design Guides** (NEW SECTION)
   - `guides/design/README.md` - Design principles and process overview
-  - `guides/design/design-systems.md` - Design tokens, typography, color systems, spacing, theming
-  - `guides/design/components.md` - Reusable component patterns (buttons, inputs, cards, modals, tables)
-  - `guides/design/accessibility.md` - WCAG 2.1 AA compliance, ARIA patterns, testing strategies
-  - `guides/design/motion.md` - Animation principles, motion tokens, interaction feedback
+  - `guides/design/design-systems.md` - Design tokens, typography, color
+    systems, spacing, theming
+  - `guides/design/components.md` - Reusable component patterns (buttons,
+    inputs, cards, modals, tables)
+  - `guides/design/accessibility.md` - WCAG 2.1 AA compliance, ARIA patterns,
+    testing strategies
+  - `guides/design/motion.md` - Animation principles, motion tokens,
+    interaction feedback
 - Design Guides section in README with navigation table
 
 ## [2.0.1] - 2025-12-07

@@ -1,32 +1,34 @@
 # Skills
 
-Skills extend agent capabilities through MCP (Model Context Protocol) servers. They provide agents with access to external systems for analysis, communication, and action.
+Skills extend agent capabilities through MCP (Model Context Protocol) servers.
+They provide agents with access to external systems for analysis,
+communication, and action.
 
 ## Concept
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      AGENT + SKILLS                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   Agent declares:           Environment provides:            │
-│   ┌──────────────────┐     ┌──────────────────┐             │
-│   │ skills_available │ ←── │ MCP Servers      │             │
-│   │ - postgres       │     │ - postgres ✅    │             │
-│   │ - github         │     │ - github ✅      │             │
-│   │ - discord        │     │ - discord ❌     │             │
-│   └──────────────────┘     └──────────────────┘             │
-│          ↓                                                   │
-│   Agent uses available skills when contextually relevant     │
-│   Agent gracefully degrades when skills are missing          │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+```text
++-------------------------------------------------------------+
+|                      AGENT + SKILLS                         |
++-------------------------------------------------------------+
+|                                                             |
+|   Agent declares:           Environment provides:           |
+|   +------------------+     +------------------+             |
+|   | skills_available | <-- | MCP Servers      |             |
+|   | - postgres       |     | - postgres       |             |
+|   | - github         |     | - github         |             |
+|   | - discord        |     | - discord        |             |
+|   +------------------+     +------------------+             |
+|          |                                                  |
+|   Agent uses available skills when contextually relevant    |
+|   Agent gracefully degrades when skills are missing         |
+|                                                             |
++-------------------------------------------------------------+
 ```
 
 ## Skill Categories
 
 | Category | Purpose | Examples |
-|----------|---------|----------|
+| -------- | ------- | -------- |
 | **databases/** | Query data for analysis | PostgreSQL, MySQL, SQLite |
 | **communication/** | Interact with services/humans | GitHub, Discord, Jira |
 | **infrastructure/** | Observe/control systems | Kubernetes, AWS, UniFi |
@@ -38,7 +40,7 @@ Skills extend agent capabilities through MCP (Model Context Protocol) servers. T
 Skills define access levels that agents should request:
 
 | Level | Description | Risk |
-|-------|-------------|------|
+| ----- | ----------- | ---- |
 | `readonly` | Read/query only | Low |
 | `read-write` | Read and modify | Medium |
 | `execute` | Run actions | High |
@@ -132,33 +134,37 @@ Each skill document **MUST** include:
 
 ### Access Control
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ACCESS DECISION                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│   readonly actions     → Auto-approve                        │
-│   read-write actions   → Context-dependent                   │
-│   execute actions      → Human approval recommended          │
-│   admin actions        → Human approval required             │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+```text
++-------------------------------------------------------------+
+|                    ACCESS DECISION                          |
++-------------------------------------------------------------+
+|                                                             |
+|   readonly actions     -> Auto-approve                      |
+|   read-write actions   -> Context-dependent                 |
+|   execute actions      -> Human approval recommended        |
+|   admin actions        -> Human approval required           |
+|                                                             |
++-------------------------------------------------------------+
 ```
 
 ## Available Skills
 
 ### Databases
+
 - [PostgreSQL](databases/postgres.md) - SQL query access
 
 ### Communication
+
 - [GitHub](communication/github.md) - Repository and PR management
 - [Discord](communication/discord.md) - Messaging and notifications
 
 ### Monitoring
+
 - [Prometheus / VictoriaMetrics](monitoring/prometheus.md) - Metrics queries (PromQL)
 - [VictoriaLogs](monitoring/victorialogs.md) - Log queries (LogsQL)
 
 ### IoT
+
 - [MQTT / EMQX](iot/mqtt.md) - IoT messaging and device communication
 - [Home Assistant](iot/homeassistant.md) - Smart home monitoring and automation
 - [Zigbee2MQTT](iot/zigbee2mqtt.md) - Zigbee device management via MQTT
@@ -169,6 +175,8 @@ Each skill document **MUST** include:
 
 Beyond skills, agents require infrastructure for coordination and security:
 
-- [Coordination](../infrastructure/coordination.md) - Multi-agent state sharing and swarm behavior
-- [Audit Logging](../infrastructure/audit.md) - Log all agent actions for compliance and learning
+- [Coordination](../infrastructure/coordination.md) - Multi-agent state sharing
+  and swarm behavior
+- [Audit Logging](../infrastructure/audit.md) - Log all agent actions for
+  compliance and learning
 - [Secrets](../infrastructure/secrets.md) - Secure credential access with SOPS

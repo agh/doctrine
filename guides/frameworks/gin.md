@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Gin
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Go style guide](../languages/go.md) with Gin-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [Go style guide](../languages/go.md) with Gin-specific conventions.
 All Go tooling applies. Additional considerations:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | go get | `go get -u github.com/gin-gonic/gin` |
 | Run dev | go run | `go run main.go` |
 | Test | go test + httptest | `go test -v ./...` |
@@ -30,13 +34,16 @@ Gin[^1] is a high-performance HTTP web framework written in Go that provides:
 - **JSON rendering**: Fast JSON serialization with minimal allocations
 - **Lightweight**: Minimal dependencies and small binary size
 
-Use Gin for building RESTful APIs, microservices, and web applications requiring high throughput. Choose Echo[^3] for similar performance with different API design, or Fiber[^4] for Express.js-like syntax. Use the standard library net/http for maximum control and zero dependencies.
+Use Gin for building RESTful APIs, microservices, and web applications requiring high throughput.
+Choose Echo[^3] for similar performance with different API design, or Fiber[^4] for
+Express.js-like syntax. Use the standard library net/http for maximum control and zero
+dependencies.
 
 ## Project Structure
 
 Projects **SHOULD** organize Gin applications using a layered architecture:
 
-```
+```text
 my_app/
 ├── cmd/
 │   └── server/
@@ -91,7 +98,9 @@ func main() {
 }
 ```
 
-**Why**: Separating concerns into handlers, services, and repositories improves testability, enables dependency injection, and makes the codebase maintainable as it grows. The `internal/` directory prevents accidental imports by other projects.
+**Why**: Separating concerns into handlers, services, and repositories improves testability,
+enables dependency injection, and makes the codebase maintainable as it grows. The `internal/`
+directory prevents accidental imports by other projects.
 
 ## Router Setup
 
@@ -151,7 +160,9 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 }
 ```
 
-**Why**: Centralizing route configuration improves discoverability and makes it easy to see the entire API surface. Using route groups enables logical organization and scoped middleware application.
+**Why**: Centralizing route configuration improves discoverability and makes it easy to see the
+entire API surface. Using route groups enables logical organization and scoped middleware
+application.
 
 ## RESTful Routing Patterns
 
@@ -248,7 +259,9 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 }
 ```
 
-**Why**: Dependency injection via handler structs enables testing with mock services. Using the request context allows request-scoped cancellation and tracing. Swagger annotations[^5] enable automatic API documentation generation.
+**Why**: Dependency injection via handler structs enables testing with mock services. Using the
+request context allows request-scoped cancellation and tracing. Swagger annotations[^5] enable
+automatic API documentation generation.
 
 ## Middleware
 
@@ -277,7 +290,8 @@ func NewRouter() *gin.Engine {
 }
 ```
 
-**Why**: `gin.Recovery()` prevents panics from crashing the entire application. `gin.Logger()` provides request logging but **SHOULD** be replaced with structured logging in production.
+**Why**: `gin.Recovery()` prevents panics from crashing the entire application. `gin.Logger()`
+provides request logging but **SHOULD** be replaced with structured logging in production.
 
 ### Custom Middleware
 
@@ -362,7 +376,9 @@ func Logger() gin.HandlerFunc {
 }
 ```
 
-**Why**: Custom middleware enables consistent handling of authentication, logging, and CORS across all routes. Using `c.Set()` and `c.Get()` allows middleware to pass data to handlers without global state.
+**Why**: Custom middleware enables consistent handling of authentication, logging, and CORS
+across all routes. Using `c.Set()` and `c.Get()` allows middleware to pass data to handlers
+without global state.
 
 ## Request Validation and Binding
 
@@ -444,7 +460,9 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 }
 ```
 
-**Why**: Gin uses the validator package[^6] under the hood, providing comprehensive validation rules via struct tags. This eliminates manual validation code and produces consistent error messages.
+**Why**: Gin uses the validator package[^6] under the hood, providing comprehensive validation
+rules via struct tags. This eliminates manual validation code and produces consistent error
+messages.
 
 ### Custom Validators
 
@@ -556,7 +574,8 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 }
 ```
 
-**Why**: Centralized error handling ensures consistent error responses across the API. Using `errors.Is()` allows error wrapping while maintaining error type checking.
+**Why**: Centralized error handling ensures consistent error responses across the API. Using
+`errors.Is()` allows error wrapping while maintaining error type checking.
 
 ## Testing
 
@@ -699,7 +718,8 @@ func TestCreateUser(t *testing.T) {
 }
 ```
 
-**Why**: Using httptest allows testing handlers without starting a server. Mocking the service layer isolates handler logic from business logic and database dependencies.
+**Why**: Using httptest allows testing handlers without starting a server. Mocking the service
+layer isolates handler logic from business logic and database dependencies.
 
 ### Integration Testing
 
@@ -850,11 +870,14 @@ func getEnvInt(key string, defaultValue int) int {
 }
 ```
 
-**Why**: Environment-based configuration follows twelve-factor app principles, prevents secrets in version control, and enables different settings per deployment environment.
+**Why**: Environment-based configuration follows twelve-factor app principles, prevents secrets
+in version control, and enables different settings per deployment environment.
 
 ## Logging and Observability
 
-Projects **MUST** use Go's standard library `log/slog` package for structured logging. The `slog` package (introduced in Go 1.21) provides structured, leveled logging with excellent performance.
+Projects **MUST** use Go's standard library `log/slog` package for structured logging. The
+`slog` package (introduced in Go 1.21) provides structured, leveled logging with excellent
+performance.
 
 ### Logger Setup
 
@@ -1143,7 +1166,10 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 }
 ```
 
-**Why slog**: Go's standard library `log/slog` provides structured logging without external dependencies. It offers excellent performance, type-safe attributes, log levels, and outputs JSON for production log aggregation systems. Context propagation maintains request-scoped logging attributes across service boundaries.
+**Why slog**: Go's standard library `log/slog` provides structured logging without external
+dependencies. It offers excellent performance, type-safe attributes, log levels, and outputs
+JSON for production log aggregation systems. Context propagation maintains request-scoped
+logging attributes across service boundaries.
 
 ### Health Checks and Metrics
 
@@ -1202,17 +1228,22 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 }
 ```
 
-**Why**: Health checks enable orchestrators (Kubernetes, Docker) to monitor service health and restart unhealthy instances. Separating liveness and readiness checks prevents cascading failures during deployment.
+**Why**: Health checks enable orchestrators (Kubernetes, Docker) to monitor service health and
+restart unhealthy instances. Separating liveness and readiness checks prevents cascading
+failures during deployment.
 
 ## Security
 
 ### JWT Authentication
 
-Projects **MUST** use golang-jwt/jwt[^7] v5 for JWT token handling. The library provides robust token generation, parsing, and validation with support for multiple signing algorithms.
+Projects **MUST** use golang-jwt/jwt[^7] v5 for JWT token handling. The library provides robust
+token generation, parsing, and validation with support for multiple signing algorithms.
 
 #### Why
 
-JWT (JSON Web Tokens) provides stateless authentication suitable for APIs and microservices. Using RS256 (asymmetric keys) allows public key distribution for token verification without exposing signing credentials.
+JWT (JSON Web Tokens) provides stateless authentication suitable for APIs and microservices.
+Using RS256 (asymmetric keys) allows public key distribution for token verification without
+exposing signing credentials.
 
 #### Token Generation
 
@@ -1344,15 +1375,20 @@ func JWTAuth(jwtService *auth.JWTService) gin.HandlerFunc {
 }
 ```
 
-**Why**: RS256 is preferred over HS256 for production because the private key stays on the auth server while public keys can be distributed to all services needing to verify tokens. Always validate the `alg` header to prevent algorithm confusion attacks.
+**Why**: RS256 is preferred over HS256 for production because the private key stays on the auth
+server while public keys can be distributed to all services needing to verify tokens. Always
+validate the `alg` header to prevent algorithm confusion attacks.
 
 ### OAuth2 Integration
 
-Projects **SHOULD** use golang.org/x/oauth2[^8] for OAuth2 flows when integrating with external identity providers.
+Projects **SHOULD** use golang.org/x/oauth2[^8] for OAuth2 flows when integrating with external
+identity providers.
 
 #### Why
 
-OAuth2 provides standardized authentication flows for third-party integrations (Google, GitHub, etc.). The official Go package supports all major grant types and handles token refresh automatically.
+OAuth2 provides standardized authentication flows for third-party integrations (Google, GitHub,
+etc.). The official Go package supports all major grant types and handles token refresh
+automatically.
 
 ```go
 // internal/auth/oauth2.go
@@ -1472,11 +1508,13 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 
 ### Authorization with Casbin
 
-Projects **SHOULD** use Casbin[^9] for role-based access control (RBAC) and attribute-based access control (ABAC).
+Projects **SHOULD** use Casbin[^9] for role-based access control (RBAC) and attribute-based
+access control (ABAC).
 
 #### Why
 
-Casbin provides a declarative policy model that separates authorization logic from business code. Policies can be stored in files or databases and updated at runtime without code changes.
+Casbin provides a declarative policy model that separates authorization logic from business
+code. Policies can be stored in files or databases and updated at runtime without code changes.
 
 ```go
 // internal/auth/casbin.go
@@ -1592,15 +1630,20 @@ func NewRouter(cfg *config.Config, enforcer *casbin.Enforcer, jwtService *auth.J
 }
 ```
 
-**Why**: Casbin decouples authorization from code, enabling policy changes without redeployment. The PERM model (Policy, Effect, Request, Matchers) supports complex scenarios like multi-tenancy and hierarchical roles.
+**Why**: Casbin decouples authorization from code, enabling policy changes without redeployment.
+The PERM model (Policy, Effect, Request, Matchers) supports complex scenarios like
+multi-tenancy and hierarchical roles.
 
 ## WebSocket
 
-Projects **SHOULD** use gorilla/websocket[^10] for production WebSocket implementations, or coder/websocket[^11] (formerly nhooyr.io/websocket) for modern Go idioms and context support.
+Projects **SHOULD** use gorilla/websocket[^10] for production WebSocket implementations, or
+coder/websocket[^11] (formerly nhooyr.io/websocket) for modern Go idioms and context support.
 
 ### Why
 
-WebSocket enables bidirectional real-time communication for features like chat, notifications, and live updates. gorilla/websocket is battle-tested with extensive documentation, while coder/websocket offers a more idiomatic Go API with built-in context support.
+WebSocket enables bidirectional real-time communication for features like chat, notifications,
+and live updates. gorilla/websocket is battle-tested with extensive documentation, while
+coder/websocket offers a more idiomatic Go API with built-in context support.
 
 ### gorilla/websocket Integration
 
@@ -1824,17 +1867,21 @@ func (h *WebSocketHandler) HandleWebSocketCoder(c *gin.Context) {
 }
 ```
 
-**Why**: gorilla/websocket remains the standard for production deployments due to its maturity and extensive testing. coder/websocket offers advantages for new projects needing context cancellation, WASM support, or cleaner API patterns.
+**Why**: gorilla/websocket remains the standard for production deployments due to its maturity
+and extensive testing. coder/websocket offers advantages for new projects needing context
+cancellation, WASM support, or cleaner API patterns.
 
 ## Performance
 
 ### pprof Integration
 
-Projects **MUST** enable pprof endpoints in development and **SHOULD** protect them in production environments.
+Projects **MUST** enable pprof endpoints in development and **SHOULD** protect them in
+production environments.
 
 #### Why
 
-Go's built-in pprof provides CPU profiling, memory profiling, goroutine analysis, and blocking profiling essential for identifying performance bottlenecks.
+Go's built-in pprof provides CPU profiling, memory profiling, goroutine analysis, and blocking
+profiling essential for identifying performance bottlenecks.
 
 ```go
 // cmd/server/main.go
@@ -2027,7 +2074,9 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 }
 ```
 
-**Why**: Prometheus is the industry standard for metrics collection in cloud-native applications. Combined with pprof, it provides complete observability for performance debugging and capacity planning.
+**Why**: Prometheus is the industry standard for metrics collection in cloud-native applications.
+Combined with pprof, it provides complete observability for performance debugging and capacity
+planning.
 
 ## Background Jobs
 
@@ -2035,7 +2084,9 @@ Projects **SHOULD** use Asynq[^13] for Redis-backed background job processing.
 
 ### Why
 
-Asynq provides reliable task queuing with at-least-once execution guarantees, automatic retries, priority queues, scheduled tasks, and a web UI for monitoring. It outperforms alternatives like Machinery in resource efficiency while providing comprehensive production features.
+Asynq provides reliable task queuing with at-least-once execution guarantees, automatic retries,
+priority queues, scheduled tasks, and a web UI for monitoring. It outperforms alternatives like
+Machinery in resource efficiency while providing comprehensive production features.
 
 ```go
 // internal/worker/tasks.go
@@ -2264,7 +2315,9 @@ func (h *ReportHandler) ScheduleReport(c *gin.Context) {
 }
 ```
 
-**Why**: Asynq provides the best balance of features and performance for Redis-backed task queues. Its built-in retry logic, priority queues, and monitoring UI (Asynqmon) make it production-ready without additional infrastructure.
+**Why**: Asynq provides the best balance of features and performance for Redis-backed task
+queues. Its built-in retry logic, priority queues, and monitoring UI (Asynqmon) make it
+production-ready without additional infrastructure.
 
 ## Async Patterns
 
@@ -2272,7 +2325,9 @@ Projects **MUST** use proper context propagation and cancellation for concurrent
 
 ### Why
 
-Go's concurrency primitives require careful handling to prevent goroutine leaks, race conditions, and resource exhaustion. The `errgroup` package provides structured concurrency with proper error propagation and cancellation.
+Go's concurrency primitives require careful handling to prevent goroutine leaks, race
+conditions, and resource exhaustion. The `errgroup` package provides structured concurrency
+with proper error propagation and cancellation.
 
 ### errgroup for Concurrent Operations
 
@@ -2479,15 +2534,20 @@ func (s *FetchService) FetchAllURLs(ctx context.Context, urls []string) ([]Resul
 }
 ```
 
-**Why**: Proper context propagation ensures request-scoped cancellation flows through all goroutines. Using `errgroup.WithContext` automatically cancels sibling goroutines when one fails, preventing resource waste.
+**Why**: Proper context propagation ensures request-scoped cancellation flows through all
+goroutines. Using `errgroup.WithContext` automatically cancels sibling goroutines when one
+fails, preventing resource waste.
 
 ## Caching
 
-Projects **SHOULD** implement multi-level caching using Ristretto[^14] for in-memory caching and go-redis[^15] for distributed caching.
+Projects **SHOULD** implement multi-level caching using Ristretto[^14] for in-memory caching
+and go-redis[^15] for distributed caching.
 
 ### Why
 
-Multi-level caching reduces latency and database load. Ristretto provides high-performance local caching with intelligent admission policies, while Redis enables cache sharing across application instances.
+Multi-level caching reduces latency and database load. Ristretto provides high-performance local
+caching with intelligent admission policies, while Redis enables cache sharing across
+application instances.
 
 ### Ristretto In-Memory Cache
 
@@ -2711,15 +2771,20 @@ func (s *UserService) GetByID(ctx context.Context, id int64) (*User, error) {
 }
 ```
 
-**Why**: Multi-level caching combines the speed of local memory access with the consistency of distributed caching. Ristretto's admission policy ensures high-value items remain cached, while Redis provides durability and cross-instance sharing.
+**Why**: Multi-level caching combines the speed of local memory access with the consistency of
+distributed caching. Ristretto's admission policy ensures high-value items remain cached, while
+Redis provides durability and cross-instance sharing.
 
 ## Rate Limiting
 
-Projects **MUST** implement rate limiting for API endpoints to prevent abuse and ensure fair resource usage.
+Projects **MUST** implement rate limiting for API endpoints to prevent abuse and ensure fair
+resource usage.
 
 ### Why
 
-Rate limiting protects services from abuse, prevents cascading failures, and ensures fair access for all clients. Different strategies suit different use cases: token bucket for bursty traffic, sliding window for smooth rate limiting.
+Rate limiting protects services from abuse, prevents cascading failures, and ensures fair
+access for all clients. Different strategies suit different use cases: token bucket for bursty
+traffic, sliding window for smooth rate limiting.
 
 ### Tollbooth Middleware
 
@@ -2927,7 +2992,8 @@ func NewRouter(cfg *config.Config) *gin.Engine {
 }
 ```
 
-**Why**: Rate limiting at multiple levels (global, per-IP, per-user) provides defense in depth. Redis-based limiting enables consistent enforcement across multiple application instances.
+**Why**: Rate limiting at multiple levels (global, per-IP, per-user) provides defense in depth.
+Redis-based limiting enables consistent enforcement across multiple application instances.
 
 ## Circuit Breakers
 
@@ -2935,7 +3001,8 @@ Projects **SHOULD** use sony/gobreaker[^16] for circuit breaker patterns when ca
 
 ### Why
 
-Circuit breakers prevent cascading failures by temporarily stopping requests to failing services. This allows the failing service time to recover while maintaining system stability.
+Circuit breakers prevent cascading failures by temporarily stopping requests to failing
+services. This allows the failing service time to recover while maintaining system stability.
 
 ```go
 // internal/circuitbreaker/breaker.go
@@ -3106,7 +3173,9 @@ func (s *ProductService) GetExternalProductData(ctx context.Context, productID s
 }
 ```
 
-**Why**: Circuit breakers implement the fail-fast pattern, preventing threads from blocking on failing services. The half-open state allows automatic recovery detection without manual intervention.
+**Why**: Circuit breakers implement the fail-fast pattern, preventing threads from blocking on
+failing services. The half-open state allows automatic recovery detection without manual
+intervention.
 
 ## Feature Flags
 
@@ -3114,7 +3183,9 @@ Projects **SHOULD** use Unleash[^17] for feature flag management in production e
 
 ### Why
 
-Feature flags enable progressive rollouts, A/B testing, and quick rollbacks without deployments. Unleash provides a centralized feature management platform with SDKs for multiple languages.
+Feature flags enable progressive rollouts, A/B testing, and quick rollbacks without
+deployments. Unleash provides a centralized feature management platform with SDKs for multiple
+languages.
 
 ```go
 // internal/featureflags/unleash.go
@@ -3320,7 +3391,9 @@ func (f *LocalFeatureFlags) SetEnabled(name string, enabled bool) {
 }
 ```
 
-**Why**: Feature flags enable trunk-based development and reduce deployment risk. Unleash provides enterprise features like gradual rollouts, user targeting, and metrics. For simpler needs, environment-based flags provide a low-overhead alternative.
+**Why**: Feature flags enable trunk-based development and reduce deployment risk. Unleash
+provides enterprise features like gradual rollouts, user targeting, and metrics. For simpler
+needs, environment-based flags provide a low-overhead alternative.
 
 ## Graceful Shutdown
 
@@ -3582,11 +3655,14 @@ func main() {
 }
 ```
 
-**Why**: Graceful shutdown ensures zero-downtime deployments by completing in-flight requests before terminating. The readiness probe integration ensures load balancers stop sending new traffic before the server shuts down.
+**Why**: Graceful shutdown ensures zero-downtime deployments by completing in-flight requests
+before terminating. The readiness probe integration ensures load balancers stop sending new
+traffic before the server shuts down.
 
 ## Middleware Chaining
 
-Projects **SHOULD** understand middleware execution order and use composition for complex middleware scenarios.
+Projects **SHOULD** understand middleware execution order and use composition for complex
+middleware scenarios.
 
 ### Middleware Execution Order
 
@@ -3823,7 +3899,8 @@ func RequireHeader(header string) gin.HandlerFunc {
 }
 ```
 
-**Why**: Understanding middleware chaining enables proper request/response processing order, efficient middleware composition, and conditional execution for complex routing scenarios.
+**Why**: Understanding middleware chaining enables proper request/response processing order,
+efficient middleware composition, and conditional execution for complex routing scenarios.
 
 ## See Also
 

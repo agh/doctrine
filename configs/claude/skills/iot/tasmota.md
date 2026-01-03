@@ -5,7 +5,7 @@ Provides access to Tasmota-flashed devices for monitoring, configuration, and co
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | IoT / ESP8266/ESP32 |
 | **Protocol** | MQTT, HTTP API |
 | **Default Access** | readonly (MQTT subscribe) |
@@ -13,29 +13,29 @@ Provides access to Tasmota-flashed devices for monitoring, configuration, and co
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       TASMOTA ARCHITECTURE                               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────────────────────────────────────────────────────────────┐  │
-│   │                      MQTT Broker (EMQX)                          │  │
-│   └──────────────────────────────────────────────────────────────────┘  │
-│              │                    │                    │                 │
-│              ▼                    ▼                    ▼                 │
-│   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐           │
-│   │   Sonoff     │     │   Sonoff     │     │   Generic    │           │
-│   │   Basic R2   │     │   POW R2     │     │   ESP8266    │           │
-│   └──────────────┘     └──────────────┘     └──────────────┘           │
-│                                                                          │
-│   Topic Structure:                                                       │
-│   • tele/{device}/STATE   - Telemetry (periodic)                        │
-│   • stat/{device}/RESULT  - Command responses                            │
-│   • cmnd/{device}/POWER   - Commands                                     │
-│   • tele/{device}/SENSOR  - Sensor readings                              │
-│   • tele/{device}/LWT     - Last Will (online/offline)                  │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++-------------------------------------------------------------------------+
+|                       TASMOTA ARCHITECTURE                              |
++-------------------------------------------------------------------------+
+|                                                                         |
+|   +-------------------------------------------------------------------+ |
+|   |                      MQTT Broker (EMQX)                           | |
+|   +-------------------------------------------------------------------+ |
+|              |                    |                    |                |
+|              v                    v                    v                |
+|   +--------------+     +--------------+     +--------------+            |
+|   |   Sonoff     |     |   Sonoff     |     |   Generic    |            |
+|   |   Basic R2   |     |   POW R2     |     |   ESP8266    |            |
+|   +--------------+     +--------------+     +--------------+            |
+|                                                                         |
+|   Topic Structure:                                                      |
+|   - tele/{device}/STATE   - Telemetry (periodic)                        |
+|   - stat/{device}/RESULT  - Command responses                           |
+|   - cmnd/{device}/POWER   - Commands                                    |
+|   - tele/{device}/SENSOR  - Sensor readings                             |
+|   - tele/{device}/LWT     - Last Will (online/offline)                  |
+|                                                                         |
++-------------------------------------------------------------------------+
 ```
 
 ## Access Methods
@@ -108,7 +108,7 @@ mosquitto_pub -h emqx.local -t "cmnd/kitchen_plug/Status" -m "0"
 
 ### Tasmota Device Configuration
 
-```
+```text
 # Recommended Tasmota settings for agent access
 
 # Set MQTT topic
@@ -129,7 +129,7 @@ LwtOffline Offline
 ## Access Levels
 
 | Level | Permissions | Topics |
-|-------|-------------|--------|
+| ----- | ----------- | ------ |
 | `readonly` | Subscribe only | `tele/#`, `stat/#` |
 | `query` | Above + status requests | Above + `cmnd/+/Status` |
 | `control` | Above + power control | Above + `cmnd/+/Power*` |
@@ -306,21 +306,20 @@ Agent task: "Report on all Tasmota devices"
 
 ### Power Analysis
 
-```markdown
 Agent task: "Analyze power consumption of kitchen appliances"
 
-## Kitchen Power Analysis
+Kitchen Power Analysis:
 
-### Devices
 | Device | Avg Power | Peak | Today | Yesterday |
-|--------|-----------|------|-------|-----------|
+| ------ | --------- | ---- | ----- | --------- |
 | refrigerator | 85W | 150W | 2.04 kWh | 2.10 kWh |
 | dishwasher | 0W | 1800W | 1.2 kWh | 0 kWh |
 | coffee_maker | 0W | 1200W | 0.3 kWh | 0.25 kWh |
 | microwave | 0W | 1100W | 0.15 kWh | 0.20 kWh |
 
-### Daily Pattern
-```
+Daily Pattern:
+
+```text
 Hour  | kWh
 ------+-----
 00-06 | 0.5  [====]
@@ -331,57 +330,56 @@ Hour  | kWh
 20-24 | 0.9  [========]
 ```
 
-### Insights
+Insights:
+
 - Refrigerator cycles every 45 minutes (normal)
 - Dishwasher ran at 19:30 (1800W peak for 45 min)
 - Coffee maker used at 07:15 and 14:30
-```
 
 ### Troubleshooting Device
 
-```markdown
 Agent task: "The living room lamp keeps disconnecting"
 
-## Investigation: living_room_lamp
+Investigation: `living_room_lamp`
 
-### Device Info
+Device Info:
+
 - Hardware: Sonoff Basic R2
 - Firmware: 12.4.0 (Tasmota)
 - Uptime: 2 hours 15 minutes (recent restart)
 
-### Connection History (24h)
+Connection History (24h):
+
 | Time | Event | Duration |
-|------|-------|----------|
+| ---- | ----- | -------- |
 | 10:30 | Disconnected | 3 min |
 | 08:15 | Disconnected | 5 min |
 | 03:45 | Disconnected | 2 min |
 | 22:10 | Disconnected | 4 min |
 
-### WiFi Analysis
+WiFi Analysis:
+
 - Current RSSI: -68 dBm (marginal)
 - Channel: 6 (congested)
 - AP switches detected: Yes
 
-### Diagnosis
-Device is on the edge of WiFi coverage and experiencing:
+Diagnosis: Device is on the edge of WiFi coverage and experiencing:
+
 1. Low signal strength (-68 dBm)
 2. Channel congestion (channel 6)
 3. AP roaming between access points
 
-### Recommendations
+Recommendations:
+
 1. Move device closer to AP or add repeater
 2. Consider changing WiFi channel to 1 or 11
-3. Set fixed BSSID in Tasmota config:
-   ```
-   WifiConfig 5
-   AP1 HomeNetwork AA:BB:CC:DD:EE:FF
-   ```
-```
+3. Set fixed BSSID in Tasmota config: `WifiConfig 5` and
+   `AP1 HomeNetwork AA:BB:CC:DD:EE:FF`
 
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `system/iot-monitor` | readonly | Device health, availability |
 | `ops/home-automation` | query | Power monitoring, debugging |
 | `security/iot-security` | readonly | Anomaly detection |
@@ -389,7 +387,7 @@ Device is on the edge of WiFi coverage and experiencing:
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | Device offline | Check Home Assistant for last known state |
 | MQTT broker down | Query device HTTP API directly |
 | HTTP API timeout | Check WiFi and power status |
@@ -398,7 +396,7 @@ Device is on the edge of WiFi coverage and experiencing:
 
 ### Device Security
 
-```
+```text
 # Recommended Tasmota security settings
 
 # Set web admin password
@@ -439,7 +437,7 @@ allowed_commands:
 ### Status Commands
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `Status 0` | Full status dump |
 | `Status 5` | Network info |
 | `Status 8` | Sensor status |
@@ -449,7 +447,7 @@ allowed_commands:
 ### Diagnostic Commands
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `State` | Current device state |
 | `Modules` | Available modules |
 | `GPIO` | Current GPIO config |
@@ -458,7 +456,7 @@ allowed_commands:
 ### Sensor Commands
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `TelePeriod` | Set telemetry interval |
 | `Sensor` | Sensor configuration |
 | `HumOffset` | Humidity calibration |

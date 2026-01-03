@@ -1,11 +1,12 @@
 # Prometheus / VictoriaMetrics Skill
 
-Provides PromQL query access to metrics for analysis, debugging, alerting investigation, and capacity planning.
+Provides PromQL query access to metrics for analysis, debugging, alerting
+investigation, and capacity planning.
 
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | Monitoring |
 | **Protocol** | HTTP API (Prometheus-compatible) |
 | **Compatible Systems** | Prometheus, VictoriaMetrics, Thanos, Cortex, Mimir |
@@ -68,7 +69,7 @@ ${VICTORIA_URL}/api/v1/label/__name__/values  # List all metric names
 ## Capabilities
 
 | Capability | Description |
-|------------|-------------|
+| ---------- | ----------- |
 | `instant_query` | Point-in-time metric value |
 | `range_query` | Metrics over time range |
 | `series` | List matching time series |
@@ -105,13 +106,16 @@ sum by (handler) (rate(http_requests_total{status=~"5.."}[5m]))
 
 ```promql
 # p50 latency
-histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+histogram_quantile(0.50,
+  sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
 
 # p95 latency
-histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+histogram_quantile(0.95,
+  sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
 
 # p99 latency
-histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+histogram_quantile(0.99,
+  sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
 
 # Latency by endpoint
 histogram_quantile(0.95,
@@ -192,10 +196,12 @@ sum(kube_pod_container_status_restarts_total) by (pod)
 Query these metrics before deploying:
 
 1. Error rate baseline:
-   sum(rate(http_requests_total{status=~"5.."}[1h])) / sum(rate(http_requests_total[1h]))
+   sum(rate(http_requests_total{status=~"5.."}[1h]))
+   / sum(rate(http_requests_total[1h]))
 
 2. Latency baseline:
-   histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1h])) by (le))
+   histogram_quantile(0.95,
+     sum(rate(http_request_duration_seconds_bucket[1h])) by (le))
 
 3. Resource headroom:
    avg(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
@@ -238,7 +244,7 @@ When investigating an incident at time T:
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `ops/release-manager` | readonly | Pre/post deploy metrics |
 | `ops/deploy-validator` | readonly | Health validation |
 | `ops/rollback-advisor` | readonly | Incident metrics |
@@ -247,7 +253,7 @@ When investigating an incident at time T:
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | Prometheus unavailable | Use CI test results only |
 | Historical data missing | Compare to static thresholds |
 | Specific metric missing | Use proxy metrics or skip check |
@@ -319,5 +325,6 @@ query_range() {
 
 # Usage
 query 'up{job="api"}'
-query_range 'rate(http_requests_total[5m])' "$(date -d '1 hour ago' +%s)" "$(date +%s)"
+query_range 'rate(http_requests_total[5m])' \
+  "$(date -d '1 hour ago' +%s)" "$(date +%s)"
 ```

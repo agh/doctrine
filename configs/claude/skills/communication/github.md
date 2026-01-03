@@ -1,11 +1,12 @@
 # GitHub Skill
 
-Provides access to GitHub repositories, issues, pull requests, and releases for development workflow automation.
+Provides access to GitHub repositories, issues, pull requests, and releases for
+development workflow automation.
 
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | Communication / Development |
 | **MCP Server** | `@modelcontextprotocol/server-github` |
 | **Default Access** | readonly |
@@ -52,20 +53,21 @@ Provides access to GitHub repositories, issues, pull requests, and releases for 
 ## Access Levels
 
 | Level | Token Scopes | Permissions | Use Case |
-|-------|--------------|-------------|----------|
+| ----- | ------------ | ----------- | -------- |
 | `readonly` | `repo:status`, `public_repo` | Read issues, PRs, releases | Analysis |
 | `read-write` | `repo`, `write:discussion` | Create/update issues, PRs | Automation |
-| `releases` | `repo`, `write:packages` | Manage releases, packages | Release management |
+| `releases` | `repo`, `write:packages` | Manage releases, packages | Release mgmt |
 | `admin` | `repo`, `admin:org` | Full repository control | Rarely needed |
 
 ### Creating Tokens
 
-1. Go to GitHub → Settings → Developer Settings → Personal Access Tokens
+1. Go to GitHub -> Settings -> Developer Settings -> Personal Access Tokens
 2. Choose "Fine-grained tokens" (recommended) or "Classic"
 3. Select minimal required scopes:
 
 **For readonly analysis:**
-```
+
+```text
 Repository access: Public Repositories (or specific repos)
 Permissions:
   - Issues: Read-only
@@ -75,7 +77,8 @@ Permissions:
 ```
 
 **For release management:**
-```
+
+```text
 Repository access: Select repositories
 Permissions:
   - Issues: Read and write
@@ -87,7 +90,7 @@ Permissions:
 ## Capabilities
 
 | Capability | Access | Description |
-|------------|--------|-------------|
+| ---------- | ------ | ----------- |
 | `list_repos` | readonly | List accessible repositories |
 | `get_repo` | readonly | Get repository details |
 | `list_issues` | readonly | List issues with filters |
@@ -153,7 +156,7 @@ Check the status of the latest commit on main:
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `ops/release-manager` | read-write | Create releases, manage changelog PRs |
 | `ops/changelog` | readonly | Analyze PRs for release notes |
 | `code/reviewer` | readonly | Fetch PR diff for review |
@@ -164,7 +167,7 @@ Check the status of the latest commit on main:
 When GitHub is unavailable, agents should:
 
 | Scenario | Fallback |
-|----------|----------|
+| -------- | -------- |
 | PR list | Use local git branches |
 | Release history | Parse git tags locally |
 | Issue context | Ask user for context |
@@ -183,21 +186,21 @@ When GitHub is unavailable, agents should:
 ### Rate Limiting
 
 GitHub API has rate limits:
+
 - Authenticated: 5,000 requests/hour
 - Search API: 30 requests/minute
 
-```markdown
-Agents SHOULD:
+Agents **SHOULD**:
+
 - Cache responses where appropriate
 - Use conditional requests (If-None-Match)
 - Batch operations when possible
 - Implement exponential backoff on 429 responses
-```
 
 ### Sensitive Operations
 
 | Operation | Risk | Mitigation |
-|-----------|------|------------|
+| --------- | ---- | ---------- |
 | Merge PR | Medium | Require CI passing, review approval |
 | Create release | Medium | Validate version, changelog |
 | Delete branch | High | Human approval required |

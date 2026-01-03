@@ -1,11 +1,12 @@
 # PostgreSQL Skill
 
-Provides SQL query access to PostgreSQL databases for analysis, debugging, and operational intelligence.
+Provides SQL query access to PostgreSQL databases for analysis, debugging, and
+operational intelligence.
 
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | Database |
 | **MCP Server** | `@modelcontextprotocol/server-postgres` |
 | **Default Access** | readonly |
@@ -55,7 +56,7 @@ Provides SQL query access to PostgreSQL databases for analysis, debugging, and o
 ## Access Levels
 
 | Level | PostgreSQL Role | Permissions | Use Case |
-|-------|-----------------|-------------|----------|
+| ----- | --------------- | ----------- | -------- |
 | `readonly` | `agent_readonly` | SELECT | Analysis, debugging |
 | `analyst` | `agent_analyst` | SELECT, CREATE TEMP TABLE | Complex analysis |
 | `operator` | `agent_operator` | SELECT, INSERT, UPDATE (ops tables) | Incident response |
@@ -69,7 +70,8 @@ CREATE ROLE agent_readonly WITH LOGIN PASSWORD 'secure_password';
 GRANT CONNECT ON DATABASE mydb TO agent_readonly;
 GRANT USAGE ON SCHEMA public TO agent_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO agent_readonly;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO agent_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO agent_readonly;
 
 -- Analyst role (for complex analysis)
 CREATE ROLE agent_analyst WITH LOGIN PASSWORD 'secure_password';
@@ -87,7 +89,7 @@ GRANT INSERT, UPDATE ON ops.incidents, ops.deployments TO agent_operator;
 The PostgreSQL skill provides:
 
 | Capability | Description |
-|------------|-------------|
+| ---------- | ----------- |
 | `query` | Execute SELECT queries |
 | `list_tables` | List available tables |
 | `describe_table` | Get table schema |
@@ -147,7 +149,8 @@ SELECT
   date_trunc('week', deployed_at) as week,
   COUNT(*) as releases,
   COUNT(*) FILTER (WHERE rolled_back) as rollbacks,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE rolled_back) / COUNT(*), 1) as rollback_pct
+  ROUND(100.0 * COUNT(*) FILTER (WHERE rolled_back) / COUNT(*), 1)
+    as rollback_pct
 FROM deployments
 WHERE environment = 'production'
   AND deployed_at > NOW() - INTERVAL '3 months'
@@ -181,7 +184,7 @@ ORDER BY occurred_at;
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `ops/release-manager` | readonly | Deployment history, release metrics |
 | `ops/rollback-advisor` | readonly | Incident correlation, change analysis |
 | `ops/deploy-validator` | readonly | Pre/post deploy verification |
@@ -192,7 +195,7 @@ ORDER BY occurred_at;
 When PostgreSQL is unavailable, agents should:
 
 | Scenario | Fallback |
-|----------|----------|
+| -------- | -------- |
 | Deployment history | Parse git tags and CI artifacts |
 | Error correlation | Use log files or monitoring APIs |
 | Release metrics | Derive from git commit history |

@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Strawberry
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Python style guide](../languages/python.md) with Strawberry GraphQL-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [Python style guide](../languages/python.md) with Strawberry GraphQL-spe
 All Python tooling applies. Additional considerations:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | uv | `uv add strawberry-graphql[fastapi]` |
 | Run dev | Strawberry CLI | `strawberry server schema` |
 | Test | pytest | `pytest` |
@@ -21,22 +25,28 @@ All Python tooling applies. Additional considerations:
 
 ## Why Strawberry?
 
-Strawberry[^1] is a modern Python GraphQL library that uses Python's native type hints and dataclasses to define schemas. Unlike schema-first approaches (like Ariadne) or verbose class-based definitions (like Graphene), Strawberry generates schemas directly from Python code.
+Strawberry[^1] is a modern Python GraphQL library that uses Python's native type
+hints and dataclasses to define schemas. Unlike schema-first approaches (like
+Ariadne) or verbose class-based definitions (like Graphene), Strawberry
+generates schemas directly from Python code.
 
 **Key advantages**:
+
 - Python-native schema definition using decorators and type hints
 - Full async support for high-performance APIs
 - Built-in Mypy plugin for static type checking
 - First-class integrations with FastAPI, Django, and Flask
 - DataLoader support for solving N+1 queries
 
-Use Strawberry when building GraphQL APIs in Python, especially with FastAPI or Django. For REST APIs, see [FastAPI](fastapi.md) or [Django REST Framework](django.md).
+Use Strawberry when building GraphQL APIs in Python, especially with FastAPI or
+Django. For REST APIs, see [FastAPI](fastapi.md) or [Django REST
+Framework](django.md).
 
 ## Project Structure
 
 Projects **SHOULD** organize Strawberry applications by domain:
 
-```
+```text
 my_app/
 ├── src/
 │   └── myapp/
@@ -67,7 +77,8 @@ my_app/
 └── .env
 ```
 
-**Why**: Separating GraphQL types from database models and business logic maintains clean boundaries. The `graphql/types/` directory mirrors your domain, making navigation intuitive.
+**Why**: Separating GraphQL types from database models and business logic maintains clean
+boundaries. The `graphql/types/` directory mirrors your domain, making navigation intuitive.
 
 ## Schema Definition
 
@@ -92,7 +103,8 @@ class User:
         return self.full_name or self.email.split("@")[0]
 ```
 
-**Why**: Strawberry leverages Python's type system for schema generation. The decorator pattern is explicit and maintains Python's readability while generating accurate GraphQL schemas.
+**Why**: Strawberry leverages Python's type system for schema generation. The decorator pattern is
+explicit and maintains Python's readability while generating accurate GraphQL schemas.
 
 ### Input Types
 
@@ -111,7 +123,8 @@ class UpdateUserInput:
     full_name: str | None = None
 ```
 
-**Why**: Separate input types from output types. GraphQL requires this distinction, and it enables different validation rules for creation vs. updates.
+**Why**: Separate input types from output types. GraphQL requires this distinction, and it enables
+different validation rules for creation vs. updates.
 
 ### Enums
 
@@ -161,7 +174,9 @@ class Query:
         return [User.from_model(u) for u in result.scalars()]
 ```
 
-**Why**: Strawberry documentation emphasizes: "It is recommended to use `async def` for all fields if handling concurrent requests on a single worker." Synchronous functions block the entire worker despite FastAPI's threadpool.
+**Why**: Strawberry documentation emphasizes: "It is recommended to use `async def` for all fields
+if handling concurrent requests on a single worker." Synchronous functions block the entire worker
+despite FastAPI's threadpool.
 
 ### Field Arguments
 
@@ -228,7 +243,8 @@ class Mutation:
         return await service.delete_user(int(id))
 ```
 
-**Why**: Use input types rather than multiple arguments for mutations with more than 2-3 parameters. This improves readability and makes schema evolution easier.
+**Why**: Use input types rather than multiple arguments for mutations with more than 2-3
+parameters. This improves readability and makes schema evolution easier.
 
 ## DataLoaders
 
@@ -277,11 +293,13 @@ class User:
         return [Order.from_model(o) for o in orders]
 ```
 
-**Why**: DataLoaders batch multiple individual loads into a single query. Without them, fetching 10 users with their orders would be 11 queries (1 + N). With DataLoaders, it's 2 queries.
+**Why**: DataLoaders batch multiple individual loads into a single query. Without them, fetching 10
+users with their orders would be 11 queries (1 + N). With DataLoaders, it's 2 queries.
 
 ### DataLoader Best Practices
 
-1. **Create loaders per-request**: Instantiate DataLoaders in context to prevent cross-request cache pollution
+1. **Create loaders per-request**: Instantiate DataLoaders in context to prevent cross-request
+   cache pollution
 2. **Clear cache after mutations**: Use `loader.clear(key)` after modifying data
 3. **Prime cache when available**: Use `loader.prime(key, value)` when data is already loaded
 
@@ -329,7 +347,8 @@ app = FastAPI()
 app.include_router(graphql_app, prefix="/graphql")
 ```
 
-**Why**: Typed context enables IDE autocompletion and type checking. Creating DataLoaders and database sessions per-request ensures proper resource cleanup and cache isolation.
+**Why**: Typed context enables IDE autocompletion and type checking. Creating DataLoaders and
+database sessions per-request ensures proper resource cleanup and cache isolation.
 
 ## Permissions
 
@@ -380,7 +399,8 @@ class Mutation:
         ...
 ```
 
-**Why**: Declarative permissions keep authorization logic separate from business logic. Permission classes are reusable and testable in isolation.
+**Why**: Declarative permissions keep authorization logic separate from business logic. Permission
+classes are reusable and testable in isolation.
 
 ## Schema Composition
 
@@ -411,7 +431,8 @@ schema = strawberry.Schema(
 )
 ```
 
-**Why**: Multiple inheritance for Query/Mutation types enables domain-driven organization while producing a single coherent schema.
+**Why**: Multiple inheritance for Query/Mutation types enables domain-driven organization while
+producing a single coherent schema.
 
 ## Security Extensions
 
@@ -444,7 +465,8 @@ schema = strawberry.Schema(
 | `MaxAliasesLimiter` | Prevent alias abuse | 10-20 |
 | `MaskErrors` | Hide sensitive error info | Enable in production |
 
-**Why**: GraphQL's flexibility can be exploited for denial-of-service attacks. These extensions prevent abuse while allowing legitimate queries.
+**Why**: GraphQL's flexibility can be exploited for denial-of-service attacks. These extensions
+prevent abuse while allowing legitimate queries.
 
 ### Disabling Introspection
 
@@ -531,7 +553,8 @@ Projects **MUST** enable Strawberry's Mypy plugin:
 plugins = ["strawberry.ext.mypy_plugin"]
 ```
 
-**Why**: The Mypy plugin validates that GraphQL types match their Python definitions, catching type mismatches before runtime.
+**Why**: The Mypy plugin validates that GraphQL types match their Python definitions, catching type
+mismatches before runtime.
 
 ## Testing
 
@@ -612,7 +635,8 @@ async def test_get_users(context, user_factory) -> None:
     assert len(result.data["users"]) == 3
 ```
 
-**Why**: Testing against the schema directly (rather than HTTP) isolates GraphQL logic from transport concerns. Pass variables dynamically rather than hardcoding them in query strings.
+**Why**: Testing against the schema directly (rather than HTTP) isolates GraphQL logic from
+transport concerns. Pass variables dynamically rather than hardcoding them in query strings.
 
 ### Testing Permissions
 
@@ -674,7 +698,8 @@ class Mutation:
         return User.from_model(user)
 ```
 
-**Why**: Union types for results enable type-safe error handling in clients. This follows the "errors as data" pattern preferred in GraphQL over throwing exceptions.
+**Why**: Union types for results enable type-safe error handling in clients. This follows the
+"errors as data" pattern preferred in GraphQL over throwing exceptions.
 
 ## Subscriptions
 

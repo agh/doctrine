@@ -23,16 +23,16 @@ language guide.
 
 The testing pyramid[^1] is a framework for balancing test types:
 
-```
-          ╱╲
-         ╱  ╲           E2E (few, slow, expensive)
-        ╱────╲
-       ╱      ╲         Acceptance (user journeys)
-      ╱────────╲
-     ╱          ╲       Integration (component interactions)
-    ╱────────────╲
-   ╱              ╲     Unit (many, fast, cheap)
-  ╱────────────────╲
+```text
+          /\
+         /  \           E2E (few, slow, expensive)
+        /----\
+       /      \         Acceptance (user journeys)
+      /--------\
+     /          \       Integration (component interactions)
+    /------------\
+   /              \     Unit (many, fast, cheap)
+  /----------------\
 ```
 
 ## Test Types
@@ -77,12 +77,12 @@ Verify business requirements using BDD style[^8].
 
 Measure and validate performance characteristics[^13].
 
-| Type | Purpose | Tools |
-|------|---------|-------|
-| Benchmark | Measure function speed | pytest-benchmark[^14], criterion[^15], testing.B[^16] |
-| Load | Test under expected load | k6[^17], locust[^18], Gatling[^19] |
-| Stress | Find breaking points | k6[^17], Artillery[^20] |
-| Soak | Detect memory leaks | Extended load tests |
+| Type      | Purpose                  | Tools                                                 |
+| --------- | ------------------------ | ----------------------------------------------------- |
+| Benchmark | Measure function speed   | pytest-benchmark[^14], criterion[^15], testing.B[^16] |
+| Load      | Test under expected load | k6[^17], locust[^18], Gatling[^19]                    |
+| Stress    | Find breaking points     | k6[^17], Artillery[^20]                               |
+| Soak      | Detect memory leaks      | Extended load tests                                   |
 
 ### Thread Safety Tests
 
@@ -154,7 +154,7 @@ Test feature flag behavior[^31].
 
 ### Directory Structure
 
-```
+```text
 tests/
 ├── unit/              # Fast, isolated tests
 ├── integration/       # Component interaction tests
@@ -223,12 +223,12 @@ jobs:
 
 ## Coverage Goals
 
-| Type | Target | Notes |
-|------|--------|-------|
-| Unit | 80%+ | Focus on business logic |
-| Integration | Critical paths | Database, APIs |
-| E2E | Happy paths | Don't over-invest |
-| Regression | All fixed bugs | Prevent recurrence |
+| Type        | Target         | Notes                   |
+| ----------- | -------------- | ----------------------- |
+| Unit        | 80%+           | Focus on business logic |
+| Integration | Critical paths | Database, APIs          |
+| E2E         | Happy paths    | Don't over-invest       |
+| Regression  | All fixed bugs | Prevent recurrence      |
 
 **Coverage is a metric, not a goal.**[^32] Focus on testing behavior, not hitting
 arbitrary numbers. 100% coverage doesn't mean 100% correct.
@@ -249,7 +249,8 @@ Flaky tests[^33] undermine confidence. Handle them aggressively:
 - **Builders**[^36]: Fluent API for complex objects
 - **Fakers**[^37]: Random but realistic data
 
-You **SHOULD** prefer factories over fixtures for flexibility. You **SHOULD** use fixtures for complex scenarios that need exact reproduction.
+You **SHOULD** prefer factories over fixtures for flexibility. You **SHOULD** use
+fixtures for complex scenarios that need exact reproduction.
 
 ## See Also
 

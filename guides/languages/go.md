@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > Go
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Extends [Google Go Style Guide](google/go.md). See also
 [Google Go Decisions](google/go-decisions.md) and
@@ -11,7 +13,7 @@ Extends [Google Go Style Guide](google/go.md). See also
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | golangci-lint[^1] | `golangci-lint run` |
 | Format | gofmt[^2] | `gofmt -w .` |
 | Format | goimports[^3] | `goimports -w .` |
@@ -84,7 +86,9 @@ linters-settings:
 
 ## Formatting: gofmt + goimports
 
-Projects **MUST** use gofmt[^2] or goimports[^3] for formatting Go code. Projects **SHOULD** prefer goimports as it provides automatic import management in addition to formatting.
+Projects **MUST** use gofmt[^2] or goimports[^3] for formatting Go code.
+Projects **SHOULD** prefer goimports as it provides automatic import management
+in addition to formatting.
 
 ### Why gofmt/goimports?
 
@@ -105,7 +109,8 @@ There are no configuration options. This is intentional.
 
 ## Context Patterns
 
-Projects **MUST** propagate context through the call stack. Context carries deadlines, cancellation signals, and request-scoped values.
+Projects **MUST** propagate context through the call stack. Context carries
+deadlines, cancellation signals, and request-scoped values.
 
 ### Why Context Matters
 
@@ -155,7 +160,8 @@ func deepFunction(ctx context.Context) {
 
 ## Error Wrapping
 
-Projects **SHOULD** wrap errors with context using `fmt.Errorf` and `%w`. This preserves the error chain for debugging while adding context.
+Projects **SHOULD** wrap errors with context using `fmt.Errorf` and `%w`. This
+preserves the error chain for debugging while adding context.
 
 ### Why Wrap Errors
 
@@ -265,7 +271,8 @@ deadcode ./...
 
 ## Code Coverage
 
-Projects **MUST** track code coverage using Go's built-in coverage tools. Projects **SHOULD** enforce minimum coverage thresholds in CI.
+Projects **MUST** track code coverage using Go's built-in coverage tools.
+Projects **SHOULD** enforce minimum coverage thresholds in CI.
 
 ```bash
 # Run tests with coverage
@@ -288,7 +295,8 @@ fi
 
 ## Cyclomatic Complexity
 
-Projects **SHOULD** monitor cyclomatic complexity using gocyclo[^7] (via golangci-lint). Functions with complexity over 15 **SHOULD** be refactored.
+Projects **SHOULD** monitor cyclomatic complexity using gocyclo[^7] (via
+golangci-lint). Functions with complexity over 15 **SHOULD** be refactored.
 
 Via golangci-lint with gocyclo enabled:
 
@@ -307,7 +315,8 @@ gocyclo -over 15 .
 
 ## Fuzzing: Native Go Fuzzing (1.18+)
 
-Projects **SHOULD** use Go's native fuzzing for testing functions that parse untrusted input or have complex edge cases.
+Projects **SHOULD** use Go's native fuzzing for testing functions that parse
+untrusted input or have complex edge cases.
 
 ### Why Native Go Fuzzing?
 
@@ -443,7 +452,8 @@ func BenchmarkBad(b *testing.B) {
 
 ## Test Performance
 
-Projects **SHOULD** run tests in parallel mode. Projects **MUST** run tests with the race detector in CI.
+Projects **SHOULD** run tests in parallel mode. Projects **MUST** run tests
+with the race detector in CI.
 
 ```bash
 # Parallel tests (default: GOMAXPROCS)
@@ -493,7 +503,8 @@ repos:
 
 ## CI Pipeline
 
-Projects **MUST** run linting and tests in CI. Projects **MUST** include race detection in CI test runs.
+Projects **MUST** run linting and tests in CI. Projects **MUST** include race
+detection in CI test runs.
 
 ```yaml
 jobs:
@@ -519,7 +530,8 @@ jobs:
 
 ## Dependencies & Package Management
 
-Projects **MUST** use Go modules (go mod) for dependency management. Projects **MUST** commit both `go.mod` and `go.sum` to version control.
+Projects **MUST** use Go modules (go mod) for dependency management.
+Projects **MUST** commit both `go.mod` and `go.sum` to version control.
 
 ### Why Go Modules?
 
@@ -570,7 +582,8 @@ require (
 
 ### Minimum Version Selection (MVS)
 
-Go uses MVS algorithm: always selects the minimum required version that satisfies all constraints. This ensures reproducible builds.
+Go uses MVS algorithm: always selects the minimum required version that
+satisfies all constraints. This ensures reproducible builds.
 
 ```bash
 # View dependency graph
@@ -582,7 +595,8 @@ go mod why github.com/pkg/errors
 
 ### Vulnerability Scanning
 
-Projects **SHOULD** use govulncheck[^8] to scan for known vulnerabilities. Projects **SHOULD** run vulnerability scans in CI.
+Projects **SHOULD** use govulncheck[^8] to scan for known vulnerabilities.
+Projects **SHOULD** run vulnerability scans in CI.
 
 ```bash
 # Install govulncheck
@@ -617,7 +631,9 @@ updates:
 
 ## E2E & Acceptance Testing
 
-Projects **SHOULD** use appropriate testing tools based on their needs: httptest[^10] for HTTP APIs, chromedp[^11] for browser automation, or godog[^12] for BDD.
+Projects **SHOULD** use appropriate testing tools based on their needs:
+httptest[^10] for HTTP APIs, chromedp[^11] for browser automation, or
+godog[^12] for BDD.
 
 ### httptest for API Testing
 
@@ -704,7 +720,8 @@ func TestFeatures(t *testing.T) {
 
 ## Mocking with gomock
 
-Projects **SHOULD** use gomock[^16] for generating mock implementations of interfaces in unit tests.
+Projects **SHOULD** use gomock[^16] for generating mock implementations of
+interfaces in unit tests.
 
 ### Why gomock?
 
@@ -886,7 +903,8 @@ go generate ./...
 
 ### Race Detector
 
-Projects **MUST** use the race detector when testing concurrent code. The race detector **MUST** be run in CI for all projects with goroutines.
+Projects **MUST** use the race detector when testing concurrent code. The race
+detector **MUST** be run in CI for all projects with goroutines.
 
 ```bash
 # Run tests with race detector
@@ -1214,7 +1232,8 @@ func TestWindowsSpecific(t *testing.T) {
 
 ## cgo: C Interoperability
 
-Projects **MAY** use cgo[^17] to call C code from Go when necessary, but **SHOULD** prefer pure Go alternatives when available.
+Projects **MAY** use cgo[^17] to call C code from Go when necessary, but
+**SHOULD** prefer pure Go alternatives when available.
 
 ### Why cgo?
 

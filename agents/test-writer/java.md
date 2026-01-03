@@ -13,7 +13,7 @@ Java-specific guidance for test generation.
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Run tests | Maven | `mvn test` |
 | Run tests | Gradle | `./gradlew test` |
 | Coverage | JaCoCo | `mvn jacoco:report` |
@@ -24,7 +24,7 @@ Java-specific guidance for test generation.
 Detect testing framework from project files:
 
 | Indicator | Framework |
-|-----------|-----------|
+| --------- | --------- |
 | `junit-jupiter` dependency | JUnit 5 |
 | `junit:junit:4.x` dependency | JUnit 4 |
 | `org.testng` dependency | TestNG |

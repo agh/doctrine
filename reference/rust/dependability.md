@@ -1,7 +1,7 @@
 # Dependability
 
-
 <a id="c-validate"></a>
+
 ## Functions validate their arguments (C-VALIDATE)
 
 Rust APIs do _not_ generally follow the [robustness principle]: "be conservative
@@ -72,8 +72,8 @@ The unchecked functions can be used judiciously in cases where (1) performance
 dictates avoiding checks and (2) the client is otherwise confident that the
 inputs are valid.
 
-
 <a id="c-dtor-fail"></a>
+
 ## Destructors never fail (C-DTOR-FAIL)
 
 Destructors are executed while panicking, and in that context a failing
@@ -84,8 +84,8 @@ clean teardown, e.g. a `close` method, that returns a `Result` to signal
 problems. If that `close` method is not called, the `Drop` implementation
 should do the teardown and ignore or log/trace any errors it produces.
 
-
 <a id="c-dtor-block"></a>
+
 ## Destructors that may block have alternatives (C-DTOR-BLOCK)
 
 Similarly, destructors should not invoke blocking operations, which can make

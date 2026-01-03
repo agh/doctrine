@@ -4,13 +4,13 @@ Explain how code works in plain language.
 
 ## Usage
 
-```
+```text
 /explain [file, function, or code block]
 ```
 
 ## Examples
 
-```
+```text
 /explain src/auth/oauth.ts
 /explain handleWebhook
 /explain --deep src/core/  # Deep dive with diagrams

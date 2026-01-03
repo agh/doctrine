@@ -4,7 +4,7 @@ Run all verification checks with optional self-healing, time-travel debugging, a
 
 ## Usage
 
-```
+```text
 /verify              # Standard verification
 /verify --fix        # Self-healing mode (auto-fix issues)
 /verify --quick      # Quick mode (deps + build + types only)
@@ -17,7 +17,7 @@ Run all verification checks with optional self-healing, time-travel debugging, a
 ## Flags
 
 | Flag | Description |
-|------|-------------|
+| ---- | ----------- |
 | `--fix` | Enable self-healing: automatically fix lint, format, and type errors |
 | `--quick` | Run only: dependencies → build → types |
 | `--full` | Run all checks including security scanning and coverage |
@@ -101,7 +101,7 @@ When a check fails:
 ### Results
 
 | Check | Status | Time | Details |
-|-------|--------|------|---------|
+| ----- | ------ | ---- | ------- |
 | Dependencies | ✅/❌ | Xs | |
 | Build | ✅/❌ | Xs | |
 | Type Check | ✅/❌ | Xs | |
@@ -114,7 +114,7 @@ When a check fails:
 ### Self-Healing Actions (if --fix)
 
 | File | Issue | Fix Applied | Result |
-|------|-------|-------------|--------|
+| ---- | ----- | ----------- | ------ |
 | ... | ... | ... | ✅/❌ |
 
 ### Failures
@@ -130,7 +130,8 @@ When a check fails:
 ## Examples
 
 ### Basic Verification
-```
+
+```text
 > /verify
 Running verification on Node.js project...
 
@@ -139,7 +140,7 @@ Running verification on Node.js project...
 ### Status: PASS
 
 | Check | Status | Time |
-|-------|--------|------|
+| ----- | ------ | ---- |
 | Dependencies | ✅ | 2.1s |
 | Build | ✅ | 4.8s |
 | Type Check | ✅ | 1.3s |
@@ -151,14 +152,15 @@ All checks passed in 18.0s
 ```
 
 ### Self-Healing Mode
-```
+
+```text
 > /verify --fix
 Running verification with self-healing...
 
 ### Self-Healing Actions
 
 | File | Issue | Fix Applied | Result |
-|------|-------|-------------|--------|
+| ---- | ----- | ----------- | ------ |
 | src/api.ts | Missing semicolon | ESLint --fix | ✅ Fixed |
 | src/utils.ts | Unused import | ESLint --fix | ✅ Fixed |
 

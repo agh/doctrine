@@ -8,7 +8,9 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ## Overview
 
-This guide covers Claude Code CLI[^1] configuration: hooks, permissions, subagents, commands, and MCP. For universal AI workflows (Hero Flow, TDD, Visual Iteration), see [AI Workflows](ai-workflows.md).
+This guide covers Claude Code CLI[^1] configuration: hooks, permissions,
+subagents, commands, and MCP. For universal AI workflows (Hero Flow, TDD,
+Visual Iteration), see [AI Workflows](ai-workflows.md).
 
 ## Quick Reference
 
@@ -43,7 +45,7 @@ This guide covers Claude Code CLI[^1] configuration: hooks, permissions, subagen
 
 Claude Code uses several configuration files:
 
-```
+```text
 project/
 ├── .claude/
 │   ├── settings.json      # Permissions, hooks, preferences
@@ -94,7 +96,8 @@ See [configs/claude/settings.json](../../configs/claude/settings.json) for Doctr
 
 ## Hooks
 
-Hooks automate quality checks and enable long-running sessions. They **MUST** be configured for professional workflows.
+Hooks automate quality checks and enable long-running sessions. They **MUST**
+be configured for professional workflows.
 
 ### Hook Types
 
@@ -187,11 +190,12 @@ If the Stop hook command fails, Claude is prompted to continue and fix issues.
 
 ### Permission Syntax
 
-```
+```text
 ToolName(pattern)
 ```
 
 Examples:
+
 - `Bash(npm run *)` — Allow any npm run command
 - `Write(src/**)` — Allow writing to src/ and subdirectories
 - `Read(*)` — Allow reading any file
@@ -276,7 +280,8 @@ Examples:
 
 ## Subagents
 
-Subagents are specialized Claude instances organized into agent families. Each family has an Opus coordinator and Sonnet specialists.
+Subagents are specialized Claude instances organized into agent families. Each
+family has an Opus coordinator and Sonnet specialists.
 
 ### Agent Families
 
@@ -289,6 +294,7 @@ Doctrine provides three agent families:
 | **Security** | `/security` | Security Architect (Opus) | Security analysis |
 
 See the family guides for full details:
+
 - [Code Agent Family](./code-agents.md)
 - [System Agent Family](./system-agents.md)
 - [Security Agent Family](./security-agents.md)
@@ -448,7 +454,8 @@ Puppeteer MCP enables automated screenshots:
 ```
 
 Then in conversation:
-```
+
+```text
 Take a screenshot of http://localhost:3000/login
 ```
 
@@ -579,4 +586,3 @@ jobs:
 
 [^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) — Official CLI documentation
 [^2]: [MCP Documentation](https://modelcontextprotocol.io/) — Model Context Protocol specification
-[^3]: [Claude Code: Best practices for agentic coding](https://www.anthropic.com/engineering/claude-code-best-practices) — Boris Cherny's official guide

@@ -6,7 +6,9 @@ model: sonnet
 
 # Security Posture Score Agent
 
-You are the **Security Posture Score** analyst, responsible for quantifying an organization's security state into actionable metrics. You translate complex security findings into business-relevant numbers that executives can understand and act upon.
+You are the **Security Posture Score** analyst, responsible for quantifying an
+organization's security state into actionable metrics. You translate complex security
+findings into business-relevant numbers that executives can understand and act upon.
 
 ## Model Selection
 
@@ -17,7 +19,7 @@ You are the **Security Posture Score** analyst, responsible for quantifying an o
 
 Security Posture Score provides **one number** that answers: "How secure are we?"
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                                                                          │
 │                    SECURITY POSTURE SCORE                               │
@@ -183,7 +185,7 @@ def apply_trend_bonus(score: float) -> float:
 
 ### Score Ranges
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    SCORE INTERPRETATION                                  │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -427,7 +429,7 @@ trend_signals:
 
 ## Executive Dashboard
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    SECURITY POSTURE DASHBOARD                            │
 │                    December 2024                                         │

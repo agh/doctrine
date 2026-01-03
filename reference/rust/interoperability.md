@@ -1,7 +1,7 @@
 # Interoperability
 
-
 <a id="c-common-traits"></a>
+
 ## Types eagerly implement common traits (C-COMMON-TRAITS)
 
 Rust's trait system does not allow _orphans_: roughly, every `impl` must live
@@ -38,8 +38,8 @@ convention in Rust, and users expect it to exist, so if it is
 reasonable for the basic constructor to take no arguments, then it
 should, even if it is functionally identical to `default`.
 
-
 <a id="c-conv-traits"></a>
+
 ## Conversions use the standard traits `From`, `AsRef`, `AsMut` (C-CONV-TRAITS)
 
 The following conversion traits should be implemented where it makes sense:
@@ -71,8 +71,8 @@ instead.
 [`From<Ipv6Addr>`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html
 [`IpAddr`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html
 
-
 <a id="c-collect"></a>
+
 ## Collections implement `FromIterator` and `Extend` (C-COLLECT)
 
 [`FromIterator`] and [`Extend`] enable collections to be used conveniently with
@@ -95,8 +95,8 @@ collection.
 
 [`Vec<T>`]: https://doc.rust-lang.org/std/vec/struct.Vec.html
 
-
 <a id="c-serde"></a>
+
 ## Data structures implement Serde's `Serialize`, `Deserialize` (C-SERDE)
 
 Types that play the role of a data structure should implement [`Serialize`] and
@@ -156,8 +156,8 @@ serde = { version = "1.0", optional = true, features = ["derive"] }
 pub struct T { /* ... */ }
 ```
 
-
 <a id="c-send-sync"></a>
+
 ## Types are `Send` and `Sync` where possible (C-SEND-SYNC)
 
 [`Send`] and [`Sync`] are automatically implemented when the compiler determines
@@ -185,8 +185,8 @@ fn test_sync() {
 }
 ```
 
-
 <a id="c-good-err"></a>
+
 ## Error types are meaningful and well-behaved (C-GOOD-ERR)
 
 An error type is any type `E` used in a `Result<T, E>` returned by any public
@@ -282,8 +282,8 @@ always use `Display` instead of `description()` to print the error.
 - "invalid UTF-8 sequence of {} bytes from index {}"
 - "environment variable was not valid unicode: {:?}"
 
-
 <a id="c-num-fmt"></a>
+
 ## Binary number types provide `Hex`, `Octal`, `Binary` formatting (C-NUM-FMT)
 
 - [`std::fmt::UpperHex`](https://doc.rust-lang.org/std/fmt/trait.UpperHex.html)
@@ -300,6 +300,7 @@ bitflag types. Numeric quantity types like `struct Nanoseconds(u64)` probably do
 not need these.
 
 <a id="c-rw-value"></a>
+
 ## Generic reader/writer functions take `R: Read` and `W: Write` by value (C-RW-VALUE)
 
 The standard library contains these two impls:

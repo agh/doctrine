@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > Ruby
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 **Target Version**: Ruby 4.0
 
@@ -11,7 +13,7 @@ Based on the [community Ruby Style Guide](https://rubystyle.guide/).
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | StandardRB[^1] | `bundle exec standardrb` |
 | Format | StandardRB[^1] | `bundle exec standardrb --fix` |
 | Type check | Sorbet[^2] | `bundle exec srb tc` |
@@ -24,13 +26,16 @@ Based on the [community Ruby Style Guide](https://rubystyle.guide/).
 
 ## Linting & Formatting: StandardRB
 
-Projects **MUST** use StandardRB[^1] for linting and formatting. StandardRB provides zero-config linting built on RuboCop[^8] and eliminates bikeshedding debates with sensible defaults.
+Projects **MUST** use StandardRB[^1] for linting and formatting. StandardRB
+provides zero-config linting built on RuboCop[^8] and eliminates bikeshedding
+debates with sensible defaults.
 
 ### Why StandardRB?
 
 StandardRB was chosen over direct RuboCop configuration because it:
 
-- **Eliminates configuration bikeshedding**: Zero-config approach means no team debates about style preferences
+- **Eliminates configuration bikeshedding**: Zero-config approach means no team
+  debates about style preferences
 - **Provides consistency**: Same code style across all Ruby projects in the organization
 - **Stays current**: Monthly updates automatically track new RuboCop rules and Ruby best practices
 - **Reduces maintenance**: No need to maintain custom RuboCop configuration files
@@ -63,13 +68,15 @@ AllCops:
 
 ## Type Checking: Sorbet
 
-Projects **SHOULD** use Sorbet[^2] for gradual static typing. Sorbet provides gradual static typing for Ruby.
+Projects **SHOULD** use Sorbet[^2] for gradual static typing. Sorbet provides
+gradual static typing for Ruby.
 
 ### Why Sorbet?
 
 Sorbet was chosen as the type checking solution because it:
 
-- **Gradual adoption**: Can be added incrementally to existing codebases with typed levels (false, true, strict, strong)
+- **Gradual adoption**: Can be added incrementally to existing codebases with
+  typed levels (false, true, strict, strong)
 - **Fast feedback**: Provides near-instant type checking feedback during development
 - **Runtime safety**: `sorbet-runtime` catches type errors at runtime when static checks aren't sufficient
 - **IDE integration**: Powers autocomplete and navigation in modern editors
@@ -135,7 +142,9 @@ end
 
 ### The `it` Keyword (Ruby 3.4+)
 
-Ruby 3.4 introduced the `it` keyword as the default block parameter, providing a more readable alternative to numbered parameters (`_1`) and explicit block parameters.
+Ruby 3.4 introduced the `it` keyword as the default block parameter, providing
+a more readable alternative to numbered parameters (`_1`) and explicit block
+parameters.
 
 #### Why `it`?
 
@@ -162,7 +171,9 @@ users.each_with_index { |user, index| puts "#{index}: #{user.name}" }
 pairs.map { |key, value| "#{key}=#{value}" }
 ```
 
-Projects **SHOULD** prefer `it` over `_1` for single-parameter blocks in Ruby 4.0+. Explicit parameters **MAY** still be used when parameter naming adds clarity or when multiple parameters are needed.
+Projects **SHOULD** prefer `it` over `_1` for single-parameter blocks in Ruby
+4.0+. Explicit parameters **MAY** still be used when parameter naming adds
+clarity or when multiple parameters are needed.
 
 ### Data Class for Immutable Value Objects (Ruby 3.2+)
 
@@ -206,11 +217,15 @@ user = User.new(1, "Alice", "alice@example.com")
 updated = user.with(email: "newemail@example.com")
 ```
 
-Projects **SHOULD** use `Data.define` for immutable value objects instead of `Struct` when immutability is desired. Use `Struct` only when you need mutable objects.
+Projects **SHOULD** use `Data.define` for immutable value objects instead of
+`Struct` when immutability is desired. Use `Struct` only when you need mutable
+objects.
 
 ### Frozen String Literals by Default (Ruby 4.0)
 
-Ruby 4.0 makes frozen string literals the default behavior. All string literals are now frozen by default, improving performance and preventing accidental mutations.
+Ruby 4.0 makes frozen string literals the default behavior. All string
+literals are now frozen by default, improving performance and preventing
+accidental mutations.
 
 #### Why Frozen by Default?
 
@@ -247,7 +262,9 @@ message = "User: #{name}"
 message.frozen?  # => true
 ```
 
-Projects **MUST** remove `# frozen_string_literal: true` magic comments in Ruby 4.0+. When mutable strings are needed, **MUST** use `String.new` or the unary plus operator `+`.
+Projects **MUST** remove `# frozen_string_literal: true` magic comments in Ruby
+4.0+. When mutable strings are needed, **MUST** use `String.new` or the unary
+plus operator `+`.
 
 ### Set as Core Class (Ruby 3.2+)
 
@@ -324,11 +341,13 @@ logs = [log1, log2, log3, log4]
 logs.rfind { it.valid? }  # Efficiently finds last valid log
 ```
 
-Projects **SHOULD** prefer `Array#find` and `Array#rfind` over `Enumerable#find` when working with arrays in Ruby 4.0+.
+Projects **SHOULD** prefer `Array#find` and `Array#rfind` over
+`Enumerable#find` when working with arrays in Ruby 4.0+.
 
 ### String#strip with Selectors (Ruby 4.0)
 
-Ruby 4.0 extends `String#strip`, `#lstrip`, and `#rstrip` to accept selector arguments for custom character stripping.
+Ruby 4.0 extends `String#strip`, `#lstrip`, and `#rstrip` to accept selector
+arguments for custom character stripping.
 
 ```ruby
 # Default behavior (whitespace)
@@ -352,7 +371,8 @@ csv_value = "  \"hello\"  "
 csv_value.strip.strip("\"")        # => "hello"
 ```
 
-Projects **MAY** use the selector arguments to `strip`, `lstrip`, and `rstrip` when custom character removal is needed.
+Projects **MAY** use the selector arguments to `strip`, `lstrip`, and `rstrip`
+when custom character removal is needed.
 
 ### Prism Parser (Ruby 3.4+)
 
@@ -406,7 +426,9 @@ ruby --zjit script.rb
 ruby --zjit --zjit-max-versions=10 script.rb
 ```
 
-Projects **SHOULD** use default YJIT in production. ZJIT **MAY** be evaluated for specific performance-critical workloads but is not recommended for general use.
+Projects **SHOULD** use default YJIT in production. ZJIT **MAY** be evaluated
+for specific performance-critical workloads but is not recommended for general
+use.
 
 ### Ractor Improvements (Ruby 4.0)
 
@@ -473,16 +495,18 @@ r = Ractor.new(port) { |p| p.send(42) }
 port.receive  # => 42
 ```
 
-Projects using Ractors **MUST** migrate from the removed methods to the new `Ractor::Port` API.
+Projects using Ractors **MUST** migrate from the removed methods to the new
+`Ractor::Port` API.
 
 ## Ruby 4.0 Breaking Changes
 
 ### Removed Features
 
-Ruby 4.0 removes several deprecated features. Projects **MUST** update code using these features before upgrading.
+Ruby 4.0 removes several deprecated features. Projects **MUST** update code
+using these features before upgrading.
 
 | Removed | Migration |
-|---------|-----------|
+| ------- | --------- |
 | `--rjit` option | Use `--yjit` (default) or experimental `--zjit` |
 | `CGI` library (most of it) | Only `cgi/escape` retained; use `Rack` or `rack-utils` for CGI functionality |
 | `SortedSet` autoload | Add `gem 'sorted_set'` to Gemfile |
@@ -518,11 +542,14 @@ Ruby 4.0 updates to Unicode 17.0.0. This may affect:
 - Regular expression character classes
 - Case conversion methods
 
-Projects handling internationalized text **SHOULD** test Unicode-dependent functionality after upgrading.
+Projects handling internationalized text **SHOULD** test Unicode-dependent
+functionality after upgrading.
 
 ## Time Zone Handling
 
-Projects **MUST** use time zone-aware methods when working with dates and times. Using `Time.now` instead of `Time.zone.now` is a common source of production bugs.
+Projects **MUST** use time zone-aware methods when working with dates and
+times. Using `Time.now` instead of `Time.zone.now` is a common source of
+production bugs.
 
 ### Why Time Zones Matter
 
@@ -653,7 +680,8 @@ RSpec[^17] is the recommended testing framework for Ruby projects.
 
 ## Cyclomatic Complexity: Flog
 
-Projects **SHOULD** use Flog[^6] to measure and control code complexity (higher scores indicate more complex code).
+Projects **SHOULD** use Flog[^6] to measure and control code complexity (higher
+scores indicate more complex code).
 
 ```bash
 bundle exec flog lib/
@@ -666,6 +694,7 @@ bundle exec flog -a lib/ -t 10
 ```
 
 Guidelines:
+
 - 0-10: Ideal
 - 11-20: Might need refactoring
 - 21-40: Consider refactoring
@@ -764,7 +793,8 @@ jobs:
 
 ## Dependencies & Package Management
 
-Projects **MUST** use Bundler[^11] for dependency management. Bundler manages Ruby dependencies and ensures consistent environments.
+Projects **MUST** use Bundler[^11] for dependency management. Bundler manages
+Ruby dependencies and ensures consistent environments.
 
 ```bash
 # Install dependencies
@@ -782,7 +812,8 @@ bundle audit check --update
 
 ### Gemfile.lock
 
-Projects **MUST** commit `Gemfile.lock` to version control. It ensures identical gem versions across environments.
+Projects **MUST** commit `Gemfile.lock` to version control. It ensures
+identical gem versions across environments.
 
 ### Version Constraints
 
@@ -860,7 +891,8 @@ end
 
 ### Cucumber for BDD Acceptance Tests
 
-Projects **MAY** use Cucumber[^15] for behavior-driven development acceptance tests when business stakeholders need readable specifications.
+Projects **MAY** use Cucumber[^15] for behavior-driven development acceptance
+tests when business stakeholders need readable specifications.
 
 ```ruby
 # Gemfile

@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Hanami
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Ruby style guide](../languages/ruby.md) with Hanami-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [Ruby style guide](../languages/ruby.md) with Hanami-specific convention
 All Ruby tooling applies. Additional considerations:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | StandardRB[^1] | `bundle exec standardrb` |
 | Test | RSpec | `bundle exec rspec` |
 | Console | Hanami CLI | `bundle exec hanami console` |
@@ -23,21 +27,26 @@ All Ruby tooling applies. Additional considerations:
 
 Hanami[^2] is ideal for architecture-focused web development because it:
 
-- **Clean architecture**: Enforces separation of concerns with distinct layers (actions, views, entities, repositories)
+- **Clean architecture**: Enforces separation of concerns with distinct layers (actions, views,
+  entities, repositories)
 - **Explicit over implicit**: No magic; dependencies are explicit and configuration is clear
 - **Testability**: Framework designed for testing with minimal setup and fast test suites
-- **Modular monoliths**: Slices architecture allows organizing code into bounded contexts within a single application
+- **Modular monoliths**: Slices architecture allows organizing code into bounded contexts within
+  a single application
 - **ROM integration**: Uses Ruby Object Mapper (ROM) for flexible, powerful data persistence
 - **Dependency injection**: Built-in container for managing dependencies and testing
 - **Modern Ruby**: Built for Ruby 3.x+ with performance and developer experience in mind
 
-Use Hanami for greenfield applications where clean architecture matters, especially domain-driven designs and modular monoliths. Choose Rails for rapid prototyping with extensive ecosystem, or Sinatra for simple APIs and microservices.
+Use Hanami for greenfield applications where clean architecture matters, especially
+domain-driven designs and modular monoliths. Choose Rails for rapid prototyping with extensive
+ecosystem, or Sinatra for simple APIs and microservices.
 
 ## Project Structure (Slices Architecture)
 
-Projects **SHOULD** organize code using Hanami's slices architecture. Each slice represents a bounded context or feature area.
+Projects **SHOULD** organize code using Hanami's slices architecture. Each
+slice represents a bounded context or feature area.
 
-```
+```text
 my_app/
 ├── app/
 │   ├── actions/           # Cross-slice actions (if needed)
@@ -81,6 +90,7 @@ my_app/
 ```
 
 **Why slices?** Slices provide:
+
 - Clear boundaries between features
 - Independent testing of each slice
 - Easier refactoring and code navigation
@@ -89,7 +99,8 @@ my_app/
 
 ## Actions and Views (Separated Concerns)
 
-Actions **MUST** handle HTTP concerns only. Views **MUST** handle presentation logic. This separation ensures testability and maintainability.
+Actions **MUST** handle HTTP concerns only. Views **MUST** handle presentation logic. This
+separation ensures testability and maintainability.
 
 ### Actions
 
@@ -242,7 +253,8 @@ end
 
 ## Repositories and Relations (ROM-based Persistence)
 
-Hanami uses ROM (Ruby Object Mapper)[^3] for data persistence. Repositories **MUST** encapsulate all data access. Relations **SHOULD** define queries and transformations.
+Hanami uses ROM (Ruby Object Mapper)[^3] for data persistence. Repositories **MUST** encapsulate
+all data access. Relations **SHOULD** define queries and transformations.
 
 ### Entities
 
@@ -327,7 +339,8 @@ end
 
 ## Dependency Injection Container
 
-Hanami's dependency injection container **SHOULD** be used for managing dependencies. This improves testability and makes dependencies explicit.
+Hanami's dependency injection container **SHOULD** be used for managing dependencies. This
+improves testability and makes dependencies explicit.
 
 ### Providers
 

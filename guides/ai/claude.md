@@ -4,7 +4,9 @@
 
 ## RFC 2119 Key Words
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Table of Contents
 
@@ -23,7 +25,12 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Introduction
 
-This guide provides comprehensive best practices for working with Anthropic's Claude models[^1], including model selection, Claude Code CLI usage, API patterns, and advanced techniques like extended thinking and multi-agent workflows. Teams and individual developers MUST follow these guidelines to maximize effectiveness, minimize costs, and ensure consistent high-quality results when working with Claude.
+This guide provides comprehensive best practices for working with Anthropic's
+Claude models[^1], including model selection, Claude Code CLI usage, API
+patterns, and advanced techniques like extended thinking and multi-agent
+workflows. Teams and individual developers MUST follow these guidelines to
+maximize effectiveness, minimize costs, and ensure consistent high-quality
+results when working with Claude.
 
 ### Scope
 
@@ -52,11 +59,14 @@ This guide is intended for:
 
 ### Model Tiers Overview
 
-Anthropic's Claude models are organized into three tiers, each optimized for different use cases and cost profiles. Teams MUST understand these tiers to make informed selection decisions.
+Anthropic's Claude models are organized into three tiers, each optimized for
+different use cases and cost profiles. Teams MUST understand these tiers to
+make informed selection decisions.
 
 #### Claude Opus 4.5
 
 **Capabilities**:
+
 - **Top-tier reasoning**: Most advanced analytical and reasoning capabilities
 - **Complex problem-solving**: Multi-step reasoning, architectural decisions
 - **Superior code quality**: Produces highest quality, most idiomatic code
@@ -64,12 +74,14 @@ Anthropic's Claude models are organized into three tiers, each optimized for dif
 - **Nuanced understanding**: Best at understanding subtle requirements and edge cases
 
 **Specifications**[^2]:
+
 - Context window: 200K tokens
 - Output limit: 16K tokens
 - Latency: 3-10 seconds typical
 - Cost (as of 2025): $15/1M input tokens, $75/1M output tokens
 
 **Ideal Use Cases**:
+
 - Architecture and system design decisions
 - Security-critical code review and analysis
 - Complex refactoring across multiple interconnected files
@@ -79,7 +91,8 @@ Anthropic's Claude models are organized into three tiers, each optimized for dif
 - Mission-critical feature implementation
 
 **When to Use Opus**:
-```
+
+```text
 Use Opus when:
 ✓ Decision has high organizational impact
 ✓ Code affects security, compliance, or core business logic
@@ -100,6 +113,7 @@ Typical scenarios:
 #### Claude Sonnet 4.5
 
 **Capabilities**:
+
 - **Balanced performance**: Excellent quality-to-cost ratio
 - **Fast response**: 2-5 second typical latency
 - **Strong code generation**: Production-quality code for most tasks
@@ -107,12 +121,14 @@ Typical scenarios:
 - **Versatile**: Suitable for 70-80% of development tasks
 
 **Specifications**[^2]:
+
 - Context window: 200K tokens
 - Output limit: 16K tokens
 - Latency: 1-5 seconds typical
 - Cost (as of 2025): $3/1M input tokens, $15/1M output tokens
 
 **Ideal Use Cases**:
+
 - Feature implementation (standard complexity)
 - Bug fixing and debugging
 - Code reviews (non-security-critical)
@@ -123,7 +139,8 @@ Typical scenarios:
 - General development assistance
 
 **When to Use Sonnet**:
-```
+
+```text
 Use Sonnet when:
 ✓ Standard development task with clear requirements
 ✓ Good quality needed but not mission-critical
@@ -142,23 +159,28 @@ Typical scenarios:
 - Generating boilerplate code
 ```
 
-**Default Recommendation**: Sonnet SHOULD be the default choice for most development work. It provides excellent results at a fraction of Opus cost, making it ideal for daily development tasks.
+**Default Recommendation**: Sonnet SHOULD be the default choice for most
+development work. It provides excellent results at a fraction of Opus cost,
+making it ideal for daily development tasks.
 
 #### Claude Haiku 3.5
 
 **Capabilities**:
+
 - **Ultra-fast responses**: Sub-second latency
 - **Cost-effective**: Lowest cost per request
 - **Good for simple tasks**: Handles straightforward, well-defined tasks
 - **High throughput**: Ideal for batch processing
 
 **Specifications**[^2]:
+
 - Context window: 200K tokens
 - Output limit: 8K tokens
 - Latency: <1 second typical
 - Cost (as of 2025): $0.25/1M input tokens, $1.25/1M output tokens
 
 **Ideal Use Cases**:
+
 - Code completion and autocomplete
 - Simple documentation generation (docstrings, comments)
 - Formatting and style fixes
@@ -168,7 +190,8 @@ Typical scenarios:
 - High-volume processing tasks
 
 **When to Use Haiku**:
-```
+
+```text
 Use Haiku when:
 ✓ Task is simple and well-defined
 ✓ Speed is more important than perfection
@@ -190,7 +213,7 @@ Typical scenarios:
 
 Teams MUST use this decision matrix to select appropriate models:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │ DECISION MATRIX: CLAUDE MODEL SELECTION                     │
 ├─────────────────────────────────────────────────────────────┤
@@ -231,17 +254,20 @@ Teams MUST use this decision matrix to select appropriate models:
 Teams MUST understand token economics to optimize spending:
 
 **Input Token Costs (per 1M tokens)**:
+
 - Haiku: $0.25 (baseline)
 - Sonnet: $3.00 (12× Haiku)
 - Opus: $15.00 (60× Haiku, 5× Sonnet)
 
 **Output Token Costs (per 1M tokens)**:
+
 - Haiku: $1.25 (baseline)
 - Sonnet: $15.00 (12× Haiku)
 - Opus: $75.00 (60× Haiku, 5× Sonnet)
 
 **Practical Examples**:
-```
+
+```text
 Scenario 1: Generate docstrings for 50 functions
 Input: 25K tokens (function signatures + context)
 Output: 10K tokens (docstrings)
@@ -282,7 +308,8 @@ Recommendation: Sonnet (balanced quality-cost for production code)
 #### Cost Optimization Strategies
 
 **Strategy 1: Model Cascading**
-```
+
+```text
 Start with lower-tier model, escalate if needed:
 
 1. Initial attempt with Sonnet
@@ -298,7 +325,8 @@ Savings: 50%
 ```
 
 **Strategy 2: Prompt Caching**[^3]
-```
+
+```text
 Claude offers prompt caching for repeated context:
 
 First request:
@@ -321,7 +349,8 @@ Best practices:
 ```
 
 **Strategy 3: Context Minimization**
-```
+
+```text
 Reduce input tokens without losing essential context:
 
 Before optimization (60K tokens):
@@ -351,7 +380,7 @@ Teams SHOULD establish clear criteria for when to upgrade or downgrade models:
 
 #### When to Upgrade from Haiku to Sonnet
 
-```
+```text
 Upgrade if any condition is true:
 □ Output quality is insufficient (requires rework)
 □ Code generated has logical errors
@@ -369,7 +398,7 @@ ROI: 166:1 for using Sonnet
 
 #### When to Upgrade from Sonnet to Opus
 
-```
+```text
 Upgrade if any condition is true:
 □ Security or compliance requirements
 □ Complex multi-step reasoning required
@@ -388,7 +417,7 @@ vs continuing with Sonnet: diminishing returns
 
 #### When to Downgrade from Sonnet to Haiku
 
-```
+```text
 Downgrade if all conditions are true:
 □ Task is simpler than initially assessed
 □ Pattern is clear and well-defined
@@ -409,13 +438,16 @@ Savings: 93% without quality impact
 
 ## Claude Code CLI Patterns
 
-The Claude Code CLI[^4] is Anthropic's official command-line interface for Claude, providing a powerful development environment. This section establishes best practices for using Claude Code effectively.
+The Claude Code CLI[^4] is Anthropic's official command-line interface for
+Claude, providing a powerful development environment. This section establishes
+best practices for using Claude Code effectively.
 
 ### Core Concepts
 
 #### What is Claude Code
 
 Claude Code is:
+
 - Official CLI tool from Anthropic
 - Designed specifically for software development workflows
 - Optimized for codebase understanding and manipulation
@@ -426,6 +458,7 @@ Claude Code is:
 #### Key Features
 
 **Codebase Awareness**:
+
 ```bash
 # Claude Code can:
 - Search across entire codebase
@@ -437,6 +470,7 @@ Claude Code is:
 ```
 
 **Extended Thinking**:
+
 ```bash
 # Enable deeper reasoning for complex tasks
 claude --extended-thinking "Design authentication system"
@@ -449,6 +483,7 @@ claude --extended-thinking "Design authentication system"
 ```
 
 **Context Persistence**:
+
 ```bash
 # Context is maintained across commands in a session
 claude "Review authentication code"
@@ -460,11 +495,14 @@ claude "Now add rate limiting to those endpoints"
 
 ### AGENTS.md Pattern
 
-The AGENTS.md file is a critical component of Claude Code workflow. It MUST be used to provide essential codebase context. For Claude Code compatibility, create a `CLAUDE.md` symlink pointing to `AGENTS.md`.
+The AGENTS.md file is a critical component of Claude Code workflow. It MUST be
+used to provide essential codebase context. For Claude Code compatibility,
+create a `CLAUDE.md` symlink pointing to `AGENTS.md`.
 
 #### What is AGENTS.md
 
 AGENTS.md is a markdown file at the root of your repository that provides:
+
 1. **Project overview**: What the project does and why
 2. **Technical stack**: Languages, frameworks, key dependencies
 3. **Development commands**: Build, test, run, deploy
@@ -476,7 +514,7 @@ AGENTS.md is a markdown file at the root of your repository that provides:
 
 A well-structured AGENTS.md MUST include these sections:
 
-```markdown
+````markdown
 # Project Name
 
 ## Overview
@@ -517,7 +555,7 @@ pnpm lint
 
 ## Code Organization
 
-```
+```text
 src/
 ├── app/           # Next.js app directory
 ├── components/    # React components
@@ -529,19 +567,22 @@ src/
 ## Code Conventions
 
 ### Style Guide
+
 - Follow Airbnb TypeScript style guide
 - Use functional components with hooks
 - Prefer named exports over default exports
 - Use absolute imports (e.g., @/components/...)
 
 ### Naming Conventions
+
 - Components: PascalCase (e.g., UserProfile.tsx)
 - Functions: camelCase (e.g., fetchUserData)
 - Constants: UPPER_SNAKE_CASE (e.g., MAX_RETRY_COUNT)
 - Files: kebab-case for non-components (e.g., user-service.ts)
 
 ### Testing Patterns
-- Test files: *.test.ts or *.test.tsx
+
+- Test files: *.test.ts or*.test.tsx
 - Use describe/it for test structure
 - Mock external dependencies
 - Aim for >80% coverage
@@ -549,14 +590,17 @@ src/
 ## Architecture Notes
 
 ### Authentication
+
 Uses NextAuth.js with JWT strategy. Session tokens expire after 24 hours.
 Refresh token rotation is enabled.
 
 ### Database Access
+
 All database access MUST go through Prisma client. Direct SQL queries are
 prohibited except in migrations.
 
 ### API Design
+
 - RESTful endpoints under /api/v1/
 - All responses include { success: boolean, data?: any, error?: string }
 - Use HTTP status codes correctly (200, 201, 400, 401, 404, 500)
@@ -564,12 +608,15 @@ prohibited except in migrations.
 ## Common Pitfalls
 
 ### Database Connections
+
 DO NOT create new Prisma clients. Use the singleton from lib/db.ts
 
 ### Environment Variables
+
 All env vars MUST be prefixed with NEXT_PUBLIC_ for client-side access
 
 ### Server Components
+
 Be careful with 'use client' directive. Only use for interactive components.
 
 ## Known Issues
@@ -583,11 +630,12 @@ Be careful with 'use client' directive. Only use for interactive components.
 - [API Documentation](./docs/api.md)
 - [Architecture Decisions](./docs/adr/)
 - [Contributing Guide](./CONTRIBUTING.md)
-```
+````
 
 #### AGENTS.md Best Practices
 
 **DO**:
+
 ```markdown
 ✓ Keep it under 500-1000 lines
 ✓ Include actual commands that work
@@ -600,6 +648,7 @@ Be careful with 'use client' directive. Only use for interactive components.
 ```
 
 **DON'T**:
+
 ```markdown
 ✗ Include exhaustive documentation (link instead)
 ✗ Duplicate information from README
@@ -718,11 +767,12 @@ all existing functionality."
 
 ### Extended Thinking Triggers
 
-Extended thinking mode causes Claude to show its reasoning process before responding. This SHOULD be used for complex tasks requiring deep analysis.
+Extended thinking mode causes Claude to show its reasoning process before
+responding. This SHOULD be used for complex tasks requiring deep analysis.
 
 #### When to Use Extended Thinking
 
-```
+```text
 Use --extended-thinking flag when:
 ✓ Problem requires multi-step reasoning
 ✓ Architectural decisions needed
@@ -797,7 +847,8 @@ serverless-friendly options
 #### Automatic Context Assembly
 
 Claude Code automatically provides context about:
-```
+
+```text
 • File structure (via directory listing)
 • File contents (when referenced or searched)
 • Recent changes (via git if available)
@@ -861,11 +912,14 @@ claude "Now focus on the security aspects we just discussed"
 
 ## API Usage Patterns
 
-For teams integrating Claude via API[^5] rather than CLI, these patterns establish best practices for system prompts, temperature settings, token management, and more.
+For teams integrating Claude via API[^5] rather than CLI, these patterns
+establish best practices for system prompts, temperature settings, token
+management, and more.
 
 ### System Prompts
 
-System prompts set the behavior and expertise level of Claude. They MUST be used to establish consistent behavior.
+System prompts set the behavior and expertise level of Claude. They MUST be
+used to establish consistent behavior.
 
 #### System Prompt Structure
 
@@ -899,6 +953,7 @@ Response format:
 #### System Prompt Best Practices
 
 **DO**:
+
 ```python
 # ✓ Be specific about role and expertise
 system_prompt = "You are a senior Python developer specializing in
@@ -918,6 +973,7 @@ Include error handling for edge cases."
 ```
 
 **DON'T**:
+
 ```python
 # ✗ Too vague
 system_prompt = "You are a helpful assistant."
@@ -938,6 +994,7 @@ system_prompt = """[5000 words of detailed instructions]"""
 #### Domain-Specific System Prompts
 
 **For Security Reviews**:
+
 ```python
 security_review_prompt = """You are a security engineer conducting
 code reviews for vulnerabilities.
@@ -961,6 +1018,7 @@ Be thorough but avoid false positives. Only report actual vulnerabilities.
 ```
 
 **For Code Generation**:
+
 ```python
 code_generation_prompt = """You are an expert {language} developer.
 
@@ -980,6 +1038,7 @@ When generating code:
 ```
 
 **For Refactoring**:
+
 ```python
 refactoring_prompt = """You are a software engineer specializing in
 code refactoring and technical debt reduction.
@@ -1000,7 +1059,8 @@ Always:
 
 ### Temperature Settings
 
-Temperature controls randomness in Claude's responses. Teams MUST use appropriate temperature settings for different task types.
+Temperature controls randomness in Claude's responses. Teams MUST use
+appropriate temperature settings for different task types.
 
 #### Temperature Guidelines
 
@@ -1299,11 +1359,14 @@ except Exception as e:
 
 ## Extended Thinking and Reasoning
 
-Extended thinking[^7] is a powerful feature that causes Claude to show its reasoning process before providing an answer. This section covers when and how to use it effectively.
+Extended thinking[^7] is a powerful feature that causes Claude to show its
+reasoning process before providing an answer. This section covers when and
+how to use it effectively.
 
 ### Understanding Extended Thinking
 
 Extended thinking causes Claude to:
+
 1. **Analyze the problem deeply** before responding
 2. **Show its reasoning process** in `<thinking>` tags
 3. **Consider multiple approaches** and trade-offs
@@ -1312,7 +1375,7 @@ Extended thinking causes Claude to:
 
 ### When to Enable Extended Thinking
 
-```
+```text
 Enable extended thinking for:
 ✓ Complex architectural decisions
 ✓ Security analysis and threat modeling
@@ -1534,6 +1597,7 @@ Based on the analysis above, I recommend a hybrid caching strategy:
 ```
 
 **Interpreting the thinking**:
+
 - Shows Claude considered multiple options
 - Evaluated trade-offs systematically
 - Reached decision based on specific requirements
@@ -1542,7 +1606,8 @@ Based on the analysis above, I recommend a hybrid caching strategy:
 ### Extended Thinking Best Practices
 
 **DO**:
-```
+
+```text
 ✓ Use for high-stakes decisions
 ✓ Use Opus model for best thinking quality
 ✓ Provide comprehensive context
@@ -1552,7 +1617,8 @@ Based on the analysis above, I recommend a hybrid caching strategy:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Use for every simple query (wastes tokens/cost)
 ✗ Ignore the thinking section (valuable insights)
 ✗ Provide insufficient context (garbage in, garbage out)
@@ -1564,13 +1630,16 @@ Based on the analysis above, I recommend a hybrid caching strategy:
 
 ## Multi-Agent Workflows
 
-Multi-agent workflows involve orchestrating multiple Claude instances (or multiple calls) with specialized roles to solve complex problems. This pattern is powerful for large-scale tasks.
+Multi-agent workflows involve orchestrating multiple Claude instances (or
+multiple calls) with specialized roles to solve complex problems. This pattern
+is powerful for large-scale tasks.
 
 ### Core Concepts
 
 #### What is a Multi-Agent Workflow
 
 A multi-agent workflow:
+
 - Uses multiple Claude instances or calls with **different specialized roles**
 - Each "agent" focuses on a specific aspect of the problem
 - Agents can **pass results to each other** in sequence or parallel
@@ -1579,7 +1648,7 @@ A multi-agent workflow:
 
 #### When to Use Multi-Agent Workflows
 
-```
+```text
 Use multi-agent workflows for:
 ✓ Large codebases requiring analysis + generation + review
 ✓ Tasks needing specialized expertise (security, performance, etc.)
@@ -1722,13 +1791,15 @@ result = sequential_specialists_workflow(
 ```
 
 **Benefits**:
+
 - Each agent specializes in what it does best
 - Quality improves through multi-stage refinement
 - Clear separation of concerns
 - Can use different models for different stages (Opus for design/review, Sonnet for implementation)
 
 **Cost Consideration**:
-```
+
+```text
 Example feature implementation:
 - Architect (Opus): $0.50
 - Developer (Sonnet): $0.30
@@ -1848,6 +1919,7 @@ result = asyncio.run(parallel_specialists_workflow(codebase_code))
 ```
 
 **Benefits**:
+
 - Faster than sequential (parallel execution)
 - Specialized expertise in each domain
 - Comprehensive coverage
@@ -1924,6 +1996,7 @@ result = iterative_refinement_workflow(
 ```
 
 **Benefits**:
+
 - Solution improves with each iteration
 - Catches and fixes issues systematically
 - Converges toward high-quality solution
@@ -2058,7 +2131,8 @@ results = await orchestrator.execute_workflow(
 ### Multi-Agent Best Practices
 
 **DO**:
-```
+
+```text
 ✓ Use Opus for critical roles (architect, security, final review)
 ✓ Use Sonnet for implementation and generation
 ✓ Run independent analyses in parallel (faster, cheaper)
@@ -2070,7 +2144,8 @@ results = await orchestrator.execute_workflow(
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Use multi-agent for simple tasks (overkill, expensive)
 ✗ Create circular dependencies between agents
 ✗ Pass excessive context between agents (token waste)
@@ -2083,7 +2158,8 @@ results = await orchestrator.execute_workflow(
 
 ## Context and Prompt Engineering
 
-Effective context management and prompt engineering are critical for Claude's performance. This section covers advanced techniques.
+Effective context management and prompt engineering are critical for Claude's
+performance. This section covers advanced techniques.
 
 ### Context Assembly Strategies
 
@@ -2194,7 +2270,7 @@ Code:
 
 #### Few-Shot Examples
 
-```python
+````python
 # Provide examples of desired behavior
 prompt = f"""Generate a API endpoint following our patterns.
 
@@ -2217,6 +2293,7 @@ export async function GET(req: Request) {{
 Example 2:
 Task: Create endpoint for updating user email
 Output:
+
 ```typescript
 export async function PATCH(req: Request) {{
   const {{ email }} = await req.json();
@@ -2234,7 +2311,7 @@ export async function PATCH(req: Request) {{
 Now generate:
 Task: Create endpoint for deleting user account
 """
-```
+````
 
 #### Structured Output Requests
 
@@ -2269,6 +2346,7 @@ Code:
 **Problem**: Claude invents functions or methods that don't exist.
 
 **Example**:
+
 ```typescript
 // Claude might generate:
 import { validateEmail } from '@/lib/validators';
@@ -2276,6 +2354,7 @@ import { validateEmail } from '@/lib/validators';
 ```
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Provide actual API documentation
 prompt = f"""
@@ -2307,7 +2386,8 @@ functions actually exist in the codebase. If uncertain, ask me.
 **Problem**: Generated code doesn't match project conventions.
 
 **Solutions**:
-```python
+
+````python
 # ✓ Solution 1: Explicit style instructions
 system_prompt = """
 Code style requirements:
@@ -2339,15 +2419,17 @@ Now generate: [your request]
 """
 
 # ✓ Solution 3: Post-process with linter
+
 generated_code = get_claude_response(prompt)
 formatted_code = run_prettier(generated_code)
-```
+````
 
 ### Pitfall 3: Over-Engineering
 
 **Problem**: Claude creates unnecessarily complex solutions.
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Emphasize simplicity
 prompt = """
@@ -2378,6 +2460,7 @@ Then, if needed, suggest more sophisticated versions.
 **Problem**: Generated code doesn't handle edge cases.
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Explicitly request edge case handling
 prompt = """
@@ -2409,6 +2492,7 @@ prompt_2 = f"Implement login handling these edge cases: {edge_cases}"
 **Problem**: Generated code has security flaws.
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Security-focused system prompt
 security_system_prompt = """
@@ -2456,6 +2540,7 @@ response = client.messages.create(
 **Problem**: Exceeding 200K token context limit.
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Prioritize context
 def prioritize_context(files: List[str], max_tokens: int) -> List[str]:
@@ -2505,6 +2590,7 @@ step_2 = f"Implement step 1 of plan: {plan}"
 **Problem**: Claude suggests deprecated or outdated packages.
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Specify versions in prompt
 prompt = """
@@ -2541,6 +2627,7 @@ Flag any outdated usage.
 **Problem**: Missing try-catch blocks or error scenarios.
 
 **Solutions**:
+
 ```python
 # ✓ Solution 1: Explicit error handling requirements
 prompt = """
@@ -2577,7 +2664,7 @@ scenarios and show how each is handled in the code.
 
 ### Model Selection Summary
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │ QUICK REFERENCE: MODEL SELECTION               │
 ├─────────────────────────────────────────────────┤
@@ -2630,7 +2717,7 @@ Output:
 
 ### Cost Optimization Summary
 
-```
+```text
 1. Use lowest tier that produces acceptable quality
 2. Batch similar operations together
 3. Use prompt caching for repeated context
@@ -2647,7 +2734,8 @@ Output:
 ### Model Selection
 
 **DO**:
-```
+
+```text
 ✓ Use Haiku for simple, high-volume tasks (docstrings, formatting)
 ✓ Use Sonnet as default for standard development
 ✓ Use Opus for security, architecture, and critical decisions
@@ -2657,7 +2745,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Use Opus for simple tasks (waste of money)
 ✗ Use Haiku for complex reasoning (poor results)
 ✗ Ignore cost metrics and always use highest tier
@@ -2668,7 +2757,8 @@ Output:
 ### AGENTS.md Files
 
 **DO**:
-```
+
+```text
 ✓ Create AGENTS.md at repository root (with CLAUDE.md symlink)
 ✓ Include: project overview, tech stack, commands, conventions
 ✓ Keep under 500-1000 lines
@@ -2679,7 +2769,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Include exhaustive documentation (link instead)
 ✗ Let it become outdated
 ✗ Include sensitive information (secrets, credentials)
@@ -2691,7 +2782,8 @@ Output:
 ### Extended Thinking
 
 **DO**:
-```
+
+```text
 ✓ Use for complex architectural decisions
 ✓ Use for security analysis
 ✓ Use for debugging elusive issues
@@ -2702,7 +2794,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Use for every simple query (wastes tokens/cost)
 ✗ Ignore the thinking section (valuable insights there)
 ✗ Use with insufficient context
@@ -2713,7 +2806,8 @@ Output:
 ### Multi-Agent Workflows
 
 **DO**:
-```
+
+```text
 ✓ Use for large, complex tasks needing multiple perspectives
 ✓ Assign specialized roles (architect, developer, reviewer)
 ✓ Run independent analyses in parallel
@@ -2723,7 +2817,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Use for simple tasks (overkill and expensive)
 ✗ Create circular dependencies
 ✗ Pass excessive context between agents
@@ -2734,7 +2829,8 @@ Output:
 ### Context Management
 
 **DO**:
-```
+
+```text
 ✓ Prioritize context: target file > dependencies > similar files
 ✓ Use hierarchical structuring (broad → narrow → specific)
 ✓ Leverage prompt caching for repeated context
@@ -2744,7 +2840,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Include entire codebase (exceeds limits, expensive)
 ✗ Provide irrelevant files (wastes tokens)
 ✗ Repeat same large context in consecutive requests
@@ -2755,7 +2852,8 @@ Output:
 ### Prompt Engineering
 
 **DO**:
-```
+
+```text
 ✓ Be specific about requirements and constraints
 ✓ Provide examples of desired output
 ✓ Request step-by-step reasoning for complex tasks
@@ -2765,7 +2863,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Be vague ("make it better")
 ✗ Omit critical context
 ✗ Request overly broad analysis
@@ -2776,7 +2875,8 @@ Output:
 ### Security
 
 **DO**:
-```
+
+```text
 ✓ Use Opus for security-critical code
 ✓ Explicitly request security considerations
 ✓ Review generated code for vulnerabilities
@@ -2786,7 +2886,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Trust generated security code without review
 ✗ Use Haiku for authentication/authorization
 ✗ Skip security review for public-facing features
@@ -2797,7 +2898,8 @@ Output:
 ### Cost Optimization
 
 **DO**:
-```
+
+```text
 ✓ Track costs per developer, per task type
 ✓ Use prompt caching for repeated context
 ✓ Batch similar operations
@@ -2807,7 +2909,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Ignore cost metrics
 ✗ Always use highest-tier model
 ✗ Repeat large context unnecessarily
@@ -2818,7 +2921,8 @@ Output:
 ### Error Handling
 
 **DO**:
-```
+
+```text
 ✓ Implement retry logic with exponential backoff
 ✓ Handle rate limits gracefully
 ✓ Validate outputs before using
@@ -2827,7 +2931,8 @@ Output:
 ```
 
 **DON'T**:
-```
+
+```text
 ✗ Assume API calls always succeed
 ✗ Ignore rate limit errors
 ✗ Skip output validation
@@ -2850,13 +2955,15 @@ Claude's models (Opus, Sonnet, Haiku) provide powerful capabilities when used co
 7. **Cost Awareness**: Monitor usage, optimize context, use appropriate tiers
 
 Following these best practices enables teams to:
+
 - Achieve 20-40% productivity gains on suitable tasks
 - Maintain or improve code quality
 - Optimize costs (10-50:1 ROI typical)
 - Scale AI assistance across organization
 - Build secure, maintainable systems
 
-**Remember**: Claude is a powerful assistant, but the developer remains responsible for all code quality, security, and correctness.
+**Remember**: Claude is a powerful assistant, but the developer remains
+responsible for all code quality, security, and correctness.
 
 ---
 

@@ -4,7 +4,7 @@ Generate secure code fixes for identified vulnerabilities.
 
 ## Usage
 
-```
+```text
 /security-fix <finding-id or file:line>
 ```
 
@@ -27,7 +27,7 @@ Generate secure code fixes for identified vulnerabilities.
 ## Options
 
 | Option | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `--severity <level>` | Fix all findings at this severity or above |
 | `--dry-run` | Show fixes without applying |
 | `--pr` | Create PR with fixes |
@@ -42,31 +42,24 @@ Generate secure code fixes for identified vulnerabilities.
 
 ## Output
 
-```markdown
-# Security Fix: [Finding ID]
+    # Security Fix: [Finding ID]
 
-## Summary
-[What was vulnerable and how it's fixed]
+    ## Summary
+    [What was vulnerable and how it's fixed]
 
-## Changes
+    ## Changes
 
-### `src/api/users.ts`
-```diff
-- const query = `SELECT * FROM users WHERE id = '${id}'`;
-+ const user = await db('users').where({ id }).first();
-```
+    ### `src/api/users.ts`
+    - const query = `SELECT * FROM users WHERE id = '${id}'`;
+    + const user = await db('users').where({ id }).first();
 
-### `tests/security/sql-injection.test.ts` (NEW)
-```typescript
-// Security regression test
-```
+    ### `tests/security/sql-injection.test.ts` (NEW)
+    // Security regression test
 
-## Verification
-
-- [ ] Run `npm test`
-- [ ] Verify exploit no longer works
-- [ ] Check existing functionality
-```
+    ## Verification
+    - [ ] Run `npm test`
+    - [ ] Verify exploit no longer works
+    - [ ] Check existing functionality
 
 ## Implementation
 

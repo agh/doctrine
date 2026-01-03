@@ -2,14 +2,16 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > TypeScript
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Extends [Google TypeScript Style Guide](google/typescript.html).
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Biome[^1] | `biome check .` |
 | Format | Biome[^1] | `biome format --write .` |
 | Type check | tsc[^2] | `tsc --noEmit` |
@@ -22,7 +24,8 @@ Extends [Google TypeScript Style Guide](google/typescript.html).
 
 ## Linting & Formatting: Biome
 
-Projects **MUST** use Biome[^1] for linting and formatting unless extensive plugin ecosystems are required (see ESLint Alternative below).
+Projects **MUST** use Biome[^1] for linting and formatting unless extensive
+plugin ecosystems are required (see ESLint Alternative below).
 
 ### Why Biome
 
@@ -154,7 +157,9 @@ Projects **MUST** enable all strict type checking options:
 
 ## Decorators
 
-Projects **MAY** use decorators for cross-cutting concerns like logging, validation, and dependency injection. TypeScript 5.0+ supports ECMAScript decorators natively.
+Projects **MAY** use decorators for cross-cutting concerns like logging,
+validation, and dependency injection. TypeScript 5.0+ supports ECMAScript
+decorators natively.
 
 ### Why Decorators
 
@@ -332,7 +337,8 @@ class ApiClient {
 
 ## Declaration Files
 
-Projects **MUST** provide type declarations for any public JavaScript APIs. Declaration files (`.d.ts`) describe the shape of existing JavaScript code.
+Projects **MUST** provide type declarations for any public JavaScript APIs.
+Declaration files (`.d.ts`) describe the shape of existing JavaScript code.
 
 ### Why Declaration Files
 
@@ -479,19 +485,21 @@ export type ElementOf<T> = T extends (infer E)[] ? E : never;
 
 ## Module Resolution
 
-Projects **MUST** configure module resolution to match their runtime environment and bundler requirements.
+Projects **MUST** configure module resolution to match their runtime
+environment and bundler requirements.
 
 ### Why Module Resolution Matters
 
 - **Correctness**: Ensures TypeScript finds the same modules as the runtime
-- **Compatibility**: Different environments (Node.js, browsers, bundlers) have different resolution rules
+- **Compatibility**: Different environments (Node.js, browsers, bundlers) have
+  different resolution rules
 - **Performance**: Proper configuration reduces failed resolution attempts
 - **Predictability**: Eliminates "works on my machine" module resolution issues
 
 ### Module Resolution Strategies
 
 | Strategy | Use Case | tsconfig Setting |
-|----------|----------|------------------|
+| -------- | -------- | ---------------- |
 | Node16/NodeNext | Modern Node.js (ESM + CJS) | `"moduleResolution": "NodeNext"` |
 | Bundler | Webpack, Vite, esbuild | `"moduleResolution": "Bundler"` |
 | Node10 (legacy) | Older Node.js CJS only | `"moduleResolution": "Node"` |
@@ -787,9 +795,11 @@ pnpm add express
 pnpm add -D @types/express
 ```
 
-**Lock files**: Projects **MUST** commit lock files (`package-lock.json` or `pnpm-lock.yaml`) for reproducible builds.
+**Lock files**: Projects **MUST** commit lock files (`package-lock.json` or
+`pnpm-lock.yaml`) for reproducible builds.
 
 **Version constraints**:
+
 - `^1.2.3` - Compatible updates (>=1.2.3 <2.0.0)
 - `~1.2.3` - Patch updates only (>=1.2.3 <1.3.0)
 - `1.2.3` - Exact version (pinned)
@@ -814,7 +824,8 @@ updates:
 
 ## E2E & Acceptance Testing
 
-Projects **SHOULD** use Playwright[^12] for browser E2E testing and **MAY** use Cucumber.js[^13] for BDD-style acceptance testing.
+Projects **SHOULD** use Playwright[^12] for browser E2E testing and **MAY** use
+Cucumber.js[^13] for BDD-style acceptance testing.
 
 **Playwright[^12]** for browser E2E:
 

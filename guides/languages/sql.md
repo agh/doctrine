@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > SQL
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Based on [SQL Style Guide](https://www.sqlstyle.guide/)[^1] with PostgreSQL focus.
 Conventions work across PostgreSQL[^2], MySQL[^3], and SQLite[^4].
@@ -10,7 +12,7 @@ Conventions work across PostgreSQL[^2], MySQL[^3], and SQLite[^4].
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | SQLFluff[^5] | `sqlfluff lint` |
 | Format | SQLFluff[^5] | `sqlfluff fix` |
 | Type check | - | - |
@@ -28,6 +30,7 @@ SQLFluff[^5] is the world-class SQL linter, supporting 20+ dialects.
 ### Why SQLFluff
 
 SQLFluff provides comprehensive linting and formatting for SQL with:
+
 - Support for 20+ SQL dialects (PostgreSQL, MySQL, SQLite, etc.)
 - Auto-fixing capabilities for common style violations
 - Templating support (Jinja[^6], dbt[^7]) for SQL generation workflows
@@ -148,6 +151,7 @@ CREATE UNIQUE INDEX idx_users_email_unique ON users(email_address);
 ### Constraints
 
 Constraint names **MUST** follow these formats:
+
 - Primary keys: `table_pkey`
 - Unique: `table_column_key`
 - Foreign keys: `table_column_fkey`
@@ -166,7 +170,9 @@ ALTER TABLE orders
 
 ## Query Formatting
 
-Queries **MUST** use consistent formatting with keywords in UPPERCASE and identifiers in lowercase. SQL clauses **SHOULD** be on separate lines for readability.
+Queries **MUST** use consistent formatting with keywords in UPPERCASE and
+identifiers in lowercase. SQL clauses **SHOULD** be on separate lines for
+readability.
 
 ### SELECT Statements
 
@@ -260,7 +266,7 @@ You **SHOULD NOT** use these deprecated or problematic types:
 
 Migration files **MUST** follow the timestamp-based naming convention:
 
-```
+```text
 YYYYMMDDHHMMSS_descriptive_name.sql
 20240115143022_create_users_table.sql
 20240115143523_add_email_index_to_users.sql
@@ -299,6 +305,7 @@ Squawk[^8] catches unsafe migration patterns specific to PostgreSQL.
 ### Why Squawk
 
 Squawk provides PostgreSQL-specific migration safety analysis:
+
 - Detects table-locking operations that cause downtime
 - Identifies unsafe constraint additions
 - Warns about missing CONCURRENTLY on index creation
@@ -307,7 +314,8 @@ Squawk provides PostgreSQL-specific migration safety analysis:
 
 ## Comments
 
-You **SHOULD** add comments to tables and columns to document their purpose. Comments **MUST** be updated when schema changes.
+You **SHOULD** add comments to tables and columns to document their purpose.
+Comments **MUST** be updated when schema changes.
 
 ```sql
 -- Table comments
@@ -351,7 +359,8 @@ These patterns cause real production problems that linters cannot catch.
 
 ### Entity-Attribute-Value (EAV) Tables
 
-You **MUST NOT** use EAV tables for structured data. EAV destroys type safety, prevents foreign keys, and makes queries complex.
+You **MUST NOT** use EAV tables for structured data. EAV destroys type safety,
+prevents foreign keys, and makes queries complex.
 
 ```sql
 -- BAD: EAV pattern - loses type safety, can't use foreign keys
@@ -390,7 +399,8 @@ CREATE TABLE products (
 
 ### Time-Partitioned Table Names
 
-You **MUST NOT** encode time periods in table names. This creates maintenance burden and breaks queries when periods change.
+You **MUST NOT** encode time periods in table names. This creates maintenance
+burden and breaks queries when periods change.
 
 ```sql
 -- BAD: Table names encode time

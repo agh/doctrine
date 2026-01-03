@@ -11,7 +11,7 @@ Targets Docker Engine 27.5+ and Docker Compose v5.0+.
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Build image | docker build | `docker build -t myapp:1.0 .` |
 | Run container | docker run | `docker run -d --name myapp myapp:1.0` |
 | Compose up | docker compose | `docker compose up -d` |
@@ -24,11 +24,15 @@ Targets Docker Engine 27.5+ and Docker Compose v5.0+.
 
 Projects **MUST** organize Compose files using the `include` directive for modularity.
 
-**Why**: The `include` directive (introduced in Compose 2.20) enables modular, reusable configurations. It manages relative path resolution correctly and allows teams to work on separate service configurations simultaneously. This approach scales better than monolithic `docker-compose.yml` files as applications grow.
+**Why**: The `include` directive (introduced in Compose 2.20) enables modular,
+reusable configurations. It manages relative path resolution correctly and
+allows teams to work on separate service configurations simultaneously. This
+approach scales better than monolithic `docker-compose.yml` files as
+applications grow.
 
 ### File Structure
 
-```
+```text
 project/
 ├── compose.yml                    # Main entry point
 ├── compose.override.yml           # Local development overrides
@@ -45,11 +49,15 @@ project/
 
 ### Per-Service Subdirectories
 
-Projects with multiple services **SHOULD** namespace configuration files under service subdirectories.
+Projects with multiple services **SHOULD** namespace configuration files under
+service subdirectories.
 
-**Why**: Multiple services often need similar file names (`config.yaml`, `settings.json`). Flat structures create conflicts. Per-service subdirectories provide clear namespacing, enable service-specific data directories, and keep compose files readable.
+**Why**: Multiple services often need similar file names (`config.yaml`,
+`settings.json`). Flat structures create conflicts. Per-service subdirectories
+provide clear namespacing, enable service-specific data directories, and keep
+compose files readable.
 
-```
+```text
 stacks/platform/
 ├── compose.yml              # Service definitions
 ├── images.yml               # Pinned digests per architecture (optional)
@@ -67,13 +75,15 @@ stacks/platform/
 ```
 
 **Service Directory Pattern**:
+
 | Subdirectory | Purpose | Mount Type |
-|--------------|---------|------------|
+| ------------ | ------- | ---------- |
 | `{service}/config/` | Configuration files | `:ro` bind mount |
 | `{service}/data/` | Persistent state | Read-write bind mount |
 | `{service}/secrets/` | Service-specific secrets | `:ro` bind mount |
 
 **Volume Mounting**:
+
 ```yaml
 services:
   traefik:
@@ -88,12 +98,13 @@ services:
 Projects **SHOULD** choose volume types based on access patterns.
 
 | Volume Type | Example | Use Case |
-|-------------|---------|----------|
-| Docker Volume | `traefik-certs:/letsencrypt` | Infrastructure state (certs, databases) |
-| Bind Mount | `./service/data:/app/data` | Data that snapshots with stack |
+| ----------- | ------- | -------- |
+| Docker Volume | `traefik-certs:/letsencrypt` | Infrastructure state |
+| Bind Mount | `./service/data:/app/data` | Data snapshots with stack |
 | External Path | `${MEDIA_PATH}:/media:ro` | Large storage on separate pools |
 
 **Guidelines**:
+
 - Use Docker volumes for single-instance infrastructure services
 - Use bind mounts when data should be visible alongside compose files
 - Use environment variable paths for large external storage (photos, video)
@@ -128,13 +139,17 @@ include:
     project_directory: ./services/database
 ```
 
-**Why**: The long syntax provides fine-grained control over project directories and environment files, enabling complex multi-environment configurations while maintaining modularity.
+**Why**: The long syntax provides fine-grained control over project
+directories and environment files, enabling complex multi-environment
+configurations while maintaining modularity.
 
 ## YAML Anchors and Fragments
 
 Projects **MUST** use YAML anchors (`x-` extensions) to reduce duplication.
 
-**Why**: YAML anchors create reusable configuration fragments that ensure consistency across services and reduce maintenance burden. The `x-` prefix marks them as extension fields that Compose ignores during validation.
+**Why**: YAML anchors create reusable configuration fragments that ensure
+consistency across services and reduce maintenance burden. The `x-` prefix
+marks them as extension fields that Compose ignores during validation.
 
 ### Service Defaults Fragment
 
@@ -179,7 +194,9 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
 ```
 
-**Why**: The `start_interval` parameter (Compose 2.23+) enables faster health checks during container startup, improving startup time while using longer intervals for steady-state monitoring.
+**Why**: The `start_interval` parameter (Compose 2.23+) enables faster health
+checks during container startup, improving startup time while using longer
+intervals for steady-state monitoring.
 
 ### Logging Fragments
 
@@ -234,7 +251,10 @@ services:
 
 Projects **MUST** pin images by SHA256 digest, not tags.
 
-**Why**: Tags are mutable and can point to different images over time. Digest pinning guarantees the exact same image is used for every deployment, preventing supply chain attacks and ensuring reproducibility. Even if a registry is compromised, digest-pinned images remain safe.
+**Why**: Tags are mutable and can point to different images over time. Digest
+pinning guarantees the exact same image is used for every deployment,
+preventing supply chain attacks and ensuring reproducibility. Even if a
+registry is compromised, digest-pinned images remain safe.
 
 ```yaml
 # WRONG: Tags are mutable
@@ -250,6 +270,7 @@ services:
 ```
 
 **Finding Digests**:
+
 ```bash
 # Get digest for a specific tag
 docker pull nginx:1.25.3
@@ -261,11 +282,16 @@ crane digest nginx:1.25.3
 
 ### Multi-Architecture Image Pinning
 
-Projects deploying to multiple architectures **SHOULD** maintain per-architecture digests.
+Projects deploying to multiple architectures **SHOULD** maintain per-architecture
+digests.
 
-**Why**: Multi-arch images have different SHA256 digests per platform. Pinning a single digest fails on other architectures with "exec format error". Maintaining per-architecture digests ensures reproducible deployments across ARM64 and AMD64 hosts.
+**Why**: Multi-arch images have different SHA256 digests per platform. Pinning
+a single digest fails on other architectures with "exec format error".
+Maintaining per-architecture digests ensures reproducible deployments across
+ARM64 and AMD64 hosts.
 
 **images.yml Pattern**:
+
 ```yaml
 # stacks/platform/images.yml
 images:
@@ -278,6 +304,7 @@ images:
 ```
 
 **Compose Integration**:
+
 ```yaml
 # compose.yml - use environment variable for digest
 services:
@@ -289,6 +316,7 @@ TRAEFIK_IMAGE=traefik@sha256:d944e3693bbf5a...
 ```
 
 **Finding Per-Architecture Digests**:
+
 ```bash
 # Get manifest for all platforms
 docker manifest inspect traefik:v3.6.5
@@ -302,7 +330,10 @@ docker manifest inspect traefik:v3.6.5 | \
 
 Projects **MUST** use `no-new-privileges:true` to prevent privilege escalation.
 
-**Why**: The `no-new-privileges` flag prevents containers from gaining additional privileges via setuid/setgid binaries. This blocks a common container escape vector where attackers exploit setuid binaries to escalate privileges.
+**Why**: The `no-new-privileges` flag prevents containers from gaining
+additional privileges via setuid/setgid binaries. This blocks a common
+container escape vector where attackers exploit setuid binaries to escalate
+privileges.
 
 ```yaml
 services:
@@ -315,7 +346,10 @@ services:
 
 Projects **MUST** drop all capabilities and **MUST** add back only required capabilities.
 
-**Why**: Linux capabilities allow fine-grained privilege control. Dropping all capabilities (`CAP_DROP: [ALL]`) creates a minimal privilege baseline. Selectively adding required capabilities (like `NET_BIND_SERVICE` for ports <1024) follows the principle of least privilege.
+**Why**: Linux capabilities allow fine-grained privilege control. Dropping all
+capabilities (`CAP_DROP: [ALL]`) creates a minimal privilege baseline.
+Selectively adding required capabilities (like `NET_BIND_SERVICE` for ports
+<1024) follows the principle of least privilege.
 
 ```yaml
 services:
@@ -327,18 +361,22 @@ services:
 ```
 
 **Common Required Capabilities**:
+
 - `NET_BIND_SERVICE`: Bind to privileged ports (<1024)
 - `CHOWN`: Change file ownership
 - `DAC_OVERRIDE`: Bypass file permission checks
 - `SETUID`/`SETGID`: Change user/group IDs (use sparingly)
 
-Projects **MUST NOT** use `privileged: true` except for specialized infrastructure containers (e.g., cAdvisor, node-exporter).
+Projects **MUST NOT** use `privileged: true` except for specialized
+infrastructure containers (e.g., cAdvisor, node-exporter).
 
 ### Read-Only Root Filesystem
 
 Projects **SHOULD** use `read_only: true` with `tmpfs` for temporary directories.
 
-**Why**: A read-only root filesystem prevents attackers from modifying container binaries or persisting malware. Combining this with tmpfs for `/tmp` allows ephemeral writes while maintaining immutability.
+**Why**: A read-only root filesystem prevents attackers from modifying
+container binaries or persisting malware. Combining this with tmpfs for `/tmp`
+allows ephemeral writes while maintaining immutability.
 
 ```yaml
 services:
@@ -353,7 +391,9 @@ services:
 
 Projects **MUST** run containers as non-root users.
 
-**Why**: Running as root increases the attack surface. If an attacker escapes the container, they have root privileges. Non-root users limit damage even if the container is compromised.
+**Why**: Running as root increases the attack surface. If an attacker escapes
+the container, they have root privileges. Non-root users limit damage even if
+the container is compromised.
 
 ```yaml
 services:
@@ -364,6 +404,7 @@ services:
 ```
 
 **Dockerfile Configuration**:
+
 ```dockerfile
 # Create non-root user
 RUN addgroup -g 1000 appuser && \
@@ -376,7 +417,9 @@ USER appuser
 
 Projects **MUST** define memory, CPU, and PID limits.
 
-**Why**: Resource limits prevent denial-of-service attacks and noisy neighbor problems. Without limits, a compromised or buggy container can exhaust host resources, affecting other containers.
+**Why**: Resource limits prevent denial-of-service attacks and noisy neighbor
+problems. Without limits, a compromised or buggy container can exhaust host
+resources, affecting other containers.
 
 ```yaml
 services:
@@ -395,7 +438,9 @@ services:
 
 Projects **MUST** use Docker secrets for sensitive data, not environment variables.
 
-**Why**: Environment variables are visible in `docker inspect`, logs, and child processes. Docker secrets are mounted as in-memory files, never written to disk, and are automatically cleaned up when the container stops.
+**Why**: Environment variables are visible in `docker inspect`, logs, and child
+processes. Docker secrets are mounted as in-memory files, never written to
+disk, and are automatically cleaned up when the container stops.
 
 ```yaml
 # WRONG: Secrets in environment variables
@@ -418,6 +463,7 @@ services:
 ```
 
 **Application Code**:
+
 ```python
 # Read secret from file
 def get_db_password():
@@ -430,7 +476,9 @@ def get_db_password():
 
 Projects **MUST** define health checks for all services.
 
-**Why**: Health checks enable Docker to monitor container health and restart unhealthy containers automatically. They also ensure dependent services wait for upstream services to be ready before starting.
+**Why**: Health checks enable Docker to monitor container health and restart
+unhealthy containers automatically. They also ensure dependent services wait
+for upstream services to be ready before starting.
 
 ### HTTP Health Check
 
@@ -447,6 +495,7 @@ services:
 ```
 
 **Parameters**:
+
 - `interval`: Time between health checks (steady state)
 - `timeout`: Maximum time to wait for check to complete
 - `retries`: Number of consecutive failures before marking unhealthy
@@ -481,7 +530,8 @@ services:
 
 Projects **SHOULD** prefer `wget` for health checks in Alpine-based images.
 
-**Why**: `wget` is included in busybox (Alpine base), while `curl` requires installation. Using `wget` reduces image size and dependency count.
+**Why**: `wget` is included in busybox (Alpine base), while `curl` requires
+installation. Using `wget` reduces image size and dependency count.
 
 ```yaml
 # Alpine/busybox (wget included)
@@ -504,6 +554,7 @@ services:
 ```
 
 **Example Script**:
+
 ```bash
 #!/bin/sh
 # healthcheck.sh
@@ -526,7 +577,9 @@ exit 0
 
 Projects **SHOULD** use external networks for cross-stack communication.
 
-**Why**: External networks enable service discovery across multiple Compose stacks. This allows modular deployments where monitoring, databases, and applications are managed independently but can communicate.
+**Why**: External networks enable service discovery across multiple Compose
+stacks. This allows modular deployments where monitoring, databases, and
+applications are managed independently but can communicate.
 
 ```yaml
 # Stack 1: Create network
@@ -546,6 +599,7 @@ services:
 ```
 
 **Creating External Networks**:
+
 ```bash
 docker network create traefik
 docker network create --internal backend
@@ -555,7 +609,9 @@ docker network create --internal backend
 
 Projects **MUST** use internal networks for backend services.
 
-**Why**: Internal networks have no external connectivity, preventing backend services from initiating outbound connections. This limits the blast radius if a backend service is compromised.
+**Why**: Internal networks have no external connectivity, preventing backend
+services from initiating outbound connections. This limits the blast radius if
+a backend service is compromised.
 
 ```yaml
 networks:
@@ -579,7 +635,8 @@ services:
 
 Projects **SHOULD** bind ports to specific IPs for security.
 
-**Why**: Binding to `0.0.0.0` exposes services to all network interfaces. Binding to specific IPs (like Tailscale) restricts access to trusted networks only.
+**Why**: Binding to `0.0.0.0` exposes services to all network interfaces. Binding
+to specific IPs (like Tailscale) restricts access to trusted networks only.
 
 ```yaml
 services:
@@ -627,7 +684,8 @@ services:
 
 Projects **MUST** configure log rotation to prevent disk exhaustion.
 
-**Why**: Docker logs are unbounded by default and can fill disk space, causing system failures. Configuring max size and file count prevents this.
+**Why**: Docker logs are unbounded by default and can fill disk space, causing
+system failures. Configuring max size and file count prevents this.
 
 ### JSON File Driver
 
@@ -658,7 +716,9 @@ services:
 
 Projects **SHOULD** use structured JSON logging.
 
-**Why**: Structured logs are easier to parse, search, and analyze. They enable powerful log aggregation and filtering in tools like Loki, Elasticsearch, or CloudWatch.
+**Why**: Structured logs are easier to parse, search, and analyze. They enable
+powerful log aggregation and filtering in tools like Loki, Elasticsearch, or
+CloudWatch.
 
 ```yaml
 services:
@@ -668,6 +728,7 @@ services:
 ```
 
 **Application Code (Python)**:
+
 ```python
 import structlog
 
@@ -694,7 +755,9 @@ services:
 
 Projects **MUST** use multi-stage builds to minimize image size.
 
-**Why**: Multi-stage builds separate build dependencies from runtime dependencies, reducing image size by 10-100x. Smaller images have fewer vulnerabilities, faster pull times, and lower storage costs.
+**Why**: Multi-stage builds separate build dependencies from runtime
+dependencies, reducing image size by 10-100x. Smaller images have fewer
+vulnerabilities, faster pull times, and lower storage costs.
 
 ```dockerfile
 # Stage 1: Build
@@ -716,9 +779,12 @@ ENTRYPOINT ["/server"]
 
 Projects **SHOULD** use minimal base images.
 
-**Why**: Smaller base images reduce attack surface, vulnerabilities, and image size. Distroless images contain only the application and runtime dependencies, eliminating shell and package managers.
+**Why**: Smaller base images reduce attack surface, vulnerabilities, and image
+size. Distroless images contain only the application and runtime dependencies,
+eliminating shell and package managers.
 
 **Image Size Comparison**:
+
 - `ubuntu:22.04`: ~77 MB
 - `alpine:3.19`: ~7 MB
 - `distroless/static`: ~2 MB
@@ -746,9 +812,12 @@ RUN apk add --no-cache ca-certificates
 
 ### Layer Optimization
 
-Projects **MUST** order Dockerfile instructions from least to most frequently changed.
+Projects **MUST** order Dockerfile instructions from least to most frequently
+changed.
 
-**Why**: Docker caches layers. Placing stable instructions early maximizes cache hits and speeds up builds. Installing dependencies before copying source code prevents re-downloading packages on every code change.
+**Why**: Docker caches layers. Placing stable instructions early maximizes cache
+hits and speeds up builds. Installing dependencies before copying source code
+prevents re-downloading packages on every code change.
 
 ```dockerfile
 # WRONG: Invalidates cache on every code change
@@ -786,9 +855,10 @@ RUN apt-get update && \
 
 Projects **MUST** use `.dockerignore` to exclude unnecessary files.
 
-**Why**: `.dockerignore` reduces build context size, speeds up builds, and prevents accidentally copying secrets or build artifacts into images.
+**Why**: `.dockerignore` reduces build context size, speeds up builds, and
+prevents accidentally copying secrets or build artifacts into images.
 
-```
+```text
 # .dockerignore
 .git
 .gitignore
@@ -808,7 +878,9 @@ build
 
 Projects **MUST** scan images for vulnerabilities before deployment.
 
-**Why**: Vulnerability scanning detects known CVEs in base images and dependencies. Automated scanning in CI/CD prevents vulnerable images from reaching production.
+**Why**: Vulnerability scanning detects known CVEs in base images and
+dependencies. Automated scanning in CI/CD prevents vulnerable images from
+reaching production.
 
 ```bash
 # Scan with Trivy
@@ -822,6 +894,7 @@ trivy config Dockerfile
 ```
 
 **CI Integration**:
+
 ```yaml
 # GitHub Actions
 - name: Scan image
@@ -854,7 +927,9 @@ docker run --rm -i hadolint/hadolint \
 
 Projects **SHOULD** add Prometheus discovery labels to expose metrics.
 
-**Why**: Labels enable automatic service discovery by Prometheus or other monitoring tools. This eliminates manual configuration and enables dynamic monitoring as services scale.
+**Why**: Labels enable automatic service discovery by Prometheus or other
+monitoring tools. This eliminates manual configuration and enables dynamic
+monitoring as services scale.
 
 ```yaml
 services:
@@ -904,7 +979,9 @@ services:
 
 Projects **MUST** use `depends_on` with `condition: service_healthy`.
 
-**Why**: Without health checks, `depends_on` only ensures start order, not readiness. Using `service_healthy` ensures dependent services wait until upstream services are actually ready to accept connections.
+**Why**: Without health checks, `depends_on` only ensures start order, not
+readiness. Using `service_healthy` ensures dependent services wait until
+upstream services are actually ready to accept connections.
 
 ```yaml
 services:
@@ -929,7 +1006,9 @@ services:
 
 Projects **SHOULD** configure `stop_grace_period` for clean shutdowns.
 
-**Why**: The default 10-second grace period may be insufficient for services to drain connections, finish processing, or flush buffers. Proper grace periods prevent data loss and connection errors.
+**Why**: The default 10-second grace period may be insufficient for services to
+drain connections, finish processing, or flush buffers. Proper grace periods
+prevent data loss and connection errors.
 
 ```yaml
 services:
@@ -941,6 +1020,7 @@ services:
 ```
 
 **Application Code**:
+
 ```python
 import signal
 import sys
@@ -996,6 +1076,7 @@ services:
 ```
 
 **Deployment**:
+
 ```bash
 # Development (uses compose.yml + compose.override.yml)
 docker compose up -d

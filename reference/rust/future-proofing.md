@@ -1,7 +1,7 @@
 # Future proofing
 
-
 <a id="c-sealed"></a>
+
 ## Sealed traits protect against downstream implementations (C-SEALED)
 
 Some traits are only meant to be implemented within the crate that defines them.
@@ -51,8 +51,8 @@ the current crate.
 - [`serde_json::value::Index`](https://docs.serde.rs/serde_json/value/trait.Index.html)
 - [`byteorder::ByteOrder`](https://docs.rs/byteorder/1.1.0/byteorder/trait.ByteOrder.html)
 
-
 <a id="c-struct-private"></a>
+
 ## Structs have private fields (C-STRUCT-PRIVATE)
 
 Making a field public is a strong commitment: it pins down a representation
@@ -63,8 +63,8 @@ Public fields are most appropriate for `struct` types in the C spirit: compound,
 passive data structures. Otherwise, consider providing getter/setter methods and
 hiding fields instead.
 
-
 <a id="c-newtype-hide"></a>
+
 ## Newtypes encapsulate implementation details (C-NEWTYPE-HIDE)
 
 A newtype can be used to hide representation details while making precise
@@ -126,8 +126,8 @@ pub fn my_transform<I: Iterator>(input: I) -> impl Iterator<Item = (usize, I::It
 }
 ```
 
-
 <a id="c-struct-bounds"></a>
+
 ## Data structures do not duplicate derived trait bounds (C-STRUCT-BOUNDS)
 
 Generic data structures should not use trait bounds that can be derived or do

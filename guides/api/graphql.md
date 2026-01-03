@@ -2,24 +2,33 @@
 
 > [Doctrine](../../README.md) > [API Design](README.md) > GraphQL
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-This guide covers language-agnostic GraphQL best practices for schema design, queries, mutations, and API security. For framework-specific implementation, see:
+This guide covers language-agnostic GraphQL best practices for schema design,
+queries, mutations, and API security. For framework-specific implementation,
+see:
 
 - [Strawberry (Python)](../frameworks/strawberry.md)
 - Apollo Server (TypeScript) - Coming soon
 
 ## Why GraphQL?
 
-GraphQL[^1] is a query language for APIs that gives clients the power to request exactly the data they need. Unlike REST, GraphQL uses a single endpoint and lets clients specify their data requirements through queries.
+GraphQL[^1] is a query language for APIs that gives clients the power to
+request exactly the data they need. Unlike REST, GraphQL uses a single
+endpoint and lets clients specify their data requirements through queries.
 
 **Use GraphQL when**:
+
 - Clients have diverse data needs (mobile vs. web)
 - Reducing over-fetching and under-fetching improves performance
 - You need real-time updates via subscriptions
 - Strong typing and introspection benefit your developer experience
 
 **Consider REST when**:
+
 - Caching is critical (HTTP caching is simpler with REST)
 - Your API is simple with predictable access patterns
 - You're building public APIs where simplicity matters
@@ -32,7 +41,7 @@ GraphQL[^1] is a query language for APIs that gives clients the power to request
 Projects **MUST** follow GraphQL naming conventions:
 
 | Element | Convention | Example |
-|---------|------------|---------|
+| ------- | ---------- | ------- |
 | Types | PascalCase | `User`, `OrderItem` |
 | Fields | camelCase | `firstName`, `createdAt` |
 | Arguments | camelCase | `userId`, `includeDeleted` |
@@ -68,11 +77,14 @@ type Mutation {
 }
 ```
 
-**Why**: Consistent naming makes schemas predictable and self-documenting. These conventions match the GraphQL specification examples and community standards.
+**Why**: Consistent naming makes schemas predictable and self-documenting.
+These conventions match the GraphQL specification examples and community
+standards.
 
 ### Non-Nullable by Design
 
-Projects **SHOULD** make fields non-nullable by default, using nullable only when needed:
+Projects **SHOULD** make fields non-nullable by default, using nullable only
+when needed:
 
 ```graphql
 # Good: Non-nullable by default
@@ -90,20 +102,22 @@ type Query {
 }
 ```
 
-**Why**: Non-nullable fields simplify client code by eliminating null checks. Reserve nullability for fields that genuinely might not exist.
+**Why**: Non-nullable fields simplify client code by eliminating null checks.
+Reserve nullability for fields that genuinely might not exist.
 
 ### List Nullability
 
 Projects **MUST** understand list nullability patterns:
 
 | Declaration | Meaning |
-|-------------|---------|
+| ----------- | ------- |
 | `[User!]!` | Non-null list of non-null users (recommended) |
 | `[User]!` | Non-null list that may contain null users |
 | `[User!]` | Nullable list of non-null users |
 | `[User]` | Nullable list that may contain null users |
 
-**Recommendation**: Use `[Type!]!` for most lists. Return empty arrays instead of null.
+**Recommendation**: Use `[Type!]!` for most lists. Return empty arrays instead
+of null.
 
 ### Input Types
 
@@ -130,7 +144,9 @@ type Mutation {
 }
 ```
 
-**Why**: Input types group related arguments, enable reuse, and make schema evolution easier. They also clarify which fields are required for creation vs. optional for updates.
+**Why**: Input types group related arguments, enable reuse, and make schema
+evolution easier. They also clarify which fields are required for creation vs.
+optional for updates.
 
 ### Payload Types
 
@@ -160,13 +176,16 @@ type Mutation {
 }
 ```
 
-**Why**: Payload types allow returning both data and errors in a type-safe way. This "errors as data" pattern gives clients structured error information without relying on GraphQL's error array.
+**Why**: Payload types allow returning both data and errors in a type-safe way.
+This "errors as data" pattern gives clients structured error information
+without relying on GraphQL's error array.
 
 ## Query Design
 
 ### Pagination
 
-Projects **MUST** implement pagination for list queries. Projects **SHOULD** use cursor-based pagination (Relay Connection spec)[^2]:
+Projects **MUST** implement pagination for list queries. Projects **SHOULD**
+use cursor-based pagination (Relay Connection spec)[^2]:
 
 ```graphql
 type Query {
@@ -198,7 +217,9 @@ type PageInfo {
 }
 ```
 
-**Why**: Cursor-based pagination is stable under insertions/deletions, unlike offset-based pagination. The Connection pattern is a GraphQL community standard supported by many client libraries.
+**Why**: Cursor-based pagination is stable under insertions/deletions, unlike
+offset-based pagination. The Connection pattern is a GraphQL community
+standard supported by many client libraries.
 
 **Alternative**: For simpler use cases, offset-based pagination is acceptable:
 
@@ -313,7 +334,8 @@ type Mutation {
 }
 ```
 
-**Why**: Idempotent mutations can be safely retried on network failures without causing duplicate side effects.
+**Why**: Idempotent mutations can be safely retried on network failures without
+causing duplicate side effects.
 
 ### Batch Operations
 
@@ -368,6 +390,7 @@ type Mutation {
 ```
 
 **Client handling**:
+
 ```graphql
 mutation CreateUser($input: CreateUserInput!) {
   createUser(input: $input) {
@@ -389,7 +412,8 @@ mutation CreateUser($input: CreateUserInput!) {
 }
 ```
 
-**Why**: Union types make error cases explicit and type-safe. Clients must handle each case, preventing silent failures.
+**Why**: Union types make error cases explicit and type-safe. Clients must
+handle each case, preventing silent failures.
 
 ### GraphQL Errors
 
@@ -471,7 +495,9 @@ Projects **MUST** implement rate limiting:
 
 Projects **SHOULD** disable introspection in production environments:
 
-**Why**: Introspection exposes your entire schema, making it easier for attackers to find vulnerabilities. Provide schema documentation through other means.
+**Why**: Introspection exposes your entire schema, making it easier for
+attackers to find vulnerabilities. Provide schema documentation through other
+means.
 
 ### Input Validation
 
@@ -489,7 +515,8 @@ Validate at the GraphQL layer before business logic.
 
 ### Authentication and Authorization
 
-Projects **MUST** implement authentication at the transport layer and authorization at the field level:
+Projects **MUST** implement authentication at the transport layer and
+authorization at the field level:
 
 ```graphql
 type Query {
@@ -531,7 +558,8 @@ query {
 }
 ```
 
-DataLoaders batch multiple loads into single queries and cache results within a request.
+DataLoaders batch multiple loads into single queries and cache results within
+a request.
 
 ### Field-Level Caching
 
@@ -553,6 +581,7 @@ type User {
 Projects **SHOULD** use persisted queries in production:
 
 **Benefits**:
+
 - Smaller request payloads (send hash instead of full query)
 - Prevents arbitrary queries from untrusted clients
 - Enables query whitelisting
@@ -593,6 +622,7 @@ type User {
 ```
 
 **Process**:
+
 1. Add new field alongside old field
 2. Mark old field as deprecated with reason
 3. Monitor usage of deprecated field
@@ -603,12 +633,14 @@ type User {
 Projects **SHOULD** prefer additive changes over breaking changes:
 
 **Safe changes (additive)**:
+
 - Adding new types
 - Adding new fields to existing types
 - Adding optional arguments to fields
 - Adding new enum values
 
 **Breaking changes (avoid)**:
+
 - Removing types or fields
 - Changing field types
 - Making nullable fields non-nullable
@@ -617,22 +649,26 @@ Projects **SHOULD** prefer additive changes over breaking changes:
 ### Versioning
 
 Projects **SHOULD NOT** version GraphQL APIs. Instead:
+
 - Use deprecation for field evolution
 - Use feature flags for major changes
 - Maintain backwards compatibility
 
-**Why**: GraphQL's schema introspection and deprecation system provides built-in evolution mechanisms. URL versioning (/v1/, /v2/) fragments your API.
+**Why**: GraphQL's schema introspection and deprecation system provides
+built-in evolution mechanisms. URL versioning (/v1/, /v2/) fragments your API.
 
 ## Subscriptions
 
 ### When to Use Subscriptions
 
 Projects **SHOULD** use subscriptions for:
+
 - Real-time notifications
 - Live data feeds
 - Collaborative features
 
 Projects **SHOULD NOT** use subscriptions for:
+
 - Data that changes infrequently
 - One-time requests (use queries)
 - Large data transfers (use pagination)
@@ -655,7 +691,8 @@ enum NotificationType {
 }
 ```
 
-**Why**: Allow clients to filter subscriptions to relevant events, reducing unnecessary data transfer.
+**Why**: Allow clients to filter subscriptions to relevant events, reducing
+unnecessary data transfer.
 
 ## Documentation
 
@@ -799,5 +836,3 @@ async def test_user_with_orders_flow():
 
 [^1]: [GraphQL Specification](https://spec.graphql.org/) - Official GraphQL specification
 [^2]: [Relay Connection Specification](https://relay.dev/graphql/connections.htm) - Cursor-based pagination standard
-[^3]: [GraphQL Best Practices](https://graphql.org/learn/best-practices/) - Official best practices guide
-[^4]: [Production Ready GraphQL](https://book.productionreadygraphql.com/) - Comprehensive GraphQL book

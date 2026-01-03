@@ -2,43 +2,53 @@
 
 > [Doctrine](../../README.md) > [Infrastructure](README.md) > Ansible
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 **Target Version**: Ansible Core 2.18+ with Python 3.12+
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | pipx | `pipx install --include-deps ansible-core` |
 | Install dev tools | pipx | `pipx install ansible-dev-tools` |
 | Lint | ansible-lint[^1] | `ansible-lint` |
 | YAML lint | yamllint[^2] | `yamllint .` |
 | Test roles | Molecule[^3] | `molecule test` |
-| Syntax check | ansible-playbook | `ansible-playbook --syntax-check playbook.yml` |
+| Syntax check | ansible-playbook | `ansible-playbook --syntax-check` |
 | Dry run | ansible-playbook | `ansible-playbook --check playbook.yml` |
 | List tasks | ansible-playbook | `ansible-playbook --list-tasks playbook.yml` |
 | Vault encrypt | ansible-vault | `ansible-vault encrypt vars/secrets.yml` |
 | SOPS encrypt | sops[^4] | `sops -e vars/secrets.yml` |
-| Galaxy install | ansible-galaxy | `ansible-galaxy collection install -r requirements.yml` |
+| Galaxy install | ansible-galaxy | `ansible-galaxy collection install` |
 
 ## Why Ansible
 
 **Why Ansible for infrastructure automation?**
+
 - **Agentless**: No software required on managed nodes (uses SSH/WinRM)
 - **YAML-based**: Human-readable, declarative configuration
 - **Idempotent**: Safe to run multiple times without side effects
 - **Extensive modules**: 6,000+ built-in modules across collections
 - **Low barrier to entry**: Simple syntax with powerful capabilities
-- **Strong ecosystem**: Large community, Ansible Galaxy collections, Red Hat support
+- **Strong ecosystem**: Large community, Ansible Galaxy collections, Red Hat
+  support
 
-Ansible excels at configuration management, application deployment, and orchestration across infrastructure fleets without the complexity of agent-based solutions like Puppet or Chef.
+Ansible excels at configuration management, application deployment, and
+orchestration across infrastructure fleets without the complexity of
+agent-based solutions like Puppet or Chef.
 
 ## Python Version Requirements
 
-Ansible Core 2.18 **MUST** use Python 3.11+ for the control node (where Ansible runs) and Python 3.8+ for managed nodes (targets)[^5].
+Ansible Core 2.18 **MUST** use Python 3.11+ for the control node (where
+Ansible runs) and Python 3.8+ for managed nodes (targets)[^5].
 
-**Why these requirements?** Python 3.10 reached end-of-life in 2024, and Ansible 2.18 leverages newer Python features for improved performance and maintainability. Target nodes running Python 3.7 are no longer supported.
+**Why these requirements?** Python 3.10 reached end-of-life in 2024, and
+Ansible 2.18 leverages newer Python features for improved performance and
+maintainability. Target nodes running Python 3.7 are no longer supported.
 
 ```bash
 # Verify Python version on control node
@@ -55,7 +65,7 @@ pipx install ansible-dev-tools
 
 Projects **MUST** follow this directory layout for maintainability and clarity:
 
-```
+```text
 ansible-project/
 ├── ansible.cfg                 # Ansible configuration
 ├── .ansible-lint               # Linting configuration
@@ -112,6 +122,7 @@ ansible-project/
 ```
 
 **Why this structure?**
+
 - Clear separation between environments (`inventories/`)
 - Reusable roles for common configurations (`roles/`)
 - Centralized variable management (`group_vars/`, `host_vars/`)
@@ -123,7 +134,8 @@ ansible-project/
 
 ### ansible-lint
 
-All playbooks and roles **MUST** pass ansible-lint[^1] checks. Ansible-lint promotes proven practices and prevents common pitfalls.
+All playbooks and roles **MUST** pass ansible-lint[^1] checks. Ansible-lint
+promotes proven practices and prevents common pitfalls.
 
 ```bash
 # Install (comes with ansible-dev-tools)
@@ -180,7 +192,9 @@ task_name_prefix:
 offline: false
 ```
 
-**Why ansible-lint?** It catches common mistakes like missing task names, deprecated syntax, security issues (exposed passwords), and non-idempotent operations before they cause production problems.
+**Why ansible-lint?** It catches common mistakes like missing task names,
+deprecated syntax, security issues (exposed passwords), and non-idempotent
+operations before they cause production problems.
 
 ### yamllint
 
@@ -308,11 +322,14 @@ all:
         environment: production
 ```
 
-**Why YAML over INI?** YAML supports nested structures, lists, and complex data types, making it more suitable for modern infrastructure-as-code practices.
+**Why YAML over INI?** YAML supports nested structures, lists, and complex
+data types, making it more suitable for modern infrastructure-as-code
+practices.
 
 ### Dynamic Inventory
 
-Dynamic inventories **SHOULD** be used for cloud environments to automatically discover hosts:
+Dynamic inventories **SHOULD** be used for cloud environments to automatically
+discover hosts:
 
 ```yaml
 # inventories/aws_ec2.yml (AWS dynamic inventory)
@@ -351,6 +368,7 @@ ansible-playbook -i inventories/aws_ec2.yml playbooks/webservers.yml
 ```
 
 **Supported dynamic inventory plugins**[^6]:
+
 - `amazon.aws.aws_ec2` - AWS EC2
 - `azure.azcollection.azure_rm` - Azure
 - `google.cloud.gcp_compute` - Google Cloud
@@ -360,6 +378,7 @@ ansible-playbook -i inventories/aws_ec2.yml playbooks/webservers.yml
 ### Group Structure Best Practices
 
 Groups **SHOULD** be organized by:
+
 - **Environment** (production, staging, development)
 - **Function** (webservers, databases, loadbalancers)
 - **Location** (us-east, eu-west)
@@ -446,6 +465,7 @@ Playbooks **MUST** include descriptive names and follow this structure:
 ### Task Formatting
 
 All tasks **MUST**:
+
 - Include a descriptive `name` field
 - Use Fully Qualified Collection Names (FQCN)[^7]
 - Use YAML dictionary format (not inline `key=value`)
@@ -462,7 +482,10 @@ All tasks **MUST**:
 - apt: name=nginx state=present
 ```
 
-**Why FQCN?** Fully Qualified Collection Names (e.g., `ansible.builtin.copy` instead of `copy`) eliminate ambiguity about which module is being used, especially when multiple collections provide similar modules. Required in Ansible 2.10+.
+**Why FQCN?** Fully Qualified Collection Names (e.g., `ansible.builtin.copy`
+instead of `copy`) eliminate ambiguity about which module is being used,
+especially when multiple collections provide similar modules. Required in
+Ansible 2.10+.
 
 ### Task Naming Conventions
 
@@ -520,6 +543,7 @@ ansible-playbook playbooks/webservers.yml --tags "nginx,config"
 ```
 
 **Standard tag conventions**:
+
 - `install` - Package installation
 - `config` - Configuration file deployment
 - `service` - Service management
@@ -528,7 +552,8 @@ ansible-playbook playbooks/webservers.yml --tags "nginx,config"
 
 ### Handlers and Notifications
 
-Handlers **SHOULD** be used for service restarts and one-time operations triggered by changes:
+Handlers **SHOULD** be used for service restarts and one-time operations
+triggered by changes:
 
 ```yaml
 # tasks/main.yml
@@ -553,7 +578,9 @@ Handlers **SHOULD** be used for service restarts and one-time operations trigger
     state: absent
 ```
 
-**Why handlers?** Handlers ensure services are restarted only once even if multiple tasks trigger changes, and they run at the end of the play for efficiency.
+**Why handlers?** Handlers ensure services are restarted only once even if
+multiple tasks trigger changes, and they run at the end of the play for
+efficiency.
 
 ### Error Handling (block/rescue/always)
 
@@ -614,6 +641,7 @@ Complex error handling **SHOULD** use `block/rescue/always`:
 ```
 
 **When to use**:
+
 - `block` - Group related tasks that should succeed together
 - `rescue` - Handle failures with recovery actions (like rollbacks)
 - `always` - Cleanup tasks that run regardless of success/failure
@@ -647,12 +675,14 @@ Tasks prone to transient failures **SHOULD** use retries:
 ### When to Create Roles
 
 Roles **SHOULD** be created when:
+
 - Configuration is reusable across multiple playbooks
 - Task complexity exceeds 20-30 lines
 - Multiple related configuration files exist
 - You need to test configurations independently
 
 Roles **SHOULD NOT** be created for:
+
 - Single-use tasks (use playbook tasks instead)
 - Very simple configurations (2-3 tasks)
 
@@ -660,7 +690,7 @@ Roles **SHOULD NOT** be created for:
 
 Roles **MUST** follow Ansible's standard directory structure[^8]:
 
-```
+```text
 roles/nginx/
 ├── tasks/
 │   └── main.yml           # Primary task entry point
@@ -687,11 +717,13 @@ roles/nginx/
 ### Defaults vs Vars
 
 **defaults/main.yml** **SHOULD** contain:
+
 - User-configurable parameters
 - Sensible default values
 - Variables meant to be overridden by users
 
 **vars/main.yml** **SHOULD** contain:
+
 - Internal implementation details
 - Constants that shouldn't be overridden
 - Platform-specific values
@@ -714,7 +746,9 @@ nginx_log_dir: /var/log/nginx
 nginx_package_name: nginx
 ```
 
-**Why?** Ansible's variable precedence[^9] makes `defaults` the lowest priority (easily overridden by users) while `vars` has higher priority (protected from accidental override).
+**Why?** Ansible's variable precedence[^9] makes `defaults` the lowest
+priority (easily overridden by users) while `vars` has higher priority
+(protected from accidental override).
 
 ### Role Dependencies
 
@@ -794,6 +828,7 @@ argument_specs:
 ```
 
 **Benefits**:
+
 - Automatic validation of role variables
 - Self-documenting roles
 - Better error messages for invalid inputs
@@ -837,7 +872,7 @@ ansible-galaxy collection install -r collections/requirements.yml -p ./collectio
 
 Large projects **MAY** use collection structure for better organization:
 
-```
+```text
 my_namespace/my_collection/
 ├── plugins/
 │   ├── modules/
@@ -855,7 +890,8 @@ my_namespace/my_collection/
 
 ## Idempotency
 
-All tasks **MUST** be idempotent - safe to run multiple times without changing the result beyond the initial run.
+All tasks **MUST** be idempotent - safe to run multiple times without
+changing the result beyond the initial run.
 
 ### Ensuring Idempotency
 
@@ -922,7 +958,8 @@ Use `changed_when` to control when tasks report changes:
     - '"already exists" not in migration_result.stderr'
 ```
 
-**Why?** Properly using `changed_when` and `failed_when` makes playbook output accurate and prevents false positives in CI/CD pipelines.
+**Why?** Properly using `changed_when` and `failed_when` makes playbook
+output accurate and prevents false positives in CI/CD pipelines.
 
 ## Security
 
@@ -930,7 +967,8 @@ Use `changed_when` to control when tasks report changes:
 
 #### Ansible Vault
 
-All secrets **MUST** be encrypted with ansible-vault or SOPS. For simple use cases, use ansible-vault[^11]:
+All secrets **MUST** be encrypted with ansible-vault or SOPS. For simple use
+cases, use ansible-vault[^11]:
 
 ```bash
 # Create encrypted file
@@ -977,7 +1015,8 @@ ansible-playbook playbook.yml \
 
 #### SOPS for GitOps
 
-For GitOps workflows and multi-cloud environments, **SOPS** (Secrets OPerationS)[^4] is **RECOMMENDED** over ansible-vault:
+For GitOps workflows and multi-cloud environments, **SOPS** (Secrets
+OPerationS)[^4] is **RECOMMENDED** over ansible-vault:
 
 ```bash
 # Install SOPS
@@ -992,7 +1031,9 @@ ansible-galaxy collection install community.sops
 ```
 
 **Why SOPS over ansible-vault?**[^12]
-- Supports multiple key management systems (AWS KMS, GCP KMS, Azure Key Vault, PGP, age)
+
+- Supports multiple key management systems (AWS KMS, GCP KMS, Azure Key
+  Vault, PGP, age)
 - Encrypts only values, leaving keys visible for diff/grep
 - Not tied to Ansible ecosystem (works with Terraform, Kubernetes, etc.)
 - Better suited for multi-cloud DevSecOps pipelines
@@ -1071,7 +1112,8 @@ Tasks handling sensitive data **MUST** use `no_log`:
     msg: "API key created: {{ api_result.json.id }}"
 ```
 
-**Why no_log?** Prevents sensitive data from being logged to console, log files, or CI/CD systems.
+**Why no_log?** Prevents sensitive data from being logged to console, log
+files, or CI/CD systems.
 
 ### become Best Practices
 
@@ -1163,7 +1205,8 @@ ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=
 pipelining = True
 ```
 
-**Why?** Strict host key checking prevents man-in-the-middle attacks, and SSH key authentication is more secure than password authentication.
+**Why?** Strict host key checking prevents man-in-the-middle attacks, and
+SSH key authentication is more secure than password authentication.
 
 ## Testing
 
@@ -1279,7 +1322,9 @@ verifier:
         status_code: 200
 ```
 
-**Why Molecule?** Molecule provides a standardized testing framework for Ansible roles, enabling test-driven development and CI integration across multiple platforms.
+**Why Molecule?** Molecule provides a standardized testing framework for
+Ansible roles, enabling test-driven development and CI integration across
+multiple platforms.
 
 ### Testinfra for Verification
 
@@ -1336,7 +1381,8 @@ pipelining = True
 ssh_args = -o ControlMaster=auto -o ControlPersist=60s
 ```
 
-**Why pipelining?** Reduces the number of SSH operations by sending multiple commands over a single SSH connection, improving performance by 2-5x.
+**Why pipelining?** Reduces the number of SSH operations by sending multiple
+commands over a single SSH connection, improving performance by 2-5x.
 
 ### Parallelism with Forks
 
@@ -1353,7 +1399,9 @@ forks = 20  # Default is 5
 ansible-playbook -f 50 playbook.yml
 ```
 
-**Why more forks?** Higher fork count enables Ansible to manage more hosts simultaneously, drastically reducing playbook execution time for large inventories.
+**Why more forks?** Higher fork count enables Ansible to manage more hosts
+simultaneously, drastically reducing playbook execution time for large
+inventories.
 
 ### Fact Caching
 
@@ -1435,7 +1483,9 @@ strategy = mitogen_linear
 pipelining = True
 ```
 
-**Why Mitogen?** Mitogen reduces playbook execution time by 1.25x to 7x through optimized SSH connection pooling and reduced Python interpreter startup overhead.
+**Why Mitogen?** Mitogen reduces playbook execution time by 1.25x to 7x
+through optimized SSH connection pooling and reduced Python interpreter
+startup overhead.
 
 ### Free Strategy for Independent Hosts
 
@@ -1454,7 +1504,8 @@ For independent host configurations, use the `free` strategy:
         state: present
 ```
 
-**Why free strategy?** Allows faster hosts to proceed without waiting for slower ones, reducing overall playbook execution time.
+**Why free strategy?** Allows faster hosts to proceed without waiting for
+slower ones, reducing overall playbook execution time.
 
 ### Profiling and Optimization
 

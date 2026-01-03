@@ -5,7 +5,7 @@ Provides access to Home Assistant for smart home monitoring, automation debuggin
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | IoT / Home Automation |
 | **Protocol** | REST API, WebSocket |
 | **Default Access** | readonly |
@@ -60,7 +60,7 @@ curl -X POST -H "Authorization: Bearer ${HASS_TOKEN}" \
 ## Access Levels
 
 | Level | Permissions | Use Case |
-|-------|-------------|----------|
+| ----- | ----------- | -------- |
 | `readonly` | Read states, history, config | Monitoring, debugging |
 | `automation` | Read + trigger automations | Automation testing |
 | `control` | Read + control devices | Full management |
@@ -84,7 +84,7 @@ homeassistant:
 ## Capabilities
 
 | Capability | API Endpoint | Description |
-|------------|--------------|-------------|
+| ---------- | ------------ | ----------- |
 | `get_states` | `GET /api/states` | All entity states |
 | `get_state` | `GET /api/states/{entity_id}` | Single entity state |
 | `get_history` | `GET /api/history/period` | Historical states |
@@ -266,7 +266,7 @@ Analysis:
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `system/home-monitor` | readonly | Status monitoring, alerts |
 | `ops/home-automation` | automation | Debug automations |
 | `security/home-security` | readonly | Security monitoring |
@@ -275,7 +275,7 @@ Analysis:
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | HA unavailable | Query MQTT directly for device states |
 | History unavailable | Use current state only |
 | Specific integration down | Report as unavailable |

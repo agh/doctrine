@@ -6,13 +6,13 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [C# Style Guide](csharp.md) for language-level style. This guide focuses on
-.NET-specific concerns including SDK, runtime, frameworks, and tooling.
+Extends [C# Style Guide](csharp.md) for language-level style. This guide focuses
+on .NET-specific concerns including SDK, runtime, frameworks, and tooling.
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | New project | .NET CLI[^1] | `dotnet new webapi -n MyApi` |
 | Build | .NET CLI[^1] | `dotnet build` |
 | Test | .NET CLI[^1] | `dotnet test` |
@@ -29,7 +29,8 @@ Extends [C# Style Guide](csharp.md) for language-level style. This guide focuses
 
 ### Installation
 
-You MUST use the latest LTS or STS (Standard Term Support) version of .NET for new projects.
+You MUST use the latest LTS or STS (Standard Term Support) version of .NET for
+new projects.
 
 ```bash
 # Install .NET SDK (latest LTS)
@@ -58,12 +59,14 @@ You SHOULD pin SDK version per solution using `global.json`:
 ```
 
 **Do:**
+
 ```bash
 # Create global.json at solution root
 dotnet new globaljson --sdk-version 10.0.100
 ```
 
 **Don't:**
+
 ```bash
 # Don't omit global.json - leads to build inconsistencies
 ```
@@ -196,6 +199,7 @@ dotnet publish -c Release \
 ```
 
 **Do:**
+
 ```xml
 <!-- MyApi.csproj - Configure publish settings -->
 <PropertyGroup>
@@ -207,6 +211,7 @@ dotnet publish -c Release \
 ```
 
 **Don't:**
+
 ```bash
 # Don't use PublishTrimmed without extensive testing
 # It can break reflection-heavy code
@@ -255,6 +260,7 @@ dotnet ef migrations add Initial  # Shorthand
 ```
 
 **.config/dotnet-tools.json:**
+
 ```json
 {
   "version": 1,
@@ -278,7 +284,7 @@ dotnet ef migrations add Initial  # Shorthand
 
 You MUST organize solutions with clear separation of concerns:
 
-```
+```text
 MySolution/
 ├── .editorconfig                  # Code style configuration
 ├── .gitignore                     # Git ignore rules
@@ -362,12 +368,14 @@ You MUST use project references for internal dependencies:
 ```
 
 **Do:**
+
 ```bash
 # Add project reference via CLI
 dotnet add reference ../MySolution.Core/MySolution.Core.csproj
 ```
 
 **Don't:**
+
 ```xml
 <!-- Don't reference projects as packages -->
 <PackageReference Include="MySolution.Core" Version="1.0.0" />
@@ -428,6 +436,7 @@ dotnet add src/MyApi/MyApi.csproj package Serilog
 You SHOULD use Central Package Management for solutions with multiple projects:
 
 **Directory.Packages.props:**
+
 ```xml
 <Project>
   <PropertyGroup>
@@ -448,6 +457,7 @@ You SHOULD use Central Package Management for solutions with multiple projects:
 ```
 
 **Project files:**
+
 ```xml
 <ItemGroup>
   <!-- No version specified - comes from Directory.Packages.props -->
@@ -497,6 +507,7 @@ dotnet list package --outdated
 ### NuGet Configuration
 
 **nuget.config:**
+
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -524,6 +535,7 @@ dotnet list package --outdated
 You SHOULD use Minimal APIs[^4] for simple services and Controllers for complex APIs.
 
 **Minimal APIs (Do):**
+
 ```csharp
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
@@ -552,6 +564,7 @@ app.Run();
 ```
 
 **Controllers (Do):**
+
 ```csharp
 // For complex APIs with many endpoints, attributes, filters
 [ApiController]
@@ -646,6 +659,7 @@ app.Run();
 ### Custom Middleware
 
 **Do:**
+
 ```csharp
 // Middleware/RequestLoggingMiddleware.cs
 public class RequestLoggingMiddleware
@@ -686,6 +700,7 @@ public static class RequestLoggingMiddlewareExtensions
 ```
 
 **Don't:**
+
 ```csharp
 // Don't use inline middleware for complex logic
 app.Use(async (context, next) =>
@@ -703,6 +718,7 @@ app.Use(async (context, next) =>
 You MUST use constructor injection:
 
 **Do:**
+
 ```csharp
 // Program.cs
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -737,6 +753,7 @@ public class UserService : IUserService
 ```
 
 **Don't:**
+
 ```csharp
 // Don't use service locator pattern
 public class UserService
@@ -767,6 +784,7 @@ public class UserService
   - Use for: Lightweight stateless services
 
 **Do:**
+
 ```csharp
 // Scoped - DbContext per request
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -784,6 +802,7 @@ builder.Services.AddTransient<IEmailSender, EmailSender>();
 You MUST use the Options pattern:
 
 **appsettings.json:**
+
 ```json
 {
   "Logging": {
@@ -809,6 +828,7 @@ You MUST use the Options pattern:
 ```
 
 **appsettings.Development.json:**
+
 ```json
 {
   "Logging": {
@@ -827,6 +847,7 @@ You MUST use the Options pattern:
 ```
 
 **Options classes:**
+
 ```csharp
 // Options/EmailOptions.cs
 public class EmailOptions
@@ -850,6 +871,7 @@ public class FeaturesOptions
 ```
 
 **Registration:**
+
 ```csharp
 // Program.cs
 builder.Services.Configure<EmailOptions>(
@@ -860,6 +882,7 @@ builder.Services.Configure<FeaturesOptions>(
 ```
 
 **Usage:**
+
 ```csharp
 public class EmailService : IEmailService
 {
@@ -905,6 +928,7 @@ dotnet user-secrets clear
 ```
 
 **Project file:**
+
 ```xml
 <PropertyGroup>
   <UserSecretsId>aspnet-MyApi-12345678</UserSecretsId>
@@ -912,6 +936,7 @@ dotnet user-secrets clear
 ```
 
 **Access in code:**
+
 ```csharp
 // Automatically loaded in Development environment
 var smtpPassword = builder.Configuration["Email:SmtpPassword"];
@@ -932,6 +957,7 @@ set ConnectionStrings__DefaultConnection=Server=prod;...
 ```
 
 **Do:**
+
 ```csharp
 // Configuration hierarchy (later overrides earlier):
 // 1. appsettings.json
@@ -971,6 +997,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 ```
 
 **Custom health check:**
+
 ```csharp
 public class DatabaseHealthCheck : IHealthCheck
 {
@@ -1005,6 +1032,7 @@ public class DatabaseHealthCheck : IHealthCheck
 Entity Framework Core[^10] is the recommended ORM for .NET applications.
 
 **Do:**
+
 ```csharp
 // Data/ApplicationDbContext.cs
 public class ApplicationDbContext : DbContext
@@ -1048,6 +1076,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 ```
 
 **Don't:**
+
 ```csharp
 // Don't configure entities in OnModelCreating - use IEntityTypeConfiguration
 protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1098,6 +1127,7 @@ dotnet ef database drop
 ```
 
 **Migration design:**
+
 ```csharp
 public partial class InitialCreate : Migration
 {
@@ -1135,6 +1165,7 @@ public partial class InitialCreate : Migration
 ### Database Initialization
 
 **Do:**
+
 ```csharp
 // Program.cs
 var app = builder.Build();
@@ -1151,6 +1182,7 @@ app.Run();
 ```
 
 **Production:**
+
 ```bash
 # Run migrations separately in production
 dotnet ef database update --connection "Server=prod;..."
@@ -1163,6 +1195,7 @@ dotnet ef migrations script -o migration.sql
 ### Query Optimization
 
 **Do:**
+
 ```csharp
 // Use AsNoTracking for read-only queries
 var users = await _context.Users
@@ -1204,6 +1237,7 @@ var orders = await _context.Orders
 ```
 
 **Don't:**
+
 ```csharp
 // Don't use ToList() before filtering
 var users = _context.Users.ToList() // Loads all users into memory!
@@ -1384,6 +1418,7 @@ public class UserServiceTests
 ### Integration Testing with WebApplicationFactory
 
 **Do:**
+
 ```csharp
 // Tests/ApiTests.cs
 public class UserApiTests : IClassFixture<WebApplicationFactory<Program>>[^11]
@@ -1434,6 +1469,7 @@ public class UserApiTests : IClassFixture<WebApplicationFactory<Program>>[^11]
 ### Custom WebApplicationFactory
 
 **Do:**
+
 ```csharp
 // Tests/CustomWebApplicationFactory.cs
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>[^11]
@@ -1489,6 +1525,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>[^11]
 You SHOULD use Moq[^12] for mocking dependencies in unit tests.
 
 **Do:**
+
 ```csharp
 // Setup method return value
 _mockRepository
@@ -1606,6 +1643,7 @@ public async Task GetUsers_ReturnsExpectedJson()
 ### Async/Await Best Practices
 
 **Do:**
+
 ```csharp
 // Use async all the way
 public async Task<User> GetUserAsync(int id)
@@ -1648,6 +1686,7 @@ var users = await Task.WhenAll(tasks);
 ```
 
 **Don't:**
+
 ```csharp
 // Don't use .Result or .Wait() - causes deadlocks
 public User GetUser(int id)
@@ -1671,6 +1710,7 @@ public async Task<int> GetValueAsync()
 ### Memory Management
 
 **Do:**
+
 ```csharp
 // Use ArrayPool for large temporary buffers
 var pool = ArrayPool<byte>.Shared;
@@ -1708,6 +1748,7 @@ using var reader = new StreamReader(stream);
 ```
 
 **Don't:**
+
 ```csharp
 // Don't concatenate strings in loops
 string result = "";
@@ -1793,6 +1834,7 @@ dotnet run -c Release
 ### Response Caching
 
 **Do:**
+
 ```csharp
 // Program.cs
 builder.Services.AddResponseCaching()[^15];
@@ -1813,6 +1855,7 @@ public async Task<ActionResult<IEnumerable<User>>> GetUsers(int page = 1)
 ### Output Caching (.NET 7+)
 
 **Do:**
+
 ```csharp
 // Program.cs
 builder.Services.AddOutputCache[^16](options =>
@@ -1846,6 +1889,7 @@ public async Task<ActionResult<IEnumerable<User>>> GetUsers()
 ### Authentication and Authorization
 
 **JWT Bearer Authentication[^17]:**
+
 ```csharp
 // Program.cs
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -1913,6 +1957,7 @@ if (!app.Environment.IsDevelopment())
 ```
 
 **appsettings.json:**
+
 ```json
 {
   "Kestrel": {
@@ -1931,6 +1976,7 @@ if (!app.Environment.IsDevelopment())
 ### CORS
 
 **Do:**
+
 ```csharp
 // Program.cs
 builder.Services.AddCors(options =>
@@ -1949,6 +1995,7 @@ app.UseCors("AllowFrontend");
 ```
 
 **Don't:**
+
 ```csharp
 // Don't allow all origins in production
 builder.Services.AddCors(options =>
@@ -1965,6 +2012,7 @@ builder.Services.AddCors(options =>
 ### Input Validation
 
 **Do:**
+
 ```csharp
 // Use Data Annotations
 public class CreateUserRequest
@@ -2010,6 +2058,7 @@ builder.Services.AddFluentValidationAutoValidation();
 ### SQL Injection Prevention
 
 **Do:**
+
 ```csharp
 // Use parameterized queries (EF Core does this automatically)
 var users = await _context.Users
@@ -2023,6 +2072,7 @@ var users = await _context.Users
 ```
 
 **Don't:**
+
 ```csharp
 // Never concatenate SQL strings
 var users = await _context.Users
@@ -2033,6 +2083,7 @@ var users = await _context.Users
 ### Secret Management
 
 **Azure Key Vault[^19] (Production):**
+
 ```csharp
 // Program.cs
 if (!builder.Environment.IsDevelopment())
@@ -2045,6 +2096,7 @@ if (!builder.Environment.IsDevelopment())
 ```
 
 **AWS Secrets Manager[^20]:**
+
 ```csharp
 builder.Configuration.AddSecretsManager(configurator: options =>
 {
@@ -2092,6 +2144,7 @@ app.MapGet("/api/users", async (IUserRepository repo) =>
 You SHOULD use GitHub Actions[^22] for CI/CD pipelines.
 
 **.github/workflows/dotnet.yml:**
+
 ```yaml
 name: .NET CI
 
@@ -2175,6 +2228,7 @@ jobs:
 You SHOULD use multi-stage Docker builds[^23] for optimal image size and security.
 
 **Dockerfile:**
+
 ```dockerfile
 # Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -2214,7 +2268,8 @@ ENTRYPOINT ["dotnet", "MyApi.dll"]
 ```
 
 **.dockerignore:**
-```
+
+```text
 **/.git
 **/.gitignore
 **/.vs
@@ -2228,6 +2283,7 @@ ENTRYPOINT ["dotnet", "MyApi.dll"]
 ```
 
 **Build and run:**
+
 ```bash
 # Build image
 docker build -t myapi:latest .
@@ -2244,6 +2300,7 @@ docker run -d -p 8080:8080 \
 You MAY use Docker Compose[^24] for local development and testing.
 
 **docker-compose.yml:**
+
 ```yaml
 version: '3.8'
 
@@ -2295,6 +2352,7 @@ docker-compose down -v
 You SHOULD use Semantic Versioning and embed version in assemblies:
 
 **Directory.Build.props:**
+
 ```xml
 <PropertyGroup>
   <Version>1.2.3</Version>
@@ -2305,6 +2363,7 @@ You SHOULD use Semantic Versioning and embed version in assemblies:
 ```
 
 **From Git (MinVer[^25]):**
+
 ```xml
 <ItemGroup>
   <PackageReference Include="MinVer" Version="5.0.0">
@@ -2344,6 +2403,7 @@ dotnet nuget push bin/Release/MyLibrary.1.2.3.nupkg \
 ```
 
 **Package metadata:**
+
 ```xml
 <PropertyGroup>
   <PackageId>MyCompany.MyLibrary</PackageId>
@@ -2413,6 +2473,7 @@ finally
 ```
 
 **appsettings.json:**
+
 ```json
 {
   "Serilog": {
@@ -2448,6 +2509,7 @@ finally
 ```
 
 **Structured logging usage:**
+
 ```csharp
 public class UserService
 {
@@ -2628,20 +2690,24 @@ builder.AddRedisClient("redis");
 ## Cross-References
 
 See [C# Style Guide](csharp.md) for:
+
 - Language-level style (naming, formatting, code organization)
 - Roslynator and SonarAnalyzer configuration
 - Code coverage and testing patterns
 - Advanced C# features (records, pattern matching, etc.)
 
 See [EditorConfig Guide](../configs/editorconfig.md) for:
+
 - Code style configuration
 - File formatting rules
 
 See [GitHub Actions Guide](../workflows/github-actions.md) for:
+
 - CI/CD pipeline patterns
 - Workflow best practices
 
 See [Docker Guide](../infrastructure/docker.md) for:
+
 - Container best practices
 - Multi-stage build optimization
 

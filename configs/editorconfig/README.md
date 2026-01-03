@@ -87,7 +87,7 @@ indent_size = 4
 ## Properties Reference
 
 | Property | Values | Description |
-|----------|--------|-------------|
+| -------- | ------ | ----------- |
 | `root` | `true` | Stop searching for .editorconfig |
 | `indent_style` | `tab`, `space` | Hard tabs or soft tabs |
 | `indent_size` | integer | Number of spaces per indent |
@@ -103,7 +103,7 @@ indent_size = 4
 EditorConfig is supported natively or via plugins:
 
 | Editor | Support |
-|--------|---------|
+| ------ | ------- |
 | VS Code | Native (settings enable) |
 | JetBrains IDEs | Native |
 | Vim/Neovim | Plugin: editorconfig-vim |
@@ -129,7 +129,7 @@ Add to `.vscode/settings.json`:
 EditorConfig works alongside language-specific formatters:
 
 | Tool | Purpose | EditorConfig Relationship |
-|------|---------|---------------------------|
+| ---- | ------- | ------------------------- |
 | Prettier | Formatting | Respects `.editorconfig` |
 | Ruff | Python formatting | Has own config, sync manually |
 | rustfmt | Rust formatting | Has own config, sync manually |

@@ -3,7 +3,7 @@
   To make changes, edit the files in the "src" directory.
 -->
 
-<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD033 MD013 -->
 
 # Uber Go Style Guide
 
@@ -83,9 +83,10 @@ Dos and Don'ts of writing Go code at Uber. These rules exist to keep the code
 base manageable while still allowing engineers to use Go language features
 productively.
 
-This guide was originally created by [Prashant Varanasi](https://github.com/prashantv) and [Simon Newton](https://github.com/nomis52) as
-a way to bring some colleagues up to speed with using Go. Over the years it has
-been amended based on feedback from others.
+This guide was originally created by [Prashant Varanasi](https://github.com/prashantv)
+and [Simon Newton](https://github.com/nomis52) as a way to bring some colleagues
+up to speed with using Go. Over the years it has been amended based on feedback
+from others.
 
 This documents idiomatic conventions in Go code that we follow at Uber. A lot
 of these are general guidelines for Go, while others extend upon external
@@ -105,7 +106,7 @@ recommend setting up your editor to:
 - Run `golint` and `go vet` to check for errors
 
 You can find information in editor support for Go tools here:
-https://go.dev/wiki/IDEsAndTextEditorPlugins
+<https://go.dev/wiki/IDEsAndTextEditorPlugins>
 
 ## Guidelines
 
@@ -620,13 +621,14 @@ following.
 For example, *1* means that adding 24 hours to a time instant will not always
 yield a new calendar day.
 
-Therefore, always use the [`"time"`](https://pkg.go.dev/time) package when dealing with time because it
-helps deal with these incorrect assumptions in a safer, more accurate manner.
+Therefore, always use the [`"time"`](https://pkg.go.dev/time) package when dealing
+with time because it helps deal with these incorrect assumptions in a safer,
+more accurate manner.
 
 #### Use `time.Time` for instants of time
 
-Use [`time.Time`](https://pkg.go.dev/time#Time) when dealing with instants of time, and the methods on
-`time.Time` when comparing, adding, or subtracting time.
+Use [`time.Time`](https://pkg.go.dev/time#Time) when dealing with instants of time,
+and the methods on `time.Time` when comparing, adding, or subtracting time.
 
 <table>
 <thead><tr><th>Bad</th><th>Good</th></tr></thead>
@@ -688,9 +690,12 @@ poll(10*time.Second)
 
 Going back to the example of adding 24 hours to a time instant, the method we
 use to add time depends on intent. If we want the same time of the day, but on
-the next calendar day, we should use [`Time.AddDate`](https://pkg.go.dev/time#Time.AddDate). However, if we want an
+the next calendar day, we should use [`Time.AddDate`]. However, if we want an
 instant of time guaranteed to be 24 hours after the previous time, we should
-use [`Time.Add`](https://pkg.go.dev/time#Time.Add).
+use [`Time.Add`].
+
+[`Time.AddDate`]: https://pkg.go.dev/time#Time.AddDate
+[`Time.Add`]: https://pkg.go.dev/time#Time.Add
 
 ```go
 newDay := t.AddDate(0 /* years */, 0 /* months */, 1 /* days */)
@@ -704,12 +709,19 @@ possible. For example:
 
 - Command-line flags: [`flag`](https://pkg.go.dev/flag) supports `time.Duration` via
   [`time.ParseDuration`](https://pkg.go.dev/time#ParseDuration)
-- JSON: [`encoding/json`](https://pkg.go.dev/encoding/json) supports encoding `time.Time` as an [RFC 3339](https://tools.ietf.org/html/rfc3339)
-  string via its [`UnmarshalJSON` method](https://pkg.go.dev/time#Time.UnmarshalJSON)
-- SQL: [`database/sql`](https://pkg.go.dev/database/sql) supports converting `DATETIME` or `TIMESTAMP` columns
+- JSON: [`encoding/json`] supports encoding `time.Time` as an [RFC 3339] string
+  via its [`UnmarshalJSON` method]
+- SQL: [`database/sql`] supports converting `DATETIME` or `TIMESTAMP` columns
   into `time.Time` and back if the underlying driver supports it
-- YAML: [`gopkg.in/yaml.v2`](https://pkg.go.dev/gopkg.in/yaml.v2) supports `time.Time` as an [RFC 3339](https://tools.ietf.org/html/rfc3339) string, and
-  `time.Duration` via [`time.ParseDuration`](https://pkg.go.dev/time#ParseDuration).
+- YAML: [`gopkg.in/yaml.v2`] supports `time.Time` as an [RFC 3339] string, and
+  `time.Duration` via [`time.ParseDuration`]
+
+[`encoding/json`]: https://pkg.go.dev/encoding/json
+[RFC 3339]: https://tools.ietf.org/html/rfc3339
+[`UnmarshalJSON` method]: https://pkg.go.dev/time#Time.UnmarshalJSON
+[`database/sql`]: https://pkg.go.dev/database/sql
+[`gopkg.in/yaml.v2`]: https://pkg.go.dev/gopkg.in/yaml.v2
+[`time.ParseDuration`]: https://pkg.go.dev/time#ParseDuration
 
 When it is not possible to use `time.Duration` in these interactions, use
 `int` or `float64` and include the unit in the name of the field.
@@ -743,14 +755,20 @@ type Config struct {
 
 When it is not possible to use `time.Time` in these interactions, unless an
 alternative is agreed upon, use `string` and format timestamps as defined in
-[RFC 3339](https://tools.ietf.org/html/rfc3339). This format is used by default by [`Time.UnmarshalText`](https://pkg.go.dev/time#Time.UnmarshalText) and is
-available for use in `Time.Format` and `time.Parse` via [`time.RFC3339`](https://pkg.go.dev/time#RFC3339).
+[RFC 3339]. This format is used by default by [`Time.UnmarshalText`] and is
+available for use in `Time.Format` and `time.Parse` via [`time.RFC3339`].
+
+[`Time.UnmarshalText`]: https://pkg.go.dev/time#Time.UnmarshalText
+[`time.RFC3339`]: https://pkg.go.dev/time#RFC3339
 
 Although this tends to not be a problem in practice, keep in mind that the
 `"time"` package does not support parsing timestamps with leap seconds
-([8728](https://github.com/golang/go/issues/8728)), nor does it account for leap seconds in calculations ([15190](https://github.com/golang/go/issues/15190)). If
+([8728]), nor does it account for leap seconds in calculations ([15190]). If
 you compare two instants of time, the difference will not include the leap
 seconds that may have occurred between those two instants.
+
+[8728]: https://github.com/golang/go/issues/8728
+[15190]: https://github.com/golang/go/issues/15190
 
 ### Errors
 
@@ -3774,10 +3792,10 @@ individual `Test...` functions.
 
 Some ideals to aim for are:
 
-* Focus on the narrowest unit of behavior
-* Minimize "test depth", and avoid conditional assertions (see below)
-* Ensure that all table fields are used in all tests
-* Ensure that all test logic runs for all table cases
+- Focus on the narrowest unit of behavior
+- Minimize "test depth", and avoid conditional assertions (see below)
+- Ensure that all table fields are used in all tests
+- Ensure that all test logic runs for all table cases
 
 In this context, "test depth" means "within a given test, the number of
 successive assertions that require previous assertions to hold" (similar
@@ -3882,6 +3900,7 @@ func TestShouldCallYAndFail(t *testing.T) {
   assert.EqualError(t, err, "Y failed")
 }
 ```
+
 </td></tr>
 </tbody></table>
 

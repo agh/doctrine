@@ -2,7 +2,10 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Axum
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Extends [Rust style guide](../languages/rust.md) with Axum-specific conventions.
 
@@ -13,7 +16,7 @@ Extends [Rust style guide](../languages/rust.md) with Axum-specific conventions.
 All Rust tooling applies. Additional tools:
 
 | Task | Tool | Command/Crate |
-|------|------|---------------|
+| ---- | ---- | ------------- |
 | Format | rustfmt | `cargo fmt` |
 | Lint | Clippy | `cargo clippy` |
 | Test | cargo test | `cargo test` |
@@ -34,22 +37,27 @@ All Rust tooling applies. Additional tools:
 
 ## Why Axum?
 
-Axum[^1] is a web framework built on Tower[^2] and Hyper[^3], designed for the Tokio ecosystem with focus on type safety and ergonomics.
+Axum[^1] is a web framework built on Tower[^2] and Hyper[^3], designed
+for the Tokio ecosystem with focus on type safety and ergonomics.
 
 **Key advantages**:
+
 - Native async/await with Tokio runtime integration
 - Type-safe extractors with compile-time guarantees
 - Ergonomic routing with minimal boilerplate
 - Composable middleware via Tower
 - Zero-cost abstractions with excellent performance[^4]
 
-**When to use Axum**: Choose Axum for greenfield async Rust services requiring type safety, high performance, and composability. Consider Actix-web[^5] for maximum performance or Rocket[^6] for simpler synchronous applications.
+**When to use Axum**: Choose Axum for greenfield async Rust services
+requiring type safety, high performance, and composability. Consider
+Actix-web[^5] for maximum performance or Rocket[^6] for simpler
+synchronous applications.
 
 ## Project Structure
 
 Projects **SHOULD** organize code by feature:
 
-```
+```text
 my-api/
 ├── src/
 │   ├── main.rs           # Application entry point
@@ -93,7 +101,9 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-**Why**: Feature-based organization scales better than layer-based organization. Keeping app creation separate enables testing with different configurations.
+**Why**: Feature-based organization scales better than layer-based
+organization. Keeping app creation separate enables testing with
+different configurations.
 
 ## Routing
 
@@ -125,7 +135,9 @@ fn api_routes() -> Router<AppState> {
 }
 ```
 
-**Why**: Composition via `merge` and `nest` provides better modularity and enables mounting sub-routers at different paths. This pattern allows feature modules to define their own routes independently.
+**Why**: Composition via `merge` and `nest` provides better modularity
+and enables mounting sub-routers at different paths. This pattern
+allows feature modules to define their own routes independently.
 
 ### Method Routing
 
@@ -145,12 +157,14 @@ pub fn routes() -> Router<AppState> {
 ```
 
 **Do**:
+
 ```rust
 Router::new()
     .route("/users", get(list_users).post(create_user))
 ```
 
 **Don't**:
+
 ```rust
 Router::new()
     .route("/users", get(list_users))
@@ -199,7 +213,9 @@ pub async fn update_user(
 }
 ```
 
-**Why**: This order matches Axum's extractor precedence and makes handlers more readable by placing path parameters first (most specific) and body last (most complex).
+**Why**: This order matches Axum's extractor precedence and makes
+handlers more readable by placing path parameters first (most specific)
+and body last (most complex).
 
 ### Custom Extractors
 
@@ -252,7 +268,9 @@ pub async fn protected_route(
 }
 ```
 
-**Why**: Custom extractors encapsulate common authentication and validation logic, reducing boilerplate and ensuring consistent error handling across routes.
+**Why**: Custom extractors encapsulate common authentication and
+validation logic, reducing boilerplate and ensuring consistent error
+handling across routes.
 
 ## Error Handling
 
@@ -308,7 +326,9 @@ impl From<sqlx::Error> for AppError {
 }
 ```
 
-**Why**: A unified error type provides consistent API responses and enables using `?` operator in handlers. Implementing `IntoResponse` allows returning errors directly from handlers.
+**Why**: A unified error type provides consistent API responses and
+enables using `?` operator in handlers. Implementing `IntoResponse`
+allows returning errors directly from handlers.
 
 ### Using thiserror and anyhow
 
@@ -335,6 +355,7 @@ pub enum AppError {
 ```
 
 **Do**:
+
 ```rust
 use thiserror::Error;  // For typed errors
 
@@ -346,6 +367,7 @@ pub enum AppError {
 ```
 
 **Don't**:
+
 ```rust
 use anyhow::Error;  // Too generic for API errors
 
@@ -399,7 +421,9 @@ async fn timeout_middleware<B>(
 }
 ```
 
-**Why**: Tower's layer system provides composable, reusable middleware. Using `ServiceBuilder` ensures middleware is applied in the correct order (inner to outer).
+**Why**: Tower's layer system provides composable, reusable middleware.
+Using `ServiceBuilder` ensures middleware is applied in the correct
+order (inner to outer).
 
 ### Custom Middleware
 
@@ -432,7 +456,8 @@ let protected = Router::new()
     .layer(middleware::from_fn(auth_middleware));
 ```
 
-**Why**: `from_fn` provides the simplest way to create middleware without implementing `Layer` and `Service` traits manually.
+**Why**: `from_fn` provides the simplest way to create middleware
+without implementing `Layer` and `Service` traits manually.
 
 ## State Management
 
@@ -486,7 +511,9 @@ pub async fn list_users(
 }
 ```
 
-**Why**: `State` is the recommended way to share data across handlers. The state type must implement `Clone`, which is efficient when wrapping `Arc` or connection pools.
+**Why**: `State` is the recommended way to share data across handlers.
+The state type must implement `Clone`, which is efficient when wrapping
+`Arc` or connection pools.
 
 ### State Guidelines
 
@@ -503,6 +530,7 @@ pub struct AppState {
 ```
 
 **Do**:
+
 ```rust
 #[derive(Clone)]
 pub struct AppState {
@@ -511,6 +539,7 @@ pub struct AppState {
 ```
 
 **Don't**:
+
 ```rust
 pub struct AppState {
     pub pool: PgPool,  // Missing Clone derive
@@ -564,7 +593,8 @@ async fn test_create_user() {
 }
 ```
 
-**Why**: `tower::ServiceExt` allows testing the router as a `Service` without running an HTTP server, enabling fast, isolated unit tests.
+**Why**: `tower::ServiceExt` allows testing the router as a `Service`
+without running an HTTP server, enabling fast, isolated unit tests.
 
 ### Test Fixtures
 
@@ -670,7 +700,9 @@ pub async fn get_user(
 }
 ```
 
-**Why**: SQLx's `query_as!` macro provides compile-time verification of SQL queries against the database schema, catching errors before runtime. It also generates type-safe bindings automatically.
+**Why**: SQLx's `query_as!` macro provides compile-time verification of
+SQL queries against the database schema, catching errors before
+runtime. It also generates type-safe bindings automatically.
 
 ### Migrations
 
@@ -699,7 +731,9 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 ```
 
-**Why**: SQLx migrations integrate with compile-time verification and support offline mode via `cargo sqlx prepare`, enabling CI without a running database.
+**Why**: SQLx migrations integrate with compile-time verification and
+support offline mode via `cargo sqlx prepare`, enabling CI without a
+running database.
 
 ### Transaction Patterns
 
@@ -850,7 +884,10 @@ pub async fn profile(auth_session: AuthSession<Backend>) -> Result<Json<User>, A
 }
 ```
 
-**Why**: axum-login provides a type-safe, Tower-based authentication layer with support for arbitrary user types and backends. It integrates seamlessly with Axum's extractor system and supports both authentication and authorization via traits.
+**Why**: axum-login provides a type-safe, Tower-based authentication
+layer with support for arbitrary user types and backends. It integrates
+seamlessly with Axum's extractor system and supports both
+authentication and authorization via traits.
 
 ### JWT Authentication with jsonwebtoken
 
@@ -960,6 +997,7 @@ where
 ```
 
 **Do**:
+
 ```rust
 // Use asymmetric keys (RS256) in production
 let keys = JwtKeys::from_rsa_pem(&private_key, &public_key)?;
@@ -972,6 +1010,7 @@ let claims = Claims {
 ```
 
 **Don't**:
+
 ```rust
 // Don't use weak secrets
 let keys = JwtKeys::new(b"secret");  // Too short and predictable
@@ -983,7 +1022,9 @@ let claims = Claims {
 };
 ```
 
-**Why**: JWT provides stateless authentication suitable for APIs and microservices. The jsonwebtoken crate supports all standard algorithms. Use short-lived tokens with refresh token rotation for enhanced security.
+**Why**: JWT provides stateless authentication suitable for APIs and microservices. The
+jsonwebtoken crate supports all standard algorithms. Use short-lived tokens with refresh token
+rotation for enhanced security.
 
 ### Authorization with Casbin
 
@@ -1083,7 +1124,9 @@ pub async fn require_permission(
 }
 ```
 
-**Why**: Casbin provides a flexible, policy-based authorization system supporting ACL, RBAC, and ABAC models. Policies can be stored in files or databases and modified at runtime without code changes.
+**Why**: Casbin provides a flexible, policy-based authorization system supporting ACL, RBAC, and
+ABAC models. Policies can be stored in files or databases and modified at runtime without code
+changes.
 
 ### Tower-HTTP Auth Layers
 
@@ -1104,7 +1147,9 @@ let api_routes = Router::new()
     .layer(RequireAuthorizationLayer::bearer("expected-token"));
 ```
 
-**Why**: tower-http provides pre-built authentication layers that integrate directly with Tower's middleware system. Use these for simple authentication needs; use axum-login or custom extractors for more complex requirements.
+**Why**: tower-http provides pre-built authentication layers that integrate directly with Tower's
+middleware system. Use these for simple authentication needs; use axum-login or custom extractors
+for more complex requirements.
 
 ## WebSocket
 
@@ -1209,7 +1254,9 @@ pub fn routes() -> Router<AppState> {
 }
 ```
 
-**Why**: Axum's WebSocket support is built on tokio-tungstenite[^15] but exposes a stable API that won't break with internal updates. Use `socket.split()` to handle send and receive concurrently in separate tasks.
+**Why**: Axum's WebSocket support is built on tokio-tungstenite[^15] but exposes a stable API
+that won't break with internal updates. Use `socket.split()` to handle send and receive
+concurrently in separate tasks.
 
 ### WebSocket with Authentication
 
@@ -1237,7 +1284,8 @@ pub async fn authenticated_ws_handler(
 }
 ```
 
-**Why**: WebSocket connections cannot use standard HTTP headers after the initial handshake. Pass authentication tokens via query parameters during the upgrade request.
+**Why**: WebSocket connections cannot use standard HTTP headers after the initial handshake. Pass
+authentication tokens via query parameters during the upgrade request.
 
 ## Performance and Observability
 
@@ -1287,7 +1335,9 @@ pub async fn get_user(
 }
 ```
 
-**Why**: Tracing provides structured, contextual logging that integrates with async Rust. The `#[instrument]` macro automatically creates spans with function arguments. JSON output enables log aggregation in tools like Elasticsearch or Loki.
+**Why**: Tracing provides structured, contextual logging that integrates with async Rust. The
+`#[instrument]` macro automatically creates spans with function arguments. JSON output enables
+log aggregation in tools like Elasticsearch or Loki.
 
 ### HTTP Request Tracing
 
@@ -1308,7 +1358,8 @@ let app = Router::new()
 
 ### Metrics with Prometheus
 
-Projects **SHOULD** use axum-prometheus[^18] or metrics[^19] with metrics-exporter-prometheus[^20] for metrics:
+Projects **SHOULD** use axum-prometheus[^18] or metrics[^19] with
+metrics-exporter-prometheus[^20] for metrics:
 
 ```rust
 // Using axum-prometheus for automatic HTTP metrics
@@ -1356,7 +1407,9 @@ pub async fn ws_handler(ws: WebSocketUpgrade, /* ... */) -> Response {
 }
 ```
 
-**Why**: axum-prometheus provides automatic HTTP metrics (requests total, duration, pending) with minimal configuration. The metrics crate offers a facade for custom metrics that can be exported to various backends.
+**Why**: axum-prometheus provides automatic HTTP metrics (requests total, duration, pending) with
+minimal configuration. The metrics crate offers a facade for custom metrics that can be exported
+to various backends.
 
 ### OpenTelemetry Integration
 
@@ -1390,7 +1443,8 @@ fn init_telemetry() -> anyhow::Result<()> {
 }
 ```
 
-**Why**: OpenTelemetry enables distributed tracing across microservices with unique trace IDs, essential for debugging request flows in distributed systems.
+**Why**: OpenTelemetry enables distributed tracing across microservices with unique trace IDs,
+essential for debugging request flows in distributed systems.
 
 ## Background Jobs
 
@@ -1420,7 +1474,8 @@ pub async fn create_user(
 }
 ```
 
-**Why**: `tokio::spawn` is ideal for simple background tasks that don't require persistence or retry logic. For tasks that must survive restarts or need guaranteed delivery, use a job queue.
+**Why**: `tokio::spawn` is ideal for simple background tasks that don't require persistence or
+retry logic. For tasks that must survive restarts or need guaranteed delivery, use a job queue.
 
 ### Blocking Tasks with spawn_blocking
 
@@ -1453,7 +1508,8 @@ pub async fn process_image(data: Vec<u8>) -> Result<Vec<u8>, AppError> {
 }
 ```
 
-**Why**: Blocking the async runtime thread prevents other tasks from executing. `spawn_blocking` runs blocking code on a dedicated thread pool, keeping the async runtime responsive.
+**Why**: Blocking the async runtime thread prevents other tasks from executing. `spawn_blocking`
+runs blocking code on a dedicated thread pool, keeping the async runtime responsive.
 
 ### Job Queues with Apalis
 
@@ -1534,7 +1590,9 @@ pub async fn create_user(
 }
 ```
 
-**Why**: Apalis provides type-safe, Tower-based job processing with support for Redis, PostgreSQL, and other backends. Jobs are persisted and can be retried on failure, with built-in concurrency control and monitoring.
+**Why**: Apalis provides type-safe, Tower-based job processing with support for Redis, PostgreSQL,
+and other backends. Jobs are persisted and can be retried on failure, with built-in concurrency
+control and monitoring.
 
 ### Alternative: rusty-sidekiq
 
@@ -1565,7 +1623,8 @@ sidekiq::perform_async(
 ).await?;
 ```
 
-**Why**: rusty-sidekiq is compatible with Ruby Sidekiq for mixed Ruby/Rust environments. Use apalis for pure Rust applications.
+**Why**: rusty-sidekiq is compatible with Ruby Sidekiq for mixed Ruby/Rust environments. Use
+apalis for pure Rust applications.
 
 ## Caching
 
@@ -1639,7 +1698,9 @@ pub async fn get_user(
 }
 ```
 
-**Why**: Moka provides a concurrent, async-aware cache with LRU eviction, TTL/TTI expiration, and excellent performance. It uses algorithms inspired by Caffeine (Java) for near-optimal hit ratios.
+**Why**: Moka provides a concurrent, async-aware cache with LRU eviction, TTL/TTI expiration, and
+excellent performance. It uses algorithms inspired by Caffeine (Java) for near-optimal hit
+ratios.
 
 ### Distributed Caching with Redis
 
@@ -1711,7 +1772,8 @@ impl RedisCache {
 }
 ```
 
-**Why**: Redis provides distributed caching that survives application restarts and can be shared across multiple instances. deadpool-redis offers an async connection pool optimized for Tokio.
+**Why**: Redis provides distributed caching that survives application restarts and can be shared
+across multiple instances. deadpool-redis offers an async connection pool optimized for Tokio.
 
 ### Multi-Level Caching
 
@@ -1749,7 +1811,8 @@ pub async fn get_user_multilevel(
 }
 ```
 
-**Why**: Multi-level caching reduces latency (L1 is fastest) while maintaining consistency across distributed instances (L2 provides shared state).
+**Why**: Multi-level caching reduces latency (L1 is fastest) while maintaining consistency across
+distributed instances (L2 provides shared state).
 
 ## Rate Limiting
 
@@ -1826,7 +1889,9 @@ axum::serve(
 ).await?;
 ```
 
-**Why**: tower-governor uses the GCRA (Generic Cell Rate Algorithm) for fair, efficient rate limiting. The `SmartIpKeyExtractor` handles common proxy headers (X-Forwarded-For, X-Real-IP) for accurate client identification.
+**Why**: tower-governor uses the GCRA (Generic Cell Rate Algorithm) for fair, efficient rate
+limiting. The `SmartIpKeyExtractor` handles common proxy headers (X-Forwarded-For, X-Real-IP)
+for accurate client identification.
 
 ### Custom Rate Limiting Key
 
@@ -1852,7 +1917,8 @@ impl KeyExtractor for UserKeyExtractor {
 }
 ```
 
-**Why**: Custom key extractors enable rate limiting by user ID, API key, or other identifiers beyond IP address.
+**Why**: Custom key extractors enable rate limiting by user ID, API key, or other identifiers
+beyond IP address.
 
 ## Circuit Breakers
 
@@ -1914,7 +1980,9 @@ impl ResilientClient {
 }
 ```
 
-**Why**: Circuit breakers prevent cascading failures by temporarily rejecting requests to failing services. Recloser uses a ring buffer for efficient failure tracking with configurable thresholds.
+**Why**: Circuit breakers prevent cascading failures by temporarily rejecting requests to failing
+services. Recloser uses a ring buffer for efficient failure tracking with configurable
+thresholds.
 
 ### Alternative: failsafe-rs
 
@@ -1942,7 +2010,8 @@ where
 }
 ```
 
-**Why**: failsafe-rs provides more configurable failure/success policies and backoff strategies for complex resilience requirements.
+**Why**: failsafe-rs provides more configurable failure/success policies and backoff strategies
+for complex resilience requirements.
 
 ## Feature Flags
 
@@ -2007,7 +2076,8 @@ pub async fn get_dashboard(
 }
 ```
 
-**Why**: Unleash provides runtime feature toggles with gradual rollouts, A/B testing, and user targeting. Features can be enabled/disabled without code deployments.
+**Why**: Unleash provides runtime feature toggles with gradual rollouts, A/B testing, and user
+targeting. Features can be enabled/disabled without code deployments.
 
 ### Simple Feature Flags
 
@@ -2041,7 +2111,8 @@ impl Features {
 }
 ```
 
-**Why**: Environment-based flags work for simple on/off features that change with deployments. Use Unleash for runtime toggles without redeployment.
+**Why**: Environment-based flags work for simple on/off features that change with deployments.
+Use Unleash for runtime toggles without redeployment.
 
 ## Graceful Shutdown
 
@@ -2272,7 +2343,9 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-**Why**: Graceful shutdown ensures zero-downtime deployments by completing in-flight requests before terminating. The readiness probe integration ensures load balancers stop sending new traffic before the server shuts down.
+**Why**: Graceful shutdown ensures zero-downtime deployments by completing in-flight requests
+before terminating. The readiness probe integration ensures load balancers stop sending new
+traffic before the server shuts down.
 
 ## OpenAPI Documentation
 
@@ -2526,7 +2599,8 @@ pub async fn create_app(config: Config) -> anyhow::Result<Router> {
 }
 ```
 
-**Why**: utoipa provides compile-time OpenAPI spec generation from Rust types and handler annotations. This keeps documentation in sync with code and catches mismatches at compile time.
+**Why**: utoipa provides compile-time OpenAPI spec generation from Rust types and handler
+annotations. This keeps documentation in sync with code and catches mismatches at compile time.
 
 ## See Also
 

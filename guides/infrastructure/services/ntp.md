@@ -9,7 +9,7 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | apt | `apt install chrony` |
 | Check sync | chronyc | `chronyc tracking` |
 | List sources | chronyc | `chronyc sources -v` |

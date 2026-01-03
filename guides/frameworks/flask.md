@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Flask
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Python style guide](../languages/python.md) with Flask-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [Python style guide](../languages/python.md) with Flask-specific convent
 All Python tooling applies. Additional considerations:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | uv | `uv add flask` |
 | Run dev | Flask CLI | `flask run --debug` |
 | Test | pytest + Flask test client | `pytest` |
@@ -34,9 +38,13 @@ All Python tooling applies. Additional considerations:
 
 ## Why Flask?
 
-Flask[^1] is a lightweight, flexible microframework ideal for small-to-medium applications, APIs, and prototypes. It provides minimal abstractions while allowing extension through a rich ecosystem.
+Flask[^1] is a lightweight, flexible microframework ideal for small-to-medium
+applications, APIs, and prototypes. It provides minimal abstractions while
+allowing extension through a rich ecosystem.
 
-Use Flask when you need simplicity and flexibility; consider Django[^2] for larger, more structured applications with built-in admin, ORM, and authentication. Consider FastAPI[^3] for high-performance async APIs.
+Use Flask when you need simplicity and flexibility; consider Django[^2] for
+larger, more structured applications with built-in admin, ORM, and
+authentication. Consider FastAPI[^3] for high-performance async APIs.
 
 ## Project Structure
 
@@ -66,11 +74,13 @@ def create_app(config: dict | None = None) -> Flask:
     return app
 ```
 
-**Why**: The application factory pattern enables multiple app instances with different configurations, facilitates testing, and defers extension initialization until configuration is loaded.
+**Why**: The application factory pattern enables multiple app instances with
+different configurations, facilitates testing, and defers extension
+initialization until configuration is loaded.
 
 ### Recommended Structure
 
-```
+```text
 my_app/
 ├── src/
 │   └── myapp/
@@ -124,7 +134,9 @@ from myapp.auth.routes import auth_bp
 __all__ = ["auth_bp"]
 ```
 
-**Why**: Blueprints organize code by feature, enable route prefixes and middleware per module, and make large applications maintainable by separating concerns.
+**Why**: Blueprints organize code by feature, enable route prefixes and
+middleware per module, and make large applications maintainable by separating
+concerns.
 
 ## Configuration Management
 
@@ -165,7 +177,9 @@ def create_app(config_name: str = "development") -> Flask:
     return app
 ```
 
-**Why**: Environment-based configuration separates deployment concerns from code, prevents secrets from being committed, and enables different settings per environment.
+**Why**: Environment-based configuration separates deployment concerns from
+code, prevents secrets from being committed, and enables different settings
+per environment.
 
 ## Testing with pytest
 
@@ -212,14 +226,15 @@ def test_login_invalid_credentials(client) -> None:
     assert response.status_code == 401
 ```
 
-**Why**: Flask's test client enables route testing without running a server. pytest fixtures provide isolated test database state and reusable app instances.
+**Why**: Flask's test client enables route testing without running a server.
+pytest fixtures provide isolated test database state and reusable app instances.
 
 ## Extensions Ecosystem
 
 Projects **SHOULD** use well-maintained Flask extensions:
 
 | Extension | Purpose | Install |
-|-----------|---------|---------|
+| --------- | ------- | ------- |
 | Flask-SQLAlchemy[^5] | ORM integration | `uv add flask-sqlalchemy` |
 | Flask-Migrate[^6] | Database migrations | `uv add flask-migrate` |
 | Flask-Login[^7] | User session management | `uv add flask-login` |
@@ -237,7 +252,8 @@ migrate = Migrate()
 login_manager = LoginManager()
 ```
 
-**Why**: Flask's extension ecosystem provides battle-tested solutions for common needs while maintaining the framework's lightweight philosophy.
+**Why**: Flask's extension ecosystem provides battle-tested solutions for
+common needs while maintaining the framework's lightweight philosophy.
 
 ## Error Handling
 
@@ -294,11 +310,16 @@ def create_user():
 
 ## Security
 
-Projects **MUST** implement comprehensive security including authentication, authorization, and token management.
+Projects **MUST** implement comprehensive security including authentication,
+authorization, and token management.
 
-### Why
+### Why Security
 
-Security is foundational for any production application. Flask-Login[^7] handles session management, Authlib[^10] provides OAuth 2.0/OpenID Connect integration, PyJWT[^11] enables stateless token authentication, and Flask-Principal[^12] manages role-based permissions. Using established libraries prevents common security vulnerabilities.
+Security is foundational for any production application. Flask-Login[^7]
+handles session management, Authlib[^10] provides OAuth 2.0/OpenID Connect
+integration, PyJWT[^11] enables stateless token authentication, and
+Flask-Principal[^12] manages role-based permissions. Using established
+libraries prevents common security vulnerabilities.
 
 ### Authentication with Flask-Login
 
@@ -511,16 +532,19 @@ def manage_users():
 
 Projects requiring real-time communication **SHOULD** use Flask-SocketIO[^13].
 
-### Why
+### Why WebSocket
 
-WebSocket enables bidirectional communication between client and server, essential for chat applications, live updates, and collaborative features. Flask-SocketIO provides a clean abstraction over WebSocket with fallback support and room-based messaging.
+WebSocket enables bidirectional communication between client and server,
+essential for chat applications, live updates, and collaborative features.
+Flask-SocketIO provides a clean abstraction over WebSocket with fallback
+support and room-based messaging.
 
 ### Server Selection
 
 Projects **SHOULD** use gevent for production deployments as eventlet is now deprecated:
 
 | Server | Status | Use Case |
-|--------|--------|----------|
+| ------ | ------ | -------- |
 | gevent | Active, recommended | Production with high concurrency |
 | Threading mode | Stable | CPU-heavy apps, maximum library compatibility |
 | eventlet | Deprecated | Legacy applications only |
@@ -615,9 +639,12 @@ if __name__ == "__main__":
 
 Projects **SHOULD** implement performance monitoring and profiling.
 
-### Why
+### Why Performance Monitoring
 
-Performance issues in production require visibility into application behavior. Flask-Profiler[^14] provides request-level profiling with a web UI, py-spy[^15] enables live process profiling without code changes, and prometheus_client[^16] exposes metrics for monitoring infrastructure.
+Performance issues in production require visibility into application behavior.
+Flask-Profiler[^14] provides request-level profiling with a web UI, py-spy[^15]
+enables live process profiling without code changes, and prometheus_client[^16]
+exposes metrics for monitoring infrastructure.
 
 ### Flask-Profiler for Development
 
@@ -714,14 +741,16 @@ def create_app(config_name: str = "development") -> Flask:
 
 Projects with long-running tasks **MUST** use a task queue.
 
-### Why
+### Why Task Queues
 
-HTTP requests should complete quickly. Background task queues offload expensive operations like sending emails, processing files, or calling external APIs. This prevents request timeouts and improves user experience.
+HTTP requests should complete quickly. Background task queues offload expensive
+operations like sending emails, processing files, or calling external APIs.
+This prevents request timeouts and improves user experience.
 
 ### Task Queue Comparison
 
 | Feature | Celery[^17] | RQ[^18] | Huey[^19] |
-|---------|-------------|---------|-----------|
+| ------- | ----------- | ------- | --------- |
 | Complexity | Higher | Lower | Lower |
 | Brokers | Redis, RabbitMQ, etc. | Redis only | Redis |
 | Scheduling | Full crontab | Basic | Crontab-like |
@@ -818,9 +847,12 @@ rq worker --with-scheduler
 
 Projects using Flask 2.0+ **MAY** use async views for I/O-bound operations.
 
-### Why
+### Why Async Views
 
-Async views enable concurrent I/O operations within a single request, improving throughput for requests that call multiple external services. However, Flask remains WSGI-based; for fully async applications, consider Quart[^20] or FastAPI[^3].
+Async views enable concurrent I/O operations within a single request, improving
+throughput for requests that call multiple external services. However, Flask
+remains WSGI-based; for fully async applications, consider Quart[^20] or
+FastAPI[^3].
 
 ### Installation
 
@@ -885,9 +917,11 @@ async def process_request_wrong():
 
 Projects **SHOULD** implement caching for frequently accessed data.
 
-### Why
+### Why Caching
 
-Caching reduces database load and improves response times. Flask-Caching[^21] provides a unified interface with multiple backends. Redis is recommended for production due to its persistence, atomic operations, and distributed support.
+Caching reduces database load and improves response times. Flask-Caching[^21]
+provides a unified interface with multiple backends. Redis is recommended for
+production due to its persistence, atomic operations, and distributed support.
 
 ### Configuration
 
@@ -974,9 +1008,11 @@ cache.delete_memoized(compute_user_stats, user_id)
 
 Projects exposing APIs **SHOULD** implement rate limiting.
 
-### Why
+### Why Rate Limiting
 
-Rate limiting protects against abuse, prevents resource exhaustion, and ensures fair access. Flask-Limiter[^22] provides decorators and configuration for per-route limits with multiple storage backends.
+Rate limiting protects against abuse, prevents resource exhaustion, and ensures
+fair access. Flask-Limiter[^22] provides decorators and configuration for
+per-route limits with multiple storage backends.
 
 ### Configuration
 
@@ -1060,9 +1096,12 @@ limiter = Limiter(
 
 Projects calling external services **SHOULD** implement circuit breakers.
 
-### Why
+### Why Circuit Breakers
 
-Circuit breakers prevent cascading failures when external services become unavailable. They "open" after repeated failures, failing fast instead of waiting for timeouts, and periodically "test" if the service has recovered. pybreaker[^23] provides a Python implementation of this pattern.
+Circuit breakers prevent cascading failures when external services become
+unavailable. They "open" after repeated failures, failing fast instead of
+waiting for timeouts, and periodically "test" if the service has recovered.
+pybreaker[^23] provides a Python implementation of this pattern.
 
 ### Configuration
 
@@ -1164,9 +1203,12 @@ payment_breaker = pybreaker.CircuitBreaker(
 
 Projects requiring controlled rollouts **SHOULD** implement feature flags.
 
-### Why
+### Why Feature Flags
 
-Feature flags enable gradual rollouts, A/B testing, and quick feature disabling without deployments. Flask-FeatureFlags[^24] provides simple configuration-based flags, while Unleash[^25] offers a full-featured management platform for larger teams.
+Feature flags enable gradual rollouts, A/B testing, and quick feature disabling
+without deployments. Flask-FeatureFlags[^24] provides simple configuration-based
+flags, while Unleash[^25] offers a full-featured management platform for larger
+teams.
 
 ### Flask-FeatureFlags for Simple Cases
 

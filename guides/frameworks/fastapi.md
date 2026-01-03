@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > FastAPI
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Python style guide](../languages/python.md) with FastAPI-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [Python style guide](../languages/python.md) with FastAPI-specific conve
 All Python tooling applies. Additional considerations:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | uv | `uv add fastapi uvicorn` |
 | Run dev | Uvicorn | `uvicorn myapp.main:app --reload` |
 | Test | pytest + TestClient | `pytest` |
@@ -30,21 +34,26 @@ All Python tooling applies. Additional considerations:
 
 ## Why FastAPI?
 
-FastAPI[^1] is an async-first, high-performance web framework with automatic OpenAPI documentation, built-in request validation via Pydantic, and excellent type hint integration.
+FastAPI[^1] is an async-first, high-performance web framework with automatic
+OpenAPI documentation, built-in request validation via Pydantic, and excellent
+type hint integration.
 
 **Key advantages**:
+
 - Async/await native support for high concurrency
 - Automatic OpenAPI/Swagger documentation
 - Pydantic validation with helpful error messages
 - Performance comparable to Node.js and Go[^2]
 
-Use FastAPI for APIs requiring high throughput, async I/O, or automatic API documentation. Choose Flask for simpler synchronous applications or Django for full-featured web applications with admin panels.
+Use FastAPI for APIs requiring high throughput, async I/O, or automatic API
+documentation. Choose Flask for simpler synchronous applications or Django for
+full-featured web applications with admin panels.
 
 ## Project Structure
 
 Projects **SHOULD** organize FastAPI applications by feature:
 
-```
+```text
 my_app/
 ├── src/
 │   └── myapp/
@@ -93,7 +102,9 @@ def create_app() -> FastAPI:
 app = create_app()
 ```
 
-**Why**: Organizing by feature keeps related code together. Separating app creation enables testing with different configurations and multiple app instances.
+**Why**: Organizing by feature keeps related code together. Separating app
+creation enables testing with different configurations and multiple app
+instances.
 
 ## Dependency Injection
 
@@ -132,7 +143,9 @@ async def read_user(user_id: int, db: Session = Depends(get_db)) -> User:
     return user
 ```
 
-**Why**: Dependency injection decouples route handlers from resource creation, enables testing with mock dependencies, and manages resource lifecycle automatically.
+**Why**: Dependency injection decouples route handlers from resource creation,
+enables testing with mock dependencies, and manages resource lifecycle
+automatically.
 
 ## Pydantic Models for Validation
 
@@ -179,7 +192,9 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)) -> User:
     return db_user
 ```
 
-**Why**: Pydantic provides automatic validation, serialization, and helpful error messages. Separate request/response models prevent exposing sensitive fields and enable API evolution.
+**Why**: Pydantic provides automatic validation, serialization, and helpful
+error messages. Separate request/response models prevent exposing sensitive
+fields and enable API evolution.
 
 ## Async Database Access
 
@@ -219,12 +234,13 @@ async def read_user(user_id: int, db: AsyncSession = Depends(get_db)) -> User:
     return user
 ```
 
-**Why**: Using async database access preserves FastAPI's async benefits and prevents blocking the event loop.
+**Why**: Using async database access preserves FastAPI's async benefits and
+prevents blocking the event loop.
 
 ### Database Library Recommendations
 
 | Database | Sync | Async |
-|----------|------|-------|
+| -------- | ---- | ----- |
 | PostgreSQL | `psycopg2` | `asyncpg` |
 | MySQL | `pymysql` | `aiomysql` |
 | SQLite | `sqlite3` | `aiosqlite` |
@@ -310,7 +326,9 @@ def test_create_user_invalid_email(client: TestClient) -> None:
     assert response.status_code == 422
 ```
 
-**Why**: `TestClient` provides synchronous testing of async endpoints without running a server. Dependency overrides enable injecting test database sessions and mocked dependencies.
+**Why**: `TestClient` provides synchronous testing of async endpoints without
+running a server. Dependency overrides enable injecting test database sessions
+and mocked dependencies.
 
 ## Error Handling
 
@@ -560,7 +578,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 ### Middleware Ordering
 
-Middleware executes in the order added (last added = first to run). Projects **MUST** order middleware correctly:
+Middleware executes in the order added (last added = first to run). Projects
+**MUST** order middleware correctly:
 
 ```python
 # src/myapp/main.py
@@ -646,7 +665,9 @@ class BadMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 ```
 
-**Why**: Middleware provides a clean separation of cross-cutting concerns from business logic. Pure ASGI middleware avoids the overhead of `BaseHTTPMiddleware` for performance-critical applications.
+**Why**: Middleware provides a clean separation of cross-cutting concerns from
+business logic. Pure ASGI middleware avoids the overhead of `BaseHTTPMiddleware`
+for performance-critical applications.
 
 ## Background Tasks
 
@@ -678,9 +699,12 @@ For heavier workloads, see the [Background Jobs](#background-jobs) section below
 
 Projects **MUST** implement proper authentication and authorization for API endpoints.
 
-### Why
+### Why Security
 
-Security is foundational to any production API. OAuth2 with JWT tokens provides stateless authentication that scales horizontally, while object-level permissions ensure users can only access resources they own or have been granted access to.
+Security is foundational to any production API. OAuth2 with JWT tokens provides
+stateless authentication that scales horizontally, while object-level
+permissions ensure users can only access resources they own or have been
+granted access to.
 
 ### Authentication with OAuth2 and JWT
 
@@ -792,15 +816,18 @@ async def get_item(
     return item
 ```
 
-**Why**: Object-level permissions prevent horizontal privilege escalation where authenticated users access other users' data. This is one of the OWASP Top 10 API security risks.
+**Why**: Object-level permissions prevent horizontal privilege escalation where
+authenticated users access other users' data. This is one of the OWASP Top 10
+API security risks.
 
 ## WebSocket
 
 Projects requiring real-time features **SHOULD** use FastAPI's native WebSocket support[^7].
 
-### Why
+### Why WebSockets
 
-WebSockets enable bidirectional communication for real-time features like chat, notifications, and live updates without polling overhead.
+WebSockets enable bidirectional communication for real-time features like chat,
+notifications, and live updates without polling overhead.
 
 ### Connection Management
 
@@ -885,15 +912,18 @@ async def publish_message(redis, channel: str, message: str) -> None:
     await redis.publish(channel, message)
 ```
 
-**Why**: In-memory connection managers only work within a single process. Redis Pub/Sub enables message distribution across multiple server instances.
+**Why**: In-memory connection managers only work within a single process. Redis
+Pub/Sub enables message distribution across multiple server instances.
 
 ## Performance and Observability
 
 Projects **MUST** implement observability for production deployments.
 
-### Why
+### Why Observability
 
-Observability through metrics, traces, and logs enables proactive identification of performance issues, capacity planning, and faster incident resolution.
+Observability through metrics, traces, and logs enables proactive
+identification of performance issues, capacity planning, and faster incident
+resolution.
 
 ### Prometheus Metrics
 
@@ -914,6 +944,7 @@ def create_app() -> FastAPI:
 ```
 
 Default metrics include:
+
 - `http_requests_total` - Counter with handler, status, method labels
 - `http_request_duration_seconds` - Histogram of request latencies
 - `http_request_size_bytes` / `http_response_size_bytes` - Request/response sizes
@@ -963,20 +994,24 @@ py-spy top --pid <PID>
 py-spy record -o profile.svg --pid <PID>
 ```
 
-**Why**: py-spy is a sampling profiler that attaches to running Python processes without code changes or performance overhead, making it safe for production debugging.
+**Why**: py-spy is a sampling profiler that attaches to running Python processes
+without code changes or performance overhead, making it safe for production
+debugging.
 
 ## Background Jobs
 
 Projects requiring heavy or distributed task processing **MUST** use a dedicated task queue.
 
-### Why
+### Why Task Queues
 
-FastAPI's built-in `BackgroundTasks` runs in the same process as the web server, lacks status tracking, and loses tasks on server restart. Dedicated task queues provide persistence, retries, monitoring, and horizontal scaling.
+FastAPI's built-in `BackgroundTasks` runs in the same process as the web
+server, lacks status tracking, and loses tasks on server restart. Dedicated
+task queues provide persistence, retries, monitoring, and horizontal scaling.
 
 ### Choosing a Task Queue
 
 | Use Case | Recommendation |
-|----------|----------------|
+| -------- | -------------- |
 | Async-native, I/O-bound tasks | ARQ[^12] |
 | CPU-bound or mixed workloads | Celery[^13] |
 | Simple async queues | SAQ[^14] |
@@ -1068,9 +1103,11 @@ def process_report(self, report_id: int) -> dict:
 
 Projects **SHOULD** implement caching for frequently accessed, expensive operations.
 
-### Why
+### Why Caching
 
-Caching reduces database load, decreases response latency, and improves API throughput. Redis provides distributed caching that works across multiple application instances.
+Caching reduces database load, decreases response latency, and improves API
+throughput. Redis provides distributed caching that works across multiple
+application instances.
 
 ### fastapi-cache2
 
@@ -1158,15 +1195,17 @@ async def update_item(
     return db_item
 ```
 
-**Why**: Stale cache data causes data consistency issues. Invalidate-on-write ensures cache freshness while maintaining performance benefits for reads.
+**Why**: Stale cache data causes data consistency issues. Invalidate-on-write
+ensures cache freshness while maintaining performance benefits for reads.
 
 ## Rate Limiting
 
 Projects **MUST** implement rate limiting for public APIs.
 
-### Why
+### Why Rate Limiting
 
-Rate limiting protects APIs from abuse, ensures fair resource allocation among users, and prevents cascading failures from traffic spikes.
+Rate limiting protects APIs from abuse, ensures fair resource allocation among
+users, and prevents cascading failures from traffic spikes.
 
 ### slowapi
 
@@ -1239,15 +1278,18 @@ async def list_items(request: Request) -> list[Item]:
     ...
 ```
 
-**Why**: User-based rate limiting ensures fair API access based on subscription tiers while protecting against anonymous abuse.
+**Why**: User-based rate limiting ensures fair API access based on subscription
+tiers while protecting against anonymous abuse.
 
 ## Circuit Breakers
 
 Projects calling external services **SHOULD** implement circuit breakers.
 
-### Why
+### Why Circuit Breakers
 
-Circuit breakers prevent cascading failures when external services become unavailable. They fail fast, reduce load on struggling services, and enable graceful degradation.
+Circuit breakers prevent cascading failures when external services become
+unavailable. They fail fast, reduce load on struggling services, and enable
+graceful degradation.
 
 ### aiobreaker
 
@@ -1312,25 +1354,28 @@ async def charge_payment(payment: PaymentRequest) -> PaymentResponse:
 ### Circuit Breaker States
 
 | State | Behavior |
-|-------|----------|
+| ----- | -------- |
 | Closed | Normal operation, requests pass through |
 | Open | Requests fail immediately without calling service |
 | Half-Open | Limited requests allowed to test recovery |
 
-**Why**: Circuit breakers prevent thread pool exhaustion from slow failing calls and give external services time to recover without being overwhelmed by retry storms.
+**Why**: Circuit breakers prevent thread pool exhaustion from slow failing calls
+and give external services time to recover without being overwhelmed by retry
+storms.
 
 ## Feature Flags
 
 Projects **MAY** use feature flags for controlled rollouts and A/B testing.
 
-### Why
+### Why Feature Flags
 
-Feature flags enable gradual rollouts, instant rollbacks, A/B testing, and environment-specific configurations without code deployments.
+Feature flags enable gradual rollouts, instant rollbacks, A/B testing, and
+environment-specific configurations without code deployments.
 
 ### Provider Options
 
 | Provider | Type | Best For |
-|----------|------|----------|
+| -------- | ---- | -------- |
 | Unleash[^18] | Open source (self-hosted/cloud) | Teams needing full control |
 | LaunchDarkly[^19] | SaaS | Enterprise with complex targeting |
 | Flagsmith[^20] | Open source (self-hosted/cloud) | Flexible deployment options |
@@ -1410,7 +1455,8 @@ async def beta_endpoint() -> dict:
     return {"message": "You have access to the beta feature!"}
 ```
 
-**Why**: Feature flags separate deployment from release, reducing risk and enabling experimentation without code changes.
+**Why**: Feature flags separate deployment from release, reducing risk and
+enabling experimentation without code changes.
 
 ## See Also
 

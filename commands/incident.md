@@ -4,14 +4,14 @@ Security incident response mode.
 
 ## Usage
 
-```
+```text
 /incident <action> [details]
 ```
 
 ## Actions
 
 | Action | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `triage` | Initial severity assessment |
 | `analyze <logs>` | Investigate evidence |
 | `contain` | Generate containment actions |
@@ -88,7 +88,9 @@ Security incident response mode.
 [Areas for improvement]
 
 ### Action Items
+
 | Item | Owner | Due | Status |
+| ---- | ----- | --- | ------ |
 ```
 
 ## Implementation

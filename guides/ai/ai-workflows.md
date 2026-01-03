@@ -8,7 +8,9 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ## Overview
 
-This guide defines universal workflows for AI-assisted development that work across all AI coding tools (Claude Code, Gemini, GitHub Copilot, Cursor, Aider, etc.). Tool-specific configuration is covered in separate guides.
+This guide defines universal workflows for AI-assisted development that work across
+all AI coding tools (Claude Code, Gemini, GitHub Copilot, Cursor, Aider, etc.).
+Tool-specific configuration is covered in separate guides.
 
 ---
 
@@ -26,7 +28,7 @@ This guide defines universal workflows for AI-assisted development that work acr
 
 Every significant AI-assisted task **MUST** follow the Hero Flow:
 
-```
+```text
 ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
 │ EXPLORE │ → │  PLAN   │ → │  CODE   │ → │ VERIFY  │ → │ COMMIT  │
 └─────────┘    └─────────┘    └─────────┘    └─────────┘    └─────────┘
@@ -35,7 +37,7 @@ Every significant AI-assisted task **MUST** follow the Hero Flow:
 ### Why This Matters
 
 | Skipped Step | Consequence |
-|--------------|-------------|
+| ------------ | ----------- |
 | Explore | AI guesses at architecture, creates inconsistent code |
 | Plan | AI takes wrong approach, requires rework |
 | Verify | Bugs ship, CI fails, time wasted |
@@ -47,7 +49,7 @@ Verification is the most impactful step — it **2-3x the quality** of results[^
 
 **MUST** read and understand before writing any code.
 
-```
+```text
 Read the authentication code in src/auth/ and explain:
 1. How login currently works
 2. Where tokens are stored
@@ -59,14 +61,14 @@ Don't write any code yet.
 **Trigger deeper analysis** with explicit thinking requests:
 
 | Phrase | Depth |
-|--------|-------|
+| ------ | ----- |
 | "think about" | Basic reasoning |
 | "think step-by-step" | Structured analysis |
 | "think hard" | Thorough consideration |
 | "think very carefully" | Deep analysis |
 | "analyze thoroughly" | Maximum depth |
 
-```
+```text
 Think step-by-step about how we should add OAuth2 support
 alongside the existing JWT auth. Consider:
 - Backwards compatibility
@@ -78,7 +80,7 @@ alongside the existing JWT auth. Consider:
 
 **MUST** align on approach before implementation.
 
-```
+```text
 Create a detailed plan for adding OAuth2 support.
 Include:
 1. Files to create/modify
@@ -90,11 +92,13 @@ Don't implement yet — let's align on the plan first.
 ```
 
 **MUST** get explicit confirmation:
-```
+
+```text
 Does this plan look right? Any concerns before I implement?
 ```
 
 **Why planning matters:**
+
 - Catches misunderstandings early (cheap to fix)
 - Aligns AI's approach with your expectations
 - Creates documentation of decisions
@@ -104,12 +108,13 @@ Does this plan look right? Any concerns before I implement?
 
 Implement in focused iterations:
 
-```
+```text
 Implement step 1 from our plan: Create the OAuth2 provider interface.
 Follow the patterns in src/auth/providers/.
 ```
 
 **Best practices:**
+
 - Implement one step at a time
 - Reference the plan explicitly
 - Follow existing patterns
@@ -118,9 +123,10 @@ Follow the patterns in src/auth/providers/.
 
 ### 4. Verify
 
-**This is the most important step.** Without verification, AI output quality is inconsistent.
+**This is the most important step.** Without verification, AI output quality is
+inconsistent.
 
-```
+```text
 Verify your implementation:
 1. Run the tests
 2. Run the linter
@@ -131,6 +137,7 @@ Report any failures and fix them.
 ```
 
 **Types of verification:**
+
 - **Automated**: Tests, linters, type checkers
 - **Visual**: Screenshots, UI inspection
 - **Manual**: Try the feature yourself
@@ -140,7 +147,7 @@ Report any failures and fix them.
 
 **MUST** document changes properly:
 
-```
+```text
 Create a commit for this change. Include:
 1. What changed and why
 2. Any migration steps needed
@@ -148,6 +155,7 @@ Create a commit for this change. Include:
 ```
 
 **Commit checklist:**
+
 - [ ] All tests passing
 - [ ] Linter passing
 - [ ] Types checking
@@ -160,7 +168,7 @@ Create a commit for this change. Include:
 
 When working with AI, **MUST** maintain alignment between three artifacts:
 
-```
+```text
               ┌──────────────┐
               │     SPEC     │
               │  (What we    │
@@ -181,23 +189,23 @@ When working with AI, **MUST** maintain alignment between three artifacts:
 
 All three **MUST** align:
 
-| Artifact | Contains | Source of Truth For |
-|----------|----------|---------------------|
-| **Spec** | Requirements, acceptance criteria | *What* we're building |
-| **Tests** | Assertions, expected behavior | *Whether* it works |
-| **Code** | Implementation | *How* it works |
+| Artifact   | Contains                          | Source of Truth For   |
+| ---------- | --------------------------------- | --------------------- |
+| **Spec**   | Requirements, acceptance criteria | *What* we're building |
+| **Tests**  | Assertions, expected behavior     | *Whether* it works    |
+| **Code**   | Implementation                    | *How* it works        |
 
 ### When They Diverge
 
-| Mismatch | Meaning | Fix |
-|----------|---------|-----|
-| Spec ≠ Tests | Tests verify wrong behavior | Fix tests |
-| Spec ≠ Code | Code does wrong thing | Fix code |
-| Tests ≠ Code | Tests fail | Fix code (usually) |
+| Mismatch     | Meaning                     | Fix                |
+| ------------ | --------------------------- | ------------------ |
+| Spec ≠ Tests | Tests verify wrong behavior | Fix tests          |
+| Spec ≠ Code  | Code does wrong thing       | Fix code           |
+| Tests ≠ Code | Tests fail                  | Fix code (usually) |
 
 ### TDD Workflow with AI
 
-```
+```text
 # Step 1: Write the spec (in conversation or document)
 I need a function that:
 - Takes a list of products
@@ -231,7 +239,7 @@ Are there any edge cases in the spec not covered by tests?
 
 Without tests, you're trusting AI's interpretation blindly:
 
-```
+```text
 # BAD: No verification possible
 Write a function that filters products by stock status.
 
@@ -240,7 +248,7 @@ Write a function that filters products by stock status.
 
 With tests, correctness is verifiable:
 
-```
+```text
 # GOOD: Tests define correctness
 Write tests for a function that filters products where inStock === true.
 Then implement to pass the tests.
@@ -248,20 +256,21 @@ Then implement to pass the tests.
 
 ### Anti-Patterns
 
-| Anti-Pattern | Problem | Fix |
-|--------------|---------|-----|
-| Code first, tests later | Tests written to match code, not spec | Write tests first |
-| Spec only in your head | AI can't read your mind | Write spec explicitly |
-| Tests without edge cases | False confidence | List edge cases in spec |
-| Skipping failing test verification | Tests might not test anything | Always verify failure first |
+| Anti-Pattern                       | Problem                               | Fix                         |
+| ---------------------------------- | ------------------------------------- | --------------------------- |
+| Code first, tests later            | Tests written to match code, not spec | Write tests first           |
+| Spec only in your head             | AI can't read your mind               | Write spec explicitly       |
+| Tests without edge cases           | False confidence                      | List edge cases in spec     |
+| Skipping failing test verification | Tests might not test anything         | Always verify failure first |
 
 ---
 
 ## Visual Iteration
 
-Visual iteration is **essential** for UI development. AI cannot "see" rendered output without explicit feedback.
+Visual iteration is **essential** for UI development. AI cannot "see" rendered
+output without explicit feedback.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                                                          │
 │   Describe ──→ Implement ──→ Screenshot ──→ Compare     │
@@ -275,6 +284,7 @@ Visual iteration is **essential** for UI development. AI cannot "see" rendered o
 ### Why Visual Iteration Matters
 
 Without screenshots, AI cannot detect:
+
 - CSS rendering issues
 - Layout and spacing problems
 - Design system violations
@@ -283,7 +293,7 @@ Without screenshots, AI cannot detect:
 
 ### Visual Iteration Workflow
 
-```
+```text
 # Step 1: Provide design reference
 Here's a screenshot of our design mockup for the login page.
 [paste screenshot or image]
@@ -314,21 +324,21 @@ Continue iterating until the implementation matches the design.
 
 **SHOULD** iterate at least 2-3 times:
 
-| Pass | Focus |
-|------|-------|
-| 1st | Structure and layout |
-| 2nd | Styling and spacing |
-| 3rd | Polish and edge cases |
+| Pass | Focus                  |
+| ---- | ---------------------- |
+| 1st  | Structure and layout   |
+| 2nd  | Styling and spacing    |
+| 3rd  | Polish and edge cases  |
 
 ### Visual Context to Provide
 
-| Context | Purpose |
-|---------|---------|
-| Design mockups | Target to match |
-| Current screenshots | Starting point |
-| Similar components | Pattern to follow |
-| Error states | Edge case designs |
-| Mobile views | Responsive targets |
+| Context             | Purpose            |
+| ------------------- | ------------------ |
+| Design mockups      | Target to match    |
+| Current screenshots | Starting point     |
+| Similar components  | Pattern to follow  |
+| Error states        | Edge case designs  |
+| Mobile views        | Responsive targets |
 
 ### Tools for Visual Iteration
 
@@ -341,11 +351,13 @@ Continue iterating until the implementation matches the design.
 
 ## Long-Running Tasks
 
-AI can work on complex tasks for extended periods (hours to days) with proper setup.
+AI can work on complex tasks for extended periods (hours to days) with proper
+setup.
 
 ### Enabling Long-Running Tasks
 
 **Requirements:**
+
 1. **Clear completion criteria** — AI needs to know when it's done
 2. **Verification loops** — Automated checks between steps
 3. **Permission automation** — Avoid blocking on prompts
@@ -355,7 +367,7 @@ AI can work on complex tasks for extended periods (hours to days) with proper se
 
 **MUST** define explicit completion criteria:
 
-```
+```text
 This task is complete when:
 1. All tests pass (npm test exits 0)
 2. Linter passes (npm run lint exits 0)
@@ -370,7 +382,7 @@ Keep working until all criteria are met.
 
 **SHOULD** verify after each significant change:
 
-```
+```text
 After each file you modify:
 1. Run relevant tests
 2. Run linter on that file
@@ -383,16 +395,17 @@ Only proceed if all checks pass.
 
 Long tasks may exceed context windows. Strategies:
 
-| Strategy | When to Use |
-|----------|-------------|
-| Periodic summaries | "Summarize progress so far" |
-| Checkpoint files | Write progress to PROGRESS.md |
-| Conversation forking | Branch for exploration |
-| Task decomposition | Break into smaller tasks |
+| Strategy             | When to Use                    |
+| -------------------- | ------------------------------ |
+| Periodic summaries   | "Summarize progress so far"    |
+| Checkpoint files     | Write progress to PROGRESS.md  |
+| Conversation forking | Branch for exploration         |
+| Task decomposition   | Break into smaller tasks       |
 
 ### Long-Running Task Checklist
 
 Before starting:
+
 - [ ] Completion criteria defined
 - [ ] Verification steps specified
 - [ ] Permission prompts minimized
@@ -407,7 +420,7 @@ Verification loops are the single most important pattern for quality.
 
 ### The Verification Loop
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │                                          │
 │   Implement ──→ Check ──→ Pass? ──→ Done │
@@ -420,17 +433,17 @@ Verification loops are the single most important pattern for quality.
 
 ### Types of Verification
 
-| Type | Examples | Automation |
-|------|----------|------------|
-| **Tests** | Unit, integration, E2E | Fully automated |
-| **Static analysis** | Linter, type checker | Fully automated |
-| **Visual** | Screenshots, UI review | Semi-automated |
-| **Manual** | Try the feature | Human required |
-| **Review** | Code review, security scan | AI or human |
+| Type                | Examples                   | Automation      |
+| ------------------- | -------------------------- | --------------- |
+| **Tests**           | Unit, integration, E2E     | Fully automated |
+| **Static analysis** | Linter, type checker       | Fully automated |
+| **Visual**          | Screenshots, UI review     | Semi-automated  |
+| **Manual**          | Try the feature            | Human required  |
+| **Review**          | Code review, security scan | AI or human     |
 
 ### Verification Prompt Pattern
 
-```
+```text
 After implementing, verify by:
 1. Running: [specific commands]
 2. Checking: [specific conditions]
@@ -448,11 +461,13 @@ Only report complete when all verification passes.
 ### Why Verification 2-3x Quality
 
 Without verification:
+
 - AI doesn't know if code works
 - Errors compound across steps
 - False confidence in completion
 
 With verification:
+
 - Immediate feedback on errors
 - Self-correction capability
 - Validated completion
@@ -477,4 +492,7 @@ For tool-specific configuration:
 
 ## References
 
-[^1]: Boris Cherny (Claude Code creator) on verification: "probably the most important thing to get great results out of Claude Code — give Claude a way to verify its work. If Claude has that feedback loop, it will 2-3x the quality of the final result."
+[^1]: Boris Cherny (Claude Code creator) on verification: "probably the most
+    important thing to get great results out of Claude Code — give Claude a way
+    to verify its work. If Claude has that feedback loop, it will 2-3x the
+    quality of the final result."

@@ -11,79 +11,79 @@ See README.md for details.
 <details markdown="1">
   <summary>Table of Contents</summary>
 
--   [1 Background](#s1-background)
--   [2 Python Language Rules](#s2-python-language-rules)
-    *   [2.1 Lint](#s2.1-lint)
-    *   [2.2 Imports](#s2.2-imports)
-    *   [2.3 Packages](#s2.3-packages)
-    *   [2.4 Exceptions](#s2.4-exceptions)
-    *   [2.5 Mutable Global State](#s2.5-global-variables)
-    *   [2.6 Nested/Local/Inner Classes and Functions](#s2.6-nested)
-    *   [2.7 Comprehensions & Generator Expressions](#s2.7-comprehensions)
-    *   [2.8 Default Iterators and Operators](#s2.8-default-iterators-and-operators)
-    *   [2.9 Generators](#s2.9-generators)
-    *   [2.10 Lambda Functions](#s2.10-lambda-functions)
-    *   [2.11 Conditional Expressions](#s2.11-conditional-expressions)
-    *   [2.12 Default Argument Values](#s2.12-default-argument-values)
-    *   [2.13 Properties](#s2.13-properties)
-    *   [2.14 True/False Evaluations](#s2.14-truefalse-evaluations)
-    *   [2.16 Lexical Scoping](#s2.16-lexical-scoping)
-    *   [2.17 Function and Method Decorators](#s2.17-function-and-method-decorators)
-    *   [2.18 Threading](#s2.18-threading)
-    *   [2.19 Power Features](#s2.19-power-features)
-    *   [2.20 Modern Python: from \_\_future\_\_ imports](#s2.20-modern-python)
-    *   [2.21 Type Annotated Code](#s2.21-type-annotated-code)
--   [3 Python Style Rules](#s3-python-style-rules)
-    *   [3.1 Semicolons](#s3.1-semicolons)
-    *   [3.2 Line length](#s3.2-line-length)
-    *   [3.3 Parentheses](#s3.3-parentheses)
-    *   [3.4 Indentation](#s3.4-indentation)
-        +   [3.4.1 Trailing commas in sequences of items?](#s3.4.1-trailing-commas)
-    *   [3.5 Blank Lines](#s3.5-blank-lines)
-    *   [3.6 Whitespace](#s3.6-whitespace)
-    *   [3.7 Shebang Line](#s3.7-shebang-line)
-    *   [3.8 Comments and Docstrings](#s3.8-comments-and-docstrings)
-        +   [3.8.1 Docstrings](#s3.8.1-comments-in-doc-strings)
-        +   [3.8.2 Modules](#s3.8.2-comments-in-modules)
-        +   [3.8.2.1 Test modules](#s3.8.2.1-test-modules)
-        +   [3.8.3 Functions and Methods](#s3.8.3-functions-and-methods)
-        +   [3.8.3.1 Overridden Methods](#s3.8.3.1-overridden-methods)
-        +   [3.8.4 Classes](#s3.8.4-comments-in-classes)
-        +   [3.8.5 Block and Inline Comments](#s3.8.5-block-and-inline-comments)
-        +   [3.8.6 Punctuation, Spelling, and Grammar](#s3.8.6-punctuation-spelling-and-grammar)
-    *   [3.10 Strings](#s3.10-strings)
-        +   [3.10.1 Logging](#s3.10.1-logging)
-        +   [3.10.2 Error Messages](#s3.10.2-error-messages)
-    *   [3.11 Files, Sockets, and similar Stateful Resources](#s3.11-files-sockets-closeables)
-    *   [3.12 TODO Comments](#s3.12-todo-comments)
-    *   [3.13 Imports formatting](#s3.13-imports-formatting)
-    *   [3.14 Statements](#s3.14-statements)
-    *   [3.15 Accessors](#s3.15-accessors)
-    *   [3.16 Naming](#s3.16-naming)
-        +   [3.16.1 Names to Avoid](#s3.16.1-names-to-avoid)
-        +   [3.16.2 Naming Conventions](#s3.16.2-naming-conventions)
-        +   [3.16.3 File Naming](#s3.16.3-file-naming)
-        +   [3.16.4 Guidelines derived from Guido's Recommendations](#s3.16.4-guidelines-derived-from-guidos-recommendations)
-    *   [3.17 Main](#s3.17-main)
-    *   [3.18 Function length](#s3.18-function-length)
-    *   [3.19 Type Annotations](#s3.19-type-annotations)
-        +   [3.19.1 General Rules](#s3.19.1-general-rules)
-        +   [3.19.2 Line Breaking](#s3.19.2-line-breaking)
-        +   [3.19.3 Forward Declarations](#s3.19.3-forward-declarations)
-        +   [3.19.4 Default Values](#s3.19.4-default-values)
-        +   [3.19.5 NoneType](#s3.19.5-nonetype)
-        +   [3.19.6 Type Aliases](#s3.19.6-type-aliases)
-        +   [3.19.7 Ignoring Types](#s3.19.7-ignoring-types)
-        +   [3.19.8 Typing Variables](#s3.19.8-typing-variables)
-        +   [3.19.9 Tuples vs Lists](#s3.19.9-tuples-vs-lists)
-        +   [3.19.10 Type variables](#s3.19.10-typevars)
-        +   [3.19.11 String types](#s3.19.11-string-types)
-        +   [3.19.12 Imports For Typing](#s3.19.12-imports-for-typing)
-        +   [3.19.13 Conditional Imports](#s3.19.13-conditional-imports)
-        +   [3.19.14 Circular Dependencies](#s3.19.14-circular-dependencies)
-        +   [3.19.15 Generics](#s3.19.15-generics)
-        +   [3.19.16 Build Dependencies](#s3.19.16-build-dependencies)
--   [4 Parting Words](#4-parting-words)
+- [1 Background](#s1-background)
+- [2 Python Language Rules](#s2-python-language-rules)
+  * [2.1 Lint](#s2.1-lint)
+  * [2.2 Imports](#s2.2-imports)
+  * [2.3 Packages](#s2.3-packages)
+  * [2.4 Exceptions](#s2.4-exceptions)
+  * [2.5 Mutable Global State](#s2.5-global-variables)
+  * [2.6 Nested/Local/Inner Classes and Functions](#s2.6-nested)
+  * [2.7 Comprehensions & Generator Expressions](#s2.7-comprehensions)
+  * [2.8 Default Iterators and Operators](#s2.8-default-iterators-and-operators)
+  * [2.9 Generators](#s2.9-generators)
+  * [2.10 Lambda Functions](#s2.10-lambda-functions)
+  * [2.11 Conditional Expressions](#s2.11-conditional-expressions)
+  * [2.12 Default Argument Values](#s2.12-default-argument-values)
+  * [2.13 Properties](#s2.13-properties)
+  * [2.14 True/False Evaluations](#s2.14-truefalse-evaluations)
+  * [2.16 Lexical Scoping](#s2.16-lexical-scoping)
+  * [2.17 Function and Method Decorators](#s2.17-function-and-method-decorators)
+  * [2.18 Threading](#s2.18-threading)
+  * [2.19 Power Features](#s2.19-power-features)
+  * [2.20 Modern Python: from \_\_future\_\_ imports](#s2.20-modern-python)
+  * [2.21 Type Annotated Code](#s2.21-type-annotated-code)
+- [3 Python Style Rules](#s3-python-style-rules)
+  * [3.1 Semicolons](#s3.1-semicolons)
+  * [3.2 Line length](#s3.2-line-length)
+  * [3.3 Parentheses](#s3.3-parentheses)
+  * [3.4 Indentation](#s3.4-indentation)
+    + [3.4.1 Trailing commas in sequences of items?](#s3.4.1-trailing-commas)
+  * [3.5 Blank Lines](#s3.5-blank-lines)
+  * [3.6 Whitespace](#s3.6-whitespace)
+  * [3.7 Shebang Line](#s3.7-shebang-line)
+  * [3.8 Comments and Docstrings](#s3.8-comments-and-docstrings)
+    + [3.8.1 Docstrings](#s3.8.1-comments-in-doc-strings)
+    + [3.8.2 Modules](#s3.8.2-comments-in-modules)
+    + [3.8.2.1 Test modules](#s3.8.2.1-test-modules)
+    + [3.8.3 Functions and Methods](#s3.8.3-functions-and-methods)
+    + [3.8.3.1 Overridden Methods](#s3.8.3.1-overridden-methods)
+    + [3.8.4 Classes](#s3.8.4-comments-in-classes)
+    + [3.8.5 Block and Inline Comments](#s3.8.5-block-and-inline-comments)
+    + [3.8.6 Punctuation, Spelling, and Grammar](#s3.8.6-punctuation-spelling-and-grammar)
+  * [3.10 Strings](#s3.10-strings)
+    + [3.10.1 Logging](#s3.10.1-logging)
+    + [3.10.2 Error Messages](#s3.10.2-error-messages)
+  * [3.11 Files, Sockets, and similar Stateful Resources](#s3.11-files-sockets-closeables)
+  * [3.12 TODO Comments](#s3.12-todo-comments)
+  * [3.13 Imports formatting](#s3.13-imports-formatting)
+  * [3.14 Statements](#s3.14-statements)
+  * [3.15 Accessors](#s3.15-accessors)
+  * [3.16 Naming](#s3.16-naming)
+    + [3.16.1 Names to Avoid](#s3.16.1-names-to-avoid)
+    + [3.16.2 Naming Conventions](#s3.16.2-naming-conventions)
+    + [3.16.3 File Naming](#s3.16.3-file-naming)
+    + [3.16.4 Guidelines derived from Guido's Recommendations](#s3.16.4-guidelines-derived-from-guidos-recommendations)
+  * [3.17 Main](#s3.17-main)
+  * [3.18 Function length](#s3.18-function-length)
+  * [3.19 Type Annotations](#s3.19-type-annotations)
+    + [3.19.1 General Rules](#s3.19.1-general-rules)
+    + [3.19.2 Line Breaking](#s3.19.2-line-breaking)
+    + [3.19.3 Forward Declarations](#s3.19.3-forward-declarations)
+    + [3.19.4 Default Values](#s3.19.4-default-values)
+    + [3.19.5 NoneType](#s3.19.5-nonetype)
+    + [3.19.6 Type Aliases](#s3.19.6-type-aliases)
+    + [3.19.7 Ignoring Types](#s3.19.7-ignoring-types)
+    + [3.19.8 Typing Variables](#s3.19.8-typing-variables)
+    + [3.19.9 Tuples vs Lists](#s3.19.9-tuples-vs-lists)
+    + [3.19.10 Type variables](#s3.19.10-typevars)
+    + [3.19.11 String types](#s3.19.11-string-types)
+    + [3.19.12 Imports For Typing](#s3.19.12-imports-for-typing)
+    + [3.19.13 Conditional Imports](#s3.19.13-conditional-imports)
+    + [3.19.14 Circular Dependencies](#s3.19.14-circular-dependencies)
+    + [3.19.15 Generics](#s3.19.15-generics)
+    + [3.19.16 Build Dependencies](#s3.19.16-build-dependencies)
+- [4 Parting Words](#4-parting-words)
 
 </details>
 
@@ -91,12 +91,14 @@ See README.md for details.
 <a id="1-background"></a>
 
 <a id="background"></a>
-## 1 Background 
+## 1 Background
 
 Python is the main dynamic language used at Google. This style guide is a list
 of *dos and don'ts* for Python programs.
 
-To help you format code correctly, we've created a [settings file for Vim](google_python_style.vim). For Emacs, the default settings should be fine.
+To help you format code correctly, we've created a
+[settings file for Vim](google_python_style.vim). For Emacs, the default
+settings should be fine.
 
 Many teams use the [Black](https://github.com/psf/black) or [Pyink](https://github.com/google/pyink)
 auto-formatter to avoid arguing over formatting.
@@ -106,13 +108,13 @@ auto-formatter to avoid arguing over formatting.
 <a id="2-python-language-rules"></a>
 
 <a id="python-language-rules"></a>
-## 2 Python Language Rules 
+## 2 Python Language Rules
 
 <a id="s2.1-lint"></a>
 <a id="21-lint"></a>
 
 <a id="lint"></a>
-### 2.1 Lint 
+### 2.1 Lint
 
 Run `pylint` over your code using this [pylintrc](https://google.github.io/styleguide/pylintrc).
 
@@ -249,18 +251,18 @@ Module names can still collide. Some module names are inconveniently long.
 <a id="imports-decision"></a>
 #### 2.2.4 Decision 
 
-*   Use `import x` for importing packages and modules.
-*   Use `from x import y` where `x` is the package prefix and `y` is the module
+*Use `import x` for importing packages and modules.
+*Use `from x import y` where `x` is the package prefix and `y` is the module
     name with no prefix.
-*   Use `from x import y as z` in any of the following circumstances:
-    -   Two modules named `y` are to be imported.
-    -   `y` conflicts with a top-level name defined in the current module.
-    -   `y` conflicts with a common parameter name that is part of the public
+*Use `from x import y as z` in any of the following circumstances:
+  -Two modules named `y` are to be imported.
+  -`y` conflicts with a top-level name defined in the current module.
+  -`y` conflicts with a common parameter name that is part of the public
         API (e.g., `features`).
-    -   `y` is an inconveniently long name.
-    -   `y` is too generic in the context of your code (e.g., `from
+  -`y` is an inconveniently long name.
+  -`y` is too generic in the context of your code (e.g., `from
         storage.file_system import options as fs_options`).
-*   Use `import y as z` only when `z` is a standard abbreviation (e.g., `import
+*Use `import y as z` only when `z` is a standard abbreviation (e.g., `import
     numpy as np`).
 
 For example the module `sound.effects.echo` may be imported as follows:
@@ -280,13 +282,13 @@ package twice.
 
 Exemptions from this rule:
 
-*   Symbols from the following modules are used to support static analysis and
-    type checking:
-    *   [`typing` module](#typing-imports)
-    *   [`collections.abc` module](#typing-imports)
-    *   [`typing_extensions` module](https://github.com/python/typing_extensions/blob/main/README.md)
-*   Redirects from the
-    [six.moves module](https://six.readthedocs.io/#module-six.moves).
+* Symbols from the following modules are used to support static analysis and
+  type checking:
+  * [`typing` module](#typing-imports)
+  * [`collections.abc` module](#typing-imports)
+  * [`typing_extensions` module](https://github.com/python/typing_extensions/blob/main/README.md)
+* Redirects from the
+  [six.moves module](https://six.readthedocs.io/#module-six.moves).
 
 <a id="s2.3-packages"></a>
 <a id="23-packages"></a>
@@ -403,11 +405,11 @@ library calls.
 
 Exceptions must follow certain conditions:
 
--   Make use of built-in exception classes when it makes sense. For example,
+-Make use of built-in exception classes when it makes sense. For example,
     raise a `ValueError` to indicate a programming mistake like a violated
     precondition, such as may happen when validating function arguments.
 
--   Do not use `assert` statements in place of conditionals or validating
+-Do not use `assert` statements in place of conditionals or validating
     preconditions. They must not be critical to the application logic. A litmus
     test would be that the `assert` could be removed without breaking the code.
     `assert` conditionals are
@@ -466,15 +468,15 @@ Exceptions must follow certain conditions:
     ```
 
 
--   Libraries or packages may define their own exceptions. When doing so they
+-Libraries or packages may define their own exceptions. When doing so they
     must inherit from an existing exception class. Exception names should end in
     `Error` and should not introduce repetition (`foo.FooError`).
 
--   Never use catch-all `except:` statements, or catch `Exception` or
+-Never use catch-all `except:` statements, or catch `Exception` or
     `StandardError`, unless you are
 
-    -   re-raising the exception, or
-    -   creating an isolation point in the program where exceptions are not
+  -re-raising the exception, or
+  -creating an isolation point in the program where exceptions are not
         propagated but are recorded and suppressed instead, such as protecting a
         thread from crashing by guarding its outermost block.
 
@@ -483,12 +485,12 @@ Exceptions must follow certain conditions:
     unittest failures and all kinds of other exceptions that you simply don't
     want to catch.
 
--   Minimize the amount of code in a `try`/`except` block. The larger the body
+-Minimize the amount of code in a `try`/`except` block. The larger the body
     of the `try`, the more likely that an exception will be raised by a line of
     code that you didn't expect to raise an exception. In those cases, the
     `try`/`except` block hides a real error.
 
--   Use the `finally` clause to execute code whether or not an exception is
+-Use the `finally` clause to execute code whether or not an exception is
     raised in the `try` block. This is often useful for cleanup, i.e., closing a
     file.
 
@@ -525,13 +527,13 @@ Occasionally useful.
 <a id="global-variables-cons"></a>
 #### 2.5.3 Cons 
 
-*   Breaks encapsulation: Such design can make it hard to achieve valid
+*Breaks encapsulation: Such design can make it hard to achieve valid
     objectives. For example, if global state is used to manage a database
     connection, then connecting to two different databases at the same time
     (such as for computing differences during a migration) becomes difficult.
     Similar problems easily arise with global registries.
 
-*   Has the potential to change module behavior during the import, because
+*Has the potential to change module behavior during the import, because
     assignments to global variables are done when the module is first imported.
 
 <a id="s2.5.4-decision"></a>
@@ -1029,11 +1031,11 @@ attribute access.
 <a id="properties-pros"></a>
 #### 2.13.2 Pros 
 
-*   Allows for an attribute access and assignment API rather than
+*Allows for an attribute access and assignment API rather than
     [getter and setter](#getters-and-setters) method calls.
-*   Can be used to make an attribute read-only.
-*   Allows calculations to be lazy.
-*   Provides a way to maintain the public interface of a class when the
+*Can be used to make an attribute read-only.
+*Allows calculations to be lazy.
+*Provides a way to maintain the public interface of a class when the
     internals evolve independently of class users.
 
 <a id="s2.13.3-cons"></a>
@@ -1042,8 +1044,8 @@ attribute access.
 <a id="properties-cons"></a>
 #### 2.13.3 Cons 
 
-*   Can hide side-effects much like operator overloading.
-*   Can be confusing for subclasses.
+*Can hide side-effects much like operator overloading.
+*Can be confusing for subclasses.
 
 <a id="s2.13.4-decision"></a>
 <a id="2134-decision"></a>
@@ -1112,20 +1114,20 @@ May look strange to C/C++ developers.
 Use the "implicit" false if possible, e.g., `if foo:` rather than `if foo !=
 []:`. There are a few caveats that you should keep in mind though:
 
--   Always use `if foo is None:` (or `is not None`) to check for a `None` value.
+-Always use `if foo is None:` (or `is not None`) to check for a `None` value.
     E.g., when testing whether a variable or argument that defaults to `None`
     was set to some other value. The other value might be a value that's false
     in a boolean context!
 
--   Never compare a boolean variable to `False` using `==`. Use `if not x:`
+-Never compare a boolean variable to `False` using `==`. Use `if not x:`
     instead. If you need to distinguish `False` from `None` then chain the
     expressions, such as `if not x and x is not None:`.
 
--   For sequences (strings, lists, tuples), use the fact that empty sequences
+-For sequences (strings, lists, tuples), use the fact that empty sequences
     are false, so `if seq:` and `if not seq:` are preferable to `if len(seq):`
     and `if not len(seq):` respectively.
 
--   When handling integers, implicit false may involve more risk than benefit
+-When handling integers, implicit false may involve more risk than benefit
     (i.e., accidentally handling `None` as 0). You may compare a value which is
     known to be an integer (and is not the result of `len()`) against the
     integer 0.
@@ -1153,9 +1155,9 @@ Use the "implicit" false if possible, e.g., `if foo:` rather than `if foo !=
              x = x or []
     ```
 
--   Note that `'0'` (i.e., `0` as string) evaluates to true.
+-Note that `'0'` (i.e., `0` as string) evaluates to true.
 
--   Note that Numpy arrays may raise an exception in an implicit boolean
+-Note that Numpy arrays may raise an exception in an implicit boolean
     context. Prefer the `.size` attribute when testing emptiness of a `np.array`
     (e.g. `if not users.size`).
 
@@ -1558,11 +1560,11 @@ Maximum line length is *80 characters*.
 
 Explicit exceptions to the 80 character limit:
 
--   Long import statements.
--   URLs, pathnames, or long flags in comments.
--   Long string module-level constants not containing whitespace that would be
+-Long import statements.
+-URLs, pathnames, or long flags in comments.
+-Long string module-level constants not containing whitespace that would be
     inconvenient to split across lines such as URLs or pathnames.
-    -   Pylint disable comments. (e.g.: `# pylint: disable=invalid-name`)
+  -Pylint disable comments. (e.g.: `# pylint: disable=invalid-name`)
 
 Do not use a backslash for
 [explicit line continuation](https://docs.python.org/3/reference/lexical_analysis.html#explicit-line-joining).
@@ -1958,7 +1960,9 @@ program with
 `#!/usr/bin/env python3` (to support virtualenvs) or `#!/usr/bin/python3` per
 [PEP-394](https://peps.python.org/pep-0394/).
 
-This line is used by the kernel to find the Python interpreter, but is ignored by Python when importing modules. It is only necessary on a file intended to be executed directly.
+This line is used by the kernel to find the Python interpreter, but is ignored
+by Python when importing modules. It is only necessary on a file intended to
+be executed directly.
 
 <a id="s3.8-comments-and-docstrings"></a>
 <a id="s3.8-comments"></a>
@@ -1997,10 +2001,13 @@ are more formatting guidelines for docstrings below.
 <a id="module-docs"></a>
 #### 3.8.2 Modules 
 
-Every file should contain license boilerplate. Choose the appropriate boilerplate for the license used by the project (for example, Apache 2.0, BSD, LGPL, GPL).
+Every file should contain license boilerplate. Choose the appropriate
+boilerplate for the license used by the project (for example, Apache 2.0,
+BSD, LGPL, GPL).
 
 Files should start with a docstring describing the contents and usage of the
 module.
+
 ```python
 """A one-line summary of the module or program, terminated by a period.
 
@@ -2055,9 +2062,9 @@ In this section, "function" means a method, function, generator, or property.
 A docstring is mandatory for every function that has one or more of the
 following properties:
 
--   being part of the public API
--   nontrivial size
--   non-obvious logic
+-being part of the public API
+-nontrivial size
+-non-obvious logic
 
 A docstring should give enough information to write a call to the function
 without reading the function's code. The docstring should describe the
@@ -2539,11 +2546,11 @@ configured to output.
 Error messages (such as: message strings on exceptions like `ValueError`, or
 messages shown to the user) should follow three guidelines:
 
-1.  The message needs to precisely match the actual error condition.
+1. The message needs to precisely match the actual error condition.
 
-2.  Interpolated pieces need to always be clearly identifiable as such.
+2. Interpolated pieces need to always be clearly identifiable as such.
 
-3.  They should allow simple automated processing (e.g. grepping).
+3. They should allow simple automated processing (e.g. grepping).
 
 ```python
   Yes:
@@ -2600,12 +2607,12 @@ fashion. To name only a few examples, this also includes
 Leaving files, sockets or other such stateful objects open unnecessarily has
 many downsides:
 
--   They may consume limited system resources, such as file descriptors. Code
+-They may consume limited system resources, such as file descriptors. Code
     that deals with many such objects may exhaust those resources unnecessarily
     if they're not returned to the system promptly after use.
--   Holding files open may prevent other actions such as moving or deleting
+-Holding files open may prevent other actions such as moving or deleting
     them, or unmounting a filesystem.
--   Files and sockets that are shared throughout a program may inadvertently be
+-Files and sockets that are shared throughout a program may inadvertently be
     read from or written to after logically being closed. If they are actually
     closed, attempts to read or write from them will raise exceptions, making
     the problem known sooner.
@@ -2614,11 +2621,11 @@ Furthermore, while files and sockets (and some similarly behaving resources) are
 automatically closed when the object is destructed, coupling the lifetime of the
 object to the state of the resource is poor practice:
 
--   There are no guarantees as to when the runtime will actually invoke the
+-There are no guarantees as to when the runtime will actually invoke the
     `__del__` method. Different Python implementations use different memory
     management techniques, such as delayed garbage collection, which may
     increase the object's lifetime arbitrarily and indefinitely.
--   Unexpected references to the file, e.g. in globals or exception tracebacks,
+-Unexpected references to the file, e.g. in globals or exception tracebacks,
     may keep it around longer than intended.
 
 Relying on finalizers to do automatic cleanup that has observable side effects
@@ -2717,7 +2724,7 @@ Imports are always put at the top of the file, just after any module comments
 and docstrings and before module globals and constants. Imports should be
 grouped from most generic to least generic:
 
-1.  Python future import statements. For example:
+1.Python future import statements. For example:
 
     ```python
     from __future__ import annotations
@@ -2883,14 +2890,14 @@ Always use a `.py` filename extension. Never use dashes.
 <a id="names-to-avoid"></a>
 #### 3.16.1 Names to Avoid 
 
--   single character names, except for specifically allowed cases:
+-single character names, except for specifically allowed cases:
 
-    -   counters or iterators (e.g. `i`, `j`, `k`, `v`, et al.)
-    -   `e` as an exception identifier in `try/except` statements.
-    -   `f` as a file handle in `with` statements
-    -   private [type variables](#typing-type-var) with no constraints (e.g.
+  -counters or iterators (e.g. `i`, `j`, `k`, `v`, et al.)
+  -`e` as an exception identifier in `try/except` statements.
+  -`f` as a file handle in `with` statements
+  -private [type variables](#typing-type-var) with no constraints (e.g.
         `_T = TypeVar("_T")`, `_P = ParamSpec("_P")`)
-    -   names that match established notation in a reference paper or algorithm
+  -names that match established notation in a reference paper or algorithm
         (see [Mathematical Notation](#math-notation))
 
     Please be mindful not to abuse single-character naming. Generally speaking,
@@ -2898,13 +2905,13 @@ Always use a `.py` filename extension. Never use dashes.
     For example, `i` might be a fine name for 5-line code block but within
     multiple nested scopes, it is likely too vague.
 
--   dashes (`-`) in any package/module name
+-dashes (`-`) in any package/module name
 
--   `__double_leading_and_trailing_underscore__` names (reserved by Python)
+-`__double_leading_and_trailing_underscore__` names (reserved by Python)
 
--   offensive terms
+-offensive terms
 
--   names that needlessly include the type of the variable (for example:
+-names that needlessly include the type of the variable (for example:
     `id_to_name_dict`)
 
 <a id="s3.16.2-naming-conventions"></a>
@@ -2913,30 +2920,30 @@ Always use a `.py` filename extension. Never use dashes.
 <a id="naming-conventions"></a>
 #### 3.16.2 Naming Conventions 
 
--   "Internal" means internal to a module, or protected or private within a
+-"Internal" means internal to a module, or protected or private within a
     class.
 
--   Prepending a single underscore (`_`) has some support for protecting module
+-Prepending a single underscore (`_`) has some support for protecting module
     variables and functions (linters will flag protected member access). Note
     that it is okay for unit tests to access protected constants from the
     modules under test.
 
--   Prepending a double underscore (`__` aka "dunder") to an instance variable
+-Prepending a double underscore (`__` aka "dunder") to an instance variable
     or method effectively makes the variable or method private to its class
     (using name mangling); we discourage its use as it impacts readability and
     testability, and isn't *really* private. Prefer a single underscore.
 
--   Place related classes and top-level functions together in a
+-Place related classes and top-level functions together in a
     module.
     Unlike Java, there is no need to limit yourself to one class per module.
 
--   Use CapWords for class names, but lower\_with\_under.py for module names.
+-Use CapWords for class names, but lower\_with\_under.py for module names.
     Although there are some old modules named CapWords.py, this is now
     discouraged because it's confusing when the module happens to be named after
     a class. ("wait -- did I write `import StringIO` or `from StringIO import
     StringIO`?")
 
--   New *unit test* files follow PEP 8 compliant lower\_with\_under method
+-New *unit test* files follow PEP 8 compliant lower\_with\_under method
     names, for example, `test_<method_under_test>_<state>`. For consistency(\*)
     with legacy modules that follow CapWords function names, underscores may
     appear in method names starting with `test` to separate logical components
@@ -3049,7 +3056,7 @@ reference paper or algorithm.
 
 When using names based on established notation:
 
-1.  Cite the source of all naming conventions, preferably with a hyperlink to
+1.Cite the source of all naming conventions, preferably with a hyperlink to
     academic resource itself, in a comment or docstring. If the source is not
     accessible, clearly document the naming conventions.
 2.  Prefer PEP8-compliant `descriptive_names` for public APIs, which are much
@@ -3132,10 +3139,10 @@ the function into smaller and more manageable pieces.
 <a id="typing-general"></a>
 #### 3.19.1 General Rules 
 
-*   Familiarize yourself with
+*Familiarize yourself with
     [type hints](https://docs.python.org/3/library/typing.html).
 
-*   Annotating `self` or `cls` is generally not necessary.
+*Annotating `self` or `cls` is generally not necessary.
     [`Self`](https://docs.python.org/3/library/typing.html#typing.Self) can be
     used if it is necessary for proper type information, e.g.
 
@@ -3151,20 +3158,20 @@ the function into smaller and more manageable pieces.
         ...
     ```
 
-*   Similarly, don't feel compelled to annotate the return value of `__init__`
+*Similarly, don't feel compelled to annotate the return value of `__init__`
     (where `None` is the only valid option).
 
-*   If any other variable or a returned type should not be expressed, use `Any`.
+*If any other variable or a returned type should not be expressed, use `Any`.
 
-*   You are not required to annotate all the functions in a module.
+*You are not required to annotate all the functions in a module.
 
-    -   At least annotate your public APIs.
-    -   Use judgment to get to a good balance between safety and clarity on the
+  -At least annotate your public APIs.
+  -Use judgment to get to a good balance between safety and clarity on the
         one hand, and flexibility on the other.
-    -   Annotate code that is prone to type-related errors (previous bugs or
+  -Annotate code that is prone to type-related errors (previous bugs or
         complexity).
-    -   Annotate code that is hard to understand.
-    -   Annotate code as it becomes stable from a types perspective. In many
+  -Annotate code that is hard to understand.
+  -Annotate code as it becomes stable from a types perspective. In many
         cases, you can annotate all the functions in mature code without losing
         too much flexibility.
 
@@ -3490,8 +3497,8 @@ def check_length(x: AnyStr) -> AnyStr:
 A type variable must have a descriptive name, unless it meets all of the
 following criteria:
 
-*   not externally visible
-*   not constrained
+*not externally visible
+*not constrained
 
 ```python
 Yes:
@@ -3596,15 +3603,16 @@ imports should be preferred.
 Imports that are needed only for type annotations can be placed within an `if
 TYPE_CHECKING:` block.
 
--   Conditionally imported types need to be referenced as strings, to be forward
-    compatible with Python 3.6 where the annotation expressions are actually
-    evaluated.
--   Only entities that are used solely for typing should be defined here; this
-    includes aliases. Otherwise it will be a runtime error, as the module will
-    not be imported at runtime.
--   The block should be right after all the normal imports.
--   There should be no empty lines in the typing imports list.
--   Sort this list as if it were a regular imports list.
+- Conditionally imported types need to be referenced as strings, to be forward
+  compatible with Python 3.6 where the annotation expressions are actually
+  evaluated.
+- Only entities that are used solely for typing should be defined here; this
+  includes aliases. Otherwise it will be a runtime error, as the module will
+  not be imported at runtime.
+- The block should be right after all the normal imports.
+- There should be no empty lines in the typing imports list.
+- Sort this list as if it were a regular imports list.
+
 ```python
 import typing
 if typing.TYPE_CHECKING:

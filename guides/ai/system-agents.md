@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [AI](./README.md) > System Agents
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Quick Reference
 
@@ -25,7 +27,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Overview
 
-The Doctrine System Agent Family is a coordinated set of specialized AI agents for comprehensive infrastructure and system analysis. Unlike ad-hoc reviews, this family provides:
+The Doctrine System Agent Family is a coordinated set of specialized AI agents
+for comprehensive infrastructure and system analysis. Unlike ad-hoc reviews,
+this family provides:
 
 1. **Specialized Expertise** - Each agent is an expert in its domain
 2. **Cost Optimization** - Right model for each task (Sonnet for specialists, Opus for coordination)
@@ -35,7 +39,7 @@ The Doctrine System Agent Family is a coordinated set of specialized AI agents f
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      DOCTRINE SYSTEM AGENT FAMILY                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -95,6 +99,7 @@ The **System Architect** is the strategic coordinator for all infrastructure ass
 | **File** | `configs/claude/agents/system/architect.md` |
 
 **Responsibilities**:
+
 - Assess overall infrastructure security and configuration
 - Route to appropriate specialist agents
 - Synthesize findings across systems
@@ -102,6 +107,7 @@ The **System Architect** is the strategic coordinator for all infrastructure ass
 - Provide prioritized remediation roadmap
 
 **When to Use**:
+
 - Comprehensive infrastructure review
 - Production deployment readiness
 - Security audit preparation
@@ -122,6 +128,7 @@ Container and Docker Compose security specialist.
 | **File** | `configs/claude/agents/system/docker.md` |
 
 **Coverage**:
+
 - Dockerfile best practices and security
 - Image pinning (digests vs tags)
 - Container security (non-root, capabilities, read-only)
@@ -143,6 +150,7 @@ Ansible playbook and role review specialist.
 | **File** | `configs/claude/agents/system/ansible.md` |
 
 **Coverage**:
+
 - FQCN (Fully Qualified Collection Names)
 - Idempotency verification
 - Secrets management (vault, no hardcoded secrets)
@@ -167,6 +175,7 @@ Linux system configuration and hardening specialist.
 | **File** | `configs/claude/agents/system/linux.md` |
 
 **Coverage**:
+
 - systemd unit security hardening
 - SSH configuration (sshd_config)
 - sysctl security settings
@@ -191,6 +200,7 @@ CI/CD and build validation specialist.
 | **File** | `configs/claude/agents/system/verify.md` |
 
 **Coverage**:
+
 - Build process validation
 - Test execution and coverage
 - Linting and formatting checks
@@ -214,6 +224,7 @@ Secrets management and encryption specialist.
 | **File** | `configs/claude/agents/system/secrets.md` |
 
 **Coverage**:
+
 - SOPS/age encryption configuration
 - Plaintext secret detection
 - Docker secrets usage
@@ -233,6 +244,7 @@ Backup strategy and disaster recovery specialist.
 | **File** | `configs/claude/agents/system/backup.md` |
 
 **Coverage**:
+
 - 3-2-1 backup rule compliance
 - RTO/RPO documentation
 - Database backup (pgBackRest)
@@ -253,6 +265,7 @@ Network security and configuration specialist.
 | **File** | `configs/claude/agents/system/networking.md` |
 
 **Coverage**:
+
 - Firewall configuration (nftables)
 - DNS configuration (DoT, DNSSEC)
 - Reverse proxy setup (Traefik)
@@ -277,6 +290,7 @@ Observability and alerting specialist.
 | **File** | `configs/claude/agents/system/monitoring.md` |
 
 **Coverage**:
+
 - Prometheus scrape configuration
 - Metrics cardinality management
 - Alert rules design
@@ -297,6 +311,7 @@ PostgreSQL configuration and operations specialist.
 | **File** | `configs/claude/agents/system/database.md` |
 
 **Coverage**:
+
 - PostgreSQL configuration tuning
 - Connection pooling (PgBouncer, PgCat)
 - Replication configuration
@@ -317,6 +332,7 @@ Storage infrastructure specialist (S3-compatible and ZFS).
 | **File** | `configs/claude/agents/system/storage.md` |
 
 **Coverage**:
+
 - Garage (S3-compatible) configuration
 - Bucket policies and access control
 - Object lifecycle policies
@@ -337,6 +353,7 @@ Messaging infrastructure specialist (MQTT and Kafka).
 | **File** | `configs/claude/agents/system/messaging.md` |
 
 **Coverage**:
+
 - EMQX broker configuration
 - MQTT ACL and authentication
 - EMQX clustering
@@ -361,6 +378,7 @@ Reverse proxy and ingress specialist.
 | **File** | `configs/claude/agents/system/traefik.md` |
 
 **Coverage**:
+
 - TLS configuration
 - Let's Encrypt / ACME
 - Security headers middleware
@@ -381,6 +399,7 @@ Identity and access management specialist (Authentik).
 | **File** | `configs/claude/agents/system/identity.md` |
 
 **Coverage**:
+
 - OIDC/OAuth2 provider configuration
 - SAML service provider configuration
 - LDAP provider configuration
@@ -408,7 +427,7 @@ All findings use RFC 2119 severity levels:
 
 All system agents **MUST** use this output format:
 
-```markdown
+````markdown
 ## System Review: [Brief Title]
 
 | Metric | Value |
@@ -427,6 +446,7 @@ All system agents **MUST** use this output format:
   ```
 
   **Recommended**:
+
   ```[lang]
   [fixed config]
   ```
@@ -434,12 +454,16 @@ All system agents **MUST** use this output format:
   **Why**: [explanation with Doctrine reference]
 
 ### 🟡 Warning (should fix)
+
 ### 🔵 Suggestion (consider)
+
 ### ✅ Positive Observations
 
 ### Summary
+
 [1-2 sentence overall assessment]
-```
+
+````
 
 ## Cross-System Analysis
 
@@ -489,6 +513,7 @@ The System Architect identifies issues that span multiple systems:
 | Messaging Reviewer | Sonnet | $0.25 | Per messaging change |
 
 **Cost by Mode**:
+
 | Mode | Typical Cost | Use Case |
 |------|--------------|----------|
 | `/system docker` | ~$0.25 | Specific Docker review |

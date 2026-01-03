@@ -9,7 +9,7 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | View logs | journalctl | `journalctl -f` |
 | Filter by unit | journalctl | `journalctl -u nginx` |
 | Export logs | journalctl | `journalctl --output=json` |

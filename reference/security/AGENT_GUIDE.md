@@ -4,12 +4,14 @@
 
 ## Overview
 
-This directory contains vendored security reference data designed for **offline agent operation**. These references enable security-focused agents to make informed decisions without requiring live API calls during execution.
+This directory contains vendored security reference data designed for
+**offline agent operation**. These references enable security-focused agents to
+make informed decisions without requiring live API calls during execution.
 
 ## Quick Reference: When to Use What
 
 | Task | Primary Reference | Supporting References |
-|------|-------------------|----------------------|
+| ---- | ----------------- | --------------------- |
 | Code vulnerability review | `cwe/cwe-top-25-2025.json` | OWASP Top 10, CAPEC |
 | Threat modeling | `mitre/capec/capec-summary.json` | ATT&CK, D3FEND |
 | Incident response | `mitre/attack/techniques-summary.json` | D3FEND, KEV |
@@ -23,7 +25,7 @@ This directory contains vendored security reference data designed for **offline 
 
 ## Reference Relationships
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    OFFENSIVE KNOWLEDGE                          │
 ├─────────────────────────────────────────────────────────────────┤
@@ -315,7 +317,7 @@ def enrich_finding(cwe_id):
 
 ## File Structure Summary
 
-```
+```text
 reference/security/
 ├── manifest.json                    # Central catalog with versions
 ├── AGENT_GUIDE.md                   # This file

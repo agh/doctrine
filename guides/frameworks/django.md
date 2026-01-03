@@ -2,17 +2,22 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Django
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Python style guide](python.md) with Django-specific conventions from
 [Django coding style](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/coding-style/).
 
 ## Quick Reference
 
-All Python tooling applies. Projects **MUST** use the additional Django-specific tools:
+All Python tooling applies. Projects **MUST** use the additional
+Django-specific tools:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Ruff[^1] + django rules | `uv run ruff check .` |
 | Format | Ruff[^1] | `uv run ruff format .` |
 | Type check | django-stubs[^2] | `uv run mypy .` |
@@ -32,7 +37,7 @@ All Python tooling applies. Projects **MUST** use the additional Django-specific
 
 ## Project Structure
 
-```
+```text
 myproject/
 ├── config/                 # Project configuration
 │   ├── settings/
@@ -79,7 +84,9 @@ select = [
 ```
 
 **Why Ruff with Django rules:**
-- Catches Django-specific anti-patterns (nullable string fields, model `__str__` methods)
+
+- Catches Django-specific anti-patterns (nullable string fields,
+  model `__str__` methods)
 - Identifies security issues (raw SQL, deprecated features)
 - Unifies linting and formatting in a single tool
 
@@ -100,8 +107,11 @@ django_settings_module = "config.settings.development"
 ```
 
 **Why django-stubs:**
-- Provides accurate type stubs for Django's dynamic APIs (QuerySets, managers, model fields)
-- Catches common errors: missing `null=True`, incorrect field types, invalid query methods
+
+- Provides accurate type stubs for Django's dynamic APIs
+  (QuerySets, managers, model fields)
+- Catches common errors: missing `null=True`, incorrect field types,
+  invalid query methods
 - Essential for type safety in Django projects
 
 ## Models
@@ -215,6 +225,7 @@ def create_order(request):
 Business logic **MUST** be in services, not views or models.
 
 **Why use services:**
+
 - Separates business logic from HTTP/presentation concerns
 - Makes logic reusable across views, management commands, Celery tasks
 - Easier to test without Django request/response machinery
@@ -255,6 +266,7 @@ def order_create(*, user: User, items: list[dict]) -> Order:
 Query logic **SHOULD** be in selectors.
 
 **Why use selectors:**
+
 - Centralizes query optimization (select_related, prefetch_related)
 - Makes queries reusable and testable
 - Separates data fetching from business logic
@@ -273,7 +285,8 @@ def order_get(*, order_id: int, user: User) -> Order:
 
 ## Signals
 
-Projects **MAY** use Django signals for decoupled event handling. Signals **SHOULD** be used sparingly and only for cross-app communication.
+Projects **MAY** use Django signals for decoupled event handling. Signals
+**SHOULD** be used sparingly and only for cross-app communication.
 
 ### Why Signals
 
@@ -479,7 +492,8 @@ def test_with_muted_signals():
 
 ## Custom Middleware
 
-Projects **MAY** create custom middleware for cross-cutting concerns. Middleware **SHOULD** be minimal and focused.
+Projects **MAY** create custom middleware for cross-cutting concerns.
+Middleware **SHOULD** be minimal and focused.
 
 ### Why Middleware
 
@@ -768,7 +782,8 @@ SECURE_CSP_REPORT_ONLY = {
 </script>
 ```
 
-**Why**: Django 6.0's built-in CSP support eliminates the need for third-party packages and provides first-class integration with Django's security middleware.
+**Why**: Django 6.0's built-in CSP support eliminates the need for third-party
+packages and provides first-class integration with Django's security middleware.
 
 ## Authentication with django-allauth
 
@@ -883,7 +898,7 @@ urlpatterns = [
 ]
 ```
 
-### Why
+### Why SimpleJWT
 
 - Stateless authentication suitable for microservices and mobile apps
 - Short-lived access tokens with longer-lived refresh tokens
@@ -969,7 +984,7 @@ class HasObjectPermission(permissions.BasePermission):
         return "edit_project" in perms
 ```
 
-### Why
+### Why django-guardian
 
 - Enables per-object permissions (user A can edit project X but not Y)
 - Essential for multi-tenant applications
@@ -1015,10 +1030,12 @@ TASKS = {
 }
 ```
 
-**Why**: For simple task queuing, Django's built-in framework reduces dependencies. For complex workflows (retries, scheduling, priorities), Celery remains the better choice.
+**Why**: For simple task queuing, Django's built-in framework reduces
+dependencies. For complex workflows (retries, scheduling, priorities),
+Celery remains the better choice.
 
 | Use Case | Recommended |
-|----------|-------------|
+| -------- | ----------- |
 | Simple email sending | Django Tasks |
 | Fire-and-forget jobs | Django Tasks |
 | Complex retry logic | Celery |
@@ -1209,7 +1226,8 @@ Projects **SHOULD** use template partials for reusable fragments:
 {% endfor %}
 ```
 
-**Why**: Template partials enable component-style reuse without separate files, reducing template sprawl while maintaining clear boundaries.
+**Why**: Template partials enable component-style reuse without separate files,
+reducing template sprawl while maintaining clear boundaries.
 
 ## Composite Primary Keys (Django 5.2+)
 
@@ -1226,7 +1244,9 @@ class OrderItem(models.Model):
         db_table = "order_items"
 ```
 
-**Why**: Composite primary keys are useful for join tables and entities with natural multi-column identifiers. Use when the combination of fields is the true identity.
+**Why**: Composite primary keys are useful for join tables and entities with
+natural multi-column identifiers. Use when the combination of fields is the
+true identity.
 
 ## Async Views and Authentication (Django 5.2+)
 
@@ -1255,7 +1275,8 @@ async def protected_view(request):
     return JsonResponse({"orders": orders})
 ```
 
-**Why**: Mixing sync auth calls in async views causes performance issues. Django 5.2+ provides native async variants for all authentication operations.
+**Why**: Mixing sync auth calls in async views causes performance issues.
+Django 5.2+ provides native async variants for all authentication operations.
 
 ### Async Best Practices
 
@@ -1292,7 +1313,7 @@ async def bad_order_list(request):
 ### When to Use Async
 
 | Use Case | Sync | Async |
-|----------|------|-------|
+| -------- | ---- | ----- |
 | Simple CRUD | Preferred | Optional |
 | I/O-bound (external APIs) | | Preferred |
 | WebSocket/real-time | | Required |
@@ -1408,12 +1429,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
 ### ASGI Server Selection
 
 | Server | Use Case | Command |
-|--------|----------|---------|
-| Daphne[^27] | WebSocket + HTTP, Django Channels | `daphne config.asgi:application` |
-| Uvicorn[^28] | High-performance HTTP, optional WS | `uvicorn config.asgi:application` |
-| Gunicorn + Uvicorn | Production with workers | `gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker` |
+| ------ | -------- | ------- |
+| Daphne[^27] | WebSocket + HTTP, Django Channels | See below |
+| Uvicorn[^28] | High-performance HTTP, optional WS | See below |
+| Gunicorn + Uvicorn | Production with workers | See below |
 
-### Why
+```bash
+# Daphne
+daphne config.asgi:application
+
+# Uvicorn
+uvicorn config.asgi:application
+
+# Gunicorn + Uvicorn
+gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker
+```
+
+### Why ASGI
 
 - Django Channels extends Django to handle WebSocket, HTTP2, and other protocols
 - Redis channel layer enables horizontal scaling across multiple server instances
@@ -1884,7 +1916,7 @@ def get_circuit_breaker_status() -> dict:
 ### Circuit Breaker States
 
 | State | Behavior |
-|-------|----------|
+| ----- | -------- |
 | Closed | Normal operation, requests pass through |
 | Open | Requests fail immediately, no external calls |
 | Half-Open | Limited requests to test if service recovered |
@@ -1901,6 +1933,7 @@ def get_circuit_breaker_status() -> dict:
 Projects **MUST** use pytest-django[^5] for testing.
 
 **Why pytest-django:**
+
 - Superior fixture system compared to Django's TestCase
 - Parallel test execution for faster CI
 - Better integration with pytest ecosystem (pytest-cov[^6], pytest-xdist[^8])
@@ -2318,7 +2351,7 @@ WAFFLE_CACHE_PREFIX = "waffle:"
 ### Flag Types
 
 | Type | Use Case | Example |
-|------|----------|---------|
+| ---- | -------- | ------- |
 | Flag | Gradual rollout, user targeting | "new_checkout_flow" |
 | Switch | Global on/off toggle | "maintenance_mode" |
 | Sample | Random percentage of requests | "analytics_sampling" |
@@ -2446,20 +2479,12 @@ def test_feature_flag_percentage_rollout():
 
 [^1]: [Ruff](https://docs.astral.sh/ruff/) - An extremely fast Python linter and code formatter, written in Rust
 [^2]: [django-stubs](https://github.com/typeddjango/django-stubs) - Type stubs and mypy plugin for Django
-[^3]: [django-csp](https://django-csp.readthedocs.io/) - Content Security Policy for Django (legacy; use built-in CSP in Django 6.0+)
 [^4]: [Bandit](https://bandit.readthedocs.io/) - Security linter for Python
 [^5]: [pytest-django](https://pytest-django.readthedocs.io/) - A Django plugin for pytest
 [^6]: [pytest-cov](https://pytest-cov.readthedocs.io/) - Coverage plugin for pytest
 [^7]: [Squawk](https://squawkhq.com/) - Linter for PostgreSQL migrations
 [^8]: [pytest-xdist](https://pytest-xdist.readthedocs.io/) - pytest plugin for distributed testing
-[^9]: [Django REST Framework](https://www.django-rest-framework.org/) - Powerful and flexible toolkit for building Web APIs
-[^10]: [pytest-bdd](https://pytest-bdd.readthedocs.io/) - BDD library for pytest
-[^11]: [Playwright](https://playwright.dev/python/) - Browser automation library
 [^12]: [Celery](https://docs.celeryq.dev/) - Distributed task queue for Python
-[^13]: [django-celery-results](https://django-celery-results.readthedocs.io/) - Celery result backend using Django ORM
-[^14]: [django-health-check](https://django-health-check.readthedocs.io/) - Django health check endpoint
-[^15]: [tox](https://tox.wiki/) - Generic virtualenv management and test command line tool
-[^16]: [freezegun](https://github.com/spulec/freezegun) - Library for mocking the datetime module
 [^17]: [django-waffle](https://waffle.readthedocs.io/) - Feature flags for Django
 [^18]: [django-allauth](https://docs.allauth.org/) - Authentication, registration, and account management with social login support
 [^19]: [djangorestframework-simplejwt](https://django-rest-framework-simplejwt.readthedocs.io/) - JSON Web Token authentication for Django REST Framework
@@ -2473,4 +2498,3 @@ def test_feature_flag_percentage_rollout():
 [^27]: [Daphne](https://github.com/django/daphne) - HTTP, HTTP2, and WebSocket protocol server for ASGI
 [^28]: [Uvicorn](https://www.uvicorn.org/) - Lightning-fast ASGI server
 [^29]: [django-celery-beat](https://django-celery-beat.readthedocs.io/) - Database-backed periodic task scheduler for Celery
-

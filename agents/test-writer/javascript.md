@@ -13,7 +13,7 @@ JavaScript and TypeScript-specific guidance for test generation.
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Run tests | Jest | `npm test` |
 | Run tests | Vitest | `npx vitest` |
 | Coverage | c8/Jest | `npm test -- --coverage` |
@@ -24,7 +24,7 @@ JavaScript and TypeScript-specific guidance for test generation.
 Detect testing framework from project files:
 
 | Indicator | Framework |
-|-----------|-----------|
+| --------- | --------- |
 | `jest.config.js`, `jest` in package.json | Jest |
 | `vitest.config.ts`, `vitest` in package.json | Vitest |
 | `*.test.ts` with Vitest imports | Vitest |
@@ -254,7 +254,7 @@ npx vitest --coverage
 
 Parse `coverage/lcov.info`:
 
-```
+```text
 TN:
 SF:src/calculator.ts
 FN:1,calculateTotal

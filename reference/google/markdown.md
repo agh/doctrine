@@ -7,47 +7,47 @@ possible.
 
 We seek to balance three goals:
 
-1.  *Source text is readable and portable.*
+1.*Source text is readable and portable.*
 2.  *The Markdown corpus is maintainable over time and across teams.*
 3.  *The syntax is simple and easy to remember.*
 
 Contents:
 
-1.  [Minimum viable documentation](#minimum-viable-documentation)
-1.  [Better is better than best](#better-is-better-than-best)
-1.  [Capitalization](#capitalization)
-1.  [Document layout](#document-layout)
-1.  [Table of contents](#table-of-contents)
-1.  [Character line limit](#character-line-limit)
-1.  [Trailing whitespace](#trailing-whitespace)
-1.  [Headings](#headings)
-    1.  [ATX-style headings](#atx-style-headings)
-    1.  [Use unique, complete names for headings](#use-unique-complete-names-for-headings)
-    1.  [Add spacing to headings](#add-spacing-to-headings)
-    1.  [Use a single H1 heading](#use-a-single-h1-heading)
-    1.  [Capitalization of titles and headers](#capitalization-of-titles-and-headers)
-1.  [Lists](#lists)
-    1.  [Use lazy numbering for long lists](#use-lazy-numbering-for-long-lists)
-    1.  [Nested list spacing](#nested-list-spacing)
-1.  [Code](#code)
-    1.  [Inline](#inline)
-    1.  [Use code span for escaping](#use-code-span-for-escaping)
-    1.  [Codeblocks](#codeblocks)
-        1.  [Declare the language](#declare-the-language)
-        1.  [Escape newlines](#escape-newlines)
-        1.  [Use fenced code blocks instead of indented code blocks](#use-fenced-code-blocks-instead-of-indented-code-blocks)
-        1.  [Nest codeblocks within lists](#nest-codeblocks-within-lists)
-1.  [Links](#links)
-    1.  [Use explicit paths for links within Markdown](#use-explicit-paths-for-links-within-markdown)
-    1.  [Avoid relative paths unless within the same directory](#avoid-relative-paths-unless-within-the-same-directory)
-    1.  [Use informative Markdown link titles](#use-informative-markdown-link-titles)
-    1.  [Reference links](#reference-links)
-        1.  [Use reference links for long links](#use-reference-links-for-long-links)
-        1.  [Use reference links to reduce duplication](#use-reference-links-to-reduce-duplication)
-        1.  [Define reference links after their first use](#define-reference-links-after-their-first-use)
-1.  [Images](#images)
-1.  [Tables](#tables)
-1.  [Strongly prefer Markdown to HTML](#strongly-prefer-markdown-to-html)
+1.[Minimum viable documentation](#minimum-viable-documentation)
+1.[Better is better than best](#better-is-better-than-best)
+1.[Capitalization](#capitalization)
+1.[Document layout](#document-layout)
+1.[Table of contents](#table-of-contents)
+1.[Character line limit](#character-line-limit)
+1.[Trailing whitespace](#trailing-whitespace)
+1.[Headings](#headings)
+    1.[ATX-style headings](#atx-style-headings)
+    1.[Use unique, complete names for headings](#use-unique-complete-names-for-headings)
+    1.[Add spacing to headings](#add-spacing-to-headings)
+    1.[Use a single H1 heading](#use-a-single-h1-heading)
+    1.[Capitalization of titles and headers](#capitalization-of-titles-and-headers)
+1.[Lists](#lists)
+    1.[Use lazy numbering for long lists](#use-lazy-numbering-for-long-lists)
+    1.[Nested list spacing](#nested-list-spacing)
+1.[Code](#code)
+    1.[Inline](#inline)
+    1.[Use code span for escaping](#use-code-span-for-escaping)
+    1.[Codeblocks](#codeblocks)
+        1.[Declare the language](#declare-the-language)
+        1.[Escape newlines](#escape-newlines)
+        1.[Use fenced code blocks instead of indented code blocks](#use-fenced-code-blocks-instead-of-indented-code-blocks)
+        1.[Nest codeblocks within lists](#nest-codeblocks-within-lists)
+1.[Links](#links)
+    1.[Use explicit paths for links within Markdown](#use-explicit-paths-for-links-within-markdown)
+    1.[Avoid relative paths unless within the same directory](#avoid-relative-paths-unless-within-the-same-directory)
+    1.[Use informative Markdown link titles](#use-informative-markdown-link-titles)
+    1.[Reference links](#reference-links)
+        1.[Use reference links for long links](#use-reference-links-for-long-links)
+        1.[Use reference links to reduce duplication](#use-reference-links-to-reduce-duplication)
+        1.[Define reference links after their first use](#define-reference-links-after-their-first-use)
+1.[Images](#images)
+1.[Tables](#tables)
+1.[Strongly prefer Markdown to HTML](#strongly-prefer-markdown-to-html)
 
 ## Minimum viable documentation
 
@@ -58,8 +58,8 @@ The **Markdown way** encourages engineers to take ownership of their docs and
 keep them up to date with the same zeal we keep our tests in good order. Strive
 for this.
 
-*   Identify what you really need: release docs, API docs, testing guidelines.
-*   Delete cruft frequently and in small batches.
+*Identify what you really need: release docs, API docs, testing guidelines.
+*Delete cruft frequently and in small batches.
 
 ## Better is better than best
 
@@ -73,7 +73,7 @@ CL, so that **more such CLs** can happen.
 
 As a reviewer of a documentation CL:
 
-1.  When reasonable, LGTM immediately and trust that comments will be fixed
+1.When reasonable, LGTM immediately and trust that comments will be fixed
     appropriately.
 2.  Prefer to suggest an alternative rather than leaving a vague comment.
 3.  For substantial changes, start your own follow-up CL instead. Especially try
@@ -83,7 +83,7 @@ As a reviewer of a documentation CL:
 
 As an author:
 
-1.  Avoid wasting cycles with trivial argument. Capitulate early and move on.
+1.Avoid wasting cycles with trivial argument. Capitulate early and move on.
 2.  Cite the Better/Best Rule as often as needed.
 
 ## Capitalization
@@ -125,25 +125,25 @@ Content.
 * https://link-to-more-info
 ```
 
-1.  `# Document title`: The first heading should be a level-one heading, ideally
+1.`# Document title`: The first heading should be a level-one heading, ideally
     the same or nearly the same as the filename. The first level-one heading is
     used as the page `<title>`.
 
-1.  `author`: *Optional*. If you'd like to claim ownership of the document or
+1.`author`: *Optional*. If you'd like to claim ownership of the document or
     if you are very proud of it, add yourself under the title. However,
     revision history generally suffices.
 
-1.  `Short introduction.` 1–3 sentences providing a high-level overview of the
+1.`Short introduction.` 1–3 sentences providing a high-level overview of the
     topic. Imagine yourself as a complete newbie who landed on your "Extending Foo" doc
     and doesn't know the most basic information you take for granted. "What is
     Foo? Why would I extend it?"
 
-1.  `[TOC]`: if you use hosting that supports table of contents, such as Gitiles,
+1.`[TOC]`: if you use hosting that supports table of contents, such as Gitiles,
     put `[TOC]` after the short introduction. See [`[TOC]` documentation][TOC-docs].
 
-1.  `## Topic`: The rest of your headings should start from level 2.
+1.`## Topic`: The rest of your headings should start from level 2.
 
-1.  `## See also`: Put miscellaneous links at the bottom for the user who wants
+1.`## See also`: Put miscellaneous links at the bottom for the user who wants
     to know more or didn't find what they needed.
 
 [TOC-docs]: https://gerrit.googlesource.com/gitiles/+/HEAD/Documentation/markdown.md#Table-of-contents
@@ -200,11 +200,11 @@ read it until they get to the end of the document.
 Markdown content follows the residual convention of an 80-character line limit.
 Why? Because it's what most of us do for code.
 
-*   **Tooling integration**: All our tooling is designed around code, so the
+***Tooling integration**: All our tooling is designed around code, so the
     more our documents are formatted according to similar rules, the better
     these tools will work. For example, Code Search doesn't soft wrap.
 
-*   **Quality**. The more engineers use their well-worn coding habits when
+***Quality**. The more engineers use their well-worn coding habits when
     creating and editing Markdown content, the better the quality. Markdown takes
     advantage of the excellent review culture we already have.
 
@@ -212,16 +212,16 @@ Why? Because it's what most of us do for code.
 
 Exceptions to the 80-character rule include:
 
-*   Links
-*   Tables
-*   Headings
-*   Code blocks
+*Links
+*Tables
+*Headings
+*Code blocks
 
 This means that lines with links are allowed to extend past column 80, along
 with any relevant punctuation:
 
 ```markdown
-*   See the
+*See the
     [foo docs](https://gerrit.googlesource.com/gitiles/+/HEAD/Documentation/markdown.md).
     and find the logfile.
 ```
@@ -345,18 +345,18 @@ correctly. For longer lists that may change, especially long nested lists, use
 "lazy" numbering:
 
 ```markdown
-1.  Foo.
-1.  Bar.
-    1.  Foofoo.
-    1.  Barbar.
-1.  Baz.
+1.Foo.
+1.Bar.
+    1.Foofoo.
+    1.Barbar.
+1.Baz.
 ```
 
 However, if the list is small and you don't anticipate changing it, prefer fully
 numbered lists, because it's nicer to read in source:
 
 ```markdown
-1.  Foo.
+1.Foo.
 2.  Bar.
 3.  Baz.
 ```
@@ -366,16 +366,16 @@ numbered lists, because it's nicer to read in source:
 When nesting lists, use a 4-space indent for both numbered and bulleted lists:
 
 ```markdown
-1.  Use 2 spaces after the item number, so the text itself is indented 4 spaces.
+1.Use 2 spaces after the item number, so the text itself is indented 4 spaces.
     Use a 4-space indent for wrapped text.
 2.  Use 2 spaces again for the next item.
 
-*   Use 3 spaces after a bullet, so the text itself is indented 4 spaces.
+*Use 3 spaces after a bullet, so the text itself is indented 4 spaces.
     Use a 4-space indent for wrapped text.
-    1.  Use 2 spaces with numbered lists, as before.
+    1.Use 2 spaces with numbered lists, as before.
         Wrapped text in a nested list needs an 8-space indent.
     2.  Looks nice, doesn't it?
-*   Back to the bulleted list, indented 3 spaces.
+*Back to the bulleted list, indented 3 spaces.
 ```
 
 The following works, but it's very messy:
@@ -390,10 +390,10 @@ Even when there's no nesting, using the 4 space indent makes layout consistent
 for wrapped text:
 
 ```markdown
-*   Foo,
+*Foo,
     wrapped with a 4-space indent.
 
-1.  Two spaces for the list item
+1.Two spaces for the list item
     and 4 spaces before wrapped text.
 2.  Back to 2 spaces.
 ```
@@ -465,10 +465,10 @@ recommend fencing for all code blocks.
 Indented code blocks can sometimes look cleaner in the source, but they have
 several drawbacks:
 
-*   You cannot specify the language. Some Markdown features are tied to language
+*You cannot specify the language. Some Markdown features are tied to language
     specifiers.
-*   The beginning and end of the code block are ambiguous.
-*   Indented code blocks are harder to search for in Code Search.
+*The beginning and end of the code block are ambiguous.
+*Indented code blocks are harder to search for in Code Search.
 
 ```markdown
 You'll need to run:
@@ -503,24 +503,24 @@ If you need a code block within a list, make sure to indent it so as to not
 break the list:
 
 ```markdown
-*   Bullet.
+*Bullet.
 
     ```c++
     int foo;
     ```
 
-*   Next bullet.
+*Next bullet.
 ```
 
 You can also create a nested code block with 4 spaces. Simply indent 4
 additional spaces from the list indentation:
 
 ```markdown
-*   Bullet.
+*Bullet.
 
         int foo;
 
-*   Next bullet.
+*Next bullet.
 ```
 
 ## Links
@@ -739,10 +739,10 @@ around the idea that plain text gets users down to the business of communication
 faster with less reader distraction and author procrastination. However, it's
 sometimes very helpful to show what you mean.
 
-*   Use images when it's easier to *show* a reader something than to *describe
+*Use images when it's easier to *show* a reader something than to *describe
     it*. For example, explaining how to navigate a UI is often easier with an
     image than text.
-*   Make sure to provide appropriate text to describe your image. Readers who
+*Make sure to provide appropriate text to describe your image. Readers who
     are not sighted cannot see your image and still need to understand the
     content! See the alt text best practices below.
 
@@ -767,15 +767,15 @@ Banana | Very popular | Trees    | 16 degrees average | [Convenient](http://cs/S
 
 This table illustrates a few typical problems:
 
-*   **Poor distribution**: Several columns don't differ across rows, and some
+***Poor distribution**: Several columns don't differ across rows, and some
     cells are empty. This is usually a sign that your data may not benefit from
     tabular display.
 
-*   **Unbalanced dimensions**: There are a small number of rows relative to
+***Unbalanced dimensions**: There are a small number of rows relative to
     columns. When this ratio is unbalanced in either direction, a table becomes
     little more than an inflexible format for text.
 
-*   **Rambling prose** in some cells. Tables should tell a succinct story at a
+***Rambling prose** in some cells. Tables should tell a succinct story at a
     glance.
 
 [Lists](#lists) and subheadings sometimes suffice to present the same
@@ -788,16 +788,16 @@ Both types are highly popular, sweet, and grow on trees.
 
 ### Apple
 
-*   [Juicy](http://SomeReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyLongURL)
-*   Firm
+*[Juicy](http://SomeReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyLongURL)
+*Firm
 
 Apples keep doctors away.
 
 ### Banana
 
-*   [Convenient](http://cs/SomeDifferentReallyReallyReallyReallyReallyReallyReallyReallyLongQuery)
-*   Soft
-*   16 degrees average acute curvature.
+*[Convenient](http://cs/SomeDifferentReallyReallyReallyReallyReallyReallyReallyReallyLongQuery)
+*Soft
+*16 degrees average acute curvature.
 
 Contrary to popular belief, most apes prefer mangoes. Don't you?
 
@@ -809,8 +809,8 @@ reader to find what interests her in this case.
 
 However, there are times a table is the best choice. When you have:
 
-*   Relatively uniform data distribution across two dimensions.
-*   Many parallel items with distinct attributes.
+*Relatively uniform data distribution across two dimensions.
+*Many parallel items with distinct attributes.
 
 In those cases, a table format is just the thing. In fact, a compact table can
 improve readability:

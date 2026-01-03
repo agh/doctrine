@@ -10,7 +10,7 @@ All @agh projects **MUST** follow Semantic Versioning 2.0.0[^2].
 
 ## Semantic Versioning
 
-```
+```text
 MAJOR.MINOR.PATCH
 ```
 
@@ -20,18 +20,18 @@ MAJOR.MINOR.PATCH
 
 ### Examples
 
-| Change | Version Bump |
-|--------|-------------|
-| Fix a bug | 1.0.0 → 1.0.1 |
-| Add a new feature | 1.0.1 → 1.1.0 |
-| Remove a feature | 1.1.0 → 2.0.0 |
-| Change function signature | 1.1.0 → 2.0.0 |
-| Add optional parameter | 1.1.0 → 1.2.0 |
-| Security fix | 1.2.0 → 1.2.1 |
+| Change                    | Version Bump    |
+| ------------------------- | --------------- |
+| Fix a bug                 | 1.0.0 -> 1.0.1  |
+| Add a new feature         | 1.0.1 -> 1.1.0  |
+| Remove a feature          | 1.1.0 -> 2.0.0  |
+| Change function signature | 1.1.0 -> 2.0.0  |
+| Add optional parameter    | 1.1.0 -> 1.2.0  |
+| Security fix              | 1.2.0 -> 1.2.1  |
 
 ### Pre-release Versions
 
-```
+```text
 1.0.0-alpha.1
 1.0.0-beta.1
 1.0.0-rc.1
@@ -39,7 +39,7 @@ MAJOR.MINOR.PATCH
 
 ### Build Metadata
 
-```
+```text
 1.0.0+20240115
 1.0.0+build.123
 ```
@@ -47,9 +47,10 @@ MAJOR.MINOR.PATCH
 ## Version 0.x.y
 
 During initial development (0.x.y):
+
 - API is unstable
 - Any change may be breaking
-- 0.1.0 → 0.2.0 may break compatibility
+- 0.1.0 -> 0.2.0 may break compatibility
 
 **Rule**: You **SHOULD** stay at 0.x.y until you're confident in API stability.
 
@@ -120,7 +121,7 @@ git push origin v1.0.0
 You **SHOULD** use Conventional Commits[^4] for commit
 messages. This enables automated changelog generation and version bumping.
 
-```
+```text
 type(scope): description
 
 [optional body]
@@ -130,22 +131,22 @@ type(scope): description
 
 ### Types
 
-| Type | Description | Version Bump |
-|------|-------------|--------------|
-| `feat` | New feature | MINOR |
-| `fix` | Bug fix | PATCH |
-| `docs` | Documentation only | None |
-| `style` | Code style (formatting) | None |
-| `refactor` | Code change (no feature/fix) | None |
-| `perf` | Performance improvement | PATCH |
-| `test` | Adding tests | None |
-| `chore` | Maintenance | None |
+| Type       | Description                  | Version Bump |
+| ---------- | ---------------------------- | ------------ |
+| `feat`     | New feature                  | MINOR        |
+| `fix`      | Bug fix                      | PATCH        |
+| `docs`     | Documentation only           | None         |
+| `style`    | Code style (formatting)      | None         |
+| `refactor` | Code change (no feature/fix) | None         |
+| `perf`     | Performance improvement      | PATCH        |
+| `test`     | Adding tests                 | None         |
+| `chore`    | Maintenance                  | None         |
 
 ### Breaking Changes
 
 Indicate breaking changes with `!` or `BREAKING CHANGE:`:
 
-```
+```text
 feat!: remove deprecated API endpoint
 
 BREAKING CHANGE: The /v1/users endpoint has been removed.
@@ -175,6 +176,7 @@ jobs:
 ```
 
 release-please[^5]:
+
 - Creates release PRs based on conventional commits
 - Updates CHANGELOG.md automatically
 - Bumps version numbers
@@ -203,7 +205,7 @@ Alternative for Node.js projects[^6]:
 
 For APIs, version in the URL or header:
 
-```
+```text
 # URL versioning (preferred)
 /api/v1/users
 /api/v2/users
@@ -212,20 +214,21 @@ For APIs, version in the URL or header:
 Accept: application/vnd.myapi.v1+json
 ```
 
-You **SHOULD** maintain at most 2 major versions simultaneously. You **MUST** deprecate old versions with at least 6 months notice.
+You **SHOULD** maintain at most 2 major versions simultaneously. You **MUST**
+deprecate old versions with at least 6 months notice.
 
 ## Library Versioning
 
 For libraries, follow language-specific conventions:
 
-| Language | Version Location |
-|----------|------------------|
-| Python | `pyproject.toml`, `__version__` |
-| Ruby | `version.rb`, `.gemspec` |
-| Go | `go.mod`, git tags |
-| Rust | `Cargo.toml` |
-| C# | `.csproj`, `AssemblyInfo.cs` |
-| TypeScript | `package.json` |
+| Language   | Version Location                |
+| ---------- | ------------------------------- |
+| Python     | `pyproject.toml`, `__version__` |
+| Ruby       | `version.rb`, `.gemspec`        |
+| Go         | `go.mod`, git tags              |
+| Rust       | `Cargo.toml`                    |
+| C#         | `.csproj`, `AssemblyInfo.cs`    |
+| TypeScript | `package.json`                  |
 
 ## Enforcement Tools
 
@@ -242,6 +245,7 @@ echo "export default { extends: ['@commitlint/config-conventional'] };" > commit
 ```
 
 Add to `.husky/commit-msg`:
+
 ```bash
 npx --no -- commitlint --edit $1
 ```

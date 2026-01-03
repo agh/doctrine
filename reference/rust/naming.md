@@ -1,7 +1,7 @@
 # Naming
 
-
 <a id="c-case"></a>
+
 ## Casing conforms to RFC 430 (C-CASE)
 
 Basic Rust naming conventions are described in [RFC 430].
@@ -28,7 +28,10 @@ traits) and `snake_case` for "value-level" constructs. More precisely:
 | Lifetimes | short `lowercase`, usually a single letter: `'a`, `'de`, `'src` |
 | Features | [unclear](https://github.com/rust-lang/api-guidelines/issues/101) but see [C-FEATURE] |
 
-In `UpperCamelCase`, acronyms and contractions of compound words count as one word: use `Uuid` rather than `UUID`, `Usize` rather than `USize` or `Stdin` rather than `StdIn`. In `snake_case`, acronyms and contractions are lower-cased: `is_xid_start`.
+In `UpperCamelCase`, acronyms and contractions of compound words count as one
+word: use `Uuid` rather than `UUID`, `Usize` rather than `USize` or `Stdin`
+rather than `StdIn`. In `snake_case`, acronyms and contractions are lower-cased:
+`is_xid_start`.
 
 In `snake_case` or `SCREAMING_SNAKE_CASE`, a "word" should never consist of a
 single letter unless it is the last "word". So, we have `btree_map` rather than
@@ -44,8 +47,8 @@ is Rust! It serves no purpose to remind users of this constantly.
 
 The whole standard library. This guideline should be easy!
 
-
 <a id="c-conv"></a>
+
 ## Ad-hoc conversions follow `as_`, `to_`, `into_` conventions (C-CONV)
 
 Conversions should be provided as methods, with names prefixed as follows:
@@ -124,8 +127,8 @@ fn as_mut_slice(&mut self) -> &mut [T];
 - [`slice::to_vec`](https://doc.rust-lang.org/std/primitive.slice.html#method.to_vec)
 - [`Option::into_iter`](https://doc.rust-lang.org/std/option/enum.Option.html#method.into_iter)
 
-
 <a id="c-getter"></a>
+
 ## Getter names follow Rust convention (C-GETTER)
 
 With a few exceptions, the `get_` prefix is not used for getters in Rust code.
@@ -185,8 +188,8 @@ would not be correct to call it `get_path` or `as_path`.
 - [`std::collections::hash_map::OccupiedEntry::get_mut`](https://doc.rust-lang.org/std/collections/hash_map/struct.OccupiedEntry.html#method.get_mut)
 - [`<[T]>::get_unchecked`](https://doc.rust-lang.org/std/primitive.slice.html#method.get_unchecked)
 
-
 <a id="c-iter"></a>
+
 ## Methods on collections that produce iterators follow `iter`, `iter_mut`, `into_iter` (C-ITER)
 
 Per [RFC 199].
@@ -225,8 +228,8 @@ string fragments. There would be no clarity to be had by using an
 - [`BTreeMap::iter`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.iter)
 - [`BTreeMap::iter_mut`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.iter_mut)
 
-
 <a id="c-iter-ty"></a>
+
 ## Iterator type names match the methods that produce them (C-ITER-TY)
 
 A method called `into_iter()` should return a type called `IntoIter` and
@@ -262,8 +265,8 @@ example [`vec::IntoIter`].
 [`BTreeMap::values`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.values
 [btree_map::Values]: https://doc.rust-lang.org/std/collections/btree_map/struct.Values.html
 
-
 <a id="c-feature"></a>
+
 ## Feature names are free of placeholder words (C-FEATURE)
 
 Do not include words in the name of a [Cargo feature] that convey zero meaning,
@@ -316,8 +319,8 @@ we like for explicit features to behave the same way.
 As a related note, Cargo requires that features are additive so a feature named
 negatively like `no-abc` is practically never correct.
 
-
 <a id="c-word-order"></a>
+
 ## Names use a consistent word order (C-WORD-ORDER)
 
 Here are some error types from the standard library:

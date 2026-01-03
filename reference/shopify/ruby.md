@@ -4,6 +4,8 @@ title: Ruby Style Guide
 permalink: '/'
 ---
 
+<!-- markdownlint-disable MD025 -->
+
 # Ruby Style Guide
 
 Ruby is the main language at Shopify. We are primarily a Ruby shop and we are
@@ -20,6 +22,8 @@ Much of its content is based on Bozhidar Batsov's [Ruby Style
 Guide](https://github.com/rubocop-hq/ruby-style-guide), adapted to Shopify by
 [many
 contributors](https://github.com/Shopify/ruby-style-guide/graphs/contributors).
+
+<!-- markdownlint-disable MD001 -->
 
 ### Adoption with RuboCop
 
@@ -70,7 +74,8 @@ documentation](https://docs.rubocop.org/rubocop/configuration.html#inheriting-co
 * Code in a functional way. Avoid mutation (side effects) when you can.
 
 * [Avoid defensive programming](https://web.archive.org/web/20211013164839/http://www.erlang.se/doc/programming_rules.shtml#HDR11)
-  > Overly defensive programming may safeguard against errors that will never be encountered, thus incurring run-time and maintenance costs.
+  > Overly defensive programming may safeguard against errors that will never
+  > be encountered, thus incurring run-time and maintenance costs.
 
 * Avoid mutating arguments.
 
@@ -476,8 +481,8 @@ documentation](https://docs.rubocop.org/rubocop/configuration.html#inheriting-co
 * Use parentheses around the arguments of method invocations. Omit parentheses
   when not providing arguments. Also omit parentheses when the invocation is
   single-line and the method:
-  - is a class method call with implicit receiver.
-  - is called by syntactic sugar (e.g: `1 + 1` calls the `+` method, `foo[bar]`
+* is a class method call with implicit receiver.
+  * is called by syntactic sugar (e.g: `1 + 1` calls the `+` method, `foo[bar]`
     calls the `[]` method, etc).
 
   ~~~ ruby
@@ -495,13 +500,13 @@ documentation](https://docs.rubocop.org/rubocop/configuration.html#inheriting-co
   end
   ~~~
 
-  - is one of the following methods:
-    * `require`
-    * `require_relative`
-    * `require_dependency`
-    * `yield`
-    * `raise`
-    * `puts`
+* is one of the following methods:
+  * `require`
+  * `require_relative`
+  * `require_dependency`
+  * `yield`
+  * `raise`
+  * `puts`
 
 * Omit the outer braces around an implicit options hash.
 

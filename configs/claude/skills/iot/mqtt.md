@@ -5,7 +5,7 @@ Provides MQTT messaging capabilities for IoT device communication, monitoring, a
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | IoT |
 | **Protocol** | MQTT 3.1.1 / 5.0 |
 | **Compatible Brokers** | EMQX, Mosquitto, HiveMQ, AWS IoT Core |
@@ -70,7 +70,7 @@ mosquitto_pub -h emqx.local -p 8883 \
 ## Access Levels
 
 | Level | MQTT Operations | Use Case |
-|-------|-----------------|----------|
+| ----- | --------------- | -------- |
 | `subscribe` | Subscribe to topics, receive messages | Monitoring, analysis |
 | `publish` | Subscribe + publish to specific topics | Automation, control |
 | `admin` | Full access + broker management | Configuration |
@@ -105,7 +105,7 @@ acl:
 ## Capabilities
 
 | Capability | Description |
-|------------|-------------|
+| ---------- | ----------- |
 | `subscribe` | Subscribe to topic patterns |
 | `unsubscribe` | Unsubscribe from topics |
 | `publish` | Publish message to topic |
@@ -117,7 +117,7 @@ acl:
 
 ### Standard IoT Topic Structure
 
-```
+```text
 {domain}/{device_type}/{device_id}/{data_type}
 
 Examples:
@@ -131,7 +131,7 @@ telemetry/device123/heartbeat
 
 ### Home Automation Topics
 
-```
+```text
 # Zigbee2MQTT pattern
 zigbee2mqtt/{device_name}
 zigbee2mqtt/{device_name}/set
@@ -278,7 +278,7 @@ GET /api/v5/topics?match_type=filter&topic=sensors/#
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `system/iot-monitor` | subscribe | Device health monitoring |
 | `security/iot-security` | subscribe | Anomaly detection |
 | `ops/home-automation` | publish | Automation debugging |
@@ -286,7 +286,7 @@ GET /api/v5/topics?match_type=filter&topic=sensors/#
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | MQTT unavailable | Query Home Assistant API instead |
 | Specific device offline | Check last known state, alert |
 | Broker disconnected | Reconnect with backoff |

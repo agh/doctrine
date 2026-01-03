@@ -4,13 +4,13 @@ Generate comprehensive tests for the specified code.
 
 ## Usage
 
-```
+```text
 /test [file or function]
 ```
 
 ## Examples
 
-```
+```text
 /test src/utils/validate.ts
 /test parseConfig
 /test src/api/  # Tests all files in directory

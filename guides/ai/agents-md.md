@@ -4,7 +4,8 @@
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Table of Contents
 
@@ -25,15 +26,19 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ### Definition
 
-AGENTS.md is a markdown file that serves as a structured briefing document for AI assistants working with a codebase[^1]. It provides essential context that AI assistants cannot easily infer from code alone.
+AGENTS.md is a markdown file that serves as a structured briefing document
+for AI assistants working with a codebase[^1]. It provides essential context
+that AI assistants cannot easily infer from code alone.
 
 ### Core Principles
 
 An AGENTS.md file **MUST**:
 
-1. **Be concise** - Provide necessary context without overwhelming detail (200-500 lines ideal)
+1. **Be concise** - Provide necessary context without overwhelming detail
+   (200-500 lines ideal)
 2. **Be actionable** - Include concrete commands and examples
-3. **Be discoverable** - Placed where AI assistants can find it (repository root)
+3. **Be discoverable** - Placed where AI assistants can find it
+   (repository root)
 4. **Be version-controlled** - Tracked in git alongside code
 5. **Be current** - Updated as the project evolves
 
@@ -46,15 +51,20 @@ An AGENTS.md file **MUST NOT**:
 
 ### Why AGENTS.md Matters
 
-**The Context Problem:** AI assistants lack persistent memory. Without AGENTS.md, they must infer project structure, guess at conventions, and discover commands through trial and error. This wastes time, introduces errors, and creates inconsistency.
+**The Context Problem:** AI assistants lack persistent memory. Without
+AGENTS.md, they must infer project structure, guess at conventions, and
+discover commands through trial and error. This wastes time, introduces
+errors, and creates inconsistency.
 
-**The Solution:** A well-crafted AGENTS.md accelerates onboarding, ensures consistency, prevents mistakes, and preserves tribal knowledge.
+**The Solution:** A well-crafted AGENTS.md accelerates onboarding, ensures
+consistency, prevents mistakes, and preserves tribal knowledge.
 
 ---
 
 ## Tool Compatibility via Symlinks
 
-Different AI coding tools look for different filenames. To support multiple tools with a single source of truth, **MUST** use symlinks:
+Different AI coding tools look for different filenames. To support multiple
+tools with a single source of truth, **MUST** use symlinks:
 
 ### Recommended Setup
 
@@ -68,12 +78,12 @@ ln -s AGENTS.md GEMINI.md   # Google Gemini tools
 
 ### Repository Structure
 
-```
+```text
 my-project/
-├── AGENTS.md          ← Canonical file (edit this one)
-├── CLAUDE.md          ← Symlink → AGENTS.md
-├── GEMINI.md          ← Symlink → AGENTS.md
-├── README.md          ← Human documentation
+├── AGENTS.md          <- Canonical file (edit this one)
+├── CLAUDE.md          <- Symlink -> AGENTS.md
+├── GEMINI.md          <- Symlink -> AGENTS.md
+├── README.md          <- Human documentation
 ├── src/
 └── tests/
 ```
@@ -81,17 +91,18 @@ my-project/
 ### Why Symlinks
 
 | Approach | Pros | Cons |
-|----------|------|------|
+| -------- | ---- | ---- |
 | Symlinks | Single source of truth, no drift | Requires symlink support |
 | Duplicates | Works everywhere | Content drift, maintenance burden |
 | Single name | Simple | Some tools won't find it |
 
-**Symlinks are the recommended approach** because they ensure all tools read identical instructions while requiring only one file to maintain.
+**Symlinks are the recommended approach** because they ensure all tools read
+identical instructions while requiring only one file to maintain.
 
 ### Tool Discovery
 
 | Tool | Files Checked |
-|------|---------------|
+| ---- | ------------- |
 | Claude Code | `CLAUDE.md`, `AGENTS.md` |
 | Aider | `CLAUDE.md`, `.aider` |
 | Cursor | `.cursorrules` |
@@ -101,14 +112,18 @@ my-project/
 
 ## DRY Pattern: Reference Doctrine
 
-Project AGENTS.md files **MUST** reference [Doctrine](https://github.com/welshwandering/doctrine) as the source of truth for coding standards. This creates a "DRY for AI" pattern where:
+Project AGENTS.md files **MUST** reference
+[Doctrine](https://github.com/welshwandering/doctrine) as the source of
+truth for coding standards. This creates a "DRY for AI" pattern where:
 
-- **Doctrine** contains canonical style guides, tooling choices, and conventions
+- **Doctrine** contains canonical style guides, tooling choices, and
+  conventions
 - **Project AGENTS.md** contains only project-specific context
 
 ### Why This Matters
 
 Without central standards, each project's AGENTS.md would duplicate:
+
 - Language style guides (naming, formatting, patterns)
 - Framework conventions (architecture, testing approaches)
 - Tooling configuration (linters, formatters, CI)
@@ -125,18 +140,23 @@ Every project AGENTS.md **MUST** begin with a Standards section:
 This project follows [Doctrine](https://github.com/welshwandering/doctrine):
 
 | Concern | Guide |
-|---------|-------|
-| Python | [guides/languages/python.md](https://github.com/welshwandering/doctrine/blob/main/guides/languages/python.md) |
-| Django | [guides/frameworks/django.md](https://github.com/welshwandering/doctrine/blob/main/guides/frameworks/django.md) |
-| Testing | [guides/process/testing.md](https://github.com/welshwandering/doctrine/blob/main/guides/process/testing.md) |
+| ------- | ----- |
+| Python | [guides/languages/python.md][python] |
+| Django | [guides/frameworks/django.md][django] |
+| Testing | [guides/process/testing.md][testing] |
 
-**Do not duplicate Doctrine guidance here.** This file contains only project-specific context.
+[python]: https://github.com/welshwandering/doctrine/blob/main/guides/languages/python.md
+[django]: https://github.com/welshwandering/doctrine/blob/main/guides/frameworks/django.md
+[testing]: https://github.com/welshwandering/doctrine/blob/main/guides/process/testing.md
+
+**Do not duplicate Doctrine guidance here.** This file contains only
+project-specific context.
 ```
 
 ### What Belongs in Doctrine vs Project AGENTS.md
 
 | In Doctrine | In Project AGENTS.md |
-|-------------|---------------------|
+| ----------- | -------------------- |
 | Python naming conventions | This project's directory structure |
 | Django architecture patterns | Commands to run this project |
 | Testing strategies | Environment variables needed |
@@ -145,10 +165,10 @@ This project follows [Doctrine](https://github.com/welshwandering/doctrine):
 
 ### Benefits
 
-1. **Single source of truth** — Update once, benefit everywhere
-2. **Reduced maintenance** — Project files stay small and focused
-3. **Consistency** — All projects follow identical standards
-4. **AI efficiency** — AI can learn Doctrine once, apply everywhere
+1. **Single source of truth** - Update once, benefit everywhere
+2. **Reduced maintenance** - Project files stay small and focused
+3. **Consistency** - All projects follow identical standards
+4. **AI efficiency** - AI can learn Doctrine once, apply everywhere
 
 ---
 
@@ -158,12 +178,12 @@ This project follows [Doctrine](https://github.com/welshwandering/doctrine):
 
 For a single project, **MUST** place AGENTS.md at repository root:
 
-```
+```text
 my-project/
-├── AGENTS.md          ← AI context here
-├── CLAUDE.md          ← Symlink
-├── GEMINI.md          ← Symlink
-├── README.md          ← Human documentation
+├── AGENTS.md          <- AI context here
+├── CLAUDE.md          <- Symlink
+├── GEMINI.md          <- Symlink
+├── README.md          <- Human documentation
 ├── src/
 └── tests/
 ```
@@ -172,30 +192,33 @@ my-project/
 
 For monorepos, **MUST** use hierarchical placement:
 
-```
+```text
 monorepo/
-├── AGENTS.md          ← Monorepo-level context
-├── CLAUDE.md          ← Symlink
-├── GEMINI.md          ← Symlink
+├── AGENTS.md          <- Monorepo-level context
+├── CLAUDE.md          <- Symlink
+├── GEMINI.md          <- Symlink
 ├── services/
 │   ├── api/
-│   │   └── AGENTS.md  ← API-specific context
+│   │   └── AGENTS.md  <- API-specific context
 │   └── worker/
-│       └── AGENTS.md  ← Worker-specific context
+│       └── AGENTS.md  <- Worker-specific context
 └── libs/
     └── shared/
-        └── AGENTS.md  ← Shared library context
+        └── AGENTS.md  <- Shared library context
 ```
 
 **Hierarchical Rules:**
 
-- **Root AGENTS.md** contains: Monorepo structure, cross-cutting commands, shared conventions
-- **Child AGENTS.md** contains: Service-specific context, commands, conventions
+- **Root AGENTS.md** contains: Monorepo structure, cross-cutting commands,
+  shared conventions
+- **Child AGENTS.md** contains: Service-specific context, commands,
+  conventions
 - **Child files** link back to parent for shared information
 
 ### Microservices Architecture
 
-Each repository **MUST** have its own AGENTS.md. Include cross-service references:
+Each repository **MUST** have its own AGENTS.md. Include cross-service
+references:
 
 ```markdown
 ## Related Services
@@ -218,8 +241,8 @@ Provide high-level context in 3-5 lines:
 ```markdown
 ## Overview
 
-API gateway for e-commerce platform. Routes requests to microservices, handles
-authentication, and provides rate limiting.
+API gateway for e-commerce platform. Routes requests to microservices,
+handles authentication, and provides rate limiting.
 
 **Stack:** Node.js 20, TypeScript 5.3, Express 4.18, Redis 7.2
 **Purpose:** Centralized entry point for web, mobile, and third-party clients
@@ -229,10 +252,11 @@ authentication, and provides rate limiting.
 
 Provide executable commands with expected outcomes:
 
-```markdown
+````markdown
 ## Commands
 
 ### Development
+
 ```bash
 npm install                    # Install dependencies
 npm run dev                    # Start dev server (port 3000, hot reload)
@@ -240,11 +264,12 @@ npm run typecheck              # Type checking (strict mode)
 ```
 
 ### Testing
+
 ```bash
 npm test                       # Run all tests
 npm test -- --coverage         # Coverage report (requires 80%)
 ```
-```
+````
 
 **MUST** include actual runnable commands with prerequisites.
 
@@ -252,10 +277,10 @@ npm test -- --coverage         # Coverage report (requires 80%)
 
 Explain non-obvious directory organization:
 
-```markdown
+````markdown
 ## Project Structure
 
-```
+```text
 src/
 ├── api/           # Express route handlers
 ├── services/      # Business logic (DI-injectable)
@@ -268,55 +293,60 @@ tests/
 ```
 
 **Key Files:**
+
 - `src/server.ts` - Application entry point
 - `.env.example` - Required environment variables
-```
+````
 
 ### 4. Architecture
 
 Document patterns and decisions:
 
-```markdown
+````markdown
 ## Architecture
 
-**Dependency Injection:** Using tsyringe. All services **MUST** be injectable.
+**Dependency Injection:** Using tsyringe. All services **MUST** be
+injectable.
 
 **Repository Pattern:** All database access **MUST** go through repositories.
 
 **Data Flow:**
+
+```text
+Client -> Middleware -> Controller -> Service -> Repository -> Database
 ```
-Client → Middleware → Controller → Service → Repository → Database
-```
-```
+````
 
 ### 5. Code Style
 
 Document conventions not captured in linters:
 
-```markdown
+````markdown
 ## Code Style
 
 Follows [Doctrine TypeScript Guide](../../guides/languages/typescript.md)
 
 **Naming:**
+
 - Files: `kebab-case.ts`
 - Classes: `PascalCase`
 - Functions: `camelCase`
 
 **Import Ordering:**
+
 ```typescript
 // 1. Node built-ins
 // 2. External dependencies
 // 3. Internal modules
 // 4. Types
 ```
-```
+````
 
 ### 6. Common Pitfalls
 
 Warn about known issues:
 
-```markdown
+````markdown
 ## Common Pitfalls
 
 ### Database Connections
@@ -324,6 +354,7 @@ Warn about known issues:
 **ISSUE:** TypeORM doesn't automatically release connections
 
 **SOLUTION:**
+
 ```typescript
 const queryRunner = dataSource.createQueryRunner();
 try {
@@ -334,13 +365,13 @@ try {
   await queryRunner.release();  // Always release!
 }
 ```
-```
+````
 
 ### 7. Testing Strategy
 
 Guide AI in writing tests:
 
-```markdown
+````markdown
 ## Testing Strategy
 
 - **Unit:** Jest with mocked dependencies (80% coverage minimum)
@@ -348,6 +379,7 @@ Guide AI in writing tests:
 - **E2E:** Supertest for API tests (critical paths only)
 
 **Example:**
+
 ```typescript
 describe('UserService', () => {
   it('should hash password on creation', async () => {
@@ -356,13 +388,13 @@ describe('UserService', () => {
   });
 });
 ```
-```
+````
 
 ### 8. Environment Configuration
 
 Document required variables:
 
-```markdown
+````markdown
 ## Environment Configuration
 
 ```bash
@@ -375,8 +407,9 @@ LOG_LEVEL=info              # debug | info | warn | error
 FEATURE_NEW_UI=false        # Feature flags
 ```
 
-**Secrets Management:** Use AWS Secrets Manager in production. Never commit secrets.
-```
+**Secrets Management:** Use AWS Secrets Manager in production. Never commit
+secrets.
+````
 
 ---
 
@@ -384,7 +417,7 @@ FEATURE_NEW_UI=false        # Feature flags
 
 ### Python (FastAPI)
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -409,7 +442,7 @@ uv run alembic upgrade head
 
 ## Structure
 
-```
+```text
 src/
 ├── api/          # FastAPI routers
 ├── models/       # SQLAlchemy models
@@ -421,11 +454,13 @@ src/
 
 Follows [Doctrine Python Guide](../../guides/languages/python.md)
 
-**Type Hints:** **MUST** use on all functions with `from __future__ import annotations`
+**Type Hints:** **MUST** use on all functions with
+`from __future__ import annotations`
 
 ## Common Pitfalls
 
-**Async/Await:** Never mix sync and async code. Use `AsyncSession` not `Session`.
+**Async/Await:** Never mix sync and async code. Use `AsyncSession` not
+`Session`.
 
 ## Environment
 
@@ -433,11 +468,11 @@ Follows [Doctrine Python Guide](../../guides/languages/python.md)
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost/dbname
 SECRET_KEY=your-secret-key
 ```
-```
+````
 
 ### TypeScript (Express)
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -459,7 +494,7 @@ npm test -- --coverage
 
 ## Structure
 
-```
+```text
 src/
 ├── controllers/  # Request handlers
 ├── services/     # Business logic
@@ -471,11 +506,13 @@ src/
 
 Follows [Doctrine TypeScript Guide](../../guides/languages/typescript.md)
 
-**Naming:** Files: `kebab-case.ts`, Classes: `PascalCase`, Functions: `camelCase`
+**Naming:** Files: `kebab-case.ts`, Classes: `PascalCase`, Functions:
+`camelCase`
 
 ## Common Pitfalls
 
-**Promise Handling:** Always use try/catch in async route handlers and pass errors to `next()`.
+**Promise Handling:** Always use try/catch in async route handlers and pass
+errors to `next()`.
 
 ## Environment
 
@@ -483,11 +520,11 @@ Follows [Doctrine TypeScript Guide](../../guides/languages/typescript.md)
 DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 JWT_SECRET=your-secret-key
 ```
-```
+````
 
 ### Go (Gin)
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -510,7 +547,7 @@ go test -race ./...  # Race detection
 
 ## Structure
 
-```
+```text
 cmd/server/       # Application entrypoint
 internal/
 ├── api/          # HTTP handlers
@@ -526,7 +563,8 @@ Follows [Doctrine Go Guide](../../guides/languages/go.md)
 
 ## Common Pitfalls
 
-**Goroutine Leaks:** Use context cancellation. **Pointer Receivers:** Use for methods that modify state.
+**Goroutine Leaks:** Use context cancellation. **Pointer Receivers:** Use for
+methods that modify state.
 
 ## Environment
 
@@ -534,11 +572,11 @@ Follows [Doctrine Go Guide](../../guides/languages/go.md)
 DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 JWT_SECRET=your-secret-key
 ```
-```
+````
 
 ### Rails
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -562,7 +600,7 @@ COVERAGE=true rails test
 
 ## Structure
 
-```
+```text
 app/
 ├── controllers/  # Request handlers
 ├── models/       # ActiveRecord models
@@ -578,7 +616,8 @@ Follows [Doctrine Rails Guide](../../guides/frameworks/rails.md)
 
 ## Common Pitfalls
 
-**N+1 Queries:** Use `includes()` for eager loading. **Mass Assignment:** Use strong parameters.
+**N+1 Queries:** Use `includes()` for eager loading. **Mass Assignment:** Use
+strong parameters.
 
 ## Environment
 
@@ -587,11 +626,11 @@ DATABASE_URL=postgresql://user:pass@localhost/dbname
 REDIS_URL=redis://localhost:6379/0
 SECRET_KEY_BASE=your-secret-key
 ```
-```
+````
 
 ### Django
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -618,7 +657,7 @@ uv run mypy apps/
 
 ## Structure
 
-```
+```text
 config/
 ├── settings/         # Split settings (base, local, production)
 │   ├── base.py
@@ -644,11 +683,13 @@ Follows [Doctrine Django Guide](../../guides/frameworks/django.md)
 
 ## Common Pitfalls
 
-**N+1 Queries:** Use `select_related()` and `prefetch_related()`. Check with django-debug-toolbar.
+**N+1 Queries:** Use `select_related()` and `prefetch_related()`. Check with
+django-debug-toolbar.
 
 **Signals:** Use sparingly. Prefer explicit service calls for business logic.
 
-**Async Views:** Use `async def` only with async ORM operations. Don't mix sync/async.
+**Async Views:** Use `async def` only with async ORM operations. Don't mix
+sync/async.
 
 ## Environment
 
@@ -657,11 +698,11 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 SECRET_KEY=your-secret-key-min-50-chars
 CELERY_BROKER_URL=redis://localhost:6379/0
 ```
-```
+````
 
 ### Flask
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -687,7 +728,7 @@ uv run ruff check . --fix
 
 ## Structure
 
-```
+```text
 src/
 ├── __init__.py       # Application factory
 ├── models/           # SQLAlchemy models
@@ -711,11 +752,13 @@ Follows [Doctrine Flask Guide](../../guides/frameworks/flask.md)
 
 ## Common Pitfalls
 
-**Circular Imports:** Use application factory and import extensions from `extensions.py`.
+**Circular Imports:** Use application factory and import extensions from
+`extensions.py`.
 
 **Request Context:** Access `current_app` and `g` only within request context.
 
-**SQLAlchemy Sessions:** Use `db.session` from Flask-SQLAlchemy, not raw sessions.
+**SQLAlchemy Sessions:** Use `db.session` from Flask-SQLAlchemy, not raw
+sessions.
 
 ## Environment
 
@@ -724,11 +767,11 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 SECRET_KEY=your-secret-key
 FLASK_ENV=development
 ```
-```
+````
 
 ### Rust (Axum)
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -759,7 +802,7 @@ sqlx migrate run
 
 ## Structure
 
-```
+```text
 src/
 ├── main.rs           # Entry point, server setup
 ├── app.rs            # Router and state setup
@@ -780,21 +823,27 @@ tests/                # Integration tests
 
 Follows [Doctrine Axum Guide](../../guides/frameworks/axum.md)
 
-**Extractors:** Use typed extractors for request data. Validate with `validator` crate.
+**Extractors:** Use typed extractors for request data. Validate with
+`validator` crate.
 
-**Error Handling:** Use `thiserror` for domain errors, implement `IntoResponse`.
+**Error Handling:** Use `thiserror` for domain errors, implement
+`IntoResponse`.
 
 **State:** Use `AppState` with `Arc` for shared state.
 
 ## Common Pitfalls
 
-**Async Runtime:** Always use `#[tokio::main]`. Don't block the runtime with sync I/O.
+**Async Runtime:** Always use `#[tokio::main]`. Don't block the runtime with
+sync I/O.
 
-**SQLx Compile-Time Checks:** Run `cargo sqlx prepare` before CI builds without database.
+**SQLx Compile-Time Checks:** Run `cargo sqlx prepare` before CI builds
+without database.
 
-**Ownership in Handlers:** Clone `Arc<AppState>` fields, don't fight the borrow checker.
+**Ownership in Handlers:** Clone `Arc<AppState>` fields, don't fight the
+borrow checker.
 
-**Tower Middleware Order:** Middleware wraps in reverse order. Add logging last (runs first).
+**Tower Middleware Order:** Middleware wraps in reverse order. Add logging
+last (runs first).
 
 ## Environment
 
@@ -803,11 +852,11 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 JWT_SECRET=your-secret-key-min-32-chars
 RUST_LOG=info,tower_http=debug
 ```
-```
+````
 
 ### Next.js
 
-```markdown
+````markdown
 # AGENTS.md - [Project Name]
 
 ## Overview
@@ -838,7 +887,7 @@ pnpm prisma generate
 
 ## Structure
 
-```
+```text
 app/
 ├── (auth)/           # Auth route group (shared layout)
 │   ├── login/
@@ -872,13 +921,17 @@ Follows [Doctrine Next.js Guide](../../guides/frameworks/nextjs.md)
 
 ## Common Pitfalls
 
-**Hydration Mismatch:** Don't use `Date.now()` or `Math.random()` in Server Components.
+**Hydration Mismatch:** Don't use `Date.now()` or `Math.random()` in Server
+Components.
 
-**Client/Server Boundary:** Can't pass functions or classes from Server to Client Components.
+**Client/Server Boundary:** Can't pass functions or classes from Server to
+Client Components.
 
-**Caching:** `fetch()` caches by default. Use `{ cache: 'no-store' }` for dynamic data.
+**Caching:** `fetch()` caches by default. Use `{ cache: 'no-store' }` for
+dynamic data.
 
-**Server Actions Security:** Always validate input. Actions are public endpoints.
+**Server Actions Security:** Always validate input. Actions are public
+endpoints.
 
 ## Environment
 
@@ -887,7 +940,7 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
 NEXTAUTH_SECRET=your-secret-key
 NEXTAUTH_URL=http://localhost:3000
 ```
-```
+````
 
 ---
 
@@ -902,7 +955,7 @@ AGENTS.md and .cursorrules serve different purposes[^2]:
 
 **Best Practice:** Reference AGENTS.md from .cursorrules:
 
-```
+```text
 # .cursorrules
 # Read AGENTS.md for comprehensive context
 
@@ -913,7 +966,8 @@ AGENTS.md and .cursorrules serve different purposes[^2]:
 
 ### Aider
 
-Aider automatically reads CLAUDE.md (symlinked to AGENTS.md) in repository root[^3]:
+Aider automatically reads CLAUDE.md (symlinked to AGENTS.md) in repository
+root[^3]:
 
 ```bash
 aider --read AGENTS.md src/users/service.ts
@@ -942,6 +996,7 @@ Add to `.vscode/settings.json`:
 ### When to Update
 
 **MUST** update when:
+
 - Architecture changes (new patterns, refactoring)
 - Commands change (new scripts, tool updates)
 - Conventions change (style guide updates)
@@ -995,6 +1050,7 @@ Add to CI/CD:
 **Problem:** AGENTS.md becomes comprehensive documentation replacement
 
 **Solution:**
+
 - Keep under 1000 lines (200-500 ideal)
 - Link to comprehensive docs
 - Focus on what AI needs to know
@@ -1004,6 +1060,7 @@ Add to CI/CD:
 **Problem:** Outdated commands and information
 
 **Solution:**
+
 - Review quarterly
 - Update with major changes
 - Add to PR checklist
@@ -1013,6 +1070,7 @@ Add to CI/CD:
 **Problem:** Contains credentials or sensitive data
 
 **Solution:**
+
 - Use placeholder values
 - Reference `.env.example`
 - Never commit secrets
@@ -1022,6 +1080,7 @@ Add to CI/CD:
 **Problem:** Duplicates README, docs, style guides
 
 **Solution:**
+
 - Link to external guides
 - Summarize key points
 - Document only deviations
@@ -1031,6 +1090,7 @@ Add to CI/CD:
 **Problem:** Lacks specific, actionable information
 
 **Solution:**
+
 - Provide specific commands
 - Include code examples
 - Be concrete and actionable
@@ -1040,6 +1100,7 @@ Add to CI/CD:
 **Problem:** Assumes AI knows project-specific context
 
 **Solution:**
+
 - Be explicit about patterns
 - Include examples
 - Don't assume shared context
@@ -1049,6 +1110,7 @@ Add to CI/CD:
 **Problem:** Auto-generated from code comments
 
 **Solution:**
+
 - Manually curate AGENTS.md
 - Focus on high-level patterns
 - Link to API docs for details
@@ -1058,6 +1120,7 @@ Add to CI/CD:
 **Problem:** Includes everything tangentially related
 
 **Solution:**
+
 - Be selective
 - Include only essential information
 - Link to comprehensive sources
@@ -1067,6 +1130,7 @@ Add to CI/CD:
 **Problem:** Separate CLAUDE.md, GEMINI.md, etc. with different content
 
 **Solution:**
+
 - Use single AGENTS.md as source of truth
 - Create symlinks for tool compatibility
 - Never duplicate content across files
@@ -1077,12 +1141,13 @@ Add to CI/CD:
 
 ### Minimal Example (200 lines)
 
-```markdown
+````markdown
 # AGENTS.md - Todo API
 
 ## Overview
 
-Simple REST API for todo list management. FastAPI backend with SQLite database.
+Simple REST API for todo list management. FastAPI backend with SQLite
+database.
 
 **Stack:** Python 3.12, FastAPI 0.109, SQLAlchemy 2.0, SQLite
 
@@ -1102,7 +1167,7 @@ uv run ruff check . --fix
 
 ## Structure
 
-```
+```text
 app/
 ├── main.py       # FastAPI entry point
 ├── models.py     # SQLAlchemy models
@@ -1115,6 +1180,7 @@ tests/            # Pytest tests
 ## Key Patterns
 
 **Async by default:**
+
 ```python
 @app.get("/todos")
 async def get_todos(db: AsyncSession = Depends(get_db)):
@@ -1126,7 +1192,8 @@ async def get_todos(db: AsyncSession = Depends(get_db)):
 
 ## Common Issues
 
-**Database locking:** SQLite doesn't handle concurrent writes. Use PostgreSQL for production.
+**Database locking:** SQLite doesn't handle concurrent writes. Use PostgreSQL
+for production.
 
 **Async session:** Always use `AsyncSession`, not `Session`.
 
@@ -1136,13 +1203,15 @@ async def get_todos(db: AsyncSession = Depends(get_db)):
 DATABASE_URL=sqlite:///./todos.db
 ENVIRONMENT=development
 ```
-```
+````
 
 ### Medium Example (500 lines)
 
-See complete microservices e-commerce example in [Python Template](#python-fastapi) section.
+See complete microservices e-commerce example in
+[Python Template](#python-fastapi) section.
 
 Key additions for medium projects:
+
 - **Service Dependencies:** Document how services interact
 - **Event Flow:** Show event-driven communication
 - **Common Pitfalls:** More detailed with distributed systems issues
@@ -1159,19 +1228,22 @@ For large projects (> 5 services), split into:
 
 **Main AGENTS.md structure:**
 
-```markdown
+````markdown
 # AGENTS.md - [Platform Name]
 
 ## Overview
+
 [High-level description]
 
 ## Quick Start
+
 ```bash
 docker-compose up -d
 npm run dev:all
 ```
 
 ## Architecture
+
 [System-level architecture diagram]
 
 ## Service Navigation
@@ -1181,12 +1253,14 @@ npm run dev:all
 - **Order Service:** [services/orders/AGENTS.md](services/orders/AGENTS.md)
 
 ## Cross-Cutting Concerns
+
 [Shared patterns, auth, logging, monitoring]
 
 ## External Documentation
+
 - [Full Docs](https://docs.example.com)
 - [API Reference](https://api.example.com/docs)
-```
+````
 
 ---
 
@@ -1201,6 +1275,10 @@ npm run dev:all
 
 ## References
 
-[^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) - Official Anthropic documentation for Claude Code CLI and AGENTS.md patterns
-[^2]: [Cursor AI Documentation](https://docs.cursor.com/) - Documentation for .cursorrules and Cursor IDE integration
-[^3]: [Aider Documentation](https://aider.chat/docs/usage.html) - Aider AI pair programming tool documentation
+[^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) -
+    Official Anthropic documentation for Claude Code CLI and AGENTS.md
+    patterns
+[^2]: [Cursor AI Documentation](https://docs.cursor.com/) - Documentation
+    for .cursorrules and Cursor IDE integration
+[^3]: [Aider Documentation](https://aider.chat/docs/usage.html) - Aider AI
+    pair programming tool documentation

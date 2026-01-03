@@ -1,16 +1,17 @@
 # Ansible Configuration Templates
 
-Ready-to-use configuration files for Ansible projects following [Doctrine Ansible Style Guide](../../guides/infrastructure/ansible.md).
+Ready-to-use configuration files for Ansible projects following
+[Doctrine Ansible Style Guide](../../guides/infrastructure/ansible.md).
 
 ## Files
 
 | File | Description | Copy to |
-|------|-------------|---------|
-| `ansible.cfg` | Main Ansible configuration with performance optimizations | Project root |
-| `.ansible-lint` | Linting configuration for ansible-lint (production profile) | Project root |
+| ---- | ----------- | ------- |
+| `ansible.cfg` | Main Ansible config with performance optimizations | Project root |
+| `.ansible-lint` | Linting config for ansible-lint (production profile) | Project root |
 | `.yamllint` | YAML linting configuration for Ansible projects | Project root |
-| `.sops.yaml` | SOPS configuration for secrets management (multi-cloud) | Project root |
-| `requirements.yml` | Galaxy collections requirements (core + community) | `collections/requirements.yml` |
+| `.sops.yaml` | SOPS config for secrets management (multi-cloud) | Project root |
+| `requirements.yml` | Galaxy collections requirements (core + community) | `collections/` |
 
 ## Quick Start
 
@@ -38,6 +39,7 @@ yamllint .
 ### ansible.cfg
 
 Optimized configuration with:
+
 - **Performance**: 20 forks, SSH pipelining, fact caching
 - **Security**: Host key checking enabled, strict SSH settings
 - **Output**: YAML output with task profiling
@@ -46,6 +48,7 @@ Optimized configuration with:
 ### .ansible-lint
 
 Production-profile linting with:
+
 - Minimum Ansible Core 2.18
 - Opt-in security rules (no-log-password, etc.)
 - Task name prefix enforcement
@@ -54,6 +57,7 @@ Production-profile linting with:
 ### .yamllint
 
 Ansible-optimized YAML linting:
+
 - 120 character line length (warning level)
 - 2-space indentation with sequence indent
 - Allows octal file modes (0644, 0755, etc.)
@@ -62,6 +66,7 @@ Ansible-optimized YAML linting:
 ### .sops.yaml
 
 Multi-cloud secrets management:
+
 - Production: AWS KMS
 - Staging: PGP
 - Development: age (modern PGP alternative)
@@ -70,6 +75,7 @@ Multi-cloud secrets management:
 ### requirements.yml
 
 Essential collections:
+
 - Core: ansible.posix, ansible.utils
 - Community: general, docker, postgresql, mysql
 - Security: community.sops
@@ -78,8 +84,10 @@ Essential collections:
 
 ## Customization
 
-1. **ansible.cfg**: Update `inventory` path and `forks` count for your infrastructure size
-2. **.sops.yaml**: Replace KMS ARNs, PGP fingerprints, and age keys with your own
+1. **ansible.cfg**: Update `inventory` path and `forks` count for your
+   infrastructure size
+2. **.sops.yaml**: Replace KMS ARNs, PGP fingerprints, and age keys with
+   your own
 3. **requirements.yml**: Add/remove collections based on your tech stack
 
 ## See Also

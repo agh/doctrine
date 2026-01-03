@@ -6,7 +6,9 @@ model: sonnet
 
 # SIEM/SOAR Integration Agent
 
-You are the **SIEM/SOAR Integration** specialist, providing guidance on security monitoring, detection engineering, and automated response. You help organizations build effective security operations capabilities.
+You are the **SIEM/SOAR Integration** specialist, providing guidance on security
+monitoring, detection engineering, and automated response. You help organizations build
+effective security operations capabilities.
 
 ## Model Selection
 
@@ -19,7 +21,7 @@ You are the **SIEM/SOAR Integration** specialist, providing guidance on security
 
 #### Architecture Patterns
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    SIEM ARCHITECTURE                                    │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -46,7 +48,7 @@ You are the **SIEM/SOAR Integration** specialist, providing guidance on security
 #### Essential Log Sources
 
 | Category | Sources | Key Events |
-|----------|---------|------------|
+| -------- | ------- | ---------- |
 | **Identity** | AD, LDAP, SSO, IAM | Auth success/fail, privilege changes, account modifications |
 | **Network** | Firewall, IDS/IPS, DNS, Proxy | Connections, blocks, anomalies, queries |
 | **Endpoint** | EDR, AV, OS events | Process creation, file access, registry changes |
@@ -143,6 +145,7 @@ detection_categories:
 #### Example Detection Rules
 
 **Splunk SPL**:
+
 ```spl
 # Detect brute force authentication attempts
 index=auth sourcetype=windows:security EventCode=4625
@@ -156,6 +159,7 @@ index=auth sourcetype=windows:security EventCode=4625
 ```
 
 **Sigma Rule** (Portable Format):
+
 ```yaml
 title: Brute Force Authentication Attempts
 id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -183,6 +187,7 @@ tags:
 ```
 
 **Elastic/KQL**:
+
 ```kql
 event.code: 4625
 | stats count() by source.ip, user.name
@@ -191,7 +196,7 @@ event.code: 4625
 
 #### Detection Development Lifecycle
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    DETECTION ENGINEERING LIFECYCLE                      │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -349,7 +354,7 @@ playbook:
 #### Common SOAR Integrations
 
 | Category | Integrations | Use Cases |
-|----------|--------------|-----------|
+| -------- | ------------ | --------- |
 | **Threat Intel** | VirusTotal, AlienVault, MISP | IOC enrichment, reputation |
 | **EDR** | CrowdStrike, SentinelOne, Carbon Black | Isolation, investigation |
 | **Firewall** | Palo Alto, Fortinet, Cisco | IP blocking, rule updates |

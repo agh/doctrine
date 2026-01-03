@@ -4,12 +4,12 @@ Show documentation coverage, health metrics, and documentation debt inventory.
 
 ## Usage
 
-```
+```text
 /doc-status
 /doc-status src/                 # Check specific directory
 /doc-status --detailed           # Show per-file breakdown
 /doc-status --debt               # Show documentation debt inventory
-/doc-status --trends             # Show metrics over time (if git history available)
+/doc-status --trends             # Show metrics over time (if git history)
 /doc-status --export json        # Export metrics as JSON
 ```
 
@@ -24,6 +24,7 @@ Show documentation coverage, health metrics, and documentation debt inventory.
 ## Output
 
 Status dashboard including:
+
 - Overall documentation coverage percentage
 - Coverage by component type (APIs, modules, functions)
 - Stale documentation count
@@ -48,7 +49,7 @@ Present as a dashboard with actionable insights.
 
 ## Example
 
-```
+```text
 > /doc-status
 
 ## Documentation Status Dashboard
@@ -62,8 +63,9 @@ Present as a dashboard with actionable insights.
 └─────────────────────────────────────────┘
 
 ### Coverage by Type
+
 | Type | Documented | Total | Coverage |
-|------|------------|-------|----------|
+| ---- | ---------- | ----- | -------- |
 | API endpoints | 12 | 15 | 80% |
 | Services | 5 | 7 | 71% |
 | Utilities | 8 | 15 | 53% |
@@ -86,7 +88,7 @@ Present as a dashboard with actionable insights.
 
 ## Health Score Calculation
 
-```
+```text
 Health = (Coverage × 0.4) + (Freshness × 0.3) + (Completeness × 0.3)
 
 Coverage = documented_public_apis / total_public_apis
@@ -96,7 +98,7 @@ Completeness = docs_with_examples / total_docs
 
 ## Example: Debt Inventory
 
-```
+```text
 > /doc-status --debt
 
 ## Documentation Debt Inventory
@@ -109,8 +111,9 @@ Completeness = docs_with_examples / total_docs
 - Estimated effort: 12-16 hours
 
 ### Critical Debt (P0) - Blocking Issues
+
 | Item | Type | Impact | Age |
-|------|------|--------|-----|
+| ---- | ---- | ------ | --- |
 | `PaymentService` | No docs | Revenue-critical | 45d |
 | `auth/oauth2.ts` | Outdated | Security risk | 30d |
 | `API rate limits` | Missing | Support tickets | 60d |
@@ -118,23 +121,26 @@ Completeness = docs_with_examples / total_docs
 | `Webhook events` | No examples | Integration failures | 38d |
 
 ### Important Debt (P1) - Should Fix
+
 | Item | Type | Impact | Age |
-|------|------|--------|-----|
+| ---- | ---- | ------ | --- |
 | 12 utility functions | No docstrings | Discoverability | varies |
 | `DatabaseConfig` | Missing options | Setup confusion | 15d |
 | Test utilities | No docs | Onboarding slow | 20d |
 | ... | | | |
 
 ### Debt by Category
+
 | Category | Count | % of Total |
-|----------|-------|------------|
+| -------- | ----- | ---------- |
 | Missing docs | 23 | 49% |
 | Stale docs | 12 | 26% |
 | Missing examples | 8 | 17% |
 | Incomplete | 4 | 8% |
 
 ### Debt Trend (Last 90 Days)
-```
+
+```text
 Debt Items
 60 ┤
 50 ┤     ╭──╮
@@ -143,10 +149,10 @@ Debt Items
    └────────────────
      -90d        now
 
-✅ Debt reduced 17% this quarter
-```
+Debt reduced 17% this quarter
 
 ### Recommended Sprint Goals
+
 1. Document PaymentService (P0, ~2 hours)
 2. Update OAuth2 docs (P0, ~1 hour)
 3. Add API rate limit docs (P0, ~30 min)
@@ -154,44 +160,42 @@ Debt Items
 
 ## Example: Trends
 
-```
-> /doc-status --trends
+    > /doc-status --trends
 
-## Documentation Metrics Trends
+    ## Documentation Metrics Trends
 
-### Coverage (90 Days)
-```
-100% ┤
- 90% ┤          ╭────────
- 80% ┤    ╭────╯
- 70% ┤───╯
-     └───────────────────
-       -90d          now
+    ### Coverage (90 Days)
 
-Current: 87% (+12% from 90d ago)
-```
+    100% ┤
+     90% ┤          ╭────────
+     80% ┤    ╭────╯
+     70% ┤───╯
+         └───────────────────
+           -90d          now
 
-### Freshness (90 Days)
-```
-100% ┤────╮
- 90% ┤    ╰──────────────
- 80% ┤
-     └───────────────────
-       -90d          now
+    Current: 87% (+12% from 90d ago)
 
-Current: 92% (-3% from 90d ago)
-⚠️  Freshness declining - review stale docs
-```
+    ### Freshness (90 Days)
 
-### Key Events
-| Date | Event | Impact |
-|------|-------|--------|
-| Dec 15 | Auth docs rewrite | +8% coverage |
-| Dec 01 | API v2 launch | -5% freshness |
-| Nov 20 | Doc sprint | +15% coverage |
+    100% ┤────╮
+     90% ┤    ╰──────────────
+     80% ┤
+         └───────────────────
+           -90d          now
 
-### Velocity
-- Docs added this month: 12
-- Docs updated this month: 23
-- Average time to document new features: 3.2 days
-```
+    Current: 92% (-3% from 90d ago)
+    Freshness declining - review stale docs
+
+    ### Key Events
+
+    | Date | Event | Impact |
+    | ---- | ----- | ------ |
+    | Dec 15 | Auth docs rewrite | +8% coverage |
+    | Dec 01 | API v2 launch | -5% freshness |
+    | Nov 20 | Doc sprint | +15% coverage |
+
+    ### Velocity
+
+    - Docs added this month: 12
+    - Docs updated this month: 23
+    - Average time to document new features: 3.2 days

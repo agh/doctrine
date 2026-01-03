@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Sinatra
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [Ruby style guide](../languages/ruby.md) with Sinatra-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [Ruby style guide](../languages/ruby.md) with Sinatra-specific conventio
 All Ruby tooling applies. Additional considerations:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | StandardRB[^1] | `bundle exec standardrb` |
 | Test | RSpec + rack-test[^2] | `bundle exec rspec` |
 | Coverage | SimpleCov[^3] | via test suite |
@@ -29,13 +33,15 @@ Sinatra[^4] is ideal for lightweight web development because it:
 - **Easy learning curve**: Simple enough to learn in minutes, but powerful enough for production use
 - **Rack foundation**: Built on Rack, making it compatible with middleware and easy to test
 
-Use Sinatra when you need a simple API, webhook handler, microservice, or prototype. Choose Rails when you need a full-featured MVC framework with conventions and scaffolding.
+Use Sinatra when you need a simple API, webhook handler, microservice, or prototype. Choose Rails
+when you need a full-featured MVC framework with conventions and scaffolding.
 
 ## Project Structure
 
-Projects **SHOULD** use modular Sinatra style for anything beyond trivial applications:
+Projects **SHOULD** use modular Sinatra style for anything beyond trivial
+applications:
 
-```
+```text
 my_app/
 ├── app/
 │   ├── controllers/
@@ -65,7 +71,8 @@ my_app/
 
 ## Modular vs Classic Style
 
-Projects **MUST** use modular style (inheriting from `Sinatra::Base`) for production applications. Classic style **MAY** only be used for simple scripts or prototypes.
+Projects **MUST** use modular style (inheriting from `Sinatra::Base`) for production applications.
+Classic style **MAY** only be used for simple scripts or prototypes.
 
 ### Modular Style (Recommended)
 
@@ -158,6 +165,7 @@ end
 ```
 
 **Why modular?** Modular style provides:
+
 - Better testability through isolated controller classes
 - Explicit configuration per controller
 - Ability to mount multiple applications

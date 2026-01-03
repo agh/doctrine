@@ -2,7 +2,10 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > C#
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Extends [Google C# Style Guide](google/csharp.md) and
 [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions).
@@ -10,7 +13,7 @@ Extends [Google C# Style Guide](google/csharp.md) and
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Roslynator[^1] | via NuGet |
 | Format | dotnet format[^2] | `dotnet format` |
 | Type check | built-in | `dotnet build` |
@@ -23,13 +26,16 @@ Extends [Google C# Style Guide](google/csharp.md) and
 
 ## C# 14 Features
 
-Projects targeting .NET 10 **SHOULD** adopt C# 14 features where they improve clarity and reduce boilerplate.
+Projects targeting .NET 10 **SHOULD** adopt C# 14 features where they
+improve clarity and reduce boilerplate.
 
 ### Extension Members
 
-C# 14 introduces extension blocks that allow defining properties, static members, and operators on existing types:
+C# 14 introduces extension blocks that allow defining properties, static
+members, and operators on existing types:
 
 **Do:**
+
 ```csharp
 // Extension properties and methods in a single block
 extension(IEnumerable<T> source) where T : struct
@@ -49,6 +55,7 @@ if (!numbers.IsEmpty)
 ```
 
 **Don't:**
+
 ```csharp
 // Don't use extension blocks for single simple methods
 // - use traditional extension methods instead
@@ -66,6 +73,7 @@ public static bool IsNullOrEmpty(this string s) => string.IsNullOrEmpty(s);
 The `field` keyword provides direct access to auto-property backing fields:
 
 **Do:**
+
 ```csharp
 public class User
 {
@@ -100,6 +108,7 @@ public class User
 ```
 
 **Don't:**
+
 ```csharp
 // Don't use field keyword for simple validation that can use init
 public string Id
@@ -117,6 +126,7 @@ public required string Id { get; init; }
 The `?.=` operator assigns only if the left side is non-null:
 
 **Do:**
+
 ```csharp
 public class OrderProcessor
 {
@@ -143,6 +153,7 @@ public class OrderProcessor
 Partial classes can now split constructor and event definitions:
 
 **Do:**
+
 ```csharp
 // Generated code (e.g., source generator)
 public partial class ViewModel
@@ -176,6 +187,7 @@ public partial class ViewModel
 `nameof` now works with unbound generic types:
 
 **Do:**
+
 ```csharp
 // Get type name without specifying type argument
 public void LogGenericUsage<T>()
@@ -194,6 +206,7 @@ public class MyType { }
 Lambda parameters can now have modifiers without explicit types:
 
 **Do:**
+
 ```csharp
 // ref, out, in modifiers on lambda parameters
 Span<int> numbers = stackalloc int[] { 1, 2, 3 };
@@ -213,8 +226,10 @@ C# projects **MUST** use Roslynator[^1] and SonarAnalyzer[^3] for static analysi
 
 ### Why Roslynator + SonarAnalyzer
 
-- **Roslynator[^1]**: Provides 500+ analyzers and refactorings built on Roslyn, covering code quality, performance, and style issues
-- **SonarAnalyzer[^3]**: Adds security vulnerability detection and code smell identification that complement Roslynator's coverage
+- **Roslynator[^1]**: Provides 500+ analyzers and refactorings built on
+  Roslyn, covering code quality, performance, and style issues
+- **SonarAnalyzer[^3]**: Adds security vulnerability detection and code
+  smell identification that complement Roslynator's coverage
 - Both integrate seamlessly with the .NET build process and IDEs
 - Native NuGet packages require no separate tooling or installation
 
@@ -337,8 +352,10 @@ dotnet test /p:CollectCoverage=true /p:Threshold=80
 
 # Generate report
 dotnet tool install -g dotnet-reportgenerator-globaltool
-reportgenerator[^6] -reports:coverage.cobertura.xml -targetdir:coverage
+reportgenerator -reports:coverage.cobertura.xml -targetdir:coverage
 ```
+
+ReportGenerator[^6] is used to generate human-readable coverage reports.
 
 ### Configuration
 
@@ -445,7 +462,8 @@ jobs:
 
 ## Dependencies & Package Management
 
-C# projects **MUST** use NuGet[^8] for package management and **SHOULD** enable lock files in CI environments.
+C# projects **MUST** use NuGet[^8] for package management and **SHOULD**
+enable lock files in CI environments.
 
 ```bash
 # Add package
@@ -473,9 +491,12 @@ Projects **SHOULD** enable lock files and **MUST** use locked mode in CI:
 ### Version Constraints
 
 ```xml
-<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />           <!-- exact -->
-<PackageReference Include="Serilog" Version="[3.0.0,4.0.0)" />            <!-- range -->
-<PackageReference Include="Polly" Version="8.*" />                        <!-- floating -->
+<!-- exact -->
+<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+<!-- range -->
+<PackageReference Include="Serilog" Version="[3.0.0,4.0.0)" />
+<!-- floating -->
+<PackageReference Include="Polly" Version="8.*" />
 ```
 
 ### Vulnerability Scanning
@@ -507,7 +528,8 @@ updates:
 
 ## E2E & Acceptance Testing
 
-Web applications **SHOULD** use Playwright[^10] for end-to-end testing. BDD projects **MAY** use SpecFlow[^11].
+Web applications **SHOULD** use Playwright[^10] for end-to-end testing.
+BDD projects **MAY** use SpecFlow[^11].
 
 ### Playwright for .NET
 
@@ -568,7 +590,8 @@ public class LoginSteps(WebApplicationFactory<Program> factory)
 
 ### WebApplicationFactory
 
-ASP.NET Core applications **SHOULD** use `WebApplicationFactory`[^12] for integration testing:
+ASP.NET Core applications **SHOULD** use `WebApplicationFactory`[^12] for
+integration testing:
 
 ```csharp
 public class ApiTests(WebApplicationFactory<Program> factory)
@@ -582,10 +605,12 @@ public class ApiTests(WebApplicationFactory<Program> factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var users = await response.Content.ReadFromJsonAsync<List<User>>();
-        users.Should().NotBeEmpty(); // Using FluentAssertions[^13]
+        users.Should().NotBeEmpty();
     }
 }
 ```
+
+This example uses FluentAssertions[^13] for readable assertions.
 
 ## Thread Safety Testing
 
@@ -693,7 +718,8 @@ public async Task RetryPolicy_HandlesTransientFailures()
 
 ## Reliability & Resilience Testing
 
-Applications with external dependencies **SHOULD** implement and test resilience patterns using Polly[^14].
+Applications with external dependencies **SHOULD** implement and test
+resilience patterns using Polly[^14].
 
 ### Polly Resilience Patterns
 
@@ -717,11 +743,13 @@ public async Task CircuitBreaker_OpensAfterFailures()
 
 ### Simmy Chaos Engineering
 
+Simmy[^15] enables chaos engineering testing:
+
 ```csharp
 [Fact]
 public async Task Service_HandlesLatency()
 {
-    var latencyPolicy = MonkeyPolicy[^15].InjectLatencyAsync(
+    var latencyPolicy = MonkeyPolicy.InjectLatencyAsync(
         injectionRate: 0.5,
         latency: TimeSpan.FromSeconds(2));
 
@@ -846,12 +874,14 @@ Applications using databases **MUST** test migrations and transactions.
 
 ### EF Core Migration Testing
 
+Entity Framework Core[^16] migrations should be tested:
+
 ```csharp
 [Fact]
 public async Task Migrations_ApplyCleanly()
 {
     await using var context = CreateContext();
-    await context.Database.MigrateAsync(); // Using Entity Framework Core[^16]
+    await context.Database.MigrateAsync();
 
     var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
     pendingMigrations.Should().BeEmpty();

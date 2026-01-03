@@ -10,7 +10,10 @@
 
 ## RFC 2119 Key Words
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ---
 
@@ -31,7 +34,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Overview
 
-This document provides best practices for integrating OpenAI's API into production systems. It focuses on practical patterns, cost optimization, and reliability considerations for software engineering teams.
+This document provides best practices for integrating OpenAI's API into
+production systems. It focuses on practical patterns, cost optimization, and
+reliability considerations for software engineering teams.
 
 ### Scope
 
@@ -59,11 +64,14 @@ Teams implementing OpenAI integrations MUST have:
 
 ### Available Models
 
-OpenAI offers several models[^1] optimized for different use cases. Teams MUST select models based on task complexity, latency requirements, and budget constraints.
+OpenAI offers several models[^1] optimized for different use cases. Teams
+**MUST** select models based on task complexity, latency requirements, and
+budget constraints.
 
 #### GPT-4o (Optimized)
 
 **Use Cases:**
+
 - Complex reasoning tasks
 - Multi-step code generation
 - Architecture design
@@ -71,18 +79,21 @@ OpenAI offers several models[^1] optimized for different use cases. Teams MUST s
 - Documentation generation
 
 **Specifications:**
+
 - Context window: 128,000 tokens
 - Max output: 16,384 tokens
 - Training data: Up to October 2023
 - Multimodal: Text and vision
 
 **Pricing (as of December 2025)[^2]:**
+
 - Input: $2.50 per 1M tokens
 - Output: $10.00 per 1M tokens
 - Batch API Input: $1.25 per 1M tokens
 - Batch API Output: $5.00 per 1M tokens
 
 **Performance:**
+
 - Latency: Moderate (2-5 seconds typical)
 - Quality: Highest reasoning capability
 - Reliability: Production-ready
@@ -105,6 +116,7 @@ OpenAI offers several models[^1] optimized for different use cases. Teams MUST s
 #### GPT-4o-mini
 
 **Use Cases:**
+
 - Simple code completions
 - Syntax corrections
 - Documentation updates
@@ -112,18 +124,21 @@ OpenAI offers several models[^1] optimized for different use cases. Teams MUST s
 - Code formatting
 
 **Specifications:**
+
 - Context window: 128,000 tokens
 - Max output: 16,384 tokens
 - Training data: Up to October 2023
 - Multimodal: Text and vision
 
 **Pricing (as of December 2025)[^2]:**
+
 - Input: $0.15 per 1M tokens
 - Output: $0.60 per 1M tokens
 - Batch API Input: $0.075 per 1M tokens
 - Batch API Output: $0.30 per 1M tokens
 
 **Performance:**
+
 - Latency: Low (1-2 seconds typical)
 - Quality: Good for straightforward tasks
 - Cost efficiency: 16x cheaper than GPT-4o
@@ -145,26 +160,31 @@ OpenAI offers several models[^1] optimized for different use cases. Teams MUST s
 #### o1-preview and o1-mini
 
 **Use Cases:**
+
 - Advanced reasoning tasks
 - Complex problem-solving
 - Mathematical computations
 - Research and analysis
 
 **Specifications (o1-preview):**
+
 - Context window: 128,000 tokens
 - Max output: 32,768 tokens
 - Reasoning tokens: Internal (not visible)
 - Training data: Up to October 2023
 
 **Pricing (o1-preview)[^2]:**
+
 - Input: $15.00 per 1M tokens
 - Output: $60.00 per 1M tokens
 
 **Pricing (o1-mini)[^2]:**
+
 - Input: $3.00 per 1M tokens
 - Output: $12.00 per 1M tokens
 
 **Limitations:**
+
 - No system messages support
 - No streaming
 - No function calling (as of December 2025)
@@ -187,7 +207,7 @@ OpenAI offers several models[^1] optimized for different use cases. Teams MUST s
 
 ### Model Selection Decision Tree
 
-```
+```text
 START
   |
   +-- Need function calling? ----YES----> GPT-4o or GPT-4o-mini
@@ -264,26 +284,32 @@ OpenAI enforces rate limits[^3] based on tokens per minute (TPM) and requests pe
 #### Rate Limit Tiers
 
 **Free Tier:**
+
 - GPT-4o: 10,000 TPM, 3 RPM
 - GPT-4o-mini: 20,000 TPM, 3 RPM
 
 **Tier 1 ($5+ spent):**
+
 - GPT-4o: 30,000 TPM, 500 RPM
 - GPT-4o-mini: 200,000 TPM, 500 RPM
 
 **Tier 2 ($50+ spent):**
+
 - GPT-4o: 450,000 TPM, 5,000 RPM
 - GPT-4o-mini: 2,000,000 TPM, 5,000 RPM
 
 **Tier 3 ($100+ spent):**
+
 - GPT-4o: 600,000 TPM, 5,000 RPM
 - GPT-4o-mini: 4,000,000 TPM, 5,000 RPM
 
 **Tier 4 ($250+ spent):**
+
 - GPT-4o: 800,000 TPM, 10,000 RPM
 - GPT-4o-mini: 10,000,000 TPM, 10,000 RPM
 
 **Tier 5 ($1,000+ spent):**
+
 - GPT-4o: 2,000,000 TPM, 10,000 RPM
 - GPT-4o-mini: 30,000,000 TPM, 30,000 RPM
 
@@ -554,7 +580,8 @@ if batch_status.status == "completed":
 
 ### Effective System Prompts
 
-System prompts[^11] establish the AI's role, constraints, and behavior. For code generation, they MUST be clear, specific, and comprehensive.
+System prompts[^11] establish the AI's role, constraints, and behavior. For
+code generation, they **MUST** be clear, specific, and comprehensive.
 
 #### General Coding Assistant
 
@@ -1147,7 +1174,8 @@ def safe_function_calling(client, messages, tools):
 
 ## Structured Outputs
 
-Structured Outputs[^7] guarantee the model's response matches a specified JSON schema. This is more reliable than function calling for pure data extraction.
+Structured Outputs[^7] guarantee the model's response matches a specified JSON
+schema. This is more reliable than function calling for pure data extraction.
 
 ### Basic Structured Output
 
@@ -1247,6 +1275,7 @@ analysis = response.choices[0].message.parsed
 ### Structured Output vs Function Calling
 
 **Use Structured Outputs when:**
+
 - Extracting data from text (parsing, analysis)
 - Generating formatted reports
 - Converting unstructured to structured data
@@ -1254,6 +1283,7 @@ analysis = response.choices[0].message.parsed
 - No external function execution needed
 
 **Use Function Calling when:**
+
 - Calling external APIs or tools
 - Executing code or commands
 - Multi-step workflows requiring decisions
@@ -2236,90 +2266,90 @@ response = client.chat.completions.create(
 
 ## References
 
-This section contains all footnoted references to OpenAI documentation and external resources cited throughout this guide.
+This section contains all footnoted references to OpenAI documentation and
+external resources cited throughout this guide.
 
 ### Footnotes
 
 [^1]: **OpenAI Models**: Comprehensive information about available models, capabilities, and specifications.
-      - [Model Documentation](https://platform.openai.com/docs/models)
-      - [GPT-4 and GPT-4 Turbo](https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo)
-      - [GPT-3.5](https://platform.openai.com/docs/models/gpt-3-5)
+
+    - [Model Documentation](https://platform.openai.com/docs/models)
+    - [GPT-4 and GPT-4 Turbo](https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo)
+    - [GPT-3.5](https://platform.openai.com/docs/models/gpt-3-5)
 
 [^2]: **OpenAI Pricing**: Current pricing information for all models including input/output tokens and batch API rates.
-      - [Official Pricing Page](https://openai.com/api/pricing/)
-      - [Pricing FAQ](https://help.openai.com/en/articles/7127956-how-much-does-gpt-4-cost)
+
+    - [Official Pricing Page](https://openai.com/api/pricing/)
+    - [Pricing FAQ](https://help.openai.com/en/articles/7127956-how-much-does-gpt-4-cost)
 
 [^3]: **Rate Limits**: Documentation on rate limiting, usage tiers, and how to handle rate limit errors.
-      - [Rate Limits Guide](https://platform.openai.com/docs/guides/rate-limits)
-      - [Rate Limit Error Handling](https://platform.openai.com/docs/guides/rate-limits/error-mitigation)
-      - [Usage Tiers](https://platform.openai.com/docs/guides/rate-limits/usage-tiers)
+
+    - [Rate Limits Guide](https://platform.openai.com/docs/guides/rate-limits)
+    - [Rate Limit Error Handling](https://platform.openai.com/docs/guides/rate-limits/error-mitigation)
+    - [Usage Tiers](https://platform.openai.com/docs/guides/rate-limits/usage-tiers)
 
 [^4]: **Streaming**: Documentation on streaming API responses for real-time user experiences.
-      - [Streaming Guide](https://platform.openai.com/docs/api-reference/streaming)
-      - [Chat Completions Streaming](https://platform.openai.com/docs/api-reference/chat/create#chat-create-stream)
+
+    - [Streaming Guide](https://platform.openai.com/docs/api-reference/streaming)
+    - [Chat Completions Streaming](https://platform.openai.com/docs/api-reference/chat/create#chat-create-stream)
 
 [^5]: **Batch API**: Documentation for the Batch API which offers 50% cost savings for asynchronous workloads.
-      - [Batch API Guide](https://platform.openai.com/docs/guides/batch)
-      - [Batch API Reference](https://platform.openai.com/docs/api-reference/batch)
+
+    - [Batch API Guide](https://platform.openai.com/docs/guides/batch)
+    - [Batch API Reference](https://platform.openai.com/docs/api-reference/batch)
 
 [^6]: **Function Calling**: Comprehensive guide to function calling for tool use and structured outputs.
-      - [Function Calling Guide](https://platform.openai.com/docs/guides/function-calling)
-      - [Function Calling API Reference](https://platform.openai.com/docs/api-reference/chat/create#chat-create-tools)
-      - [Function Calling Examples](https://cookbook.openai.com/examples/how_to_call_functions_with_chat_models)
 
-[^7]: **Structured Outputs**: Documentation on guaranteed JSON schema compliance in API responses.
-      - [Structured Outputs Guide](https://platform.openai.com/docs/guides/structured-outputs)
-      - [JSON Mode](https://platform.openai.com/docs/guides/text-generation/json-mode)
+    - [Function Calling Guide](https://platform.openai.com/docs/guides/function-calling)
+    - [Function Calling API Reference](https://platform.openai.com/docs/api-reference/chat/create#chat-create-tools)
+    - [Function Calling Examples](https://cookbook.openai.com/examples/how_to_call_functions_with_chat_models)
 
-[^8]: **tiktoken**: OpenAI's official token counting library for accurate token estimation.
-      - [tiktoken GitHub Repository](https://github.com/openai/tiktoken)
-      - [tiktoken Documentation](https://github.com/openai/tiktoken/blob/main/README.md)
+[^7]: **Structured Outputs**: Documentation on guaranteed JSON schema compliance
+    in API responses. See
+    [Structured Outputs Guide](https://platform.openai.com/docs/guides/structured-outputs)
+    and [JSON Mode](https://platform.openai.com/docs/guides/text-generation/json-mode).
 
-[^9]: **API Authentication and Security**: Best practices for securing API keys and managing authentication.
-      - [API Keys Documentation](https://platform.openai.com/docs/api-reference/authentication)
-      - [Best Practices for API Key Safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety)
-      - [Organization and Project Settings](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+[^9]: **API Authentication and Security**: Best practices for securing API keys
+    and managing authentication. See
+    [API Keys Documentation](https://platform.openai.com/docs/api-reference/authentication)
+    and [Best Practices for API Key Safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety).
 
-[^10]: **OpenAI Python SDK**: Official Python library for interacting with the OpenAI API.
-      - [Python SDK GitHub Repository](https://github.com/openai/openai-python)
-      - [Python SDK Documentation](https://github.com/openai/openai-python/blob/main/README.md)
-      - [API Reference (Python)](https://platform.openai.com/docs/api-reference/introduction)
-
-[^11]: **Prompt Engineering and System Prompts**: Techniques for crafting effective prompts and system messages.
-      - [Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering)
-      - [Best Practices for Prompting](https://help.openai.com/en/articles/6654000-best-practices-for-prompt-engineering-with-openai-api)
-      - [OpenAI Cookbook - Prompt Engineering](https://cookbook.openai.com/articles/techniques_to_improve_reliability)
-
-[^12]: **Pydantic**: Python data validation library used for defining schemas in Structured Outputs.
-      - [Pydantic Documentation](https://docs.pydantic.dev/)
-      - [Pydantic Models](https://docs.pydantic.dev/latest/concepts/models/)
-      - [JSON Schema](https://docs.pydantic.dev/latest/concepts/json_schema/)
+[^11]: **Prompt Engineering and System Prompts**: Techniques for crafting
+    effective prompts and system messages. See
+    [Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering)
+    and [Best Practices for Prompting](https://help.openai.com/en/articles/6654000-best-practices-for-prompt-engineering-with-openai-api).
 
 ### Additional Official Documentation
 
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference) - Complete API documentation
 - [OpenAI Cookbook](https://cookbook.openai.com/) - Code examples and guides
 - [OpenAI Python SDK](https://github.com/openai/openai-python) - Official Python library
-- [Safety Best Practices](https://platform.openai.com/docs/guides/safety-best-practices) - Security and safety guidelines
-- [Production Best Practices](https://platform.openai.com/docs/guides/production-best-practices) - Production deployment guidelines
+- [Safety Best Practices](https://platform.openai.com/docs/guides/safety-best-practices) -
+  Security and safety guidelines
+- [Production Best Practices](https://platform.openai.com/docs/guides/production-best-practices) -
+  Production deployment guidelines
 
 ### Model Information
 
-- [GPT-4o System Card](https://openai.com/research/gpt-4o-system-card) - Technical details and safety analysis
-- [Model Deprecation Policy](https://platform.openai.com/docs/deprecations) - Model lifecycle information
+- [GPT-4o System Card](https://openai.com/research/gpt-4o-system-card) -
+  Technical details and safety analysis
+- [Model Deprecation Policy](https://platform.openai.com/docs/deprecations) -
+  Model lifecycle information
 
 ### External Resources
 
 - [Pydantic](https://docs.pydantic.dev/) - Data validation library for Structured Outputs
-- [Prompt Engineering Guide](https://www.promptingguide.ai/) - Comprehensive prompt engineering techniques
-- [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) - Key words for use in RFCs to indicate requirement levels
+- [Prompt Engineering Guide](https://www.promptingguide.ai/) -
+  Comprehensive prompt engineering techniques
+- [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) -
+  Key words for use in RFCs to indicate requirement levels
 
 ---
 
 ## Version History
 
-| Version | Date       | Changes                                      |
-|---------|------------|----------------------------------------------|
+| Version | Date       | Changes                                     |
+| ------- | ---------- | ------------------------------------------- |
 | 1.0.0   | 2025-12-07 | Initial release with comprehensive coverage |
 
 ---

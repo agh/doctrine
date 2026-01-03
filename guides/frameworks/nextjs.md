@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > Next.js
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [TypeScript style guide](../languages/typescript.md) with Next.js-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [TypeScript style guide](../languages/typescript.md) with Next.js-specif
 All TypeScript tooling applies. Additional Next.js-specific tools:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Install | npm/pnpm/yarn | `npx create-next-app@latest` |
 | Run dev | Next.js | `npm run dev` |
 | Build | Next.js | `npm run build` |
@@ -24,9 +28,11 @@ All TypeScript tooling applies. Additional Next.js-specific tools:
 
 ## Why Next.js?
 
-Next.js[^6] is a full-stack React framework with server-side rendering, static site generation, and built-in optimizations for production applications.
+Next.js[^6] is a full-stack React framework with server-side rendering, static site generation,
+and built-in optimizations for production applications.
 
 **Key advantages**:
+
 - Server and Client Components for optimal performance
 - Built-in routing with file-based conventions
 - Automatic code splitting and image optimization
@@ -34,13 +40,14 @@ Next.js[^6] is a full-stack React framework with server-side rendering, static s
 - Zero-config TypeScript support
 - Excellent developer experience with Fast Refresh
 
-Use Next.js for React applications requiring SEO, server rendering, or full-stack features. For client-only SPAs, consider Vite + React. For static sites, consider Astro.
+Use Next.js for React applications requiring SEO, server rendering, or full-stack features. For
+client-only SPAs, consider Vite + React. For static sites, consider Astro.
 
 ## Project Structure
 
 Projects **MUST** use the App Router directory structure:
 
-```
+```text
 my-app/
 ├── app/
 │   ├── layout.tsx              # Root layout
@@ -78,7 +85,9 @@ my-app/
 └── package.json
 ```
 
-**Why**: The App Router co-locates routes with their components, making the file system the API. Route groups organize pages without affecting URLs, and special files (`loading.tsx`, `error.tsx`) provide consistent UX patterns.
+**Why**: The App Router co-locates routes with their components, making the file system the API.
+Route groups organize pages without affecting URLs, and special files (`loading.tsx`,
+`error.tsx`) provide consistent UX patterns.
 
 ## File-Based Routing
 
@@ -114,13 +123,14 @@ export default function BlogCatchAll({
 }
 ```
 
-**Why**: File-based routing eliminates routing configuration, makes page discovery intuitive, and enables automatic code splitting per route.
+**Why**: File-based routing eliminates routing configuration, makes page discovery intuitive,
+and enables automatic code splitting per route.
 
 ## Route Groups and Parallel Routes
 
 Projects **SHOULD** use route groups for organization:
 
-```
+```text
 app/
 ├── (marketing)/
 │   ├── layout.tsx        # Marketing layout
@@ -153,11 +163,13 @@ export default function AppLayout({
 }
 ```
 
-**Why**: Route groups organize files without adding URL segments. Parallel routes enable advanced patterns like modals, split views, and conditional rendering.
+**Why**: Route groups organize files without adding URL segments. Parallel routes enable advanced
+patterns like modals, split views, and conditional rendering.
 
 ## Server vs Client Components
 
-Components **MUST** be Server Components by default. Client Components **MUST** be explicitly marked with `'use client'`.
+Components **MUST** be Server Components by default. Client Components **MUST** be explicitly
+marked with `'use client'`.
 
 ```tsx
 // app/components/user-profile.tsx - Server Component (default)
@@ -195,18 +207,21 @@ export default function Counter() {
 ### When to Use Each
 
 | Use Server Components for | Use Client Components for |
-|---------------------------|---------------------------|
+| ------------------------- | ------------------------- |
 | Data fetching | Interactivity (onClick, onChange) |
 | Backend resources access | State (useState, useReducer) |
 | Sensitive data (API keys) | Effects (useEffect, useLayoutEffect) |
 | Large dependencies | Browser APIs (localStorage, window) |
 | SEO-critical content | Event listeners |
 
-**Why**: Server Components reduce JavaScript bundle size, enable direct backend access, and improve initial page load. Client Components provide interactivity where needed without forcing the entire app client-side.
+**Why**: Server Components reduce JavaScript bundle size, enable direct backend access, and
+improve initial page load. Client Components provide interactivity where needed without forcing
+the entire app client-side.
 
 ## Partial Prerendering (PPR)
 
-Next.js 15 introduces Partial Prerendering[^ppr], which combines static and dynamic rendering in a single route. Projects **SHOULD** enable PPR for optimal performance:
+Next.js 15 introduces Partial Prerendering[^ppr], which combines static and dynamic rendering in
+a single route. Projects **SHOULD** enable PPR for optimal performance:
 
 ```typescript
 // next.config.ts
@@ -249,7 +264,9 @@ export default function Dashboard() {
 }
 ```
 
-**Why PPR**: Traditional SSR waits for all data before sending HTML. PPR sends a static shell instantly (best TTFB) while streaming dynamic content as it resolves. This provides the speed of static sites with the personalization of dynamic pages.
+**Why PPR**: Traditional SSR waits for all data before sending HTML. PPR sends a static shell
+instantly (best TTFB) while streaming dynamic content as it resolves. This provides the speed
+of static sites with the personalization of dynamic pages.
 
 ## Data Fetching in Server Components
 
@@ -308,7 +325,8 @@ async function Content() {
 }
 ```
 
-**Why**: Request deduplication prevents waterfall fetching and redundant network calls, improving performance without manual caching logic.
+**Why**: Request deduplication prevents waterfall fetching and redundant network calls,
+improving performance without manual caching logic.
 
 ## Fetch Caching and Revalidation
 
@@ -347,7 +365,8 @@ export async function updatePost(id: string) {
 }
 ```
 
-**Why**: Explicit cache control balances performance with data freshness. Tag-based revalidation enables surgical cache invalidation without rebuilding the entire site.
+**Why**: Explicit cache control balances performance with data freshness. Tag-based revalidation
+enables surgical cache invalidation without rebuilding the entire site.
 
 ## Server Actions
 
@@ -426,7 +445,8 @@ export default function NewPostForm({ action }) {
 }
 ```
 
-**Why**: Server Actions eliminate the need for API routes for simple mutations, provide type safety, and work without client-side JavaScript (progressive enhancement).
+**Why**: Server Actions eliminate the need for API routes for simple mutations, provide type
+safety, and work without client-side JavaScript (progressive enhancement).
 
 ## Middleware
 
@@ -461,14 +481,15 @@ export const config = {
 ### Middleware Use Cases
 
 | Use Case | Pattern |
-|----------|---------|
+| -------- | ------- |
 | Authentication | Check tokens, redirect to login |
 | Authorization | Role-based access control |
 | Redirects | A/B testing, localization |
 | Bot detection | User-Agent analysis |
 | Rate limiting | Request throttling |
 
-**Why**: Middleware runs on the Edge before rendering, enabling fast authentication checks, redirects, and request modification without full server computation.
+**Why**: Middleware runs on the Edge before rendering, enabling fast authentication checks,
+redirects, and request modification without full server computation.
 
 ## Rate Limiting
 
@@ -476,7 +497,9 @@ Projects **SHOULD** use Upstash Ratelimit[^ratelimit] for serverless-compatible 
 
 ### Why
 
-Traditional rate limiting libraries require persistent connections and server-side state. Upstash Ratelimit uses HTTP-based Redis, making it the only connectionless rate limiting solution designed for serverless environments (Vercel, AWS Lambda, Cloudflare Workers).
+Traditional rate limiting libraries require persistent connections and server-side state.
+Upstash Ratelimit uses HTTP-based Redis, making it the only connectionless rate limiting
+solution designed for serverless environments (Vercel, AWS Lambda, Cloudflare Workers).
 
 ### Edge Middleware Implementation
 
@@ -548,7 +571,8 @@ const ratelimit = new Ratelimit({
 });
 ```
 
-**Why**: Edge middleware blocks traffic before it reaches your backend, reducing costs and protecting against abuse. Multi-region Redis minimizes latency globally.
+**Why**: Edge middleware blocks traffic before it reaches your backend, reducing costs and
+protecting against abuse. Multi-region Redis minimizes latency globally.
 
 ## API Routes (Route Handlers)
 
@@ -595,7 +619,8 @@ export async function DELETE(
 }
 ```
 
-**Why**: Route Handlers provide REST API endpoints when needed. For form submissions and mutations, prefer Server Actions for better type safety and progressive enhancement.
+**Why**: Route Handlers provide REST API endpoints when needed. For form submissions and
+mutations, prefer Server Actions for better type safety and progressive enhancement.
 
 ## Testing
 
@@ -670,7 +695,9 @@ test.describe('Authentication', () => {
 });
 ```
 
-**Why**: Vitest provides fast unit testing with React Server Component support. Playwright enables reliable E2E testing across browsers with automatic waiting and screenshot/video recording.
+**Why**: Vitest provides fast unit testing with React Server Component support. Playwright
+enables reliable E2E testing across browsers with automatic waiting and screenshot/video
+recording.
 
 ## Authentication
 
@@ -678,7 +705,9 @@ Projects **SHOULD** use Auth.js[^authjs] (NextAuth.js v5) for authentication:
 
 ### Why
 
-Auth.js is the standard open-source authentication library for Next.js. Version 5 is a complete rewrite with edge-first design, App Router support, and a universal `auth()` function that works across all Next.js contexts.
+Auth.js is the standard open-source authentication library for Next.js. Version 5 is a complete
+rewrite with edge-first design, App Router support, and a universal `auth()` function that
+works across all Next.js contexts.
 
 ### Installation and Setup
 
@@ -828,9 +857,12 @@ export default async function AdminPage() {
 | JWT | Edge-compatible, no DB lookups, horizontal scaling | Cannot revoke until expiry |
 | Database | Immediate revocation, audit trail | Requires DB access, more latency |
 
-Projects **MUST** use JWT strategy when using middleware auth checks (Edge Runtime cannot access databases directly).
+Projects **MUST** use JWT strategy when using middleware auth checks (Edge Runtime cannot access
+databases directly).
 
-**Why**: Auth.js provides type-safe authentication with zero vendor lock-in. JWT sessions work in Edge Runtime while database sessions enable immediate session revocation for security-critical applications.
+**Why**: Auth.js provides type-safe authentication with zero vendor lock-in. JWT sessions work
+in Edge Runtime while database sessions enable immediate session revocation for
+security-critical applications.
 
 ## Deployment
 
@@ -862,7 +894,8 @@ const config: NextConfig = {
 export default config;
 ```
 
-**Why**: Vercel provides zero-config deployments, automatic HTTPS, edge functions, and built-in analytics. Preview deployments for every pull request enable safe testing before production.
+**Why**: Vercel provides zero-config deployments, automatic HTTPS, edge functions, and built-in
+analytics. Preview deployments for every pull request enable safe testing before production.
 
 ### Self-Hosted
 
@@ -940,7 +973,8 @@ volumes:
   postgres_data:
 ```
 
-**Why**: Standalone output creates a minimal Node.js server with only required dependencies. Docker enables consistent deployments across environments with isolated dependencies.
+**Why**: Standalone output creates a minimal Node.js server with only required dependencies.
+Docker enables consistent deployments across environments with isolated dependencies.
 
 ## Performance Optimization
 
@@ -958,7 +992,8 @@ Projects **SHOULD** use Turbopack for faster development builds:
 }
 ```
 
-**Why**: Turbopack provides 700x faster updates than Webpack in development. Production builds still use Webpack for maximum optimization.
+**Why**: Turbopack provides 700x faster updates than Webpack in development. Production builds
+still use Webpack for maximum optimization.
 
 ### Image Optimization
 
@@ -1010,7 +1045,8 @@ const config: NextConfig = {
 };
 ```
 
-**Why**: Next.js Image automatically optimizes images, serves modern formats (AVIF/WebP), generates responsive sizes, and lazy loads by default.
+**Why**: Next.js Image automatically optimizes images, serves modern formats (AVIF/WebP),
+generates responsive sizes, and lazy loads by default.
 
 ### Font Optimization
 
@@ -1052,7 +1088,8 @@ code {
 }
 ```
 
-**Why**: `next/font` automatically self-hosts Google Fonts (eliminating external requests), optimizes loading with CSS size-adjust, and prevents layout shift.
+**Why**: `next/font` automatically self-hosts Google Fonts (eliminating external requests),
+optimizes loading with CSS size-adjust, and prevents layout shift.
 
 ### Metadata and SEO
 
@@ -1099,15 +1136,21 @@ export async function generateMetadata({
 }
 ```
 
-**Why**: Next.js automatically generates SEO tags from metadata, supports dynamic per-page metadata, and provides type safety for Open Graph and Twitter Cards.
+**Why**: Next.js automatically generates SEO tags from metadata, supports dynamic per-page
+metadata, and provides type safety for Open Graph and Twitter Cards.
 
 ## Real-Time Communication
 
-Serverless platforms like Vercel **MUST NOT** use WebSockets directly (serverless functions are ephemeral and cannot maintain persistent connections). Projects **SHOULD** use managed real-time services:
+Serverless platforms like Vercel **MUST NOT** use WebSockets directly (serverless functions are
+ephemeral and cannot maintain persistent connections). Projects **SHOULD** use managed
+real-time services:
 
 ### Why
 
-Vercel and other serverless platforms run ephemeral functions that scale up and down. WebSocket connections require persistent server processes. Managed services like Pusher[^pusher] and Ably[^ably] handle connection infrastructure while your serverless functions communicate via their APIs.
+Vercel and other serverless platforms run ephemeral functions that scale up and down. WebSocket
+connections require persistent server processes. Managed services like Pusher[^pusher] and
+Ably[^ably] handle connection infrastructure while your serverless functions communicate via
+their APIs.
 
 ### Pusher Integration
 
@@ -1221,7 +1264,8 @@ app.prepare().then(() => {
 });
 ```
 
-**Why**: Managed services handle WebSocket infrastructure, scaling, and global presence. They integrate cleanly with serverless functions while providing reliable real-time delivery.
+**Why**: Managed services handle WebSocket infrastructure, scaling, and global presence. They
+integrate cleanly with serverless functions while providing reliable real-time delivery.
 
 ## Background Jobs
 
@@ -1229,7 +1273,9 @@ Projects running on serverless platforms **SHOULD** use managed background job s
 
 ### Why
 
-Serverless functions have execution time limits (Vercel: 10s default, 60s max on Pro). Long-running tasks require dedicated infrastructure. Managed services like Inngest[^inngest] and Trigger.dev[^triggerdev] handle orchestration, retries, and monitoring.
+Serverless functions have execution time limits (Vercel: 10s default, 60s max on Pro).
+Long-running tasks require dedicated infrastructure. Managed services like Inngest[^inngest]
+and Trigger.dev[^triggerdev] handle orchestration, retries, and monitoring.
 
 ### Vercel Cron Jobs
 
@@ -1332,7 +1378,9 @@ export const { GET, POST, PUT } = serve({
 | Trigger.dev[^triggerdev] | Long-running tasks, integrations | Yes |
 | BullMQ[^bullmq] | Self-hosted, Redis-based | No (needs server) |
 
-**Why**: Managed background job services provide retries, observability, and durability. Inngest and Trigger.dev run tasks outside your serverless function limits while integrating with your Next.js codebase.
+**Why**: Managed background job services provide retries, observability, and durability. Inngest
+and Trigger.dev run tasks outside your serverless function limits while integrating with your
+Next.js codebase.
 
 ## Circuit Breakers
 
@@ -1340,7 +1388,9 @@ Projects calling external APIs **SHOULD** implement circuit breakers with Opossu
 
 ### Why
 
-Circuit breakers prevent cascading failures when external services are unavailable. When failures exceed a threshold, the circuit "opens" and fails fast instead of waiting for timeouts. This protects both your application and the failing service.
+Circuit breakers prevent cascading failures when external services are unavailable. When
+failures exceed a threshold, the circuit "opens" and fails fast instead of waiting for
+timeouts. This protects both your application and the failing service.
 
 ### Implementation
 
@@ -1426,7 +1476,9 @@ export async function getCircuitState() {
 }
 ```
 
-**Why**: Circuit breakers prevent your application from repeatedly calling failing services. Opossum is the most mature Node.js circuit breaker with 70,000+ weekly downloads and serverless support.
+**Why**: Circuit breakers prevent your application from repeatedly calling failing services.
+Opossum is the most mature Node.js circuit breaker with 70,000+ weekly downloads and serverless
+support.
 
 ## Feature Flags
 
@@ -1434,7 +1486,9 @@ Projects **SHOULD** use the Vercel Flags SDK[^flagssdk] for feature flag integra
 
 ### Why
 
-Feature flags enable gradual rollouts, A/B testing, and kill switches. The Vercel Flags SDK provides a framework-agnostic interface that works with any provider (LaunchDarkly, Statsig, custom) while optimizing for Edge Runtime performance.
+Feature flags enable gradual rollouts, A/B testing, and kill switches. The Vercel Flags SDK
+provides a framework-agnostic interface that works with any provider (LaunchDarkly, Statsig,
+custom) while optimizing for Edge Runtime performance.
 
 ### Installation
 
@@ -1526,11 +1580,14 @@ export async function getFeatureFlags() {
 }
 ```
 
-**Why**: The Flags SDK provides a unified interface across providers while Vercel Edge Config bootstraps flags without network requests. This combination enables <1ms flag evaluation at the edge.
+**Why**: The Flags SDK provides a unified interface across providers while Vercel Edge Config
+bootstraps flags without network requests. This combination enables <1ms flag evaluation at the
+edge.
 
 ## Static Site Generation (SSG) and ISR
 
-Projects **SHOULD** use Static Site Generation (SSG) and Incremental Static Regeneration (ISR) for content that doesn't change frequently.
+Projects **SHOULD** use Static Site Generation (SSG) and Incremental Static Regeneration (ISR)
+for content that doesn't change frequently.
 
 ### Why SSG and ISR
 
@@ -1712,11 +1769,14 @@ const config: NextConfig = {
 export default config;
 ```
 
-**Why**: SSG provides the best performance and lowest cost for content that changes infrequently. ISR adds flexibility to update content without full rebuilds, making it ideal for content-heavy sites.
+**Why**: SSG provides the best performance and lowest cost for content that changes infrequently.
+ISR adds flexibility to update content without full rebuilds, making it ideal for content-heavy
+sites.
 
 ## Internationalization (i18n)
 
-Projects with multilingual content **SHOULD** implement i18n using Next.js routing patterns and message catalogs.
+Projects with multilingual content **SHOULD** implement i18n using Next.js routing patterns and
+message catalogs.
 
 ### Why i18n
 
@@ -1735,7 +1795,7 @@ Projects with multilingual content **SHOULD** implement i18n using Next.js routi
 
 ### Subdirectory Routing (Recommended)
 
-```
+```text
 app/
 ├── [lang]/
 │   ├── layout.tsx
@@ -2002,7 +2062,9 @@ export default async function ProductPage({
 }
 ```
 
-**Why**: Next.js App Router's segment-based routing provides clean i18n implementation without external libraries. Server Components enable per-request dictionary loading with zero client bundle impact.
+**Why**: Next.js App Router's segment-based routing provides clean i18n implementation without
+external libraries. Server Components enable per-request dictionary loading with zero client
+bundle impact.
 
 ## See Also
 

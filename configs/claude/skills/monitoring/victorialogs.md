@@ -1,11 +1,12 @@
 # VictoriaLogs Skill
 
-Provides log query access for debugging, incident investigation, and pattern analysis using LogsQL.
+Provides log query access for debugging, incident investigation, and pattern
+analysis using LogsQL.
 
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | Monitoring / Logs |
 | **Protocol** | HTTP API |
 | **Query Language** | LogsQL |
@@ -241,7 +242,7 @@ Compare post-deploy to baseline:
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `ops/deploy-validator` | readonly | Post-deploy error detection |
 | `ops/rollback-advisor` | readonly | Incident log analysis |
 | `security/incident-response-lead` | readonly | Security investigation |
@@ -250,7 +251,7 @@ Compare post-deploy to baseline:
 ## Graceful Degradation
 
 | If Missing | Fallback |
-|------------|----------|
+| ---------- | -------- |
 | VictoriaLogs unavailable | Use application logs directly (kubectl logs) |
 | Specific logs missing | Widen time range or service scope |
 | Query timeout | Reduce time range, add filters |

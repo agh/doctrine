@@ -1,7 +1,7 @@
 # Necessities
 
-
 <a id="c-stable"></a>
+
 ## Public dependencies of a stable crate are stable (C-STABLE)
 
 A crate cannot be stable (>=1.0.0) without all of its public dependencies being
@@ -40,8 +40,8 @@ impl From<other_crate::Error> for Error {
 }
 ```
 
-
 <a id="c-permissive"></a>
+
 ## Crate and its dependencies have a permissive license (C-PERMISSIVE)
 
 The software produced by the Rust project is dual-licensed, under either the

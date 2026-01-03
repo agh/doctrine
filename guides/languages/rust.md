@@ -2,14 +2,16 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > Rust
 
-**The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).**
+**The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document
+are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).**
 
 This guide follows official Rust style conventions enforced by rustfmt[^1] and Clippy[^2].
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Clippy[^2] | `cargo clippy` |
 | Format | rustfmt[^1] | `cargo fmt` |
 | Type check | built-in | `cargo check` |
@@ -26,7 +28,11 @@ Projects **MUST** use Clippy[^2] as the official Rust linter.
 
 ### Why Clippy
 
-Clippy[^2] is the official Rust linter with 750+ lints. It's included with rustup[^6], making it zero-cost to adopt. Unlike third-party linters, Clippy has deep integration with the Rust compiler and is maintained by the Rust team, ensuring compatibility with new language features and idiomatic Rust patterns.
+Clippy[^2] is the official Rust linter with 750+ lints. It's included with
+rustup[^6], making it zero-cost to adopt. Unlike third-party linters, Clippy
+has deep integration with the Rust compiler and is maintained by the Rust
+team, ensuring compatibility with new language features and idiomatic Rust
+patterns.
 
 ```bash
 # Run Clippy
@@ -63,7 +69,8 @@ cognitive-complexity-threshold = 25
 
 ### Recommended Lint Groups
 
-Projects **SHOULD** enable pedantic and nursery lint groups, and **MUST** deny unwrap and expect in production code:
+Projects **SHOULD** enable pedantic and nursery lint groups, and **MUST** deny
+unwrap and expect in production code:
 
 ```rust
 // In lib.rs or main.rs
@@ -79,7 +86,10 @@ Projects **MUST** use rustfmt[^1] for code formatting.
 
 ### Why rustfmt
 
-rustfmt[^1] is the official Rust formatter, maintained by the Rust team. It eliminates formatting debates and ensures consistent style across the entire Rust ecosystem. Unlike other languages with competing formatters, rustfmt has become the de facto standard with universal adoption.
+rustfmt[^1] is the official Rust formatter, maintained by the Rust team. It
+eliminates formatting debates and ensures consistent style across the entire
+Rust ecosystem. Unlike other languages with competing formatters, rustfmt has
+become the de facto standard with universal adoption.
 
 ```bash
 # Format all code
@@ -103,11 +113,14 @@ reorder_imports = true
 
 ## Common Trait Implementations
 
-Types **MUST** eagerly implement common traits. Rust's orphan rule prevents adding trait implementations later if you don't control both the trait and the type.
+Types **MUST** eagerly implement common traits. Rust's orphan rule prevents
+adding trait implementations later if you don't control both the trait and the
+type.
 
 ### Why This Matters
 
-- **Orphan rule lock-in**: Once your crate is published, users can't add `Debug` or `Clone` to your types
+- **Orphan rule lock-in**: Once your crate is published, users can't add
+  `Debug` or `Clone` to your types
 - **Ecosystem compatibility**: Types without `Debug` can't be used in `Result` error positions
 - **User expectations**: Rust developers expect types to be debuggable, cloneable, and comparable
 
@@ -145,7 +158,7 @@ pub struct Point {
 ### Trait Implementation Guide
 
 | Trait | When to Implement | Notes |
-|-------|-------------------|-------|
+| ----- | ----------------- | ----- |
 | `Debug` | **Always** | Required for error messages and debugging |
 | `Clone` | When duplication makes sense | Skip for types with unique ownership (file handles) |
 | `PartialEq`, `Eq` | When equality is meaningful | `Eq` requires `PartialEq` |
@@ -236,7 +249,8 @@ pub struct Config {
 
 ## Procedural Macros
 
-Projects **MAY** create procedural macros to reduce boilerplate. Procedural macros **MUST** be defined in a separate crate with `proc-macro = true`.
+Projects **MAY** create procedural macros to reduce boilerplate. Procedural
+macros **MUST** be defined in a separate crate with `proc-macro = true`.
 
 ### Why Procedural Macros
 
@@ -248,14 +262,14 @@ Projects **MAY** create procedural macros to reduce boilerplate. Procedural macr
 ### Types of Procedural Macros
 
 | Type | Syntax | Use Case |
-|------|--------|----------|
+| ---- | ------ | -------- |
 | Derive macros | `#[derive(MyTrait)]` | Auto-implement traits |
 | Attribute macros | `#[my_attr]` | Transform items |
 | Function-like macros | `my_macro!(...)` | Custom syntax |
 
 ### Project Structure
 
-```
+```text
 my_project/
 ├── Cargo.toml
 ├── src/
@@ -533,7 +547,10 @@ Projects **MUST** run cargo-audit[^3] to check for known vulnerabilities in depe
 
 ### Why cargo-audit
 
-cargo-audit[^3] checks your dependencies against the RustSec Advisory Database[^7], which tracks security vulnerabilities in Rust crates. It integrates seamlessly into CI pipelines and provides actionable remediation steps for vulnerable dependencies.
+cargo-audit[^3] checks your dependencies against the RustSec Advisory
+Database[^7], which tracks security vulnerabilities in Rust crates. It
+integrates seamlessly into CI pipelines and provides actionable remediation
+steps for vulnerable dependencies.
 
 ```bash
 # Install
@@ -647,7 +664,9 @@ interference and improving speed.
 
 ## Async Runtimes
 
-Projects **SHOULD** use tokio[^14] as the default async runtime. Projects **MAY** use async-std[^18] for simpler use cases or when tokio's complexity is not needed.
+Projects **SHOULD** use tokio[^14] as the default async runtime. Projects
+**MAY** use async-std[^18] for simpler use cases or when tokio's complexity is
+not needed.
 
 ### Why tokio
 
@@ -1205,7 +1224,8 @@ jobs:
 
 ## WebAssembly (WASM)
 
-Projects **MAY** compile Rust to WebAssembly for browser or edge runtime deployment. wasm-pack[^19] **SHOULD** be used for building WASM packages.
+Projects **MAY** compile Rust to WebAssembly for browser or edge runtime
+deployment. wasm-pack[^19] **SHOULD** be used for building WASM packages.
 
 ### Why Rust for WASM
 
@@ -1602,7 +1622,8 @@ fn test_feature_combination_a_only() {
 
 ## Unsafe Rust
 
-Projects **SHOULD** minimize usage of `unsafe`. When `unsafe` is required, it **MUST** be carefully documented and isolated.
+Projects **SHOULD** minimize usage of `unsafe`. When `unsafe` is required, it
+**MUST** be carefully documented and isolated.
 
 ### Why Minimize Unsafe
 
@@ -1614,7 +1635,7 @@ Projects **SHOULD** minimize usage of `unsafe`. When `unsafe` is required, it **
 ### When Unsafe is Necessary
 
 | Use Case | Example |
-|----------|---------|
+| -------- | ------- |
 | FFI (Foreign Function Interface) | Calling C libraries |
 | Raw pointer manipulation | Custom data structures |
 | Performance-critical code | SIMD, avoiding bounds checks |

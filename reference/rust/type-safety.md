@@ -1,7 +1,7 @@
 # Type safety
 
-
 <a id="c-newtype"></a>
+
 ## Newtypes provide static distinctions (C-NEWTYPE)
 
 Newtypes can statically distinguish between different interpretations of an
@@ -34,8 +34,8 @@ remind us to perform the conversion, thus averting certain [catastrophic bugs].
 
 [catastrophic bugs]: http://en.wikipedia.org/wiki/Mars_Climate_Orbiter
 
-
 <a id="c-custom-type"></a>
+
 ## Arguments convey meaning through types, not `bool` or `Option` (C-CUSTOM-TYPE)
 
 Prefer
@@ -65,8 +65,8 @@ with a distinguished name.
 
 [C-NEWTYPE]: #c-newtype
 
-
 <a id="c-bitflag"></a>
+
 ## Types for a set of flags are `bitflags`, not enums (C-BITFLAG)
 
 Rust supports `enum` types with explicitly specified discriminants:
@@ -121,17 +121,17 @@ fn main() {
 }
 ```
 
-
 <a id="c-builder"></a>
+
 ## Builders enable construction of complex values (C-BUILDER)
 
 Some data structures are complicated to construct, due to their construction
 needing:
 
-* a large number of inputs
-* compound data (e.g. slices)
-* optional configuration data
-* choice between several flavors
+- a large number of inputs
+- compound data (e.g. slices)
+- optional configuration data
+- choice between several flavors
 
 which can easily lead to a large number of distinct constructors with many
 arguments each.
@@ -269,11 +269,11 @@ which must be transferred to the task upon construction (in `spawn`).
 When the terminal methods of the builder require ownership, there is a basic
 tradeoff:
 
-* If the other builder methods take/return a mutable borrow, the complex
+- If the other builder methods take/return a mutable borrow, the complex
   configuration case will work well, but one-liner configuration becomes
   impossible.
 
-* If the other builder methods take/return an owned `self`, one-liners continue
+- If the other builder methods take/return an owned `self`, one-liners continue
   to work well but complex configuration is less convenient.
 
 Under the rubric of making easy things easy and hard things possible, all

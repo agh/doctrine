@@ -16,12 +16,12 @@ design intent explicit through code.
 
 ## Quick Reference
 
-| Concept | Implementation | Purpose |
-|---------|----------------|---------|
-| Design tokens | CSS custom properties | Single source of truth for values |
-| Primitives | Base components | Building blocks for composition |
-| Semantic tokens | Named by purpose | Abstract meaning from raw values |
-| Theming | Token overrides | Support light/dark/custom themes |
+| Concept         | Implementation          | Purpose                            |
+| --------------- | ----------------------- | ---------------------------------- |
+| Design tokens   | CSS custom properties   | Single source of truth for values  |
+| Primitives      | Base components         | Building blocks for composition    |
+| Semantic tokens | Named by purpose        | Abstract meaning from raw values   |
+| Theming         | Token overrides         | Support light/dark/custom themes   |
 
 ---
 
@@ -41,7 +41,7 @@ hardcoding `#3b82f6`, use `var(--color-primary)`. This abstraction enables:
 
 Tokens MUST be organized in three layers:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  Component Tokens (highest specificity)                     │
 │  --button-bg, --card-border, --input-focus-ring            │
@@ -112,15 +112,15 @@ The type scale MUST be based on a consistent ratio. Recommended: Major Third
 
 **Usage guidelines:**
 
-| Size | Use Case |
-|------|----------|
-| `--text-xs` | Captions, badges, timestamps |
-| `--text-sm` | Secondary text, table cells, form labels |
-| `--text-base` | Body text, primary content |
-| `--text-lg` | Section headers, card titles |
-| `--text-xl` | Page titles |
-| `--text-2xl` | Hero numbers, dashboard metrics |
-| `--text-3xl` | Marketing headlines (sparingly) |
+| Size          | Use Case                                 |
+| ------------- | ---------------------------------------- |
+| `--text-xs`   | Captions, badges, timestamps             |
+| `--text-sm`   | Secondary text, table cells, form labels |
+| `--text-base` | Body text, primary content               |
+| `--text-lg`   | Section headers, card titles             |
+| `--text-xl`   | Page titles                              |
+| `--text-2xl`  | Hero numbers, dashboard metrics          |
+| `--text-3xl`  | Marketing headlines (sparingly)          |
 
 ### Font Weights
 
@@ -274,12 +274,12 @@ Dark mode MUST NOT simply invert colors. It requires intentional design:
 
 All color combinations MUST meet WCAG 2.1 AA requirements:
 
-| Element | Minimum Contrast |
-|---------|------------------|
-| Normal text (<18px) | 4.5:1 |
-| Large text (≥18px or ≥14px bold) | 3:1 |
-| UI components and graphics | 3:1 |
-| Focus indicators | 3:1 |
+| Element                            | Minimum Contrast |
+| ---------------------------------- | ---------------- |
+| Normal text (<18px)                | 4.5:1            |
+| Large text (>=18px or >=14px bold) | 3:1              |
+| UI components and graphics         | 3:1              |
+| Focus indicators                   | 3:1              |
 
 Use tools like [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
 to verify.
@@ -315,14 +315,14 @@ Spacing MUST be based on a consistent unit. Recommended: 4px base.
 
 ### Usage Guidelines
 
-| Context | Recommended Spacing |
-|---------|---------------------|
-| Inline element gap | `--space-1` to `--space-2` |
-| Related items | `--space-2` to `--space-3` |
-| Component internal padding | `--space-3` to `--space-4` |
-| Card padding | `--space-4` to `--space-6` |
-| Section gap | `--space-6` to `--space-8` |
-| Page sections | `--space-12` to `--space-16` |
+| Context                    | Recommended Spacing          |
+| -------------------------- | ---------------------------- |
+| Inline element gap         | `--space-1` to `--space-2`   |
+| Related items              | `--space-2` to `--space-3`   |
+| Component internal padding | `--space-3` to `--space-4`   |
+| Card padding               | `--space-4` to `--space-6`   |
+| Section gap                | `--space-6` to `--space-8`   |
+| Page sections              | `--space-12` to `--space-16` |
 
 **Never use arbitrary values.** If the scale doesn't fit, reconsider the design
 rather than introducing one-off spacing.
@@ -348,13 +348,13 @@ rather than introducing one-off spacing.
 
 ### Usage Guidelines
 
-| Element | Radius |
-|---------|--------|
-| Badges, tags | `--radius-sm` |
-| Inputs, select | `--radius-md` |
-| Buttons | `--radius-lg` |
-| Cards | `--radius-xl` |
-| Modals | `--radius-2xl` |
+| Element              | Radius          |
+| -------------------- | --------------- |
+| Badges, tags         | `--radius-sm`   |
+| Inputs, select       | `--radius-md`   |
+| Buttons              | `--radius-lg`   |
+| Cards                | `--radius-xl`   |
+| Modals               | `--radius-2xl`  |
 | Avatars, status dots | `--radius-full` |
 
 Consistency in radius creates visual harmony. Mixing many different radii
@@ -387,13 +387,13 @@ creates visual discord.
 
 ### Elevation System
 
-| Level | Shadow | Usage |
-|-------|--------|-------|
-| 0 | none | Flat elements, inline content |
-| 1 | `--shadow-sm` | Cards at rest |
-| 2 | `--shadow-md` | Cards on hover, dropdowns |
-| 3 | `--shadow-lg` | Modals, popovers |
-| 4 | `--shadow-xl` | Command palette, important overlays |
+| Level | Shadow        | Usage                               |
+| ----- | ------------- | ----------------------------------- |
+| 0     | none          | Flat elements, inline content       |
+| 1     | `--shadow-sm` | Cards at rest                       |
+| 2     | `--shadow-md` | Cards on hover, dropdowns           |
+| 3     | `--shadow-lg` | Modals, popovers                    |
+| 4     | `--shadow-xl` | Command palette, important overlays |
 
 In dark mode, shadows are less visible. Consider using subtle borders or
 background color differences to indicate elevation instead.

@@ -2,7 +2,9 @@
 
 ## RFC 2119 Key Words
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Table of Contents
 
@@ -20,9 +22,16 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Introduction
 
-This guide provides comprehensive guidance on effectively integrating AI assistance into software development workflows. Organizations and individual developers MUST use this guide to establish consistent, efficient, and cost-effective AI-assisted development practices.
+This guide provides comprehensive guidance on effectively integrating AI
+assistance into software development workflows. Organizations and individual
+developers MUST use this guide to establish consistent, efficient, and
+cost-effective AI-assisted development practices.
 
-AI-assisted development tools have evolved rapidly, offering capabilities ranging from code completion to complex architectural analysis. This guide helps teams navigate the landscape of AI tools, select appropriate models for specific tasks, and implement workflows that maximize productivity while maintaining code quality.
+AI-assisted development tools have evolved rapidly, offering capabilities ranging
+from code completion to complex architectural analysis. This guide helps teams
+navigate the landscape of AI tools, select appropriate models for specific
+tasks, and implement workflows that maximize productivity while maintaining
+code quality.
 
 ### Scope
 
@@ -173,7 +182,7 @@ AI assistance SHOULD NOT be the primary approach for:
 
 ### Decision Tree: Should I Use AI for This Task?
 
-```
+```text
 Is the task well-defined with clear requirements?
 ├─ YES: Continue
 └─ NO: Define requirements first, then consider AI
@@ -205,7 +214,7 @@ Does your team have expertise to validate the output?
 
 The following matrix MUST be used as a reference for model selection decisions:
 
-```
+```text
 Capability Level vs Cost (per 1M tokens)
 
 High Capability, High Cost ($10-30/1M input)
@@ -393,6 +402,7 @@ Claude SHOULD be selected when:
 - **Tool Use**: Superior function calling and tool integration capabilities
 
 **Pricing (as of 2025)**[^7]:
+
 - Opus 4.5: $15/1M input tokens, $75/1M output tokens
 - Sonnet 4.5: $3/1M input tokens, $15/1M output tokens
 - Haiku 3.5: $0.25/1M input tokens, $1.25/1M output tokens
@@ -410,6 +420,7 @@ GPT SHOULD be selected when:
 - **Community Resources**: Largest community with extensive examples and patterns
 
 **Pricing (as of 2025)**[^9]:
+
 - GPT-4 Turbo: $10/1M input tokens, $30/1M output tokens
 - GPT-4o: $5/1M input tokens, $15/1M output tokens
 - GPT-4o mini: $0.15/1M input tokens, $0.60/1M output tokens
@@ -427,6 +438,7 @@ Gemini SHOULD be selected when:
 - **Rapid Iteration**: Fast Flash models for quick feedback loops
 
 **Pricing (as of 2025)**[^11]:
+
 - Gemini 1.5 Pro: $3.50/1M input tokens, $10.50/1M output tokens
 - Gemini 1.5 Flash: $0.075/1M input tokens, $0.30/1M output tokens
 - Gemini 1.5 Flash-8B: $0.0375/1M input tokens, $0.15/1M output tokens
@@ -481,13 +493,15 @@ Self-hosted models MUST be considered when:
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
 
 These models SHOULD be used because:
+
 - Balanced cost-to-quality ratio
 - Fast enough for iterative development
 - Good at understanding requirements and context
 - Produce production-quality code
 
 **Example Workflow**:
-```
+
+```text
 1. Describe feature requirements to AI
 2. Request implementation with tests
 3. Review and iterate on design
@@ -503,6 +517,7 @@ These models SHOULD be used because:
 **Budget Alternative**: Claude Haiku 3.5 or GPT-4o mini (for simple bugs)
 
 Bug fixing workflow SHOULD:
+
 1. Provide error message and stack trace
 2. Include relevant code context (50-200 lines)
 3. Request explanation before fix
@@ -510,7 +525,8 @@ Bug fixing workflow SHOULD:
 5. Request fix with test case
 
 **Example Prompt Structure**:
-```
+
+```text
 I'm getting this error: [error message]
 
 Stack trace:
@@ -532,13 +548,15 @@ Please:
 **Primary Recommendation**: Claude Opus 4.5 or GPT-4 Turbo (complex), Sonnet/GPT-4o (standard)
 
 Large refactoring tasks MUST:
+
 - Use premium models for planning phase
 - Break down into smaller chunks
 - Validate each step before proceeding
 - Include comprehensive test coverage
 
 **Refactoring Workflow**:
-```
+
+```text
 Phase 1 (Opus/GPT-4): Analysis and Planning
 - Analyze current structure
 - Identify problems and code smells
@@ -566,12 +584,14 @@ Phase 3 (Sonnet/GPT-4o): Cleanup
 **High-Volume Alternative**: Self-hosted CodeLlama
 
 Boilerplate generation SHOULD use budget models because:
+
 - Tasks are well-defined and simple
 - Cost savings are significant at scale
 - Quality is sufficient for standard patterns
 - Fast response time improves developer experience
 
 **Common Boilerplate Tasks**:
+
 - CRUD endpoints
 - Database models
 - API clients
@@ -589,6 +609,7 @@ Boilerplate generation SHOULD use budget models because:
 **MUST NOT**: Use budget models for security-sensitive reviews
 
 Security review workflow MUST:
+
 1. Use premium models exclusively
 2. Request specific vulnerability categories
 3. Include threat model context
@@ -596,7 +617,8 @@ Security review workflow MUST:
 5. Never auto-merge based on AI approval alone
 
 **Review Prompt Template**:
-```
+
+```text
 Please perform a security review of this code:
 
 [code]
@@ -625,6 +647,7 @@ For each finding, provide:
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
 
 Standard code reviews SHOULD check:
+
 - Code style and conventions
 - Logic errors
 - Edge cases
@@ -633,7 +656,8 @@ Standard code reviews SHOULD check:
 - Documentation completeness
 
 **Review Workflow**:
-```
+
+```text
 1. Submit PR diff to AI
 2. Provide coding standards/guidelines
 3. Request structured review
@@ -649,6 +673,7 @@ Standard code reviews SHOULD check:
 **Primary Recommendation**: Claude Opus 4.5 or GPT-4 Turbo (critical paths), Sonnet/GPT-4o (general)
 
 Performance review SHOULD:
+
 - Include performance requirements (latency, throughput)
 - Provide profiling data if available
 - Request specific optimization suggestions
@@ -665,6 +690,7 @@ Performance review SHOULD:
 **Budget Alternative**: Claude Haiku 3.5 (for simple endpoints)
 
 API documentation generation SHOULD:
+
 - Include code context
 - Request OpenAPI/Swagger format
 - Generate examples for each endpoint
@@ -672,7 +698,8 @@ API documentation generation SHOULD:
 - Document authentication/authorization
 
 **Example Workflow**:
-```
+
+```text
 Input: API endpoint code
 Output:
 - Endpoint description
@@ -690,6 +717,7 @@ Output:
 **Primary Recommendation**: Claude Haiku 3.5 or GPT-4o mini
 
 Docstring generation SHOULD:
+
 - Use budget models (simple, repetitive task)
 - Follow language-specific conventions
 - Include parameter types
@@ -697,7 +725,8 @@ Docstring generation SHOULD:
 - Provide usage examples for public APIs
 
 **Batch Processing Approach**:
-```
+
+```text
 Process multiple functions in single request:
 - Submit 10-20 functions at once
 - Request consistent format
@@ -712,6 +741,7 @@ Process multiple functions in single request:
 **Primary Recommendation**: Claude Opus 4.5 or GPT-4 Turbo
 
 Architecture documentation MUST:
+
 - Use premium models for accuracy
 - Include comprehensive codebase context
 - Generate diagrams (via Mermaid, PlantUML)
@@ -719,7 +749,8 @@ Architecture documentation MUST:
 - Explain trade-offs
 
 **Documentation Workflow**:
-```
+
+```text
 Phase 1: Analysis
 - Analyze codebase structure
 - Identify main components
@@ -745,6 +776,7 @@ Phase 3: Validation
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
 
 README generation SHOULD include:
+
 - Project overview
 - Installation instructions
 - Quick start guide
@@ -763,6 +795,7 @@ README generation SHOULD include:
 **Budget Alternative**: Claude Haiku 3.5 (for simple functions)
 
 Unit test generation SHOULD:
+
 - Cover happy path
 - Include edge cases
 - Test error conditions
@@ -770,7 +803,8 @@ Unit test generation SHOULD:
 - Use appropriate assertions
 
 **Test Generation Prompt**:
-```
+
+```text
 Generate unit tests for this function:
 
 [function code]
@@ -791,6 +825,7 @@ Requirements:
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
 
 Integration tests SHOULD:
+
 - Use real or realistic test doubles
 - Cover main user flows
 - Include setup and teardown
@@ -805,6 +840,7 @@ Integration tests SHOULD:
 **High-Volume Alternative**: Self-hosted model
 
 Test data generation SHOULD:
+
 - Use budget models (cost-effective for high volume)
 - Include realistic variations
 - Cover boundary conditions
@@ -812,6 +848,7 @@ Test data generation SHOULD:
 - Generate large datasets efficiently
 
 **Example Use Cases**:
+
 - Mock API responses
 - Database seed data
 - User profiles
@@ -825,6 +862,7 @@ Test data generation SHOULD:
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
 
 E2E tests SHOULD:
+
 - Cover critical user journeys
 - Include realistic scenarios
 - Handle async operations
@@ -844,6 +882,7 @@ This workflow pattern SHOULD be the default approach for medium to complex tasks
 **Objective**: Understand the problem space and existing codebase
 
 **Steps**:
+
 1. Describe the task to AI
 2. Ask AI to analyze relevant existing code
 3. Request potential approaches
@@ -851,7 +890,8 @@ This workflow pattern SHOULD be the default approach for medium to complex tasks
 5. Identify potential challenges
 
 **Example Session**:
-```
+
+```text
 Developer: I need to add rate limiting to our API. Here's our current
 middleware structure: [code]. What approaches should I consider?
 
@@ -877,6 +917,7 @@ AI: [Discusses Redis-based approach]
 **Objective**: Create detailed implementation plan
 
 **Steps**:
+
 1. Break down task into subtasks
 2. Identify files to modify
 3. Determine test strategy
@@ -884,7 +925,8 @@ AI: [Discusses Redis-based approach]
 5. Estimate effort
 
 **Example Output**:
-```
+
+```text
 Implementation Plan: API Rate Limiting
 
 Subtasks:
@@ -926,6 +968,7 @@ Estimated Effort: 4-6 hours
 **Objective**: Implement planned changes
 
 **Steps**:
+
 1. Implement subtasks in order
 2. Generate code for each subtask
 3. Review and refine each piece
@@ -933,7 +976,8 @@ Estimated Effort: 4-6 hours
 5. Iterate based on failures
 
 **Implementation Approach**:
-```
+
+```text
 For each subtask:
 1. Request implementation from AI
 2. Review generated code
@@ -944,6 +988,7 @@ For each subtask:
 ```
 
 **Model Selection**:
+
 - Complex logic: Sonnet/GPT-4o
 - Boilerplate: Haiku/mini
 - Critical sections: Opus/GPT-4
@@ -957,6 +1002,7 @@ For each subtask:
 **Objective**: Create clean, reviewable commits
 
 **Steps**:
+
 1. Review all changes
 2. Group related changes
 3. Generate commit messages
@@ -964,7 +1010,8 @@ For each subtask:
 5. Request review
 
 **Commit Message Generation**:
-```
+
+```text
 Developer: Generate a commit message for these changes: [diff]
 
 AI:
@@ -990,7 +1037,8 @@ Test-Driven Development with AI assistance SHOULD follow this workflow:
 #### Step 1: Generate Test Cases (Model: Sonnet/GPT-4o)
 
 **Process**:
-```
+
+```text
 Developer: I need to implement a function that validates email addresses.
 Generate comprehensive test cases.
 
@@ -1013,7 +1061,8 @@ AI: [Provides test cases]
 #### Step 2: Write Tests First (Model: Sonnet/GPT-4o or Haiku/mini)
 
 **Process**:
-```
+
+```text
 Developer: Write tests for these cases using Jest:
 [List of test cases]
 
@@ -1043,7 +1092,8 @@ describe('validateEmail', () => {
 #### Step 3: Implement to Pass Tests (Model: Sonnet/GPT-4o)
 
 **Process**:
-```
+
+```text
 Developer: Implement validateEmail function to pass these tests:
 [Test code]
 
@@ -1066,7 +1116,8 @@ function validateEmail(email: string): boolean {
 #### Step 4: Refactor (Model: Sonnet/GPT-4o)
 
 **Process**:
-```
+
+```text
 Developer: The function works but is hard to read. Refactor for clarity
 while keeping all tests passing.
 
@@ -1089,6 +1140,7 @@ function hasWhitespace(str: string): boolean { ... }
 ```
 
 **Benefits of TDD with AI**:
+
 - AI excels at generating comprehensive test cases
 - Tests serve as specification for AI implementation
 - Reduces debugging time
@@ -1102,13 +1154,15 @@ This pattern treats AI as a pair programming partner for real-time development.
 #### Continuous Collaboration Mode
 
 **Setup**:
+
 - Keep AI session open during development
 - Share context continuously
 - Get instant feedback
 - Iterate rapidly
 
 **Example Session**:
-```
+
+```text
 Developer: I'm starting work on user authentication. Here's the user model:
 [code]
 
@@ -1139,12 +1193,14 @@ Developer: Perfect. Now let's do the login endpoint.
 ```
 
 **Benefits**:
+
 - Immediate feedback
 - Course correction before investing time
 - Knowledge sharing
 - Faster problem resolution
 
 **Best Practices**:
+
 - Share context upfront
 - Ask for explanations, not just code
 - Challenge AI suggestions
@@ -1158,7 +1214,8 @@ AI-assisted code review SHOULD complement, not replace, human review.
 #### Pre-Human Review Pattern
 
 **Workflow**:
-```
+
+```text
 1. Developer completes implementation
 2. Run AI code review first
 3. Address AI feedback
@@ -1167,7 +1224,8 @@ AI-assisted code review SHOULD complement, not replace, human review.
 ```
 
 **AI Review Prompt Template**:
-```
+
+```text
 Please review this pull request:
 
 Files changed:
@@ -1192,7 +1250,8 @@ Provide specific line numbers and suggestions.
 ```
 
 **AI Review Output Format**:
-```
+
+```text
 ## Critical Issues
 - [File:Line] Security: SQL injection vulnerability in user input handling
 - [File:Line] Bug: Potential null pointer exception when user is undefined
@@ -1212,6 +1271,7 @@ Provide specific line numbers and suggestions.
 ```
 
 **Benefits**:
+
 - Catches obvious issues before human review
 - Frees human reviewers for higher-level concerns
 - Faster review cycles
@@ -1220,7 +1280,8 @@ Provide specific line numbers and suggestions.
 #### Parallel Review Pattern
 
 **Workflow**:
-```
+
+```text
 1. Submit PR
 2. Both AI and human review simultaneously
 3. Compare findings
@@ -1237,25 +1298,29 @@ For complex implementations, iterative refinement SHOULD be used:
 #### Iteration Cycle
 
 **Round 1: Basic Implementation**
+
 - Model: Sonnet/GPT-4o
 - Goal: Working solution
 - Quality: Acceptable
 - Cost: Low
 
 **Round 2: Improvement**
+
 - Model: Same or upgrade to Opus/GPT-4
 - Goal: Handle edge cases
 - Quality: Good
 - Cost: Medium
 
 **Round 3: Polish**
+
 - Model: Opus/GPT-4 for critical, Sonnet/GPT-4o otherwise
 - Goal: Production-ready
 - Quality: Excellent
 - Cost: Higher
 
 **Example**:
-```
+
+```text
 Round 1:
 Developer: Implement a caching layer for API responses
 AI: [Provides basic in-memory cache]
@@ -1278,6 +1343,7 @@ Total time: 45 min vs potentially more with wrong initial approach
 ## Context Management Strategies
 
 Effective context management is CRITICAL for AI assistance quality. Poor context leads to:
+
 - Incorrect assumptions
 - Inappropriate solutions
 - Style inconsistencies
@@ -1327,7 +1393,8 @@ When context limits are approached, prioritize in this order:
 #### File-Level Context
 
 **For Single-File Tasks**:
-```
+
+```text
 Provide:
 - Complete file content
 - Import dependencies (interfaces/types)
@@ -1355,7 +1422,8 @@ Task: [specific task]
 #### Module-Level Context
 
 **For Feature Development**:
-```
+
+```text
 Provide:
 - Main files in module (3-5 files)
 - Shared types/interfaces
@@ -1389,7 +1457,8 @@ Task: [specific task]
 #### System-Level Context
 
 **For Architectural Tasks**:
-```
+
+```text
 Provide:
 - High-level architecture diagram (text/Mermaid)
 - Key component interfaces
@@ -1427,17 +1496,20 @@ Some providers offer context caching to reduce costs and latency:
 #### Claude Prompt Caching
 
 Claude SHOULD use prompt caching when:
+
 - Reusing same codebase context across multiple requests
 - Iterating on implementation with stable context
 - Processing multiple related tasks
 
 **How it works**:
+
 - First request: Full cost
 - Subsequent requests (within 5 minutes): 90% discount on cached portion
 - Automatically applies to prompts >1024 tokens
 
 **Example usage**:
-```
+
+```text
 Request 1:
 Context (cached): [10K tokens of codebase - costs full price]
 Task: Implement feature A
@@ -1457,6 +1529,7 @@ Cost savings: ~60% vs. non-cached
 ```
 
 **Best practices**:
+
 - Structure prompts with stable context first
 - Make multiple related requests in succession
 - Batch related tasks together
@@ -1464,6 +1537,7 @@ Cost savings: ~60% vs. non-cached
 #### OpenAI Context Management
 
 GPT-4 does not offer automatic caching, but SHOULD:
+
 - Use conversation history efficiently
 - Reference previous responses rather than repeating
 - Break long sessions into focused conversations
@@ -1475,18 +1549,21 @@ For large codebases, teams SHOULD implement dynamic context selection:
 #### Similarity-Based Selection
 
 **Process**:
+
 1. Index codebase with embeddings
 2. For each task, find most relevant files
 3. Include top N most similar files
 4. Add explicit dependencies
 
 **Tools**:
+
 - `code2vec` for code embeddings
 - Vector databases (Pinecone, Weaviate)
 - Custom similarity scoring
 
 **Example**:
-```
+
+```text
 Task: Add authentication to API endpoint
 
 Similarity search finds:
@@ -1501,6 +1578,7 @@ Include top 3 + explicit dependency (express types)
 #### Dependency Graph Context
 
 **Process**:
+
 1. Build dependency graph of codebase
 2. For target file, include:
    - File itself
@@ -1509,7 +1587,8 @@ Include top 3 + explicit dependency (express types)
    - Shared utilities
 
 **Example**:
-```
+
+```text
 Target: user-controller.ts
 
 Dependency graph:
@@ -1534,6 +1613,7 @@ Teams SHOULD maintain context documentation to improve AI assistance:
 **Location**: `.ai/codebase-overview.md`
 
 **Contents**:
+
 ```markdown
 # Codebase Overview
 
@@ -1564,7 +1644,8 @@ Teams SHOULD maintain context documentation to improve AI assistance:
 ```
 
 **Usage**:
-```
+
+```text
 Include in context for new team members or AI:
 "Here's our codebase overview: [content]
 Now help me implement [feature]"
@@ -1575,6 +1656,7 @@ Now help me implement [feature]"
 **Location**: `.ai/decisions.md`
 
 **Contents**:
+
 ```markdown
 # Architecture Decision Log
 
@@ -1606,7 +1688,8 @@ For complex tasks, maintain conversation continuity:
 #### Conversation Structuring
 
 **Pattern**:
-```
+
+```text
 Turn 1: Set context and explore
 Turn 2: Plan approach
 Turn 3: Implement part 1
@@ -1616,6 +1699,7 @@ Turn 6: Documentation
 ```
 
 **Benefits**:
+
 - Build shared understanding
 - Leverage conversation memory
 - Avoid repeating context
@@ -1624,6 +1708,7 @@ Turn 6: Documentation
 #### Conversation Splitting
 
 When to start new conversation:
+
 - Context has drifted from original task
 - Conversation becomes too long (>20 turns)
 - Switching to unrelated task
@@ -1700,13 +1785,15 @@ Managing AI costs is essential for sustainable adoption. Teams MUST implement co
 #### Establishing Baselines
 
 Teams MUST track:
+
 - Cost per developer per month
 - Cost per task type
 - Cost per project phase
 - Token usage patterns
 
 **Example Metrics Dashboard**:
-```
+
+```text
 Monthly AI Costs by Task Type:
 - Code generation: $45 (12K requests)
 - Code review: $30 (8K requests)
@@ -1723,12 +1810,14 @@ Cost by Model:
 #### Setting Budgets
 
 **Recommended approach**:
+
 1. Track costs for 1-2 months
 2. Calculate average per developer
 3. Set budget at 120% of average
 4. Review monthly, adjust quarterly
 
 **Typical ranges** (per developer per month):
+
 - Light usage: $20-50
 - Moderate usage: $50-150
 - Heavy usage: $150-400
@@ -1740,7 +1829,7 @@ Implement automatic model selection based on task characteristics:
 
 #### Decision Matrix
 
-```
+```text
 Task Complexity: [Low | Medium | High]
 Task Criticality: [Low | Medium | High]
 Context Size: [Small | Medium | Large]
@@ -1768,6 +1857,7 @@ Example: Fixing critical bug with clear cause
 #### Automatic Routing
 
 **Implementation**:
+
 ```typescript
 function selectModel(task: Task): Model {
   const complexity = assessComplexity(task);
@@ -1801,7 +1891,8 @@ Batching multiple operations reduces per-request overhead:
 #### Batch Processing Pattern
 
 **Instead of**:
-```
+
+```text
 Request 1: Generate docstring for function A
 Request 2: Generate docstring for function B
 Request 3: Generate docstring for function C
@@ -1809,7 +1900,8 @@ Cost: 3 × overhead + 3 × generation cost
 ```
 
 **Do this**:
-```
+
+```text
 Single Request: Generate docstrings for functions A, B, and C
 
 Functions:
@@ -1824,6 +1916,7 @@ Savings: ~60% vs individual requests
 ```
 
 **Optimal batch sizes**:
+
 - Documentation: 10-20 items
 - Simple code generation: 5-10 items
 - Code review: 3-5 files
@@ -1832,6 +1925,7 @@ Savings: ~60% vs individual requests
 #### Batch Timing
 
 **Schedule batch operations for**:
+
 - Off-peak hours (lower rate limits hit)
 - End of day cleanup
 - Weekly documentation updates
@@ -1844,6 +1938,7 @@ Savings: ~60% vs individual requests
 For deterministic tasks, cache AI responses:
 
 **Implementation**:
+
 ```typescript
 interface CacheKey {
   taskType: string;
@@ -1874,12 +1969,14 @@ async function getAIResponse(
 ```
 
 **Good candidates for caching**:
+
 - Documentation generation (rarely changes)
 - Test generation (for stable code)
 - Code review of common patterns
 - Error explanations (same error = same explanation)
 
 **Poor candidates**:
+
 - Exploratory conversations
 - Context-dependent tasks
 - Rapidly changing code
@@ -1920,6 +2017,7 @@ const prompt = templates.codeReview.replace('{CODE}', actualCode);
 **Minify context without losing meaning**:
 
 1. **Remove comments for AI context**:
+
 ```typescript
 // Before: 1500 tokens
 function calculateTotal(items: Item[]): number {
@@ -1939,7 +2037,8 @@ function calculateTotal(items: Item[]): number {
 }
 ```
 
-2. **Use file summaries for distant context**:
+1. **Use file summaries for distant context**:
+
 ```typescript
 // Instead of including full file:
 --- services/user-service.ts (300 tokens) ---
@@ -1953,7 +2052,8 @@ function calculateTotal(items: Item[]): number {
 // Includes validation and error handling
 ```
 
-3. **Selective imports**:
+1. **Selective imports**:
+
 ```typescript
 // Don't include full dependency files
 // Instead, include just the interface:
@@ -1971,6 +2071,7 @@ interface Response { json(data: any): void; status(code: number): Response; }
 #### Streaming for Long Responses
 
 Use streaming responses to:
+
 - Start processing sooner
 - Reduce perceived latency
 - Cancel early if direction is wrong
@@ -2002,19 +2103,21 @@ async function generateWithStreaming(prompt: string) {
 #### Developer Education
 
 Teams MUST educate developers on:
+
 - Cost per request for different models
 - How to choose appropriate models
 - Impact of context size on cost
 - Batching opportunities
 
 **Example training**:
-```
+
+```text
 Cost Awareness 101:
 
 1. Model costs (per 1M tokens input):
    - Haiku: $0.25 (cheapest)
-   - Sonnet: $3 (12× more)
-   - Opus: $15 (60× more)
+   - Sonnet: $3 (12x more)
+   - Opus: $15 (60x more)
 
 2. Average request sizes:
    - Simple task: 1K-5K tokens
@@ -2037,7 +2140,7 @@ Cost Awareness 101:
 
 Provide developers with personal usage dashboards:
 
-```
+```text
 Your AI Usage This Month:
 
 Requests: 847
@@ -2050,9 +2153,9 @@ Breakdown by model:
 - Haiku: 312 requests (37%), $14.00 (11%)
 
 Recommendations:
-⚠️  You used Opus for 8 documentation tasks - try Sonnet
-✓ Good use of Haiku for code completion
-⚠️  Average context size: 18K tokens - consider reducing
+- You used Opus for 8 documentation tasks - try Sonnet
+- Good use of Haiku for code completion
+- Average context size: 18K tokens - consider reducing
 ```
 
 ### Free Tier Maximization
@@ -2082,7 +2185,8 @@ Teams MUST track return on investment:
 #### Metrics to Track
 
 **Time Savings**:
-```
+
+```text
 Task: Implement authentication feature
 
 Without AI:
@@ -2106,19 +2210,22 @@ ROI: $487.50 saved / $2.50 cost = 195:1
 ```
 
 **Quality Improvements**:
+
 - Bugs prevented (AI review caught)
 - Security issues identified
 - Test coverage increase
 - Documentation completeness
 
 **Velocity Improvement**:
+
 - Story points per sprint before/after
 - Features delivered per quarter
 - Time to production
 
 ## Quality Assurance for AI Output
 
-AI-generated code MUST undergo rigorous quality assurance. Teams MUST NOT merge AI-generated code without validation.
+AI-generated code MUST undergo rigorous quality assurance. Teams MUST NOT merge
+AI-generated code without validation.
 
 ### Multi-Level Review Process
 
@@ -2127,6 +2234,7 @@ AI-generated code MUST undergo rigorous quality assurance. Teams MUST NOT merge 
 All AI-generated code MUST pass:
 
 1. **Linting**:
+
 ```bash
 # Run linter
 npm run lint
@@ -2137,7 +2245,8 @@ npm run lint:fix
 # Fail CI if lint errors remain
 ```
 
-2. **Type Checking**:
+1. **Type Checking**:
+
 ```bash
 # TypeScript
 tsc --noEmit
@@ -2149,7 +2258,8 @@ mypy src/
 go vet ./...
 ```
 
-3. **Unit Tests**:
+1. **Unit Tests**:
+
 ```bash
 # Run existing tests
 npm test
@@ -2160,7 +2270,8 @@ npm run test:coverage
 # Require minimum coverage (e.g., 80%)
 ```
 
-4. **Security Scanning**:
+1. **Security Scanning**:
+
 ```bash
 # Dependency vulnerabilities
 npm audit
@@ -2172,7 +2283,8 @@ semgrep --config=auto
 gitleaks detect
 ```
 
-5. **Formatting**:
+1. **Formatting**:
+
 ```bash
 # Ensure consistent formatting
 prettier --check .
@@ -2182,6 +2294,7 @@ prettier --write .
 ```
 
 **CI Pipeline Example**:
+
 ```yaml
 # .github/workflows/ai-code-validation.yml
 name: AI Code Validation
@@ -2242,6 +2355,7 @@ Human review MUST check:
    - Is documentation sufficient?
 
 **Review Checklist**:
+
 ```markdown
 ## AI-Generated Code Review Checklist
 
@@ -2289,6 +2403,7 @@ Human review MUST check:
 Beyond unit tests, SHOULD verify:
 
 1. **Integration Tests**:
+
 ```typescript
 // Test AI-generated component integrates correctly
 describe('AI-generated UserAuth integration', () => {
@@ -2306,13 +2421,14 @@ describe('AI-generated UserAuth integration', () => {
 });
 ```
 
-2. **Manual Testing**:
+1. **Manual Testing**:
    - Run feature locally
    - Test happy path
    - Try to break it
    - Verify error messages
 
-3. **Performance Testing** (for critical paths):
+2. **Performance Testing** (for critical paths):
+
 ```typescript
 // Load test AI-generated endpoint
 describe('Performance', () => {
@@ -2336,6 +2452,7 @@ describe('Performance', () => {
 **Problem**: AI invents functions or methods that don't exist
 
 **Example**:
+
 ```typescript
 // AI might generate:
 import { validateEmail } from '@utils/validation';
@@ -2344,11 +2461,13 @@ import { validateEmail } from '@utils/validation';
 ```
 
 **Detection**:
+
 - Run type checking
 - Verify imports exist
 - Check API documentation
 
 **Prevention**:
+
 - Provide actual API documentation in context
 - Include real import examples
 - Use AI with codebase knowledge
@@ -2358,6 +2477,7 @@ import { validateEmail } from '@utils/validation';
 **Problem**: AI uses deprecated or outdated approaches
 
 **Example**:
+
 ```javascript
 // AI might generate React class component:
 class UserProfile extends React.Component {
@@ -2376,11 +2496,13 @@ function UserProfile() {
 ```
 
 **Detection**:
+
 - Code review for outdated patterns
 - Linting rules for deprecated features
 - Compare with existing codebase
 
 **Prevention**:
+
 - Specify framework version in prompt
 - Provide current pattern examples
 - Include recent code as context
@@ -2390,6 +2512,7 @@ function UserProfile() {
 **Problem**: AI creates unnecessarily complex solutions
 
 **Example**:
+
 ```typescript
 // AI might generate full factory pattern for simple task:
 interface UserFactory {
@@ -2409,11 +2532,13 @@ function createUser(type: string): User {
 ```
 
 **Detection**:
+
 - Review complexity vs requirements
 - Check if simpler solution exists
 - Validate design patterns are necessary
 
 **Prevention**:
+
 - Specify "simple" or "minimal" in prompts
 - Provide simple examples as templates
 - Request explanation of design choices
@@ -2423,6 +2548,7 @@ function createUser(type: string): User {
 **Problem**: AI misses security considerations
 
 **Example**:
+
 ```typescript
 // AI might generate:
 app.post('/api/user', (req, res) => {
@@ -2439,11 +2565,13 @@ app.post('/api/user', (req, res) => {
 ```
 
 **Detection**:
+
 - Security scanning tools (Semgrep, Snyk)
 - Manual security review
 - Penetration testing
 
 **Prevention**:
+
 - Explicitly request security considerations
 - Provide secure examples
 - Use security-focused prompts
@@ -2547,13 +2675,15 @@ Successful AI adoption requires careful planning and change management.
 #### Phase 1: Pilot (Weeks 1-4)
 
 **Objectives**:
+
 - Validate value with small group
 - Identify workflows and best practices
 - Build internal expertise
 - Establish baselines
 
 **Approach**:
-```
+
+```text
 Week 1-2: Setup and Training
 - Select 2-3 enthusiastic early adopters
 - Provide AI tool access
@@ -2574,6 +2704,7 @@ Deliverables:
 ```
 
 **Success Criteria**:
+
 - 20%+ time savings on AI-suitable tasks
 - No reduction in code quality
 - Positive feedback from pilot users
@@ -2582,13 +2713,15 @@ Deliverables:
 #### Phase 2: Team Rollout (Weeks 5-12)
 
 **Objectives**:
+
 - Expand to full team
 - Establish standards and guidelines
 - Build team capability
 - Monitor and optimize
 
 **Approach**:
-```
+
+```text
 Week 5-6: Preparation
 - Create team guidelines
 - Setup cost monitoring
@@ -2615,6 +2748,7 @@ Deliverables:
 ```
 
 **Success Criteria**:
+>
 - >80% of team actively using AI
 - Consistent quality maintained
 - Positive team sentiment
@@ -2623,13 +2757,15 @@ Deliverables:
 #### Phase 3: Optimization (Week 13+)
 
 **Objectives**:
+
 - Optimize costs and workflows
 - Advanced technique adoption
 - Share learnings across organization
 - Continuous improvement
 
 **Approach**:
-```
+
+```text
 Ongoing Activities:
 - Monthly metrics review
 - Quarterly workflow optimization
@@ -2649,12 +2785,14 @@ Advanced Techniques:
 #### Initial Training (2 hours)
 
 **Module 1: Introduction (30 min)**
+
 - Why AI for development
 - Overview of capabilities
 - When to use (and not use) AI
 - Cost structure and budgets
 
 **Module 2: Hands-On Basics (45 min)**
+
 - Tool setup and access
 - First AI-assisted task
 - Code generation exercise
@@ -2662,6 +2800,7 @@ Advanced Techniques:
 - Q&A
 
 **Module 3: Workflows and Best Practices (30 min)**
+
 - Common workflows
 - Context management
 - Quality assurance
@@ -2669,6 +2808,7 @@ Advanced Techniques:
 - Team standards
 
 **Module 4: Practice Session (15 min)**
+
 - Real task from backlog
 - Guided AI assistance
 - Review and discuss
@@ -2676,7 +2816,8 @@ Advanced Techniques:
 #### Ongoing Learning
 
 **Weekly Tips** (Slack/Email):
-```
+
+```text
 Week 1: Use batching for documentation tasks
 Week 2: Try the explore-plan-code workflow
 Week 3: Use cheaper models for simple tasks
@@ -2684,7 +2825,8 @@ Week 4: Cache responses for repeated tasks
 ```
 
 **Monthly Workshops** (1 hour):
-```
+
+```text
 Month 1: Advanced prompting techniques
 Month 2: Complex refactoring with AI
 Month 3: Security review patterns
@@ -2692,6 +2834,7 @@ Month 4: Architecture and design with AI
 ```
 
 **Quarterly Reviews**:
+
 - Share metrics and ROI
 - Showcase best examples
 - Update guidelines
@@ -2704,6 +2847,7 @@ Teams MUST establish clear standards:
 #### When AI Use is Required
 
 AI assistance SHOULD be used for:
+
 - All documentation generation
 - Initial code review (before human)
 - Test case generation
@@ -2712,6 +2856,7 @@ AI assistance SHOULD be used for:
 #### When AI Use is Prohibited
 
 AI assistance MUST NOT be used for:
+
 - Direct production deployment (without review)
 - Security-sensitive logic (without expert review)
 - Regulatory/compliance code (without legal review)
@@ -2720,12 +2865,14 @@ AI assistance MUST NOT be used for:
 #### Quality Standards
 
 All AI-generated code MUST:
+
 - Pass automated checks (lint, test, security)
 - Undergo human code review
 - Include tests
 - Meet team coding standards
 
 AI-generated code SHOULD:
+
 - Be reviewed by senior developer (for complex tasks)
 - Include performance testing (for critical paths)
 - Be documented with comments explaining complex logic
@@ -2737,24 +2884,28 @@ AI-generated code SHOULD:
 Teams SHOULD track:
 
 **Productivity Metrics**:
+
 - Time saved per task type
 - Story points per sprint (before/after)
 - Features delivered per quarter
 - Time to production (design to deploy)
 
 **Quality Metrics**:
+
 - Bug rate (AI-generated vs manual)
 - Test coverage
 - Code review feedback volume
 - Production incidents
 
 **Cost Metrics**:
+
 - AI cost per developer per month
 - AI cost per feature delivered
 - ROI (time saved × developer cost / AI cost)
 - Cost trend over time
 
 **Adoption Metrics**:
+
 - % developers actively using AI
 - Requests per developer per week
 - Variety of use cases
@@ -2765,7 +2916,8 @@ Teams SHOULD track:
 Teams SHOULD collect:
 
 **Developer Satisfaction**:
-```
+
+```text
 Monthly Survey (1-5 scale):
 1. AI tools improve my productivity
 2. AI-generated code quality is acceptable
@@ -2780,6 +2932,7 @@ Open questions:
 ```
 
 **Code Review Feedback**:
+
 - Track comments on AI-generated code
 - Compare to manually written code
 - Identify common issues
@@ -2792,29 +2945,37 @@ Open questions:
 **Common concerns and responses**:
 
 **"AI will replace developers"**
-Response: AI is a tool that augments, not replaces. It handles repetitive tasks, freeing developers for creative problem-solving, architecture, and complex challenges.
+Response: AI is a tool that augments, not replaces. It handles repetitive tasks,
+freeing developers for creative problem-solving, architecture, and complex
+challenges.
 
 **"AI-generated code is low quality"**
-Response: With proper use and review, AI code quality is high. We maintain same standards for all code. Pilot showed equivalent or better quality.
+Response: With proper use and review, AI code quality is high. We maintain same
+standards for all code. Pilot showed equivalent or better quality.
 
 **"It's too expensive"**
-Response: ROI analysis shows 10-50:1 return. A $100/month AI cost saves 10-20 hours of developer time worth $1500-3000.
+Response: ROI analysis shows 10-50:1 return. A $100/month AI cost saves 10-20
+hours of developer time worth $1500-3000.
 
 **"I don't trust AI"**
-Response: Trust through verification. All AI code goes through same review process. You're the expert ensuring correctness.
+Response: Trust through verification. All AI code goes through same review
+process. You're the expert ensuring correctness.
 
 **"It's faster to code myself"**
-Response: For some tasks, yes. Use AI where it shines (boilerplate, docs, exploration) and skip it where you're faster.
+Response: For some tasks, yes. Use AI where it shines (boilerplate, docs,
+exploration) and skip it where you're faster.
 
 #### Building Champions
 
 **Identify and empower champions**:
+
 - Early adopters from pilot
 - Respected team members
 - Different seniority levels
 - Different specializations
 
 **Champion responsibilities**:
+
 - Mentor others
 - Share successes
 - Solve problems
@@ -2822,6 +2983,7 @@ Response: For some tasks, yes. Use AI where it shines (boilerplate, docs, explor
 - Represent team in AI discussions
 
 **Support champions with**:
+
 - Advanced training
 - Direct line to leadership
 - Recognition and rewards
@@ -2833,7 +2995,8 @@ Response: For some tasks, yes. Use AI where it shines (boilerplate, docs, explor
 #### Multi-Team Rollout
 
 **Stagger rollout**:
-```
+
+```text
 Month 1-2: Team A (pilot team)
 Month 3-4: Team B and C
 Month 5-6: Team D, E, F
@@ -2841,12 +3004,14 @@ Month 7+: Remaining teams
 ```
 
 **Centralize learning**:
+
 - Shared documentation repository
 - Cross-team workshops
 - Community of practice
 - Shared metrics dashboard
 
 **Customize by team**:
+
 - Team-specific guidelines
 - Different tool selections (if needed)
 - Team-specific prompt libraries
@@ -2857,6 +3022,7 @@ Month 7+: Remaining teams
 **Establish governance structure**:
 
 **AI Working Group**:
+
 - Representatives from each team
 - Meets monthly
 - Shares learnings
@@ -2864,6 +3030,7 @@ Month 7+: Remaining teams
 - Evaluates tools
 
 **Responsibilities**:
+
 - Maintain AI usage guidelines
 - Manage tool licenses and costs
 - Evaluate new AI capabilities
@@ -2871,6 +3038,7 @@ Month 7+: Remaining teams
 - Track organization-wide metrics
 
 **Decision-making**:
+
 - Tool selection
 - Budget allocation
 - Standard updates
@@ -2882,6 +3050,7 @@ Month 7+: Remaining teams
 #### Continuous Improvement
 
 Teams MUST:
+
 - Review metrics monthly
 - Update guidelines quarterly
 - Retrain on new capabilities
@@ -2891,6 +3060,7 @@ Teams MUST:
 #### Staying Current
 
 AI landscape evolves rapidly. Teams SHOULD:
+
 - Monitor new model releases
 - Evaluate new capabilities quarterly
 - Test new tools in pilot
@@ -2900,6 +3070,7 @@ AI landscape evolves rapidly. Teams SHOULD:
 #### Knowledge Sharing
 
 Organizations SHOULD establish:
+
 - Internal wiki with AI patterns
 - Success story repository
 - Prompt library (team-specific)
@@ -2919,19 +3090,21 @@ AI-assisted development is a powerful multiplier when used appropriately. Succes
 5. **Thoughtful team adoption** with proper training and support
 
 Teams that follow these guidelines can expect:
+
 - 20-40% productivity improvement on suitable tasks
 - Maintained or improved code quality
 - Positive ROI (typically 10-50:1)
 - High developer satisfaction
 - Competitive advantage in delivery speed
 
-**Remember**: AI is a tool that augments human intelligence, not a replacement. The developer remains responsible for all code, whether AI-assisted or not.
+**Remember**: AI is a tool that augments human intelligence, not a replacement.
+The developer remains responsible for all code, whether AI-assisted or not.
 
 ## Appendix: Quick Reference
 
 ### Model Selection Cheat Sheet
 
-```
+```text
 Simple, non-critical → Haiku/GPT-4o mini
 Standard development → Sonnet/GPT-4o
 Complex reasoning → Opus/GPT-4
@@ -2940,7 +3113,7 @@ High volume, privacy → Self-hosted
 
 ### Cost Cheat Sheet
 
-```
+```text
 Haiku: ~$0.001 per request
 Sonnet: ~$0.01 per request
 Opus: ~$0.05 per request
@@ -2950,7 +3123,8 @@ Opus: ~$0.05 per request
 ### Prompt Templates
 
 **Code Generation**:
-```
+
+```text
 Generate [language] code for [task].
 
 Requirements:
@@ -2968,7 +3142,8 @@ Please include:
 ```
 
 **Code Review**:
-```
+
+```text
 Review this code:
 
 [code]
@@ -2984,7 +3159,8 @@ Provide specific feedback with line numbers.
 ```
 
 **Bug Fix**:
-```
+
+```text
 Fix this bug:
 
 Error: [error message]
@@ -3001,11 +3177,12 @@ Please:
 
 ## Documentation Agent Suite
 
-Doctrine includes a comprehensive multi-agent documentation system - the most advanced open-source AI documentation suite available.
+Doctrine includes a comprehensive multi-agent documentation system - the most
+advanced open-source AI documentation suite available.
 
 ### Agent Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Documentation Agent Suite                      │
 ├─────────────────────────────────────────────────────────────────┤
@@ -3068,7 +3245,7 @@ Documentation workflows integrate with GitHub Actions:
 
 Agents are configured in `configs/claude/agents/`:
 
-```
+```text
 configs/claude/
 ├── agents/
 │   ├── doc-architect.md   # Documentation planning
@@ -3088,10 +3265,14 @@ configs/claude/
 
 ## See Also
 
-- **[AI Workflows](./ai-workflows.md)** - Hero Flow, TDD/3-Way Compare, Visual Iteration, Long-Running Tasks
-- **[Claude Code Configuration](./claude-code.md)** - Hooks, Permissions, Subagents, Commands, MCP
-- **[AGENTS.md Guide](./agents-md.md)** - Project instruction files for AI assistants
-- **[Release Manager Agent](./release-manager-agent.md)** - AI-powered release management, quality gates, changelog generation
+- **[AI Workflows](./ai-workflows.md)** - Hero Flow, TDD/3-Way Compare, Visual
+  Iteration, Long-Running Tasks
+- **[Claude Code Configuration](./claude-code.md)** - Hooks, Permissions,
+  Subagents, Commands, MCP
+- **[AGENTS.md Guide](./agents-md.md)** - Project instruction files for AI
+  assistants
+- **[Release Manager Agent](./release-manager-agent.md)** - AI-powered release
+  management, quality gates, changelog generation
 
 ## References
 

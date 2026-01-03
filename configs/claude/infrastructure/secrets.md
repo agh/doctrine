@@ -1,43 +1,46 @@
 # Agent Secrets Management
 
-Secure credential access for AI agents using SOPS and other secret management patterns.
+Secure credential access for AI agents using SOPS and other secret management
+patterns.
 
 ## Overview
 
-Agents need access to credentials for skills (database passwords, API tokens, etc.) but this must be done securely:
+Agents need access to credentials for skills (database passwords, API tokens,
+etc.) but this must be done securely:
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        SECRETS FLOW                                      │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────────────┐                                                  │
-│   │  Encrypted       │    Decrypt at runtime                            │
-│   │  secrets.yaml    │ ─────────────────────────┐                       │
-│   │  (in git)        │                          │                       │
-│   └──────────────────┘                          ▼                       │
-│                                        ┌──────────────────┐             │
-│   ┌──────────────────┐                 │   Environment    │             │
-│   │  age/GPG keys    │ ───────────────▶│   Variables      │             │
-│   │  (secure store)  │   Decryption    │                  │             │
-│   └──────────────────┘   key           └────────┬─────────┘             │
-│                                                  │                       │
-│                                                  ▼                       │
-│                                        ┌──────────────────┐             │
-│                                        │      Agent       │             │
-│                                        │                  │             │
-│                                        │  Uses secrets    │             │
-│                                        │  via env vars    │             │
-│                                        └──────────────────┘             │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++---------------------------------------------------------------------------+
+|                        SECRETS FLOW                                       |
++---------------------------------------------------------------------------+
+|                                                                           |
+|   +------------------+                                                    |
+|   |  Encrypted       |    Decrypt at runtime                              |
+|   |  secrets.yaml    | -------------------------+                         |
+|   |  (in git)        |                          |                         |
+|   +------------------+                          v                         |
+|                                        +------------------+               |
+|   +------------------+                 |   Environment    |               |
+|   |  age/GPG keys    | --------------->|   Variables      |               |
+|   |  (secure store)  |   Decryption    |                  |               |
+|   +------------------+   key           +--------+---------+               |
+|                                                 |                         |
+|                                                 v                         |
+|                                        +------------------+               |
+|                                        |      Agent       |               |
+|                                        |                  |               |
+|                                        |  Uses secrets    |               |
+|                                        |  via env vars    |               |
+|                                        +------------------+               |
+|                                                                           |
++---------------------------------------------------------------------------+
 ```
 
 ## SOPS Pattern
 
 ### What is SOPS?
 
-SOPS (Secrets OPerationS) encrypts secrets in files that can be safely committed to git:
+SOPS (Secrets OPerationS) encrypts secrets in files that can be safely
+committed to git:
 
 ```yaml
 # secrets.yaml (encrypted with SOPS)
@@ -133,9 +136,11 @@ sops -d secrets.yaml
 eval $(sops -d --output-type dotenv secrets.yaml)
 
 # Or for specific secrets:
-export POSTGRES_PASSWORD=$(sops -d --extract '["database"]["password"]' secrets.yaml)
+export POSTGRES_PASSWORD=$(sops -d --extract '["database"]["password"]' \
+  secrets.yaml)
 export GITHUB_TOKEN=$(sops -d --extract '["github"]["token"]' secrets.yaml)
-export DISCORD_WEBHOOK=$(sops -d --extract '["discord"]["webhook_url"]' secrets.yaml)
+export DISCORD_WEBHOOK=$(sops -d --extract '["discord"]["webhook_url"]' \
+  secrets.yaml)
 
 # Run agent with secrets in environment
 claude "$@"
@@ -188,6 +193,7 @@ Create an MCP server that provides secret access:
 ```
 
 **Capabilities:**
+
 - `secrets.get` - Get a specific secret by path
 - `secrets.list` - List available secret keys (not values)
 
@@ -390,12 +396,12 @@ audit:
 
 ### Environment Separation
 
-```
+```text
 secrets/
-├── secrets.dev.yaml      # Dev secrets, all devs can access
-├── secrets.staging.yaml  # Staging, ops team access
-├── secrets.prod.yaml     # Production, restricted access
-└── .sops.yaml            # Different keys per environment
++-- secrets.dev.yaml      # Dev secrets, all devs can access
++-- secrets.staging.yaml  # Staging, ops team access
++-- secrets.prod.yaml     # Production, restricted access
++-- .sops.yaml            # Different keys per environment
 ```
 
 ### CI/CD Integration
@@ -410,7 +416,8 @@ jobs:
 
       - name: Install SOPS
         run: |
-          curl -LO https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+          curl -LO \
+            https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
           chmod +x sops-v3.8.1.linux.amd64
           sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
 
@@ -440,7 +447,9 @@ sops -d --extract '["ssh"]["private_key"]' secrets.yaml > "$SSH_KEY"
 chmod 600 "$SSH_KEY"
 
 # Get any needed env vars
-DB_PASSWORD=$(sops -d --extract '["databases"]["postgres"]["production"]["password"]' secrets.yaml)
+DB_PASSWORD=$(sops -d \
+  --extract '["databases"]["postgres"]["production"]["password"]' \
+  secrets.yaml)
 
 # Run command on remote server
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$SERVER" \
@@ -453,10 +462,11 @@ rm -f "$SSH_KEY"
 ## Summary
 
 | Pattern | Use Case | Complexity |
-|---------|----------|------------|
+| ------- | -------- | ---------- |
 | **SOPS + age** | Small-medium teams, git-based workflow | Low |
 | **SOPS + GPG** | Existing GPG infrastructure | Medium |
 | **HashiCorp Vault** | Enterprise, dynamic secrets | High |
 | **Cloud KMS** | Cloud-native, managed service | Medium |
 
-**Recommended**: Start with SOPS + age for simplicity, migrate to Vault if you need dynamic secrets or fine-grained access control.
+**Recommended**: Start with SOPS + age for simplicity, migrate to Vault if
+you need dynamic secrets or fine-grained access control.

@@ -2,11 +2,14 @@
 
 ## Overview
 
-Doctrine is a comprehensive style guide repository covering 13+ programming languages, frameworks, and AI-assisted development practices. All guides use [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) language to clearly distinguish requirements from recommendations.
+Doctrine is a comprehensive style guide repository covering 13+ programming
+languages, frameworks, and AI-assisted development practices. All guides use
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) language to clearly
+distinguish requirements from recommendations.
 
 ## Repository Structure
 
-```
+```text
 doctrine/
 ├── guides/
 │   ├── languages/     # Language-specific style guides (Python, Go, Rust, etc.)
@@ -104,7 +107,7 @@ pip install grip && grip
 ## Key Files
 
 | File | Purpose |
-|------|---------|
+| ---- | ------- |
 | `README.md` | Landing page, full navigation |
 | `CHANGELOG.md` | Version history |
 | `VERSION` | Current version (SemVer) |
@@ -124,7 +127,7 @@ pip install grip && grip
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 feat(python): add Hypothesis fuzzing section
 fix(go): correct golangci-lint config syntax
 docs(readme): update navigation table
@@ -133,12 +136,17 @@ chore: bump tool versions for Q4 2025
 
 ## Time-Sensitive Information
 
-- **MUST** use Web Search for "current date and time" at the start of each session
-- **MUST** use Web Search to verify release dates, version status, and deprecation timelines
-- **MUST NOT** rely on model knowledge for current tool versions or release schedules
-- **SHOULD** search before making recommendations about "latest" or "current" versions
+- **MUST** use Web Search for "current date and time" at the start of each
+  session
+- **MUST** use Web Search to verify release dates, version status, and
+  deprecation timelines
+- **MUST NOT** rely on model knowledge for current tool versions or release
+  schedules
+- **SHOULD** search before making recommendations about "latest" or "current"
+  versions
 
-**Why**: LLM training data has knowledge cutoffs and date/time awareness is unreliable. Always verify time-sensitive claims against current sources.
+**Why**: LLM training data has knowledge cutoffs and date/time awareness is
+unreliable. Always verify time-sensitive claims against current sources.
 
 ## Do Not
 

@@ -2,9 +2,14 @@
 
 > [Doctrine](../../README.md) > [API Design](README.md) > REST
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-This guide covers language-agnostic REST API best practices for resource design, HTTP semantics, error handling, and API security. For framework-specific implementation, see:
+This guide covers language-agnostic REST API best practices for resource
+design, HTTP semantics, error handling, and API security. For
+framework-specific implementation, see:
 
 - [FastAPI (Python)](../frameworks/fastapi.md)
 - [Django REST Framework](../frameworks/django.md)
@@ -15,9 +20,12 @@ This guide covers language-agnostic REST API best practices for resource design,
 
 ## Why REST?
 
-REST (Representational State Transfer)[^1] is an architectural style for designing networked applications. RESTful APIs use HTTP methods and status codes to perform CRUD operations on resources.
+REST (Representational State Transfer)[^1] is an architectural style for
+designing networked applications. RESTful APIs use HTTP methods and status
+codes to perform CRUD operations on resources.
 
 **Use REST when**:
+
 - Your API has predictable, resource-oriented access patterns
 - HTTP caching is important for performance
 - You're building a public API where simplicity matters
@@ -25,6 +33,7 @@ REST (Representational State Transfer)[^1] is an architectural style for designi
 - You need broad ecosystem compatibility
 
 **Consider GraphQL when**:
+
 - Clients have diverse data needs requiring flexible queries
 - Reducing round trips is critical (mobile, high latency)
 - You need real-time subscriptions
@@ -36,7 +45,7 @@ REST (Representational State Transfer)[^1] is an architectural style for designi
 
 Projects **MUST** use nouns for resources, not verbs:
 
-```
+```text
 # Good: Nouns represent resources
 GET    /users
 GET    /users/123
@@ -50,13 +59,14 @@ POST   /createUser
 POST   /deleteUser/123
 ```
 
-**Why**: HTTP methods already express the action. URLs should identify resources, not operations.
+**Why**: HTTP methods already express the action. URLs should identify
+resources, not operations.
 
 ### Plural Resource Names
 
 Projects **MUST** use plural nouns for collection resources:
 
-```
+```text
 # Good: Plural nouns
 GET /users
 GET /users/123
@@ -68,13 +78,15 @@ GET /user
 GET /user/123
 ```
 
-**Why**: Collections contain multiple items. Plural names are consistent whether accessing one or many.
+**Why**: Collections contain multiple items. Plural names are consistent
+whether accessing one or many.
 
 ### Hierarchical Resources
 
-Projects **SHOULD** use nesting for resources with clear parent-child relationships:
+Projects **SHOULD** use nesting for resources with clear parent-child
+relationships:
 
-```
+```text
 # Good: Nested resources
 GET /users/123/orders           # Orders belonging to user 123
 GET /orders/456/items           # Items in order 456
@@ -85,9 +97,10 @@ GET /users/123/orders/456/items  # Acceptable
 GET /a/1/b/2/c/3/d/4             # Too deep - flatten
 ```
 
-**Alternative**: For deeply nested resources, use query parameters or top-level endpoints:
+**Alternative**: For deeply nested resources, use query parameters or
+top-level endpoints:
 
-```
+```text
 # Instead of deep nesting
 GET /users/123/orders/456/items/789/notes
 
@@ -100,14 +113,14 @@ GET /items/789/notes
 
 Projects **MUST** follow these URL conventions:
 
-| Convention | Example | Notes |
-|------------|---------|-------|
-| Lowercase | `/users` | Not `/Users` |
+| Convention             | Example        | Notes                               |
+| ---------------------- | -------------- | ----------------------------------- |
+| Lowercase              | `/users`       | Not `/Users`                        |
 | Hyphens for multi-word | `/order-items` | Not `/orderItems` or `/order_items` |
-| No trailing slashes | `/users` | Not `/users/` |
-| No file extensions | `/users/123` | Not `/users/123.json` |
+| No trailing slashes    | `/users`       | Not `/users/`                       |
+| No file extensions     | `/users/123`   | Not `/users/123.json`               |
 
-```
+```text
 # Good
 GET /api/v1/user-profiles
 GET /api/v1/order-items/123
@@ -125,7 +138,7 @@ GET /api/v1/users.json
 Projects **MUST** use HTTP methods according to their semantics:
 
 | Method | Purpose | Idempotent | Safe | Request Body |
-|--------|---------|------------|------|--------------|
+| ------ | ------- | ---------- | ---- | ------------ |
 | GET | Retrieve resource(s) | Yes | Yes | No |
 | POST | Create resource | No | No | Yes |
 | PUT | Replace resource | Yes | No | Yes |
@@ -168,6 +181,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```http
 HTTP/1.1 201 Created
 Location: /users/124
@@ -196,7 +210,8 @@ Content-Type: application/json
 }
 ```
 
-Projects **MUST** treat PUT as a complete replacement. Omitted fields should be cleared or set to defaults.
+Projects **MUST** treat PUT as a complete replacement. Omitted fields should
+be cleared or set to defaults.
 
 ### PATCH - Partial Update
 
@@ -210,7 +225,8 @@ Content-Type: application/json
 }
 ```
 
-Projects **SHOULD** use JSON Merge Patch (RFC 7396)[^2] or JSON Patch (RFC 6902)[^3]:
+Projects **SHOULD** use JSON Merge Patch (RFC 7396)[^2] or JSON Patch
+(RFC 6902)[^3]:
 
 ```http
 # JSON Merge Patch - simple partial updates
@@ -240,6 +256,7 @@ Host: api.example.com
 ```
 
 Response:
+
 ```http
 HTTP/1.1 204 No Content
 ```
@@ -253,7 +270,7 @@ Projects **SHOULD** return `204 No Content` for successful deletion.
 Projects **MUST** use appropriate success codes:
 
 | Code | Meaning | Use Case |
-|------|---------|----------|
+| ---- | ------- | -------- |
 | 200 OK | Request succeeded | GET, PUT, PATCH with response body |
 | 201 Created | Resource created | POST creating new resource |
 | 202 Accepted | Request accepted for processing | Async operations |
@@ -262,10 +279,10 @@ Projects **MUST** use appropriate success codes:
 ### Client Error Codes (4xx)
 
 | Code | Meaning | Use Case |
-|------|---------|----------|
-| 400 Bad Request | Malformed request | Invalid JSON, missing required fields |
+| ---- | ------- | -------- |
+| 400 Bad Request | Malformed request | Invalid JSON, missing fields |
 | 401 Unauthorized | Authentication required | Missing or invalid credentials |
-| 403 Forbidden | Authorization failed | Valid credentials, insufficient permissions |
+| 403 Forbidden | Authorization failed | Valid creds, insufficient perms |
 | 404 Not Found | Resource doesn't exist | Invalid ID, deleted resource |
 | 405 Method Not Allowed | HTTP method not supported | POST to read-only endpoint |
 | 409 Conflict | State conflict | Duplicate email, version mismatch |
@@ -277,15 +294,15 @@ Projects **MUST** use appropriate success codes:
 ### Server Error Codes (5xx)
 
 | Code | Meaning | Use Case |
-|------|---------|----------|
+| ---- | ------- | -------- |
 | 500 Internal Server Error | Unexpected server error | Unhandled exceptions |
-| 502 Bad Gateway | Upstream service failed | Database down, third-party API error |
+| 502 Bad Gateway | Upstream service failed | Database down, external API error |
 | 503 Service Unavailable | Server temporarily unavailable | Maintenance, overload |
-| 504 Gateway Timeout | Upstream timeout | Slow database, external API timeout |
+| 504 Gateway Timeout | Upstream timeout | Slow DB, external API timeout |
 
 ### Status Code Selection
 
-```
+```text
 Is the request malformed?
   └─ Yes → 400 Bad Request
 
@@ -333,7 +350,7 @@ Projects **SHOULD** default to JSON when no Accept header is provided.
 Projects **MUST** use consistent JSON field naming:
 
 | Convention | Example | Recommendation |
-|------------|---------|----------------|
+| ---------- | ------- | -------------- |
 | camelCase | `firstName` | JavaScript ecosystems |
 | snake_case | `first_name` | Python, Ruby ecosystems |
 
@@ -415,6 +432,7 @@ GET /users?offset=20&limit=20 HTTP/1.1
 ```
 
 Response:
+
 ```json
 {
   "data": [...],
@@ -436,13 +454,15 @@ Response:
 
 ### Cursor-Based Pagination
 
-Projects **SHOULD** use cursor-based pagination for large or frequently changing datasets:
+Projects **SHOULD** use cursor-based pagination for large or frequently
+changing datasets:
 
 ```http
 GET /users?limit=20&after=eyJpZCI6MTIzfQ HTTP/1.1
 ```
 
 Response:
+
 ```json
 {
   "data": [...],
@@ -459,7 +479,8 @@ Response:
 }
 ```
 
-**Why cursor-based**: Stable under insertions/deletions. Offset-based pagination can skip or duplicate items when data changes between requests.
+**Why cursor-based**: Stable under insertions/deletions. Offset-based
+pagination can skip or duplicate items when data changes between requests.
 
 ### Keyset Pagination
 
@@ -478,7 +499,7 @@ GET /users?limit=20&sort=created_at&after=2025-01-15T10:30:00Z HTTP/1.1
 Projects **MUST** set sensible defaults and limits:
 
 | Parameter | Default | Maximum |
-|-----------|---------|---------|
+| --------- | ------- | ------- |
 | `limit` / `per_page` | 20 | 100 |
 
 ```http
@@ -540,6 +561,7 @@ GET /users?sort=-created_at,name HTTP/1.1
 ```
 
 **Alternative syntax**:
+
 ```http
 GET /users?sort=created_at&order=desc HTTP/1.1
 GET /users?sort_by=created_at&sort_order=desc HTTP/1.1
@@ -556,6 +578,7 @@ GET /users?include=orders HTTP/1.1
 ```
 
 Response:
+
 ```json
 {
   "id": 123,
@@ -596,7 +619,7 @@ Projects **MUST** return consistent error responses:
 ### Error Response Fields
 
 | Field | Required | Description |
-|-------|----------|-------------|
+| ----- | -------- | ----------- |
 | `error.code` | Yes | Machine-readable error code |
 | `error.message` | Yes | Human-readable message |
 | `error.details` | No | Additional error information |
@@ -627,7 +650,7 @@ Projects **SHOULD** use consistent error codes:
 { "error": { "code": "RATE_LIMITED", "message": "Too many requests" }}
 
 // Server errors
-{ "error": { "code": "INTERNAL_ERROR", "message": "An unexpected error occurred" }}
+{ "error": { "code": "INTERNAL_ERROR", "message": "Unexpected error" }}
 ```
 
 ### Problem Details (RFC 9457)
@@ -676,6 +699,7 @@ API-Version: 2
 ```
 
 Or Accept header:
+
 ```http
 GET /api/users HTTP/1.1
 Accept: application/vnd.example.v2+json
@@ -691,11 +715,13 @@ Projects **SHOULD** follow these versioning principles:
 4. **Deprecate gracefully**: Announce deprecation timeline
 
 **Non-breaking changes** (no version bump):
+
 - Adding new endpoints
 - Adding optional fields to responses
 - Adding optional request parameters
 
 **Breaking changes** (version bump):
+
 - Removing or renaming fields
 - Changing field types
 - Removing endpoints
@@ -705,12 +731,12 @@ Projects **SHOULD** follow these versioning principles:
 
 ### Authentication Methods
 
-| Method | Use Case | Notes |
-|--------|----------|-------|
-| API Keys | Server-to-server | Simple, long-lived |
-| JWT | Stateless auth | Self-contained tokens |
-| OAuth 2.0 | Third-party access | Industry standard |
-| Session cookies | Web applications | Browser-based |
+| Method          | Use Case           | Notes                  |
+| --------------- | ------------------ | ---------------------- |
+| API Keys        | Server-to-server   | Simple, long-lived     |
+| JWT             | Stateless auth     | Self-contained tokens  |
+| OAuth 2.0       | Third-party access | Industry standard      |
+| Session cookies | Web applications   | Browser-based          |
 
 ### API Key Authentication
 
@@ -766,12 +792,12 @@ X-RateLimit-Reset: 1673789430
 
 ### Rate Limiting Headers
 
-| Header | Description |
-|--------|-------------|
-| `X-RateLimit-Limit` | Maximum requests per window |
-| `X-RateLimit-Remaining` | Requests remaining in window |
-| `X-RateLimit-Reset` | Unix timestamp when window resets |
-| `Retry-After` | Seconds to wait before retrying |
+| Header                  | Description                       |
+| ----------------------- | --------------------------------- |
+| `X-RateLimit-Limit`     | Maximum requests per window       |
+| `X-RateLimit-Remaining` | Requests remaining in window      |
+| `X-RateLimit-Reset`     | Unix timestamp when window resets |
+| `Retry-After`           | Seconds to wait before retrying   |
 
 ### Input Validation
 
@@ -888,15 +914,15 @@ HTTP/1.1 412 Precondition Failed
 
 ### Idempotent Methods
 
-| Method | Idempotent | Safe |
-|--------|------------|------|
-| GET | Yes | Yes |
-| HEAD | Yes | Yes |
-| OPTIONS | Yes | Yes |
-| PUT | Yes | No |
-| DELETE | Yes | No |
-| POST | No | No |
-| PATCH | No* | No |
+| Method  | Idempotent | Safe |
+| ------- | ---------- | ---- |
+| GET     | Yes        | Yes  |
+| HEAD    | Yes        | Yes  |
+| OPTIONS | Yes        | Yes  |
+| PUT     | Yes        | No   |
+| DELETE  | Yes        | No   |
+| POST    | No         | No   |
+| PATCH   | No*        | No   |
 
 ### Idempotency Keys
 
@@ -914,6 +940,7 @@ Content-Type: application/json
 ```
 
 **How it works**:
+
 1. Client generates unique idempotency key
 2. Server stores key with response
 3. Repeated requests with same key return cached response
@@ -936,6 +963,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```json
 {
   "succeeded": [
@@ -988,6 +1016,7 @@ Content-Type: application/json
 ```
 
 Response:
+
 ```http
 HTTP/1.1 202 Accepted
 Location: /jobs/abc123
@@ -1106,11 +1135,13 @@ Projects **MAY** implement HATEOAS (Hypermedia as the Engine of Application Stat
 ```
 
 **Benefits**:
+
 - Discoverable API
 - Decouples clients from URL structure
 - Enables API evolution
 
 **Considerations**:
+
 - Increased payload size
 - Complexity for simple APIs
 - Not universally adopted
@@ -1198,4 +1229,3 @@ def test_user_lifecycle():
 [^3]: [RFC 6902 - JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) - Explicit patch operations
 [^4]: [RFC 9457 - Problem Details](https://datatracker.ietf.org/doc/html/rfc9457) - Standard error format
 [^5]: [OpenAPI Specification](https://spec.openapis.org/oas/latest.html) - API documentation standard
-[^6]: [HTTP Semantics (RFC 9110)](https://httpwg.org/specs/rfc9110.html) - HTTP method definitions

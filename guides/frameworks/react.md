@@ -2,7 +2,11 @@
 
 > [Doctrine](../../README.md) > [Frameworks](../README.md) > React
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119][rfc2119].
+
+[rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
 Extends [TypeScript style guide](../languages/typescript.md) with React-specific conventions.
 
@@ -13,7 +17,7 @@ Extends [TypeScript style guide](../languages/typescript.md) with React-specific
 All TypeScript tooling applies. Projects **MUST** use the additional React-specific tools:
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Biome[^1] + React rules | `biome check .` |
 | Format | Biome[^1] | `biome format --write .` |
 | Type check | TypeScript[^2] | `tsc --noEmit` |
@@ -32,13 +36,15 @@ React remains the most widely adopted view library for building user interfaces:
 - **Performance**: React Compiler automatically optimizes re-renders without manual memoization
 - **Backward compatibility**: Stable API with gradual upgrade path for new features
 
-**When to use React**: Web applications requiring rich interactivity, real-time updates, or complex state management. For static content-heavy sites, consider Astro[^6] or Next.js[^7] with server components.
+**When to use React**: Web applications requiring rich interactivity, real-time updates, or
+complex state management. For static content-heavy sites, consider Astro[^6] or Next.js[^7]
+with server components.
 
 ## Project Structure
 
 Projects **SHOULD** use feature-based organization:
 
-```
+```text
 src/
 ├── features/
 │   ├── auth/
@@ -69,7 +75,9 @@ src/
 └── main.tsx
 ```
 
-**Why feature-based organization**: Co-locating related components, hooks, and tests improves maintainability by keeping feature logic together. Shared components are promoted to `/components` only when reused across features.
+**Why feature-based organization**: Co-locating related components, hooks, and tests improves
+maintainability by keeping feature logic together. Shared components are promoted to
+`/components` only when reused across features.
 
 ## Components
 
@@ -101,13 +109,14 @@ class Button extends React.Component<ButtonProps> {
 }
 ```
 
-**Why functional components**: Simpler syntax, better TypeScript inference, access to hooks, and improved performance with React Compiler.
+**Why functional components**: Simpler syntax, better TypeScript inference, access to hooks,
+and improved performance with React Compiler.
 
 ### Naming Conventions
 
 Component files **MUST** use PascalCase matching the component name:
 
-```
+```text
 Button.tsx      (exports Button)
 LoginForm.tsx   (exports LoginForm)
 UserAvatar.tsx  (exports UserAvatar)
@@ -227,7 +236,8 @@ function Counter() {
 }
 ```
 
-**Why updater functions**: When new state depends on previous state, updater functions prevent race conditions with batched updates.
+**Why updater functions**: When new state depends on previous state, updater functions prevent
+race conditions with batched updates.
 
 ### useEffect
 
@@ -308,7 +318,8 @@ function UserSettings() {
 }
 ```
 
-**Why custom hooks**: Extract reusable stateful logic that can be shared across components without prop drilling or render prop patterns.
+**Why custom hooks**: Extract reusable stateful logic that can be shared across components
+without prop drilling or render prop patterns.
 
 ### React 19 Hooks
 
@@ -474,19 +485,22 @@ function ConditionalTheme({ useTheme }: { useTheme: boolean }) {
 }
 ```
 
-**Why React 19 hooks**: These hooks simplify form handling patterns that previously required manual loading states, optimistic update logic, and third-party libraries.
+**Why React 19 hooks**: These hooks simplify form handling patterns that previously required
+manual loading states, optimistic update logic, and third-party libraries.
 
 ## State Management
 
 ### When to Use Context
 
 Context **SHOULD** be used for:
+
 - Theme/UI state (dark mode, locale)
 - User authentication state
 - Feature flags
 - Shared configuration
 
 Context **SHOULD NOT** be used for:
+
 - Frequently changing data (use external state library)
 - Data that only affects 2-3 components (use prop drilling)
 
@@ -526,7 +540,9 @@ export function useAuth() {
 
 ### When to Use External State Libraries
 
-Projects **SHOULD** use external state libraries (Zustand[^9], Jotai[^10], Redux Toolkit[^11]) when:
+Projects **SHOULD** use external state libraries (Zustand[^9], Jotai[^10], Redux Toolkit[^11])
+when:
+
 - State is accessed by many components at different nesting levels
 - State updates frequently (multiple times per second)
 - Complex state logic requires reducers or middleware
@@ -559,7 +575,8 @@ function CartButton() {
 }
 ```
 
-**Why Zustand**: Minimal boilerplate, TypeScript-first API, no providers needed, excellent performance with automatic re-render optimization.
+**Why Zustand**: Minimal boilerplate, TypeScript-first API, no providers needed, excellent
+performance with automatic re-render optimization.
 
 ## TypeScript Patterns
 
@@ -757,12 +774,14 @@ test('updates email state on input change', () => {
 ### What to Test
 
 Tests **SHOULD** cover:
+
 - User interactions (clicks, typing, navigation)
 - Conditional rendering based on props/state
 - Error states and loading states
 - Accessibility (ARIA attributes, keyboard navigation)
 
 Tests **SHOULD NOT** cover:
+
 - Internal state variables
 - Implementation details (function names, variable names)
 - Third-party library behavior
@@ -861,7 +880,9 @@ export const handlers = [
 ];
 ```
 
-**Why MSW**: Intercepts requests at the network level, works in both tests and browser, provides realistic API mocking without coupling tests to implementation details like fetch/axios.
+**Why MSW**: Intercepts requests at the network level, works in both tests and browser,
+provides realistic API mocking without coupling tests to implementation details like
+fetch/axios.
 
 ## Performance
 
@@ -1023,7 +1044,9 @@ function LegacyComponent({ data }: Props) {
 }
 ```
 
-**Why React Compiler**: Automatically memoizes components and values, eliminating the need for manual `memo`, `useMemo`, and `useCallback` in most cases. Significantly reduces bundle size and improves runtime performance.
+**Why React Compiler**: Automatically memoizes components and values, eliminating the need for
+manual `memo`, `useMemo`, and `useCallback` in most cases. Significantly reduces bundle size and
+improves runtime performance.
 
 ### Manual Memoization (React 18)
 
@@ -1074,7 +1097,8 @@ export const ExpensiveComponent = memo(function ExpensiveComponent({
 });
 ```
 
-**When NOT to use memoization**: Don't memoize unless profiling shows a performance issue. Premature optimization adds complexity without guaranteed benefit.
+**When NOT to use memoization**: Don't memoize unless profiling shows a performance issue.
+Premature optimization adds complexity without guaranteed benefit.
 
 ### Code Splitting
 
@@ -1098,13 +1122,15 @@ function App() {
 }
 ```
 
-**Why code splitting**: Reduces initial bundle size by loading route components on demand. Essential for large applications with many routes.
+**Why code splitting**: Reduces initial bundle size by loading route components on demand.
+Essential for large applications with many routes.
 
 ## Server Components (React 19)
 
 ### When to Use Server Components
 
 Server Components **SHOULD** be used for:
+
 - Data fetching from databases or APIs
 - Content-heavy pages (blog posts, documentation)
 - Components without interactivity
@@ -1136,6 +1162,7 @@ export default async function BlogPost({ params }: PageProps) {
 ### When to Use Client Components
 
 Client Components **MUST** be used for:
+
 - Interactive elements (onClick, onChange handlers)
 - Hooks (useState, useEffect, useContext)
 - Browser-only APIs (localStorage, window, document)
@@ -1201,7 +1228,8 @@ export function InteractiveChart({ data }: ChartProps) {
 }
 ```
 
-**Why this pattern**: Server Components fetch data with zero client JavaScript, Client Components provide interactivity where needed, and props create a clean boundary between server and client.
+**Why this pattern**: Server Components fetch data with zero client JavaScript, Client Components
+provide interactivity where needed, and props create a clean boundary between server and client.
 
 ## Accessibility
 

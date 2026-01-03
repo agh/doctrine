@@ -10,12 +10,12 @@ Extends [Google Markdown Style Guide](google/markdown.md).
 
 ## Quick Reference
 
-| Task | Tool | Command |
-|------|------|---------|
-| Lint | markdownlint[^1] | `npx markdownlint '**/*.md'` |
-| Format | Prettier[^2] | `npx prettier --write '**/*.md'` |
-| Diagrams | Mermaid[^3] | via markdown code blocks |
-| Link check | markdown-link-check[^4] | `npx markdown-link-check *.md` |
+| Task       | Tool                    | Command                            |
+| ---------- | ----------------------- | ---------------------------------- |
+| Lint       | markdownlint[^1]        | `npx markdownlint '**/*.md'`       |
+| Format     | Prettier[^2]            | `npx prettier --write '**/*.md'`   |
+| Diagrams   | Mermaid[^3]             | via markdown code blocks           |
+| Link check | markdown-link-check[^4] | `npx markdown-link-check *.md`     |
 
 ## Linting: markdownlint
 
@@ -47,6 +47,7 @@ Projects **MUST** use the following base configuration:
 ```
 
 Disabled rules:
+
 - `MD013`: Line length (Prettier[^2] handles this)
 - `MD033`: Inline HTML (sometimes needed)
 - `MD041`: First line must be heading (not always applicable)
@@ -88,6 +89,7 @@ exceed this limit when necessary.
 ```
 
 Headings **MUST**:
+
 - Use ATX-style (`#`) not Setext-style (underlines)
 - Have one blank line before and after
 - Omit trailing punctuation
@@ -166,6 +168,7 @@ appear in pull request diffs alongside code changes.
 ### When NOT to Use Mermaid
 
 Projects **SHOULD NOT** use Mermaid[^3] for:
+
 - Complex diagrams with many nodes (>20)
 - Diagrams requiring precise positioning
 - Diagrams with images/icons
@@ -233,12 +236,12 @@ See the Mermaid Live Editor[^7] for interactive diagram creation and validation.
 For simple diagrams that **MUST** work everywhere (including plain text
 viewers), projects **MAY** use ASCII art:
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│    API      │
+│   Client    │────>│    API      │
 └─────────────┘     └──────┬──────┘
                            │
-                           ▼
+                           v
                     ┌─────────────┐
                     │  Database   │
                     └─────────────┘
@@ -246,12 +249,12 @@ viewers), projects **MAY** use ASCII art:
 
 ### ASCII Box Drawing Characters
 
-```
+```text
 Box drawing:
 ┌ ┐ └ ┘ ─ │ ├ ┤ ┬ ┴ ┼
 
 Arrows:
-→ ← ↑ ↓ ▶ ◀ ▲ ▼
+-> <- ^ v > < A V
 
 Double lines:
 ╔ ╗ ╚ ╝ ═ ║ ╠ ╣ ╦ ╩ ╬

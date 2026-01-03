@@ -5,7 +5,7 @@ Vendored copies of IETF standards referenced throughout Doctrine.
 ## Contents
 
 | RFC | Title | Source |
-|-----|-------|--------|
+| --- | ----- | ------ |
 | [RFC 2119](rfc2119.txt) | Key words for use in RFCs to Indicate Requirement Levels | [IETF](https://datatracker.ietf.org/doc/html/rfc2119) |
 
 ## License

@@ -1,7 +1,7 @@
 # Macros
 
-
 <a id="c-evocative"></a>
+
 ## Input syntax is evocative of the output (C-EVOCATIVE)
 
 Rust macros let you dream up practically whatever input syntax you want. Aim to
@@ -63,8 +63,8 @@ bitflags! {
 Macros are so diverse that these specific examples won't be relevant, but think
 about how to apply the same principles to your situation.
 
-
 <a id="c-macro-attr"></a>
+
 ## Item macros compose well with attributes (C-MACRO-ATTR)
 
 Macros that produce more than one output item should support adding attributes
@@ -95,8 +95,8 @@ bitflags! {
 }
 ```
 
-
 <a id="c-anywhere"></a>
+
 ## Item macros work anywhere that items are allowed (C-ANYWHERE)
 
 Rust allows items to be placed at the module level or within a tighter scope
@@ -136,8 +136,8 @@ fn g() {
 }
 ```
 
-
 <a id="c-macro-vis"></a>
+
 ## Item macros support visibility specifiers (C-MACRO-VIS)
 
 Follow Rust syntax for visibility of items produced by a macro. Private by
@@ -159,8 +159,8 @@ bitflags! {
 }
 ```
 
-
 <a id="c-macro-ty"></a>
+
 ## Type fragments are flexible (C-MACRO-TY)
 
 If your macro accepts a type fragment like `$t:ty` in the input, it should be

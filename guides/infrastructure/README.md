@@ -7,14 +7,14 @@ Style guides for operating systems, infrastructure-as-code, and container orches
 ## Operating Systems
 
 | Platform | Guide | Description |
-|----------|-------|-------------|
+| -------- | ----- | ----------- |
 | Fundamentals | [os/README.md](os/README.md) | Cross-platform concepts and comparison |
 | Linux (Debian) | [os/linux.md](os/linux.md) | Debian 13/14, systemd, kernel tuning |
 
 ## Services
 
 | Service | Guide | Description |
-|---------|-------|-------------|
+| ------- | ----- | ----------- |
 | SSH | [services/ssh.md](services/ssh.md) | SSH server hardening |
 | NTP | [services/ntp.md](services/ntp.md) | Time synchronization with chrony |
 | DNS | [services/dns.md](services/dns.md) | Resolver and local DNS |
@@ -24,7 +24,7 @@ Style guides for operating systems, infrastructure-as-code, and container orches
 ## Infrastructure as Code
 
 | Tool | Guide | Description |
-|------|-------|-------------|
+| ---- | ----- | ----------- |
 | Ansible | [ansible.md](ansible.md) | Configuration management and automation |
 | Docker | [docker.md](docker.md) | Containerization and Docker Compose |
 

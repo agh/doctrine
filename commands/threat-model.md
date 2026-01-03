@@ -4,7 +4,7 @@ Design-time security analysis using STRIDE methodology.
 
 ## Usage
 
-```
+```text
 /threat-model <feature or architecture description>
 ```
 

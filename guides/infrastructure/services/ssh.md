@@ -2,14 +2,14 @@
 
 > [Doctrine](../../../README.md) > [Infrastructure](../README.md) > [Services](README.md) > SSH
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Quick Reference
 
 | Task | Command |
-|------|---------|
+| ---- | ------- |
 | Test config | `sshd -t` |
 | Reload config | `systemctl reload sshd` |
 | Check auth log | `journalctl -u ssh -f` |
@@ -107,7 +107,7 @@ systemctl reload sshd
 ### Configuration Files
 
 | Path | Purpose |
-|------|---------|
+| ---- | ------- |
 | `/etc/ssh/sshd_config` | Main server config |
 | `/etc/ssh/sshd_config.d/*.conf` | Drop-in overrides (Debian 12+) |
 | `/etc/ssh/ssh_host_*_key` | Host private keys |
@@ -152,13 +152,16 @@ ssh-ed25519 AAAA... user@host
 from="192.168.1.0/24,10.0.0.5" ssh-ed25519 AAAA... user@host
 
 # Force specific command (deploy key)
-command="/usr/local/bin/deploy.sh",no-port-forwarding,no-agent-forwarding ssh-ed25519 AAAA... deploy-key
+command="/usr/local/bin/deploy.sh",no-port-forwarding,no-agent-forwarding \
+  ssh-ed25519 AAAA... deploy-key
 
 # Read-only SFTP (file transfer only)
-command="internal-sftp",no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA... sftp-only
+command="internal-sftp",no-port-forwarding,no-agent-forwarding,no-X11-forwarding \
+  ssh-ed25519 AAAA... sftp-only
 
 # Combined restrictions
-from="10.0.0.0/8",command="/usr/bin/rsync --server --sender .",no-pty,no-port-forwarding ssh-ed25519 AAAA... backup-key
+from="10.0.0.0/8",command="/usr/bin/rsync --server --sender .",no-pty \
+  ssh-ed25519 AAAA... backup-key
 ```
 
 ### Certificate-Based Authentication
@@ -173,10 +176,12 @@ ssh-keygen -t ed25519 -f ssh-ca -C "SSH CA"
 ssh-keygen -s ssh-ca -I "user@example.com" -n username -V +30d user-key.pub
 
 # Sign host key
-ssh-keygen -s ssh-ca -I "server.example.com" -h -n server.example.com /etc/ssh/ssh_host_ed25519_key.pub
+ssh-keygen -s ssh-ca -I "server.example.com" -h -n server.example.com \
+  /etc/ssh/ssh_host_ed25519_key.pub
 ```
 
 Server configuration for CA:
+
 ```bash
 # /etc/ssh/sshd_config.d/99-ca.conf
 TrustedUserCAKeys /etc/ssh/ca.pub
@@ -201,7 +206,8 @@ AllowGroups ssh-users admins
 AllowUsers deploy@10.0.0.*
 ```
 
-**Why**: Default SSH allows all local users. Explicit allowlists prevent unauthorized access if a new user is created.
+**Why**: Default SSH allows all local users. Explicit allowlists prevent
+unauthorized access if a new user is created.
 
 ### DenyUsers / DenyGroups
 
@@ -280,6 +286,7 @@ rm -f /etc/ssh/ssh_host_dsa_key* /etc/ssh/ssh_host_ecdsa_key*
 ```
 
 Configure which keys to use:
+
 ```bash
 # /etc/ssh/sshd_config.d/99-hostkeys.conf
 HostKey /etc/ssh/ssh_host_ed25519_key
@@ -365,7 +372,7 @@ ssh-keygen -t ed25519 -C "deploy@prod" -f ~/.ssh/deploy_ed25519
 ### Key Types
 
 | Type | Key Size | Security | Use Case |
-|------|----------|----------|----------|
+| ---- | -------- | -------- | -------- |
 | Ed25519 | 256-bit | Excellent | Default choice |
 | RSA | 4096-bit | Good | Legacy compatibility |
 | ECDSA | 256-bit | Good | Avoid (NSA curve concerns) |
@@ -462,7 +469,7 @@ fail2ban-client reload
 ### Log Locations
 
 | Distribution | Auth Log |
-|--------------|----------|
+| ------------ | -------- |
 | Debian/Ubuntu | `/var/log/auth.log` |
 | RHEL/Fedora | `/var/log/secure` |
 | systemd | `journalctl -u ssh` |
@@ -480,7 +487,8 @@ grep "Failed password" /var/log/auth.log | tail -20
 grep "Accepted" /var/log/auth.log | tail -20
 
 # Connection attempts by IP
-grep "sshd" /var/log/auth.log | grep -oP '\d+\.\d+\.\d+\.\d+' | sort | uniq -c | sort -rn | head
+grep "sshd" /var/log/auth.log | grep -oP '\d+\.\d+\.\d+\.\d+' | \
+  sort | uniq -c | sort -rn | head
 
 # Currently connected
 who
@@ -532,5 +540,5 @@ LogLevel INFO    # Default
 
 - [OpenSSH Manual](https://www.openssh.com/manual.html)
 - [Mozilla SSH Guidelines](https://infosec.mozilla.org/guidelines/openssh)
-- [SSH Audit](https://github.com/jtesta/ssh-audit) — SSH configuration auditing tool
+- [SSH Audit](https://github.com/jtesta/ssh-audit) - SSH configuration auditing
 - [CIS Benchmark - SSH](https://www.cisecurity.org/benchmark/distribution_independent_linux)

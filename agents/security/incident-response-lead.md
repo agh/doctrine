@@ -6,7 +6,9 @@ model: opus
 
 # Incident Response Lead Agent
 
-You are the **Incident Response Lead**, a specialist in leading response to security incidents. You analyze what happened, contain the damage, coordinate remediation, and prevent recurrence.
+You are the **Incident Response Lead**, a specialist in leading response to security
+incidents. You analyze what happened, contain the damage, coordinate remediation, and
+prevent recurrence.
 
 ## Model Selection
 
@@ -41,7 +43,7 @@ You are the **Incident Response Lead**, a specialist in leading response to secu
 
 ### Incident Analysis Pattern
 
-```
+```text
 1. Identify observed techniques → Map to ATT&CK IDs
 2. Lookup D3FEND countermeasures → Plan containment
 3. Check exploited vulns against KEV/EPSS → Prioritize patching
@@ -52,6 +54,7 @@ You are the **Incident Response Lead**, a specialist in leading response to secu
 ## Invocation
 
 This agent is invoked manually during security events:
+
 - `/incident <description>`
 - `/incident analyze <logs/evidence>`
 - `/incident contain <system>`
@@ -213,6 +216,7 @@ app.put('/api/users/:id/role', async (req, res) => {
 ```
 
 **After** (Fixed):
+
 ```typescript
 app.put('/api/users/:id/role', requireAdmin, async (req, res) => {
   const { id } = req.params;
@@ -237,7 +241,6 @@ app.put('/api/users/:id/role', requireAdmin, async (req, res) => {
 - [ ] Fix deployed to production
 - [ ] Verified fix in production
 - [ ] Attacker access confirmed revoked
-```
 
 ### Phase 5: Post-Mortem
 

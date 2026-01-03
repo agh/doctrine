@@ -10,7 +10,7 @@ Standardized templates for all @agh projects.
 
 ## Directory Structure
 
-```
+```text
 .github/
 ├── ISSUE_TEMPLATE/
 │   ├── bug_report.yml
@@ -28,9 +28,10 @@ LICENSE
 
 ## CONTRIBUTING.md
 
-All @agh projects **SHOULD** include a CONTRIBUTING.md file. It **MUST** be based on best practices from major open source projects.
+All @agh projects **SHOULD** include a CONTRIBUTING.md file. It **MUST** be
+based on best practices from major open source projects.
 
-```markdown
+````markdown
 # Contributing to [Project Name]
 
 Thank you for considering contributing! This document explains how to
@@ -38,7 +39,7 @@ contribute.
 
 ## Code of Conduct
 
-This project follows the [Contributor Covenant](https://www.contributor-covenant.org/)[^7].
+This project follows the [Contributor Covenant](https://www.contributor-covenant.org/).
 Be respectful and constructive.
 
 ## Getting Started
@@ -58,29 +59,32 @@ Be respectful and constructive.
 ### Making Changes
 
 1. Create a feature branch:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
-2. Make your changes following our style guide
+1. Make your changes following our style guide
 
-3. Write or update tests
+1. Write or update tests
 
-4. Run the test suite:
+1. Run the test suite:
+
    ```bash
    # Language-specific command
    ```
 
-5. Run linting:
+1. Run linting:
+
    ```bash
    # Language-specific command
    ```
 
 ### Commit Messages
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/)[^8]:
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 type(scope): description
 
 [optional body]
@@ -91,6 +95,7 @@ type(scope): description
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 Examples:
+
 - `feat(auth): add OAuth2 support`
 - `fix(api): handle null response from server`
 - `docs: update installation instructions`
@@ -108,6 +113,7 @@ Examples:
 ### Bug Reports
 
 Use the bug report template. Include:
+
 - Steps to reproduce
 - Expected vs actual behavior
 - Environment details (OS, version, etc.)
@@ -116,6 +122,7 @@ Use the bug report template. Include:
 ### Feature Requests
 
 Use the feature request template. Include:
+
 - Problem you're trying to solve
 - Proposed solution
 - Alternatives you've considered
@@ -125,7 +132,8 @@ Use the feature request template. Include:
 - Check existing documentation
 - Search closed issues
 - Open a discussion (if enabled) or issue
-```
+
+````
 
 ## SECURITY.md
 
@@ -170,7 +178,7 @@ Include:
 When contributing:
 - Never commit secrets, tokens, or credentials
 - Use environment variables for configuration
-- Follow OWASP guidelines[^9]
+- Follow OWASP guidelines
 - Report suspicious behavior
 ```
 
@@ -178,7 +186,7 @@ When contributing:
 
 Projects **SHOULD** define code ownership using a CODEOWNERS[^1] file for automated review assignment.
 
-```
+```text
 # Default owners for everything
 *       @org/maintainers
 
@@ -194,7 +202,8 @@ Projects **SHOULD** define code ownership using a CODEOWNERS[^1] file for automa
 
 ## Issue Templates
 
-All @agh projects **SHOULD** use structured issue templates[^2] to ensure consistent bug reports and feature requests.
+All @agh projects **SHOULD** use structured issue templates[^2] to ensure
+consistent bug reports and feature requests.
 
 ### .github/ISSUE_TEMPLATE/config.yml[^10]
 
@@ -374,11 +383,14 @@ Any additional context for reviewers.
 
 ### .gitignore
 
-All projects **MUST** include a .gitignore file. You **SHOULD** create language-specific ignores. Use [gitignore.io](https://gitignore.io)[^4] as a starting point.
+All projects **MUST** include a .gitignore file. You **SHOULD** create
+language-specific ignores. Use [gitignore.io](https://gitignore.io)[^4]
+as a starting point.
 
 ### .gitattributes
 
-All projects **SHOULD** include a .gitattributes file[^5] to ensure consistent line endings and file handling across platforms.
+All projects **SHOULD** include a .gitattributes file[^5] to ensure consistent
+line endings and file handling across platforms.
 
 ```gitattributes
 # Auto detect text files and normalize line endings
@@ -415,7 +427,8 @@ node_modules/* linguist-vendored
 
 ### .dockerignore
 
-Projects using Docker **SHOULD** include a .dockerignore file[^6] to reduce build context size and improve build performance.
+Projects using Docker **SHOULD** include a .dockerignore file[^6] to reduce
+build context size and improve build performance.
 
 ```dockerignore
 # Git
@@ -465,9 +478,6 @@ build/
 [^4]: [gitignore.io](https://gitignore.io) - Generate .gitignore files for your project
 [^5]: [.gitattributes - Git Documentation](https://git-scm.com/docs/gitattributes)
 [^6]: [.dockerignore - Docker Documentation](https://docs.docker.com/build/building/context/#dockerignore-files)
-[^7]: [Contributor Covenant](https://www.contributor-covenant.org/) - A Code of Conduct for Open Source Communities
-[^8]: [Conventional Commits](https://www.conventionalcommits.org/) - A specification for adding human and machine readable meaning to commit messages
-[^9]: [OWASP - Open Web Application Security Project](https://owasp.org/) - Security guidelines and best practices
 [^10]: [Issue Template Configuration - GitHub Documentation](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms)
 
 ## See Also

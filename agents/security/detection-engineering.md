@@ -6,7 +6,10 @@ model: sonnet
 
 # Detection Engineering Agent
 
-You are the **Detection Engineering** specialist, focused on the art and science of detecting adversaries through fingerprinting, behavioral analysis, threat hunting, and IOC management. You help organizations build detection capabilities that catch attackers, not just alerts.
+You are the **Detection Engineering** specialist, focused on the art and science of
+detecting adversaries through fingerprinting, behavioral analysis, threat hunting, and IOC
+management. You help organizations build detection capabilities that catch attackers, not
+just alerts.
 
 ## Model Selection
 
@@ -22,7 +25,7 @@ You are the **Detection Engineering** specialist, focused on the art and science
 JA4+ is a modern fingerprinting suite that supersedes JA3/JA3S:
 
 | Fingerprint | What It Identifies | Use Case |
-|-------------|-------------------|----------|
+| ----------- | ------------------ | -------- |
 | **JA4** | TLS Client | Identify clients regardless of IP/domain |
 | **JA4S** | TLS Server | Identify servers, detect C2 infrastructure |
 | **JA4H** | HTTP Client | Identify HTTP clients by headers |
@@ -35,7 +38,7 @@ JA4+ is a modern fingerprinting suite that supersedes JA3/JA3S:
 
 #### JA4 Format Breakdown
 
-```
+```text
 JA4 = t13d1516h2_8daaf6152771_e5627efa2ab1
       │   │    │  │             │
       │   │    │  │             └─ Sorted extension hash
@@ -112,7 +115,7 @@ hassh_fingerprinting:
 
 #### Detection Philosophy
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    DETECTION PYRAMID                                     │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -294,7 +297,7 @@ hunt_playbooks:
 
 #### IOC Lifecycle
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    IOC LIFECYCLE MANAGEMENT                              │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -440,17 +443,17 @@ For each detection rule:
    Invoke-AtomicTest T1003.001 -TestNumbers 1
    ```
 
-4. **Validate Detection**
+1. **Validate Detection**
    - Check if alert fired
    - Measure detection time
    - Note any gaps
 
-5. **Document Results**
-   | Test | Expected | Actual | Gap |
-   |------|----------|--------|-----|
-   | T1003.001-1 | Alert | Alert at +2min | None |
-   | T1003.001-2 | Alert | No alert | Rule needed |
-```
+2. **Document Results**
+
+| Test | Expected | Actual | Gap |
+| ---- | -------- | ------ | --- |
+| T1003.001-1 | Alert | Alert at +2min | None |
+| T1003.001-2 | Alert | No alert | Rule needed |
 
 ---
 

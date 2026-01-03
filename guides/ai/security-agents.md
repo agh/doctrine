@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [AI](./README.md) > Security Agents
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Quick Reference
 
@@ -26,7 +28,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Overview
 
-The Doctrine Security Agent Family is a coordinated set of specialized AI agents for comprehensive security analysis. Unlike monolithic security tools, this family provides:
+The Doctrine Security Agent Family is a coordinated set of specialized AI
+agents for comprehensive security analysis. Unlike monolithic security tools,
+this family provides:
 
 1. **Lifecycle Coverage** - From design to incident response
 2. **Cost Optimization** - Right model for each task (80% cost savings vs. all-Opus)
@@ -36,7 +40,7 @@ The Doctrine Security Agent Family is a coordinated set of specialized AI agents
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     DOCTRINE SECURITY AGENT FAMILY                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -90,12 +94,14 @@ The **Security Architect** is the strategic coordinator for all security efforts
 | **Invocation** | On PR, manual, or triggered by security-sensitive paths |
 
 **Responsibilities**:
+
 - Assess overall security posture
 - Route to appropriate specialists
 - Synthesize findings across domains
 - Provide prioritized remediation roadmap
 
 **When to Use**:
+
 - Comprehensive security review
 - Cross-domain security assessment
 - Executive-level security reporting
@@ -113,6 +119,7 @@ Analyzes system designs BEFORE implementation.
 | **Methodology** | STRIDE, Attack Trees, Data Flow Diagrams |
 
 **Output**:
+
 - Data flow diagrams (Mermaid)
 - STRIDE analysis per trust boundary
 - Attack trees for critical assets
@@ -120,6 +127,7 @@ Analyzes system designs BEFORE implementation.
 - Risk assessment matrix
 
 **When to Use**:
+
 - New feature design
 - Architecture changes
 - API design review
@@ -138,6 +146,7 @@ Deep semantic analysis of source code.
 | **Coverage** | OWASP Top 10, CWE Top 25, language-specific |
 
 **Detection Capabilities**:
+
 - SQL/NoSQL/Command injection
 - XSS (Stored, Reflected, DOM)
 - CSRF, SSRF
@@ -147,6 +156,7 @@ Deep semantic analysis of source code.
 - Business logic flaws
 
 **When to Use**:
+
 - Every PR (automated)
 - Pre-merge security gate
 - Legacy code audit
@@ -164,6 +174,7 @@ Analyzes dependencies for risks.
 | **Coverage** | CVEs, licenses, typosquatting, maintainer risk |
 
 **Analysis Includes**:
+
 - Known CVE scanning
 - Transitive dependency analysis
 - License compliance matrix
@@ -171,6 +182,7 @@ Analyzes dependencies for risks.
 - SBOM generation (CycloneDX/SPDX)
 
 **When to Use**:
+
 - Dependency updates
 - New package additions
 - Periodic audits (weekly/monthly)
@@ -188,6 +200,7 @@ IaC and cloud configuration analysis.
 | **Coverage** | Terraform, Kubernetes, Docker, AWS/GCP/Azure |
 
 **Checks**:
+
 - CIS Benchmark compliance
 - IAM/RBAC misconfigurations
 - Network exposure
@@ -196,6 +209,7 @@ IaC and cloud configuration analysis.
 - CI/CD pipeline security
 
 **When to Use**:
+
 - IaC changes
 - Cloud resource provisioning
 - Kubernetes deployments
@@ -213,12 +227,14 @@ Regulatory and standards compliance.
 | **Frameworks** | GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001, NIST |
 
 **Output**:
+
 - Compliance matrix per framework
 - Gap analysis with remediation
 - Evidence inventory
 - Audit preparation checklist
 
 **When to Use**:
+
 - Audit preparation
 - Compliance verification
 - New regulatory requirements
@@ -236,6 +252,7 @@ Security incident handling.
 | **Phases** | Triage, Investigation, Containment, Remediation, Post-mortem |
 
 **Capabilities**:
+
 - Severity assessment (SEV-1 to SEV-4)
 - Timeline reconstruction
 - Root cause analysis (5 Whys)
@@ -243,6 +260,7 @@ Security incident handling.
 - Post-mortem documentation
 
 **When to Use**:
+
 - Security alerts
 - Suspected compromise
 - Breach investigation
@@ -260,6 +278,7 @@ Fingerprinting, behavioral detection, and threat hunting.
 | **Coverage** | JA4+, JA3, behavioral patterns, ATT&CK |
 
 **Capabilities**:
+
 - JA4+ fingerprinting (TLS, HTTP, SSH, TCP)
 - Behavioral detection pattern development
 - Threat hunting hypothesis and playbooks
@@ -268,6 +287,7 @@ Fingerprinting, behavioral detection, and threat hunting.
 - ATT&CK coverage analysis
 
 **When to Use**:
+
 - Building detection capabilities
 - Threat hunting initiatives
 - Fingerprinting adversary infrastructure
@@ -286,12 +306,14 @@ Security for AI/ML, quantum-safe crypto, and confidential computing.
 | **Coverage** | OWASP ML Top 10, LLM Top 10, MITRE ATLAS |
 
 **Capabilities**:
+
 - AI/ML security (prompt injection, model theft, data poisoning)
 - Quantum-safe cryptography (ML-KEM, ML-DSA, crypto agility)
 - Confidential computing (TEEs, attestation, enclaves)
 - Privacy-enhancing technologies (DP, FHE, MPC)
 
 **When to Use**:
+
 - LLM/AI feature implementation
 - Post-quantum crypto planning
 - Confidential workload design
@@ -310,6 +332,7 @@ Zero trust architecture and network security.
 | **Coverage** | NIST SP 800-207, CIS Benchmarks |
 
 **Capabilities**:
+
 - Zero trust maturity assessment
 - Micro-segmentation design
 - DNS security (DNSSEC, DoH/DoT)
@@ -317,6 +340,7 @@ Zero trust architecture and network security.
 - Network traffic analysis patterns
 
 **When to Use**:
+
 - Zero trust implementation
 - Network architecture review
 - Segmentation planning
@@ -335,6 +359,7 @@ Adversary simulation and attack path analysis.
 | **Methodology** | MITRE ATT&CK, Cyber Kill Chain |
 
 **Capabilities**:
+
 - Attack path enumeration
 - Adversary emulation planning
 - Purple team exercise design
@@ -342,6 +367,7 @@ Adversary simulation and attack path analysis.
 - Offensive security guidance
 
 **When to Use**:
+
 - Authorized penetration testing
 - Attack surface assessment
 - Purple team exercises
@@ -360,6 +386,7 @@ Detection engineering and security operations.
 | **Coverage** | Sigma, Splunk SPL, Elastic KQL |
 
 **Capabilities**:
+
 - Detection rule development (multi-platform)
 - SOAR playbook design
 - SOC metrics and KPIs
@@ -367,6 +394,7 @@ Detection engineering and security operations.
 - Alert tuning guidance
 
 **When to Use**:
+
 - SIEM rule development
 - Playbook automation
 - SOC capability building
@@ -384,10 +412,12 @@ Quantifies overall security into a single actionable metric.
 |-----------|-------|
 | **Model** | Sonnet 4.5 |
 | **Command** | `/security posture` |
-| **Output** | 0-100 score with component breakdown |
+| **Output** | 0-100 score w/ component breakdown |
 
 **Capabilities**:
-- Weighted component scoring (code, supply chain, infrastructure, detection, access control, attack surface)
+
+- Weighted component scoring (code, supply chain, infrastructure, detection,
+  access control, attack surface)
 - Trend analysis over time
 - Business impact quantification (ALE, ROI)
 - Industry benchmark comparison
@@ -395,6 +425,7 @@ Quantifies overall security into a single actionable metric.
 - Remediation ROI prioritization
 
 **Score Components**:
+
 | Component | Weight | Measures |
 |-----------|--------|----------|
 | Code Security | 25% | Vulnerability density, fix velocity |
@@ -405,6 +436,7 @@ Quantifies overall security into a single actionable metric.
 | Attack Surface | 10% | Exposed services, API security |
 
 **When to Use**:
+
 - Executive security reporting
 - Board-level security communication
 - Security program health tracking
@@ -423,6 +455,7 @@ Explains vulnerabilities to developers.
 | **Invocation** | Attached to findings automatically |
 
 **Content Types**:
+
 - Plain-language explanations
 - Attack walkthroughs
 - Secure coding patterns
@@ -440,6 +473,7 @@ Creates fixes for vulnerabilities.
 | **Command** | `/security-fix` |
 
 **Output**:
+
 - Git patch/diff
 - Security regression tests
 - Rollback instructions
@@ -467,7 +501,7 @@ Security agents **MUST** apply framework-specific checks based on the detected s
 | **SQL Injection** | Raw SQL via `cursor.execute()` with string formatting | Use parameterized queries: `cursor.execute(sql, [param])` |
 | **SQL Injection** | `extra()` or `raw()` with user input | Use ORM query methods with `F()` expressions |
 | **XSS** | `mark_safe()` with user content | Use template auto-escaping, `escape()` for dynamic |
-| **XSS** | `|safe` filter with user input | Remove filter, let auto-escape work |
+| **XSS** | `\|safe` filter with user input | Remove filter, let auto-escape work |
 | **CSRF** | `@csrf_exempt` on state-changing views | Remove decorator, use CSRF token properly |
 | **CSRF** | Missing `{% csrf_token %}` in forms | Add token to all POST forms |
 | **Auth** | `@login_required` missing on views | Add decorator to protected views |
@@ -482,7 +516,7 @@ Security agents **MUST** apply framework-specific checks based on the detected s
 |--------------|-------|-------------|
 | **SQL Injection** | `db.execute()` with f-strings | Use parameterized queries with `?` |
 | **SQL Injection** | String formatting in SQLAlchemy `text()` | Use bound parameters: `text("...").bindparams()` |
-| **XSS** | `Markup()` with user content | Use Jinja2 auto-escaping, avoid `|safe` |
+| **XSS** | `Markup()` with user content | Use Jinja2 auto-escaping, avoid `\|safe` |
 | **XSS** | `render_template_string()` with user input | Never interpolate user input in templates |
 | **CSRF** | Missing Flask-WTF CSRF protection | Enable `CSRFProtect(app)` |
 | **Session** | `SECRET_KEY` hardcoded | Load from environment |
@@ -673,6 +707,7 @@ The agent family is designed for cost efficiency:
 | Supporting Agents | Haiku | $0.02 | Frequent |
 
 **Cost by Mode**:
+
 | Mode | Typical Cost | Use Case |
 |------|--------------|----------|
 | `/security quick` | ~$0.02 | Every commit |
@@ -680,6 +715,7 @@ The agent family is designed for cost efficiency:
 | `/security full` | ~$1.00 | Pre-merge gate |
 
 **Estimated Monthly Cost** (20-developer team, 100 PRs):
+
 - Full assessment: ~$100/month
 - Compare to: Snyk ($1,000+), GitHub Advanced Security ($980+)
 
@@ -834,6 +870,7 @@ Shows agent routing decisions and model selection.
 ## References
 
 ### Core Standards
+
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [CWE Top 25](https://cwe.mitre.org/top25/)
 - [MITRE ATT&CK](https://attack.mitre.org/)
@@ -841,6 +878,7 @@ Shows agent routing decisions and model selection.
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks)
 
 ### Specialized Domains
+
 - [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - [MITRE ATLAS](https://atlas.mitre.org/) - AI/ML Threats
 - [JA4+ Fingerprinting](https://github.com/FoxIO-LLC/ja4)
@@ -849,6 +887,7 @@ Shows agent routing decisions and model selection.
 - [NIST Post-Quantum Cryptography](https://csrc.nist.gov/projects/post-quantum-cryptography)
 
 ### Detection & Response
+
 - [Sigma Rules](https://github.com/SigmaHQ/sigma)
 - [Atomic Red Team](https://github.com/redcanaryco/atomic-red-team)
 - [NIST SP 800-61](https://csrc.nist.gov/publications/detail/sp/800-61/rev-2/final) - Incident Handling
@@ -857,7 +896,7 @@ Shows agent routing decisions and model selection.
 
 Security agents use offline reference data for speed and reliability:
 
-```
+```text
 reference/security/
 ├── manifest.json           # Version tracking and update schedule
 ├── mitre/

@@ -18,12 +18,12 @@ All projects MUST meet WCAG 2.1 Level AA compliance at minimum.
 
 ## Quick Reference
 
-| Category | Key Requirements |
-|----------|------------------|
-| Perceivable | Text alternatives, color contrast, resizable text |
-| Operable | Keyboard accessible, no time limits, no seizure triggers |
-| Understandable | Readable, predictable, error prevention |
-| Robust | Compatible with assistive technologies |
+| Category       | Key Requirements                                         |
+| -------------- | -------------------------------------------------------- |
+| Perceivable    | Text alternatives, color contrast, resizable text        |
+| Operable       | Keyboard accessible, no time limits, no seizure triggers |
+| Understandable | Readable, predictable, error prevention                  |
+| Robust         | Compatible with assistive technologies                   |
 
 ---
 
@@ -83,12 +83,12 @@ Content structure MUST be programmatically determinable:
 
 **Color Contrast Requirements:**
 
-| Content Type | Minimum Ratio |
-|--------------|---------------|
-| Normal text (< 18px) | 4.5:1 |
-| Large text (≥ 18px or ≥ 14px bold) | 3:1 |
-| UI components | 3:1 |
-| Focus indicators | 3:1 |
+| Content Type                         | Minimum Ratio |
+| ------------------------------------ | ------------- |
+| Normal text (< 18px)                 | 4.5:1         |
+| Large text (>= 18px or >= 14px bold) | 3:1           |
+| UI components                        | 3:1           |
+| Focus indicators                     | 3:1           |
 
 **Color Independence:**
 
@@ -137,13 +137,13 @@ All functionality MUST be available via keyboard:
 
 **Keyboard Navigation Requirements:**
 
-| Key | Expected Behavior |
-|-----|-------------------|
-| Tab | Move focus to next interactive element |
-| Shift+Tab | Move focus to previous interactive element |
-| Enter | Activate buttons, links, submit forms |
-| Space | Activate buttons, toggle checkboxes |
-| Escape | Close modals, dropdowns, cancel operations |
+| Key        | Expected Behavior                           |
+| ---------- | ------------------------------------------- |
+| Tab        | Move focus to next interactive element      |
+| Shift+Tab  | Move focus to previous interactive element  |
+| Enter      | Activate buttons, links, submit forms       |
+| Space      | Activate buttons, toggle checkboxes         |
+| Escape     | Close modals, dropdowns, cancel operations  |
 | Arrow keys | Navigate within widgets (tabs, menus, etc.) |
 
 **Focus Management:**
@@ -459,12 +459,12 @@ if (prefersReducedMotion) {
 
 Use automated tools for baseline testing:
 
-| Tool | Purpose |
-|------|---------|
-| axe-core | Runtime accessibility testing |
-| Lighthouse | Audit tool in Chrome DevTools |
-| WAVE | Browser extension for visual testing |
-| pa11y | CI/CD integration |
+| Tool       | Purpose                              |
+| ---------- | ------------------------------------ |
+| axe-core   | Runtime accessibility testing        |
+| Lighthouse | Audit tool in Chrome DevTools        |
+| WAVE       | Browser extension for visual testing |
+| pa11y      | CI/CD integration                    |
 
 **Automated testing catches ~30% of issues.** Manual testing is required.
 
@@ -482,12 +482,12 @@ Use automated tools for baseline testing:
 
 Test with at least one screen reader:
 
-| Platform | Screen Reader |
-|----------|---------------|
-| macOS | VoiceOver (built-in) |
-| Windows | NVDA (free) or JAWS |
-| iOS | VoiceOver (built-in) |
-| Android | TalkBack (built-in) |
+| Platform | Screen Reader        |
+| -------- | -------------------- |
+| macOS    | VoiceOver (built-in) |
+| Windows  | NVDA (free) or JAWS  |
+| iOS      | VoiceOver (built-in) |
+| Android  | TalkBack (built-in)  |
 
 **What to test:**
 

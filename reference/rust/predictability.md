@@ -1,7 +1,7 @@
 # Predictability
 
-
 <a id="c-smart-ptr"></a>
+
 ## Smart pointers do not add inherent methods (C-SMART-PTR)
 
 For example, this is why the [`Box::into_raw`] function is defined the way it
@@ -37,8 +37,8 @@ boxed_str.chars()
 boxed_str.into_raw()
 ```
 
-
 <a id="c-conv-specific"></a>
+
 ## Conversions live on the most specific type involved (C-CONV-SPECIFIC)
 
 When in doubt, prefer `to_`/`as_`/`into_` to `from_`, because they are more
@@ -60,8 +60,8 @@ methods.
 [`as_bytes`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_bytes
 [`from_utf8`]: https://doc.rust-lang.org/std/str/fn.from_utf8.html
 
-
 <a id="c-method"></a>
+
 ## Functions with a clear receiver are methods (C-METHOD)
 
 Prefer
@@ -82,16 +82,16 @@ for any operation that is clearly associated with a particular type.
 
 Methods have numerous advantages over functions:
 
-* They do not need to be imported or qualified to be used: all you need is a
+- They do not need to be imported or qualified to be used: all you need is a
   value of the appropriate type.
-* Their invocation performs autoborrowing (including mutable borrows).
-* They make it easy to answer the question "what can I do with a value of type
+- Their invocation performs autoborrowing (including mutable borrows).
+- They make it easy to answer the question "what can I do with a value of type
   `T`" (especially when using rustdoc).
-* They provide `self` notation, which is more concise and often more clearly
+- They provide `self` notation, which is more concise and often more clearly
   conveys ownership distinctions.
 
-
 <a id="c-no-out"></a>
+
 ## Functions do not take out-parameters (C-NO-OUT)
 
 Prefer
@@ -119,8 +119,8 @@ caller already owns, for example to re-use a buffer:
 fn read(&mut self, buf: &mut [u8]) -> io::Result<usize>
 ```
 
-
 <a id="c-overload"></a>
+
 ## Operator overloads are unsurprising (C-OVERLOAD)
 
 Operators with built in syntax (`*`, `|`, and so on) can be provided for a type
@@ -131,8 +131,8 @@ so on for the other traits.
 
 [`std::ops`]: https://doc.rust-lang.org/std/ops/index.html#traits
 
-
 <a id="c-deref"></a>
+
 ## Only smart pointers implement `Deref` and `DerefMut` (C-DEREF)
 
 The `Deref` traits are used implicitly by the compiler in many circumstances,
@@ -149,8 +149,8 @@ only for that purpose.
 - [`Arc<T>`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
 - [`Cow<'a, T>`](https://doc.rust-lang.org/std/borrow/enum.Cow.html)
 
-
 <a id="c-ctor"></a>
+
 ## Constructors are static, inherent methods (C-CTOR)
 
 In Rust, "constructors" are just a convention. There are a variety of

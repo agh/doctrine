@@ -2,12 +2,13 @@
 
 > [Doctrine](../../../README.md) > [Infrastructure](../README.md) > Services
 
-Configuration guides for common infrastructure services. Each guide covers cross-platform setup with platform-specific sections where needed.
+Configuration guides for common infrastructure services. Each guide covers
+cross-platform setup with platform-specific sections where needed.
 
 ## Service Guides
 
 | Service | Guide | Description |
-|---------|-------|-------------|
+| ------- | ----- | ----------- |
 | SSH | [ssh.md](ssh.md) | SSH server hardening and configuration |
 | NTP | *Coming soon* | Time synchronization (chrony, systemd-timesyncd) |
 | DNS | *Coming soon* | Resolver configuration, local DNS |
@@ -38,6 +39,7 @@ Every service deployment **SHOULD** address:
 ### Documentation
 
 Each service **SHOULD** have:
+
 - Purpose and scope
 - Upstream documentation link
 - Configuration file locations

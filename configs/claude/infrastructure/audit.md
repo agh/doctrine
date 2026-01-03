@@ -1,34 +1,35 @@
 # Agent Audit Logging
 
-Comprehensive logging of all agent actions for compliance, debugging, and learning.
+Comprehensive logging of all agent actions for compliance, debugging, and
+learning.
 
 ## Overview
 
 Every agent action **MUST** be logged:
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          AUDIT LOGGING                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   WHAT TO LOG                                                            │
-│   ───────────                                                            │
-│   • Tool invocations (read, write, bash, etc.)                          │
-│   • Skill usage (postgres queries, github API calls)                    │
-│   • External calls (web search, web fetch)                              │
-│   • Decisions made (why agent chose action X)                           │
-│   • Outcomes (did action succeed, what was result)                      │
-│   • Errors (what failed, why)                                           │
-│                                                                          │
-│   WHY LOG                                                                │
-│   ───────                                                                │
-│   • Compliance & audit trails                                           │
-│   • Debugging agent behavior                                            │
-│   • Learning from outcomes (train better agents)                        │
-│   • Cost tracking (API calls, tokens used)                              │
-│   • Security monitoring (detect anomalies)                              │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```text
++---------------------------------------------------------------------------+
+|                          AUDIT LOGGING                                    |
++---------------------------------------------------------------------------+
+|                                                                           |
+|   WHAT TO LOG                                                             |
+|   -----------                                                             |
+|   - Tool invocations (read, write, bash, etc.)                            |
+|   - Skill usage (postgres queries, github API calls)                      |
+|   - External calls (web search, web fetch)                                |
+|   - Decisions made (why agent chose action X)                             |
+|   - Outcomes (did action succeed, what was result)                        |
+|   - Errors (what failed, why)                                             |
+|                                                                           |
+|   WHY LOG                                                                 |
+|   -------                                                                 |
+|   - Compliance & audit trails                                             |
+|   - Debugging agent behavior                                              |
+|   - Learning from outcomes (train better agents)                          |
+|   - Cost tracking (API calls, tokens used)                                |
+|   - Security monitoring (detect anomalies)                                |
+|                                                                           |
++---------------------------------------------------------------------------+
 ```
 
 ## Log Schema
@@ -425,7 +426,10 @@ SELECT
   action_name,
   COUNT(*) as total,
   COUNT(*) FILTER (WHERE outcome_status = 'success') as successes,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE outcome_status = 'success') / COUNT(*), 1) as success_rate
+  ROUND(
+    100.0 * COUNT(*) FILTER (WHERE outcome_status = 'success') / COUNT(*),
+    1
+  ) as success_rate
 FROM agent_audit_log
 WHERE timestamp > NOW() - INTERVAL '30 days'
 GROUP BY agent_id, action_name
@@ -440,7 +444,6 @@ ORDER BY success_rate ASC;
 Use Claude Code hooks to capture actions:
 
 ```json
-// .claude/settings.json
 {
   "hooks": {
     "PostToolCall": {

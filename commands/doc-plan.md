@@ -4,7 +4,7 @@ Analyze codebase and create a prioritized documentation plan.
 
 ## Usage
 
-```
+```text
 /doc-plan [directory]
 /doc-plan                    # Analyze entire project
 /doc-plan src/               # Analyze specific directory
@@ -22,6 +22,7 @@ Analyze codebase and create a prioritized documentation plan.
 ## Output
 
 Documentation plan including:
+
 - Priority-ordered list of components to document
 - Documentation type per component (API, tutorial, reference)
 - Cross-reference map showing relationships
@@ -46,7 +47,7 @@ Output a prioritized documentation plan with recommended order.
 
 ## Example
 
-```
+```text
 > /doc-plan src/services/
 
 ## Documentation Plan: src/services/
@@ -54,7 +55,7 @@ Output a prioritized documentation plan with recommended order.
 ### Priority Order
 
 | Priority | Component | Type | Scope |
-|----------|-----------|------|-------|
+| -------- | --------- | ---- | ----- |
 | P0 | auth-service.ts | API Reference | Large |
 | P0 | user-service.ts | API + Tutorial | Large |
 | P1 | email-service.ts | API Reference | Medium |

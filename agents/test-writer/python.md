@@ -13,7 +13,7 @@ Python-specific guidance for test generation.
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Run tests | pytest | `pytest tests/` |
 | Coverage | coverage.py | `pytest --cov=src --cov-report=xml` |
 | Mutation | mutmut | `mutmut run` |
@@ -24,7 +24,7 @@ Python-specific guidance for test generation.
 Detect testing framework from project files:
 
 | Indicator | Framework |
-|-----------|-----------|
+| --------- | --------- |
 | `pytest.ini`, `pyproject.toml [tool.pytest]` | pytest |
 | `unittest` imports in existing tests | unittest |
 | `conftest.py` present | pytest |

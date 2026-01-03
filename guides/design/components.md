@@ -15,12 +15,12 @@ behavior. Well-designed components are consistent, accessible, and composable.
 
 ## Quick Reference
 
-| Component Type | Purpose | Examples |
-|----------------|---------|----------|
-| Primitives | Atomic building blocks | Button, Input, Badge |
-| Composites | Combined primitives | Card, Modal, Dropdown |
-| Patterns | Recurring solutions | Form layout, Data table |
-| Templates | Page-level structures | Dashboard, Settings page |
+| Component Type | Purpose                | Examples                 |
+| -------------- | ---------------------- | ------------------------ |
+| Primitives     | Atomic building blocks | Button, Input, Badge     |
+| Composites     | Combined primitives   | Card, Modal, Dropdown    |
+| Patterns       | Recurring solutions   | Form layout, Data table  |
+| Templates      | Page-level structures | Dashboard, Settings page |
 
 ---
 
@@ -30,16 +30,16 @@ behavior. Well-designed components are consistent, accessible, and composable.
 
 Components MUST be organized in increasing complexity:
 
-```
-Templates     ← Page layouts combining patterns
-    ↑
-Patterns      ← Solutions to common problems
-    ↑
-Composites    ← Combinations of primitives
-    ↑
-Primitives    ← Atomic, single-purpose components
-    ↑
-Tokens        ← Design values (color, space, type)
+```text
+Templates     <- Page layouts combining patterns
+    |
+Patterns      <- Solutions to common problems
+    |
+Composites    <- Combinations of primitives
+    |
+Primitives    <- Atomic, single-purpose components
+    |
+Tokens        <- Design values (color, space, type)
 ```
 
 ### Primitive Requirements
@@ -61,12 +61,12 @@ Every primitive component MUST:
 
 Every project MUST define these button variants:
 
-| Variant | Usage | Visual Treatment |
-|---------|-------|------------------|
-| Primary | Main action, one per view | Solid background, high contrast |
-| Secondary | Supporting actions | Border or subtle background |
-| Ghost | Tertiary actions, tight spaces | Text only, background on hover |
-| Danger | Destructive actions | Red/error color scheme |
+| Variant   | Usage                          | Visual Treatment                |
+| --------- | ------------------------------ | ------------------------------- |
+| Primary   | Main action, one per view      | Solid background, high contrast |
+| Secondary | Supporting actions             | Border or subtle background     |
+| Ghost     | Tertiary actions, tight spaces | Text only, background on hover  |
+| Danger    | Destructive actions            | Red/error color scheme          |
 
 ### Button Sizes
 
@@ -259,12 +259,12 @@ Buttons performing async actions MUST show loading state:
 
 ### Card Variants
 
-| Variant | Usage |
-|---------|-------|
-| Default | Standard content container |
-| Interactive | Clickable cards (link/button) |
-| Elevated | Floating UI, important content |
-| Bordered | Subtle separation without shadow |
+| Variant     | Usage                            |
+| ----------- | -------------------------------- |
+| Default     | Standard content container       |
+| Interactive | Clickable cards (link/button)    |
+| Elevated    | Floating UI, important content   |
+| Bordered    | Subtle separation without shadow |
 
 ### Interactive Cards
 
@@ -456,12 +456,12 @@ class Modal {
 
 ### Toast Variants
 
-| Variant | Usage | Role |
-|---------|-------|------|
-| Success | Completed actions | `role="status"` |
-| Error | Failed actions | `role="alert"` |
-| Warning | Potential issues | `role="status"` |
-| Info | Neutral information | `role="status"` |
+| Variant | Usage               | Role            |
+| ------- | ------------------- | --------------- |
+| Success | Completed actions   | `role="status"` |
+| Error   | Failed actions      | `role="alert"`  |
+| Warning | Potential issues    | `role="status"` |
+| Info    | Neutral information | `role="status"` |
 
 ### Toast Requirements
 

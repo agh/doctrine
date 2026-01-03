@@ -4,13 +4,13 @@ Generate documentation for the specified code.
 
 ## Usage
 
-```
+```text
 /doc [file, function, or class]
 ```
 
 ## Examples
 
-```
+```text
 /doc src/api/users.ts
 /doc UserService
 /doc --readme  # Generate README section

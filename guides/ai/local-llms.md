@@ -4,12 +4,17 @@
 
 ## RFC 2119 Key Words
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in
+[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 - **MUST** / **REQUIRED** / **SHALL**: Absolute requirement
 - **MUST NOT** / **SHALL NOT**: Absolute prohibition
-- **SHOULD** / **RECOMMENDED**: Strong recommendation, may be valid reasons to ignore in particular circumstances
-- **SHOULD NOT** / **NOT RECOMMENDED**: Strong discouragement, may be valid reasons to use in particular circumstances
+- **SHOULD** / **RECOMMENDED**: Strong recommendation, may be valid reasons to
+  ignore in particular circumstances
+- **SHOULD NOT** / **NOT RECOMMENDED**: Strong discouragement, may be valid
+  reasons to use in particular circumstances
 - **MAY** / **OPTIONAL**: Truly optional, up to implementer
 
 ---
@@ -33,7 +38,10 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Introduction
 
-Self-hosted large language models (LLMs) provide organizations with control over model deployment, data privacy, and operational costs. This guide establishes comprehensive patterns for deploying, managing, and optimizing self-hosted LLM infrastructure.
+Self-hosted large language models (LLMs) provide organizations with control over
+model deployment, data privacy, and operational costs. This guide establishes
+comprehensive patterns for deploying, managing, and optimizing self-hosted LLM
+infrastructure.
 
 ### Scope
 
@@ -60,20 +68,21 @@ This guide is intended for:
 
 ## When to Use Self-Hosted vs Cloud LLMs
 
-Teams MUST evaluate deployment strategy based on the following decision matrix before committing to self-hosted infrastructure.
+Teams **MUST** evaluate deployment strategy based on the following decision
+matrix before committing to self-hosted infrastructure.
 
 ### Decision Matrix
 
-| Factor | Self-Hosted | Cloud-Based |
-|--------|-------------|-------------|
-| **Data Sensitivity** | REQUIRED for PII, PHI, confidential code | Acceptable for public/low-sensitivity data |
-| **Compliance** | REQUIRED for air-gapped, regulated environments | Acceptable for GDPR/SOC2 with DPA |
-| **Cost at Scale** | Cost-effective at >1M tokens/day sustained | More economical at variable/low usage |
-| **Latency Requirements** | Better for <50ms p99 on private network | Acceptable for <500ms over internet |
-| **Model Customization** | REQUIRED for fine-tuned proprietary models | Limited to provider-offered models |
-| **Operational Expertise** | Requires ML infrastructure team | Minimal operational overhead |
-| **Uptime Requirements** | Teams MUST manage HA/DR themselves | Provider-managed 99.9%+ SLA |
-| **Internet Dependency** | Works in offline/air-gapped environments | REQUIRED internet connectivity |
+| Factor                    | Self-Hosted                         | Cloud-Based                      |
+| ------------------------- | ----------------------------------- | -------------------------------- |
+| **Data Sensitivity**      | REQUIRED for PII, PHI, confidential | OK for public/low-sensitivity    |
+| **Compliance**            | REQUIRED for air-gapped, regulated  | OK for GDPR/SOC2 with DPA        |
+| **Cost at Scale**         | Cost-effective at >1M tokens/day    | Economical at variable/low usage |
+| **Latency Requirements**  | Better for <50ms p99 on private net | OK for <500ms over internet      |
+| **Model Customization**   | REQUIRED for fine-tuned proprietary | Limited to provider models       |
+| **Operational Expertise** | Requires ML infrastructure team     | Minimal operational overhead     |
+| **Uptime Requirements**   | Teams manage HA/DR themselves       | Provider-managed 99.9%+ SLA      |
+| **Internet Dependency**   | Works in offline/air-gapped         | REQUIRED internet connectivity   |
 
 ### Use Self-Hosted When
 
@@ -145,9 +154,9 @@ Organizations SHOULD use cloud-based LLM APIs when:
 
 ### Hybrid Architecture Pattern
 
-Organizations MAY implement a hybrid approach:
+Organizations **MAY** implement a hybrid approach:
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │  Decision Router (Based on Data Classification) │
 └───────────┬─────────────────────────┬───────────┘
@@ -192,18 +201,19 @@ Teams MUST provision appropriate hardware based on model size and performance re
 
 ### GPU Requirements by Model Size
 
-| Model Size | VRAM Required | Recommended GPU | Batch Size | Tokens/sec (est) |
-|------------|---------------|-----------------|------------|------------------|
-| **7B (FP16)** | 14 GB | RTX 4090 (24GB) | 8-16 | 50-80 |
-| **7B (Q4)** | 4-6 GB | RTX 3090 (24GB) | 16-32 | 60-100 |
-| **13B (FP16)** | 26 GB | A100 (40GB) | 4-8 | 30-50 |
-| **13B (Q4)** | 8-10 GB | RTX 4090 (24GB) | 8-16 | 40-70 |
-| **34B (FP16)** | 68 GB | 2x A100 (80GB) | 2-4 | 15-25 |
-| **34B (Q4)** | 20-24 GB | RTX 4090 (24GB) | 4-8 | 20-35 |
-| **70B (FP16)** | 140 GB | 4x A100 (40GB) | 1-2 | 8-15 |
-| **70B (Q4)** | 40-48 GB | 2x A100 (80GB) | 2-4 | 12-20 |
+| Model Size     | VRAM Required | Recommended GPU | Batch Size | Tokens/sec |
+| -------------- | ------------- | --------------- | ---------- | ---------- |
+| **7B (FP16)**  | 14 GB         | RTX 4090 (24GB) | 8-16       | 50-80      |
+| **7B (Q4)**    | 4-6 GB        | RTX 3090 (24GB) | 16-32      | 60-100     |
+| **13B (FP16)** | 26 GB         | A100 (40GB)     | 4-8        | 30-50      |
+| **13B (Q4)**   | 8-10 GB       | RTX 4090 (24GB) | 8-16       | 40-70      |
+| **34B (FP16)** | 68 GB         | 2x A100 (80GB)  | 2-4        | 15-25      |
+| **34B (Q4)**   | 20-24 GB      | RTX 4090 (24GB) | 4-8        | 20-35      |
+| **70B (FP16)** | 140 GB        | 4x A100 (40GB)  | 1-2        | 8-15       |
+| **70B (Q4)**   | 40-48 GB      | 2x A100 (80GB)  | 2-4        | 12-20      |
 
 **Notes:**
+
 - FP16: Full precision (higher quality, more VRAM)
 - Q4: 4-bit quantization (lower quality, less VRAM)
 - Tokens/sec based on single user, varies with context length
@@ -396,7 +406,8 @@ requirements = calculate_power_requirements(4, "A100_40GB")
 
 ## Ollama: Local Development Runtime
 
-Ollama[^1] is a lightweight runtime for running LLMs locally. Teams SHOULD use Ollama for development and small-scale deployments.
+Ollama[^1] is a lightweight runtime for running LLMs locally. Teams **SHOULD**
+use Ollama for development and small-scale deployments.
 
 ### Installation
 
@@ -765,7 +776,9 @@ docker logs -f ollama
 
 ## vLLM: Production Deployment
 
-vLLM[^2] is a high-throughput inference engine optimized for production deployments. Organizations MUST use vLLM for production workloads requiring high concurrency and throughput.
+vLLM[^2] is a high-throughput inference engine optimized for production
+deployments. Organizations **MUST** use vLLM for production workloads requiring
+high concurrency and throughput.
 
 ### Key Features
 
@@ -1166,7 +1179,8 @@ def get_vllm_metrics():
 
 ## Docker Model Runner
 
-Docker provides a simple way to run LLMs with minimal configuration. Teams MAY use Docker for development and simple deployments.
+Docker provides a simple way to run LLMs with minimal configuration. Teams
+**MAY** use Docker for development and simple deployments.
 
 ### Pre-Built Docker Images
 
@@ -1600,7 +1614,9 @@ git clone https://huggingface.co/meta-llama/Meta-Llama-3.1-70B-Instruct
 
 ## Quantization Strategies
 
-Quantization[^4] reduces model size and memory requirements by using lower-precision numbers. Teams MUST understand quantization trade-offs for optimal deployment.
+Quantization[^4] reduces model size and memory requirements by using
+lower-precision numbers. Teams **MUST** understand quantization trade-offs for
+optimal deployment.
 
 ### Quantization Methods
 
@@ -2713,7 +2729,8 @@ changelog:
 
 ## Conclusion
 
-Self-hosted LLM deployment requires careful planning, appropriate hardware, robust security, and ongoing optimization. Teams MUST:
+Self-hosted LLM deployment requires careful planning, appropriate hardware,
+robust security, and ongoing optimization. Teams **MUST**:
 
 1. Evaluate local vs cloud based on security, cost, and operational requirements
 2. Provision adequate hardware for target model sizes
@@ -2724,11 +2741,14 @@ Self-hosted LLM deployment requires careful planning, appropriate hardware, robu
 7. Monitor performance, resource usage, and quality metrics
 8. Follow best practices for production deployment
 
-Organizations that follow this guide will successfully deploy production-grade self-hosted LLM infrastructure that balances performance, cost, security, and operational excellence.
+Organizations that follow this guide will successfully deploy production-grade
+self-hosted LLM infrastructure that balances performance, cost, security, and
+operational excellence.
 
 ---
 
 **Related Documentation:**
+
 - [AI-Assisted Development Overview](./README.md)
 - [AGENTS.md Patterns](./agents-md.md)
 
@@ -2736,22 +2756,23 @@ Organizations that follow this guide will successfully deploy production-grade s
 
 ## References
 
-[^1]: Ollama - Run LLMs locally. Official website: https://ollama.com/ | GitHub: https://github.com/ollama/ollama | Documentation: https://github.com/ollama/ollama/tree/main/docs
+[^1]: Ollama - Run LLMs locally. Official website: <https://ollama.com/> | GitHub: <https://github.com/ollama/ollama> | Documentation: <https://github.com/ollama/ollama/tree/main/docs>
 
-[^2]: vLLM - High-throughput and memory-efficient inference engine. GitHub: https://github.com/vllm-project/vllm | Documentation: https://docs.vllm.ai/
+[^2]: vLLM - High-throughput and memory-efficient inference engine.
+    [GitHub](https://github.com/vllm-project/vllm) |
+    [Docs](https://docs.vllm.ai/)
 
-[^3]: Hugging Face - AI model repository and ML platform. Website: https://huggingface.co/ | Model Hub: https://huggingface.co/models | Documentation: https://huggingface.co/docs
+[^4]: Quantization - Model compression techniques.
+    [HuggingFace](https://huggingface.co/docs/transformers/quantization) |
+    [PyTorch](https://pytorch.org/docs/stable/quantization.html)
 
-[^4]: Quantization - Model compression techniques. Overview: https://huggingface.co/docs/transformers/quantization | PyTorch Quantization: https://pytorch.org/docs/stable/quantization.html | ONNX Quantization: https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html
+[^5]: GGUF Format - GPT-Generated Unified Format specification.
+    [Docs](https://github.com/ggerganov/ggml/blob/master/docs/gguf.md)
 
-[^5]: GGUF Format - GPT-Generated Unified Format specification. Documentation: https://github.com/ggerganov/ggml/blob/master/docs/gguf.md
+[^6]: llama.cpp - LLM inference in C/C++. GitHub: <https://github.com/ggerganov/llama.cpp> | Documentation: <https://github.com/ggerganov/llama.cpp/tree/master/docs>
 
-[^6]: llama.cpp - LLM inference in C/C++. GitHub: https://github.com/ggerganov/llama.cpp | Documentation: https://github.com/ggerganov/llama.cpp/tree/master/docs
+[^7]: GPTQ - Generative Pre-trained Transformer Quantization. Paper: <https://arxiv.org/abs/2210.17323> | GitHub: <https://github.com/IST-DASLab/gptq> | AutoGPTQ: <https://github.com/PanQiWei/AutoGPTQ>
 
-[^7]: GPTQ - Generative Pre-trained Transformer Quantization. Paper: https://arxiv.org/abs/2210.17323 | GitHub: https://github.com/IST-DASLab/gptq | AutoGPTQ: https://github.com/PanQiWei/AutoGPTQ
-
-[^8]: AWQ - Activation-aware Weight Quantization. Paper: https://arxiv.org/abs/2306.00978 | GitHub: https://github.com/mit-han-lab/llm-awq | Documentation: https://github.com/casper-hansen/AutoAWQ
-
-[^9]: Text Generation Inference (TGI) - Hugging Face inference server. GitHub: https://github.com/huggingface/text-generation-inference | Documentation: https://huggingface.co/docs/text-generation-inference/
-
-[^10]: Prometheus - Open-source monitoring and alerting toolkit. Website: https://prometheus.io/ | Documentation: https://prometheus.io/docs/ | Python Client: https://github.com/prometheus/client_python
+[^8]: AWQ - Activation-aware Weight Quantization.
+    [Paper](https://arxiv.org/abs/2306.00978) |
+    [GitHub](https://github.com/mit-han-lab/llm-awq)

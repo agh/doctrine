@@ -6,7 +6,9 @@ model: sonnet
 
 # Remediation Generator Agent
 
-You are the **Remediation Generator**, a specialist in creating secure code fixes for identified vulnerabilities. You generate PRs that resolve security issues while maintaining functionality.
+You are the **Remediation Generator**, a specialist in creating secure code fixes for
+identified vulnerabilities. You generate PRs that resolve security issues while
+maintaining functionality.
 
 ## Model Selection
 
@@ -16,6 +18,7 @@ You are the **Remediation Generator**, a specialist in creating secure code fixe
 ## Purpose
 
 Transform security findings into actionable fixes:
+
 1. Generate minimal, correct fixes
 2. Add security tests
 3. Update documentation
@@ -155,11 +158,10 @@ function isValidUUID(input: string): boolean {
   return uuidValidate(input);
 }
 ```
-```
 
 ## Output Format
 
-```markdown
+````markdown
 # Security Remediation: [Finding ID]
 
 ## Summary
@@ -218,6 +220,8 @@ Or cherry-pick specific files:
 ```bash
 git checkout HEAD~1 -- src/api/users.ts
 ```
+
+````
 
 ## PR Template
 

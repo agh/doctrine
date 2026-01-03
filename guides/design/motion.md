@@ -15,12 +15,12 @@ Motion is communication. Every animation MUST answer "what just happened?" or
 
 ## Quick Reference
 
-| Duration | Use Case | Token |
-|----------|----------|-------|
-| 150ms | Micro-interactions (hover, focus) | `--duration-fast` |
-| 250ms | Standard transitions | `--duration-normal` |
-| 400ms | Complex animations | `--duration-slow` |
-| 600ms | Page transitions | `--duration-slower` |
+| Duration | Use Case                          | Token               |
+| -------- | --------------------------------- | ------------------- |
+| 150ms    | Micro-interactions (hover, focus) | `--duration-fast`   |
+| 250ms    | Standard transitions              | `--duration-normal` |
+| 400ms    | Complex animations                | `--duration-slow`   |
+| 600ms    | Page transitions                  | `--duration-slower` |
 
 ---
 
@@ -51,12 +51,12 @@ Every animation MUST serve a purpose:
 
 Users perceive animations >400ms as slow. Keep motion fast:
 
-| Perception | Duration | Use For |
-|------------|----------|---------|
-| Instant | <100ms | Cursor feedback |
-| Fast | 100-200ms | Hovers, toggles |
-| Moderate | 200-400ms | Reveals, transitions |
-| Slow | >400ms | Special emphasis only |
+| Perception | Duration  | Use For               |
+| ---------- | --------- | --------------------- |
+| Instant    | <100ms    | Cursor feedback       |
+| Fast       | 100-200ms | Hovers, toggles       |
+| Moderate   | 200-400ms | Reveals, transitions  |
+| Slow       | >400ms    | Special emphasis only |
 
 ### 3. Natural Over Mechanical
 
@@ -82,12 +82,12 @@ Use easing curves that mimic physical motion:
 
 **When to use each:**
 
-| Easing | Use Case |
-|--------|----------|
-| `ease-out` | Elements entering (appear, expand) |
-| `ease-in` | Elements exiting (disappear, collapse) |
-| `ease-in-out` | Elements changing state |
-| `ease-spring` | Playful interactions, bouncy feedback |
+| Easing        | Use Case                               |
+| ------------- | -------------------------------------- |
+| `ease-out`    | Elements entering (appear, expand)     |
+| `ease-in`     | Elements exiting (disappear, collapse) |
+| `ease-in-out` | Elements changing state                |
+| `ease-spring` | Playful interactions, bouncy feedback  |
 
 ### 4. Respect Over Imposition
 
@@ -391,11 +391,11 @@ document.startViewTransition(() => {
 
 Only animate properties that trigger GPU acceleration:
 
-| ✓ GPU Accelerated | ✗ Causes Layout/Paint |
-|-------------------|------------------------|
-| `transform` | `width`, `height` |
-| `opacity` | `margin`, `padding` |
-| `filter` | `top`, `left` |
+| GPU Accelerated (Good) | Causes Layout/Paint (Avoid) |
+| ---------------------- | --------------------------- |
+| `transform`            | `width`, `height`           |
+| `opacity`              | `margin`, `padding`         |
+| `filter`               | `top`, `left`               |
 
 ```css
 /* ✓ DO: GPU-accelerated */

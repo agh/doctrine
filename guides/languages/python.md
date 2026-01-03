@@ -11,7 +11,7 @@ Extends [Google Python Style Guide](google/python.md).
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Ruff[^1] | `uv run ruff check . --fix` |
 | Format | Ruff[^1] | `uv run ruff format .` |
 | Type check | Mypy[^2] | `uv run mypy src/` |
@@ -33,7 +33,9 @@ Extends [Google Python Style Guide](google/python.md).
 
 Projects **MUST** use uv[^10] for all Python package management.
 
-**Why**: uv is the world-class Python package manager, 10-100x faster than pip[^11]. It provides deterministic dependency resolution, faster installs, and a superior developer experience compared to pip, poetry, or pipenv.
+**Why**: uv is the world-class Python package manager, 10-100x faster than
+pip[^11]. It provides deterministic dependency resolution, faster installs, and
+a superior developer experience compared to pip, poetry, or pipenv.
 
 ```bash
 # Create new project
@@ -56,15 +58,20 @@ uv run ruff check .
 
 ### pyproject.toml
 
-All configuration **MUST** live in `pyproject.toml`. Projects **MUST NOT** use `setup.py`, `setup.cfg`, `requirements.txt`, or tool-specific config files.
+All configuration **MUST** live in `pyproject.toml`. Projects **MUST NOT** use
+`setup.py`, `setup.cfg`, `requirements.txt`, or tool-specific config files.
 
-**Why**: Centralizing all project configuration in `pyproject.toml` (PEP 518/621)[^12] eliminates configuration sprawl, reduces maintenance burden, and aligns with modern Python packaging standards.
+**Why**: Centralizing all project configuration in `pyproject.toml`
+(PEP 518/621)[^12] eliminates configuration sprawl, reduces maintenance burden,
+and aligns with modern Python packaging standards.
 
 ## Linting: Ruff
 
 Projects **MUST** use Ruff[^1] for linting.
 
-**Why**: Ruff replaces Flake8, isort, pyupgrade, and many other tools in a single, fast implementation. Written in Rust, it's 10-100x faster than alternatives[^13] while providing comprehensive Python linting rules.
+**Why**: Ruff replaces Flake8, isort, pyupgrade, and many other tools in a
+single, fast implementation. Written in Rust, it's 10-100x faster than
+alternatives[^13] while providing comprehensive Python linting rules.
 
 ```toml
 [tool.ruff]
@@ -95,7 +102,9 @@ convention = "google"
 
 Projects **MUST** use Ruff[^1] for code formatting.
 
-**Why**: Ruff format is a drop-in replacement for Black[^14], but faster. Using the same tool for both linting and formatting simplifies tooling and improves performance.
+**Why**: Ruff format is a drop-in replacement for Black[^14], but faster. Using
+the same tool for both linting and formatting simplifies tooling and improves
+performance.
 
 ```toml
 [tool.ruff.format]
@@ -108,7 +117,9 @@ line-ending = "auto"
 
 Projects **MUST** use both Mypy[^2] and Pyright[^3] for type checking.
 
-**Why**: Mypy and Pyright catch different classes of type errors due to their different implementations and type inference strategies[^15]. Using both provides maximum type safety coverage.
+**Why**: Mypy and Pyright catch different classes of type errors due to their
+different implementations and type inference strategies[^15]. Using both
+provides maximum type safety coverage.
 
 ### Mypy (strict mode)
 
@@ -149,13 +160,18 @@ def get_user(id: int) -> User | None: ...
 def process(items: Sequence[str]) -> Mapping[str, int]: ...
 ```
 
-**Note**: As of Python 3.14, PEP 649 deferred annotation evaluation is enabled by default. The `from __future__ import annotations` import is **no longer required** for forward references or avoiding import cycles in type hints.
+**Note**: As of Python 3.14, PEP 649 deferred annotation evaluation is enabled
+by default. The `from __future__ import annotations` import is **no longer
+required** for forward references or avoiding import cycles in type hints.
 
 ### PEP 695 Type Parameter Syntax (Python 3.12+)
 
-Projects targeting Python 3.12+ **SHOULD** use the new type parameter syntax for generics and type aliases.
+Projects targeting Python 3.12+ **SHOULD** use the new type parameter syntax
+for generics and type aliases.
 
-**Why**: PEP 695 provides a cleaner, more concise syntax for defining generic classes, functions, and type aliases. The new syntax eliminates boilerplate imports and makes type parameters more explicit and easier to read.
+**Why**: PEP 695 provides a cleaner, more concise syntax for defining generic
+classes, functions, and type aliases. The new syntax eliminates boilerplate
+imports and makes type parameters more explicit and easier to read.
 
 ```python
 # Old style (pre-3.12)
@@ -191,9 +207,12 @@ type Result[T, E] = T | Exception
 
 ### PEP 742 TypeIs for Type Narrowing (Python 3.13+)
 
-Projects targeting Python 3.13+ **SHOULD** use `TypeIs` for user-defined type guards that narrow types.
+Projects targeting Python 3.13+ **SHOULD** use `TypeIs` for user-defined type
+guards that narrow types.
 
-**Why**: `TypeIs` provides more accurate type narrowing than `TypeGuard`. It correctly narrows the type in the else branch and works better with union types, improving type checker accuracy.
+**Why**: `TypeIs` provides more accurate type narrowing than `TypeGuard`. It
+correctly narrows the type in the else branch and works better with union
+types, improving type checker accuracy.
 
 ```python
 from typing import TypeIs
@@ -216,9 +235,13 @@ def is_non_empty_list[T](val: list[T] | None) -> TypeIs[list[T]]:
 
 ### PEP 750 Template Strings (Python 3.14+)
 
-Projects targeting Python 3.14+ **MAY** use template strings (t-strings) for safe string interpolation.
+Projects targeting Python 3.14+ **MAY** use template strings (t-strings) for
+safe string interpolation.
 
-**Why**: Template strings provide a safer alternative to f-strings for user-generated content, enabling validation and escaping before interpolation. They return `Template` objects rather than strings, allowing deferred evaluation and security checks.
+**Why**: Template strings provide a safer alternative to f-strings for
+user-generated content, enabling validation and escaping before interpolation.
+They return `Template` objects rather than strings, allowing deferred
+evaluation and security checks.
 
 ```python
 from string.templatelib import Template
@@ -238,20 +261,30 @@ query_template = t"SELECT * FROM users WHERE name = {user_input}"
 
 ### Standard Library Changes (Python 3.13+)
 
-**PEP 594 "Dead Batteries" Removal**: Python 3.13 removed deprecated standard library modules. Projects **MUST NOT** rely on removed modules and **SHOULD** migrate to recommended alternatives:
+**PEP 594 "Dead Batteries" Removal**: Python 3.13 removed deprecated standard
+library modules. Projects **MUST NOT** rely on removed modules and **SHOULD**
+migrate to recommended alternatives:
 
-- `aifc`, `audioop`, `chunk`, `cgi`, `cgitb`, `crypt`, `imghdr`, `mailcap`, `msilib`, `nis`, `nntplib`, `ossaudiodev`, `pipes`, `sndhdr`, `spwd`, `sunau`, `telnetlib`, `uu`, `xdrlib`
+- `aifc`, `audioop`, `chunk`, `cgi`, `cgitb`, `crypt`, `imghdr`, `mailcap`,
+  `msilib`, `nis`, `nntplib`, `ossaudiodev`, `pipes`, `sndhdr`, `spwd`,
+  `sunau`, `telnetlib`, `uu`, `xdrlib`
 
 **New Modules**: Python 3.14 introduces new standard library modules:
-- `annotationlib`: Low-level utilities for working with type annotations and introspection
 
-**Why**: Removing unmaintained modules reduces the standard library maintenance burden and security surface. New modules like `annotationlib` provide better tools for runtime type introspection and metaprogramming.
+- `annotationlib`: Low-level utilities for working with type annotations and
+  introspection
+
+**Why**: Removing unmaintained modules reduces the standard library maintenance
+burden and security surface. New modules like `annotationlib` provide better
+tools for runtime type introspection and metaprogramming.
 
 ## Semantic Analysis: Semgrep
 
 Projects **SHOULD** use Semgrep[^4] for semantic code analysis.
 
-**Why**: Semgrep finds bugs, security issues, and anti-patterns using semantic code analysis[^16]. It goes beyond syntax-level linting to understand code patterns and detect complex issues that traditional linters miss.
+**Why**: Semgrep finds bugs, security issues, and anti-patterns using semantic
+code analysis[^16]. It goes beyond syntax-level linting to understand code
+patterns and detect complex issues that traditional linters miss.
 
 ```bash
 # Security audit
@@ -268,7 +301,9 @@ uv run semgrep --config=p/owasp-top-ten src/
 
 Projects **SHOULD** use Vulture[^5] to detect dead code.
 
-**Why**: Dead code increases maintenance burden, confuses developers, and can hide bugs. Vulture automatically identifies unused code with configurable confidence levels[^17].
+**Why**: Dead code increases maintenance burden, confuses developers, and can
+hide bugs. Vulture automatically identifies unused code with configurable
+confidence levels[^17].
 
 ```bash
 uv run vulture src/ --min-confidence=80
@@ -284,7 +319,9 @@ min_confidence = 80
 
 Projects **MUST** measure code coverage and **SHOULD** maintain at least 80% coverage.
 
-**Why**: Code coverage metrics help identify untested code paths[^18]. Branch coverage ensures both sides of conditional logic are tested, catching bugs that line coverage alone would miss.
+**Why**: Code coverage metrics help identify untested code paths[^18]. Branch
+coverage ensures both sides of conditional logic are tested, catching bugs
+that line coverage alone would miss.
 
 ```bash
 # Run with coverage
@@ -310,9 +347,12 @@ exclude_lines = [
 
 ## Cyclomatic Complexity: Radon
 
-Projects **SHOULD** monitor cyclomatic complexity and **SHOULD NOT** exceed grade B (complexity > 10).
+Projects **SHOULD** monitor cyclomatic complexity and **SHOULD NOT** exceed
+grade B (complexity > 10).
 
-**Why**: High cyclomatic complexity indicates code that is difficult to test, understand, and maintain[^19]. Keeping functions below complexity 10 ensures code remains maintainable and testable.
+**Why**: High cyclomatic complexity indicates code that is difficult to test,
+understand, and maintain[^19]. Keeping functions below complexity 10 ensures
+code remains maintainable and testable.
 
 ```bash
 # Show complexity grades (A=1-5, B=6-10, C=11-20, D=21-30, E=31-40, F=41+)
@@ -324,13 +364,16 @@ uv run radon cc src/ -a --fail B
 
 ## Fuzzing: Hypothesis + Atheris
 
-Projects **SHOULD** use property-based testing with Hypothesis[^8] and **MAY** use Atheris[^20] for coverage-guided fuzzing.
+Projects **SHOULD** use property-based testing with Hypothesis[^8] and **MAY**
+use Atheris[^20] for coverage-guided fuzzing.
 
 ### Hypothesis (Property-Based Testing)
 
 Projects **SHOULD** use Hypothesis[^8] for property-based testing.
 
-**Why**: Hypothesis is the world-class property-based testing library. It generates thousands of test cases automatically, finding edge cases that manual testing would miss[^21].
+**Why**: Hypothesis is the world-class property-based testing library. It
+generates thousands of test cases automatically, finding edge cases that
+manual testing would miss[^21].
 
 ```python
 from hypothesis import given, strategies as st
@@ -346,9 +389,12 @@ def test_encode_decode_roundtrip(s: str) -> None:
 
 ### Atheris (Coverage-Guided Fuzzing)
 
-Projects **MAY** use Atheris[^20] for coverage-guided fuzzing of native extensions or complex parsing code.
+Projects **MAY** use Atheris[^20] for coverage-guided fuzzing of native
+extensions or complex parsing code.
 
-**Why**: Atheris uses coverage-guided fuzzing to find crashes and security issues in native extensions and complex parsing logic that property-based testing alone might miss[^22].
+**Why**: Atheris uses coverage-guided fuzzing to find crashes and security
+issues in native extensions and complex parsing logic that property-based
+testing alone might miss[^22].
 
 ```python
 import atheris
@@ -368,7 +414,9 @@ atheris.Fuzz()
 
 Projects **SHOULD** use pytest-xdist[^9] to run tests in parallel.
 
-**Why**: Running tests in parallel across CPU cores dramatically reduces test suite execution time[^23], enabling faster feedback loops and more frequent test runs.
+**Why**: Running tests in parallel across CPU cores dramatically reduces test
+suite execution time[^23], enabling faster feedback loops and more frequent
+test runs.
 
 ```bash
 # Auto-detect cores
@@ -459,13 +507,16 @@ jobs:
 ## Dependencies & Package Management
 
 Projects **MUST**:
+
 - Use uv[^10] for package management (uv sync, uv add, uv lock)
 - Commit lock files (uv.lock) with SHA256 hashes
 - Specify version constraints in pyproject.toml
 - Scan for vulnerabilities using pip-audit[^24] or safety[^25]
 - Configure Dependabot[^26] or Renovate[^27] for automated dependency updates
 
-**Why**: Locked dependencies ensure reproducible builds[^28]. Vulnerability scanning catches security issues early. Automated updates reduce maintenance burden while keeping dependencies current.
+**Why**: Locked dependencies ensure reproducible builds[^28]. Vulnerability
+scanning catches security issues early. Automated updates reduce maintenance
+burden while keeping dependencies current.
 
 ```bash
 # Lock dependencies
@@ -492,9 +543,12 @@ uv run safety check
 
 ## E2E & Acceptance Testing
 
-Projects with web interfaces **SHOULD** use Playwright[^29] for browser testing and **MAY** use pytest-bdd[^30] for BDD-style acceptance tests.
+Projects with web interfaces **SHOULD** use Playwright[^29] for browser testing
+and **MAY** use pytest-bdd[^30] for BDD-style acceptance tests.
 
-**Why**: Playwright provides reliable, cross-browser end-to-end testing with auto-waiting and built-in debugging[^31]. pytest-bdd enables collaboration between technical and non-technical stakeholders using Gherkin syntax[^32].
+**Why**: Playwright provides reliable, cross-browser end-to-end testing with
+auto-waiting and built-in debugging[^31]. pytest-bdd enables collaboration
+between technical and non-technical stakeholders using Gherkin syntax[^32].
 
 ```python
 from playwright.sync_api import Page, expect
@@ -522,7 +576,9 @@ def on_login_page(page: Page) -> None:
 
 Projects with concurrent code **MUST** test for thread safety and race conditions.
 
-**Why**: Concurrent code is prone to race conditions and deadlocks that only manifest under specific timing conditions. Explicit thread safety testing catches these issues before production.
+**Why**: Concurrent code is prone to race conditions and deadlocks that only
+manifest under specific timing conditions. Explicit thread safety testing
+catches these issues before production.
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
@@ -543,7 +599,9 @@ uv run pytest --workers=4
 
 Projects **SHOULD** test that critical operations are idempotent.
 
-**Why**: Idempotent operations can be safely retried without unintended side effects. This is essential for reliability in distributed systems, API design, and database operations where retries are common.
+**Why**: Idempotent operations can be safely retried without unintended side
+effects. This is essential for reliability in distributed systems, API design,
+and database operations where retries are common.
 
 ```python
 def test_create_user_idempotent(db: Session) -> None:
@@ -562,9 +620,12 @@ def test_payment_idempotent(api_client: Client) -> None:
 
 ## Reliability & Resilience Testing
 
-Projects **SHOULD** test resilience patterns such as circuit breakers, retries, and fault tolerance.
+Projects **SHOULD** test resilience patterns such as circuit breakers, retries,
+and fault tolerance.
 
-**Why**: Testing resilience patterns ensures systems gracefully handle failures. Chaos engineering and fault injection reveal weaknesses before they cause production outages.
+**Why**: Testing resilience patterns ensures systems gracefully handle
+failures. Chaos engineering and fault injection reveal weaknesses before they
+cause production outages.
 
 ```python
 def test_circuit_breaker_opens(mocker) -> None:
@@ -589,9 +650,12 @@ def test_circuit_breaker_opens(mocker) -> None:
 
 ## Compatibility Testing
 
-Projects **SHOULD** test across multiple Python versions and **SHOULD** test on multiple operating systems if targeting diverse environments.
+Projects **SHOULD** test across multiple Python versions and **SHOULD** test on
+multiple operating systems if targeting diverse environments.
 
-**Why**: Testing across Python versions ensures compatibility as the ecosystem evolves. OS-specific testing catches platform-dependent bugs before users encounter them.
+**Why**: Testing across Python versions ensures compatibility as the ecosystem
+evolves. OS-specific testing catches platform-dependent bugs before users
+encounter them.
 
 ```toml
 [tool.tox]
@@ -610,13 +674,18 @@ strategy:
     os: [ubuntu-latest, macos-latest, windows-latest]
 ```
 
-**Note**: Python 3.13+ includes experimental support for free-threading (PEP 703), removing the Global Interpreter Lock (GIL). Python 3.14 includes JIT compilation improvements for performance gains. Consider testing with free-threading enabled if your application has CPU-bound parallel workloads.
+**Note**: Python 3.13+ includes experimental support for free-threading
+(PEP 703), removing the Global Interpreter Lock (GIL). Python 3.14 includes
+JIT compilation improvements for performance gains. Consider testing with
+free-threading enabled if your application has CPU-bound parallel workloads.
 
 ## Internationalization Testing
 
 Projects with international users **SHOULD** test UTF-8 handling and **MAY** test locale-specific behavior.
 
-**Why**: Unicode handling bugs can corrupt data or cause crashes. Testing with diverse character sets ensures robust string handling across all languages and locales.
+**Why**: Unicode handling bugs can corrupt data or cause crashes. Testing with
+diverse character sets ensures robust string handling across all languages and
+locales.
 
 ```python
 @pytest.mark.parametrize("text", ["Hello", "مرحبا", "你好", "🚀"])
@@ -637,7 +706,9 @@ def test_translation() -> None:
 
 Projects with databases **MUST** test data integrity constraints and **SHOULD** test migration reversibility.
 
-**Why**: Database constraints prevent data corruption. Testing migrations ensures schema changes can be safely deployed and rolled back. Backup/restore testing verifies disaster recovery procedures actually work.
+**Why**: Database constraints prevent data corruption. Testing migrations
+ensures schema changes can be safely deployed and rolled back. Backup/restore
+testing verifies disaster recovery procedures actually work.
 
 ```python
 def test_unique_constraint(db: Session) -> None:
@@ -659,7 +730,9 @@ def test_migration_reversible(db_engine) -> None:
 
 Projects using feature flags **MUST** test both enabled and disabled states.
 
-**Why**: Feature flags enable gradual rollouts and A/B testing, but untested flag states can cause production failures. Testing both states ensures features work correctly in all configurations.
+**Why**: Feature flags enable gradual rollouts and A/B testing, but untested
+flag states can cause production failures. Testing both states ensures
+features work correctly in all configurations.
 
 ```python
 @pytest.mark.parametrize("flag_enabled", [True, False])
@@ -679,9 +752,12 @@ if flags.has_feature("new_checkout"):
 
 ## Profiling
 
-Projects **SHOULD** profile code before optimizing and **MUST** profile production workloads to identify actual bottlenecks.
+Projects **SHOULD** profile code before optimizing and **MUST** profile
+production workloads to identify actual bottlenecks.
 
-**Why**: Premature optimization wastes time on non-critical paths. Profiling identifies where time is actually spent, enabling targeted optimization with measurable impact.
+**Why**: Premature optimization wastes time on non-critical paths. Profiling
+identifies where time is actually spent, enabling targeted optimization with
+measurable impact.
 
 ### CPU Profiling
 
@@ -860,13 +936,18 @@ asyncio_mode = "auto"
 
 ## Security
 
-Projects **MUST** follow secure coding practices for cryptography, secrets management, and password hashing.
+Projects **MUST** follow secure coding practices for cryptography, secrets
+management, and password hashing.
 
-**Why**: Security vulnerabilities in cryptographic code can expose user data, enable authentication bypass, and cause catastrophic breaches. Using well-audited libraries with secure defaults prevents common cryptographic mistakes.
+**Why**: Security vulnerabilities in cryptographic code can expose user data,
+enable authentication bypass, and cause catastrophic breaches. Using
+well-audited libraries with secure defaults prevents common cryptographic
+mistakes.
 
 ### Secrets Generation
 
-Projects **MUST** use the `secrets` module (standard library) for generating cryptographically secure random values.
+Projects **MUST** use the `secrets` module (standard library) for generating
+cryptographically secure random values.
 
 ```python
 import secrets
@@ -885,7 +966,10 @@ if secrets.compare_digest(user_token, stored_token):
     authenticate_user()
 ```
 
-**Why**: The `random` module is **NOT** cryptographically secure and **MUST NOT** be used for security-sensitive values like tokens, passwords, or API keys. The `secrets` module[^33] provides cryptographically strong random numbers suitable for security purposes.
+**Why**: The `random` module is **NOT** cryptographically secure and **MUST
+NOT** be used for security-sensitive values like tokens, passwords, or API
+keys. The `secrets` module[^33] provides cryptographically strong random
+numbers suitable for security purposes.
 
 ### Password Hashing
 
@@ -915,7 +999,9 @@ if ph.check_needs_rehash(hash):
     new_hash = ph.hash("user_password")
 ```
 
-**Why**: Argon2 won the Password Hashing Competition and provides memory-hard hashing that resists GPU and ASIC attacks. The argon2-cffi library wraps the official Argon2 C implementation with a safe Python API.
+**Why**: Argon2 won the Password Hashing Competition and provides memory-hard
+hashing that resists GPU and ASIC attacks. The argon2-cffi library wraps the
+official Argon2 C implementation with a safe Python API.
 
 ### Cryptographic Operations
 
@@ -980,7 +1066,10 @@ API_KEY = os.environ["API_KEY"]
 
 Projects using WebSockets **SHOULD** use the websockets library[^36] for async WebSocket communication.
 
-**Why**: The websockets library is built on asyncio, provides a simple coroutine-based API, handles connection management automatically, and includes production-ready features like ping/pong, compression, and proper close handling.
+**Why**: The websockets library is built on asyncio, provides a simple
+coroutine-based API, handles connection management automatically, and includes
+production-ready features like ping/pong, compression, and proper close
+handling.
 
 ### Server Implementation
 
@@ -1064,9 +1153,12 @@ async def robust_client(uri: str):
 
 ## Rate Limiting
 
-Projects making external API calls or exposing APIs **SHOULD** implement rate limiting using the limits library[^37] or pyrate-limiter[^38].
+Projects making external API calls or exposing APIs **SHOULD** implement rate
+limiting using the limits library[^37] or pyrate-limiter[^38].
 
-**Why**: Rate limiting prevents API abuse, protects against denial of service, ensures fair resource usage, and helps comply with upstream API provider limits.
+**Why**: Rate limiting prevents API abuse, protects against denial of service,
+ensures fair resource usage, and helps comply with upstream API provider
+limits.
 
 ### Using limits Library
 
@@ -1176,9 +1268,12 @@ def send_email(to: str, subject: str):
 
 ## Circuit Breakers
 
-Projects calling external services **SHOULD** implement circuit breakers using pybreaker[^39] to prevent cascading failures.
+Projects calling external services **SHOULD** implement circuit breakers using
+pybreaker[^39] to prevent cascading failures.
 
-**Why**: Circuit breakers prevent your application from repeatedly calling a failing service, allowing it to recover and preventing resource exhaustion. They enable graceful degradation and faster failure detection.
+**Why**: Circuit breakers prevent your application from repeatedly calling a
+failing service, allowing it to recover and preventing resource exhaustion.
+They enable graceful degradation and faster failure detection.
 
 ### Basic Usage
 
@@ -1272,9 +1367,14 @@ breaker = pybreaker.CircuitBreaker(
 
 ## Caching
 
-Projects **SHOULD** implement caching for expensive operations using cachetools[^41] for in-memory caching, diskcache[^42] for persistent caching, or aiocache[^43] for async caching.
+Projects **SHOULD** implement caching for expensive operations using
+cachetools[^41] for in-memory caching, diskcache[^42] for persistent caching,
+or aiocache[^43] for async caching.
 
-**Why**: Caching reduces latency, decreases load on databases and external services, and improves application throughput. Choosing the right caching strategy depends on data freshness requirements, memory constraints, and whether caching needs to persist across restarts.
+**Why**: Caching reduces latency, decreases load on databases and external
+services, and improves application throughput. Choosing the right caching
+strategy depends on data freshness requirements, memory constraints, and
+whether caching needs to persist across restarts.
 
 ### In-Memory Caching with cachetools
 
@@ -1378,9 +1478,12 @@ def on_user_updated(user_id: int):
 
 ## Background Jobs
 
-Projects **SHOULD** use `concurrent.futures`[^44] for simple parallelism and `multiprocessing`[^45] for CPU-bound work.
+Projects **SHOULD** use `concurrent.futures`[^44] for simple parallelism and
+`multiprocessing`[^45] for CPU-bound work.
 
-**Why**: Background jobs enable non-blocking execution of long-running tasks. Using standard library tools provides framework-agnostic patterns that work across all Python applications without external dependencies.
+**Why**: Background jobs enable non-blocking execution of long-running tasks.
+Using standard library tools provides framework-agnostic patterns that work
+across all Python applications without external dependencies.
 
 ### Thread Pool for I/O-Bound Work
 
@@ -1514,9 +1617,12 @@ class WorkQueue:
 
 ## Feature Flags
 
-Projects **SHOULD** implement feature flags for gradual rollouts and A/B testing using a provider-agnostic pattern.
+Projects **SHOULD** implement feature flags for gradual rollouts and A/B
+testing using a provider-agnostic pattern.
 
-**Why**: Feature flags enable controlled rollouts, quick rollbacks, and A/B testing without deployment. A provider-agnostic interface allows switching between services (LaunchDarkly, PostHog, Flagsmith)[^46] without code changes.
+**Why**: Feature flags enable controlled rollouts, quick rollbacks, and A/B
+testing without deployment. A provider-agnostic interface allows switching
+between services (LaunchDarkly, PostHog, Flagsmith)[^46] without code changes.
 
 ### Abstract Interface
 

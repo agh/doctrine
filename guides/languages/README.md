@@ -5,7 +5,7 @@
 Style guides for programming languages.
 
 | Language | Guide | Description |
-|----------|-------|-------------|
+| -------- | ----- | ----------- |
 | Python | [python.md](python.md) | Python 3.14+ with Ruff, Mypy, uv |
 | Ruby | [ruby.md](ruby.md) | Ruby 3.x with StandardRB, Sorbet |
 | Go | [go.md](go.md) | Go 1.23+ with golangci-lint |

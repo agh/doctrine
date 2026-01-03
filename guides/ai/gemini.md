@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [Guides](../README.md) > [AI](./README.md) > Gemini
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Table of Contents
 
@@ -80,14 +82,19 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Introduction
 
-Google Gemini[^1] is a family of large language models designed for multimodal understanding and generation. This guide establishes best practices for integrating Gemini models into development workflows, with a focus on coding assistance, function calling, and leveraging Gemini's unique capabilities like massive context windows and grounding with Google Search.
+Google Gemini[^1] is a family of large language models designed for multimodal
+understanding and generation. This guide establishes best practices for
+integrating Gemini models into development workflows, with a focus on coding
+assistance, function calling, and leveraging Gemini's unique capabilities like
+massive context windows and grounding with Google Search.
 
 Gemini models are available through two primary platforms:
 
 1. **Google AI Studio[^2]** - Simplified API access for prototyping and small-scale applications
 2. **Vertex AI[^3]** - Enterprise-grade deployment with advanced features and SLA guarantees
 
-This guide covers both platforms and provides prescriptive guidance on model selection, API patterns, cost optimization, and common pitfalls.
+This guide covers both platforms and provides prescriptive guidance on model
+selection, API patterns, cost optimization, and common pitfalls.
 
 ### Who Should Use This Guide
 
@@ -118,6 +125,7 @@ Readers SHOULD have:
 **Context Window**: 1,048,576 tokens (1M input), 8,192 tokens (output)[^4]
 
 **Key Features**[^4]:
+
 - Multimodal live API support (audio and video streaming)
 - Native image generation
 - Native tool use and function calling
@@ -126,6 +134,7 @@ Readers SHOULD have:
 - Best price-to-performance ratio
 
 **Use Cases**:
+
 - Real-time coding assistance
 - Interactive development environments
 - Chat applications requiring low latency
@@ -133,16 +142,19 @@ Readers SHOULD have:
 - Multimodal applications (code + diagrams)
 
 **Limitations**:
+
 - Smaller maximum output tokens compared to Pro models
 - May require more careful prompt engineering for complex tasks
 
 You SHOULD use Gemini 2.0 Flash when:
+
 - Response time is critical (< 1 second)
 - Processing millions of requests per day
 - Budget constraints are primary concern
 - Tasks are well-defined and structured
 
 You SHOULD NOT use Gemini 2.0 Flash when:
+
 - Generating very long-form content (> 4K tokens)
 - Requiring highest possible reasoning quality
 - Complex multi-step planning is needed
@@ -154,6 +166,7 @@ You SHOULD NOT use Gemini 2.0 Flash when:
 **Context Window**: 2,097,152 tokens (2M input), 8,192 tokens (output)[^5]
 
 **Key Features**[^5]:
+
 - Largest context window available (2M tokens)
 - Superior reasoning on complex tasks
 - Better code understanding and generation
@@ -162,6 +175,7 @@ You SHOULD NOT use Gemini 2.0 Flash when:
 - Video understanding
 
 **Use Cases**:
+
 - Analyzing entire codebases (up to ~1M lines)
 - Complex refactoring tasks
 - Architectural decision support
@@ -170,17 +184,20 @@ You SHOULD NOT use Gemini 2.0 Flash when:
 - Processing large log files or data dumps
 
 **Limitations**:
+
 - Higher latency than Flash models
 - Significantly higher cost per token
 - Slower experimental releases for new features
 
 You MUST use Gemini 1.5 Pro when:
+
 - Analyzing codebases exceeding 500K tokens
 - Maximum reasoning quality is required
 - Complex multi-step tasks with dependencies
 - Processing extensive documentation sets
 
 You SHOULD use Gemini 1.5 Pro when:
+
 - Code generation requires deep contextual understanding
 - Performing complex refactoring operations
 - Generating comprehensive test suites
@@ -193,6 +210,7 @@ You SHOULD use Gemini 1.5 Pro when:
 **Context Window**: 1,048,576 tokens (1M input), 8,192 tokens (output)[^6]
 
 **Key Features**[^6]:
+
 - Balanced performance and cost
 - Fast inference speeds
 - Multimodal capabilities
@@ -200,6 +218,7 @@ You SHOULD use Gemini 1.5 Pro when:
 - Reliable function calling
 
 **Use Cases**:
+
 - General-purpose coding assistance
 - Moderate-complexity tasks
 - API integrations with balanced requirements
@@ -207,31 +226,33 @@ You SHOULD use Gemini 1.5 Pro when:
 
 **Status**: Being superseded by Gemini 2.0 Flash
 
-You SHOULD consider Gemini 2.0 Flash instead of 1.5 Flash for new projects due to improved capabilities and similar pricing.
+You **SHOULD** consider Gemini 2.0 Flash instead of 1.5 Flash for new projects
+due to improved capabilities and similar pricing.
 
 ### Model Comparison Matrix
 
-| Feature | Gemini 2.0 Flash | Gemini 1.5 Pro | Gemini 1.5 Flash |
-|---------|-----------------|----------------|------------------|
-| **Input Context** | 1M tokens | 2M tokens | 1M tokens |
-| **Output Tokens** | 8,192 | 8,192 | 8,192 |
-| **Latency** | Fastest | Moderate | Fast |
-| **Reasoning Quality** | Good | Excellent | Good |
-| **Code Generation** | Good | Excellent | Good |
-| **Cost (per 1M input)** | $0.15 | $1.25 | $0.15 |
-| **Cost (per 1M output)** | $0.60 | $5.00 | $0.60 |
-| **Multimodal** | Yes (advanced) | Yes | Yes |
-| **Function Calling** | Yes (native) | Yes | Yes |
-| **Grounding** | Yes | Yes | Yes |
-| **Audio I/O** | Yes | Yes (input) | Yes (input) |
-| **Video Understanding** | Yes | Yes | Yes |
-| **Image Generation** | Yes | No | No |
+| Feature                 | Gemini 2.0 Flash | Gemini 1.5 Pro | Gemini 1.5 Flash |
+| ----------------------- | ---------------- | -------------- | ---------------- |
+| **Input Context**       | 1M tokens        | 2M tokens      | 1M tokens        |
+| **Output Tokens**       | 8,192            | 8,192          | 8,192            |
+| **Latency**             | Fastest          | Moderate       | Fast             |
+| **Reasoning Quality**   | Good             | Excellent      | Good             |
+| **Code Generation**     | Good             | Excellent      | Good             |
+| **Cost (per 1M input)** | $0.15            | $1.25          | $0.15            |
+| **Cost (per 1M output)**| $0.60            | $5.00          | $0.60            |
+| **Multimodal**          | Yes (advanced)   | Yes            | Yes              |
+| **Function Calling**    | Yes (native)     | Yes            | Yes              |
+| **Grounding**           | Yes              | Yes            | Yes              |
+| **Audio I/O**           | Yes              | Yes (input)    | Yes (input)      |
+| **Video Understanding** | Yes              | Yes            | Yes              |
+| **Image Generation**    | Yes              | No             | No               |
 
 ### Pricing Structure
 
 **As of December 2024**[^7] (Google AI Studio / Vertex AI pricing):
 
 #### Gemini 2.0 Flash
+
 - Input tokens (≤128K): $0.00 / 1M tokens (free tier)
 - Input tokens (>128K): $0.15 / 1M tokens
 - Output tokens: $0.60 / 1M tokens
@@ -240,6 +261,7 @@ You SHOULD consider Gemini 2.0 Flash instead of 1.5 Flash for new projects due t
 - Video input: $0.15 / 1M tokens
 
 #### Gemini 1.5 Pro
+
 - Input tokens (≤128K): $1.25 / 1M tokens
 - Input tokens (>128K): $2.50 / 1M tokens
 - Output tokens: $5.00 / 1M tokens
@@ -248,6 +270,7 @@ You SHOULD consider Gemini 2.0 Flash instead of 1.5 Flash for new projects due t
 - Video input: $2.50 / 1M tokens
 
 #### Gemini 1.5 Flash
+
 - Input tokens (≤128K): $0.075 / 1M tokens
 - Input tokens (>128K): $0.15 / 1M tokens
 - Output tokens: $0.30 / 1M tokens
@@ -255,13 +278,14 @@ You SHOULD consider Gemini 2.0 Flash instead of 1.5 Flash for new projects due t
 - Audio input: $0.15 / 1M tokens
 - Video input: $0.15 / 1M tokens
 
-**Note**: Pricing MAY vary between Google AI Studio and Vertex AI. Always verify current pricing in the official documentation.
+**Note**: Pricing **MAY** vary between Google AI Studio and Vertex AI. Always
+verify current pricing in the official documentation.
 
 ### Selection Guidelines
 
 #### Decision Tree
 
-```
+```text
 START
 ├─ Need 2M+ token context?
 │  └─ YES → Gemini 1.5 Pro
@@ -291,17 +315,20 @@ START
 **Example Scenario**: Code review service processing 1,000 pull requests/day
 
 Each PR analysis requires:
+
 - Average input: 50,000 tokens
 - Average output: 2,000 tokens
 
 **Monthly Costs**:
 
 Gemini 2.0 Flash:
+
 - Input: 30 days × 1,000 PRs × 50K tokens × $0.15/1M = $22.50
 - Output: 30 days × 1,000 PRs × 2K tokens × $0.60/1M = $36.00
 - **Total: $58.50/month**
 
 Gemini 1.5 Pro:
+
 - Input: 30 days × 1,000 PRs × 50K tokens × $1.25/1M = $187.50
 - Output: 30 days × 1,000 PRs × 2K tokens × $5.00/1M = $300.00
 - **Total: $487.50/month**
@@ -309,6 +336,7 @@ Gemini 1.5 Pro:
 **Cost Difference**: 8.3x more expensive for Pro
 
 **When Pro is Worth It**:
+
 - Critical path reviews (security, compliance)
 - Complex architectural changes
 - Cross-repository refactoring
@@ -320,9 +348,11 @@ Gemini 1.5 Pro:
 
 ### Google AI Studio
 
-**Overview**: Google AI Studio[^2] provides a simplified REST API for accessing Gemini models with minimal setup.
+**Overview**: Google AI Studio[^2] provides a simplified REST API for accessing
+Gemini models with minimal setup.
 
 **Best For**:
+
 - Rapid prototyping
 - Individual developers
 - Small applications (< 100K requests/month)
@@ -330,6 +360,7 @@ Gemini 1.5 Pro:
 - Quick experiments
 
 **Limitations**:
+
 - No SLA guarantees
 - Limited enterprise features
 - Fewer regional deployment options
@@ -345,11 +376,13 @@ export GOOGLE_API_KEY="your-api-key-here"
 ```
 
 You SHOULD NOT:
+
 - Commit API keys to version control
 - Share API keys across teams
 - Use the same key for dev and production
 
 You MUST:
+
 - Store keys in environment variables or secret managers
 - Rotate keys regularly (every 90 days recommended)
 - Use separate keys per environment
@@ -373,19 +406,22 @@ print(response.text)
 
 #### Endpoint Structure
 
-```
+```text
 POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent[^15]
 ```
 
-You MUST include:
+You **MUST** include:
+
 - API key as query parameter: `?key=YOUR_API_KEY`
 - Content-Type header: `application/json`
 
 ### Vertex AI
 
-**Overview**: Vertex AI[^3] provides enterprise-grade access to Gemini with advanced features, SLAs, and integration with Google Cloud services.
+**Overview**: Vertex AI[^3] provides enterprise-grade access to Gemini with
+advanced features, SLAs, and integration with Google Cloud services.
 
 **Best For**:
+
 - Production applications
 - Enterprise deployments
 - High-volume processing
@@ -394,6 +430,7 @@ You MUST include:
 - Integration with GCP ecosystem
 
 **Advantages**:
+
 - 99.9% SLA availability
 - VPC Service Controls
 - CMEK (Customer-Managed Encryption Keys)
@@ -428,6 +465,7 @@ print(response.text)
 #### Service Account Setup
 
 You MUST:
+
 1. Create a service account with appropriate permissions
 2. Grant `Vertex AI User` role minimum
 3. Download and secure the JSON key file
@@ -460,6 +498,7 @@ Vertex AI supports multiple regions. You SHOULD choose regions based on:
 3. **Availability** - Some models may not be available in all regions
 
 Available regions (as of December 2024)[^3]:
+
 - `us-central1` (Iowa)
 - `us-east4` (Virginia)
 - `us-west1` (Oregon)
@@ -477,20 +516,20 @@ aiplatform.init(
 
 ### Platform Comparison
 
-| Feature | Google AI Studio | Vertex AI |
-|---------|-----------------|-----------|
-| **Authentication** | API Key | Service Account / OAuth |
-| **SLA** | None | 99.9% |
-| **Pricing** | Same as Vertex | Same as AI Studio |
-| **Setup Complexity** | Low | Moderate |
-| **Enterprise Features** | Limited | Full |
-| **VPC Integration** | No | Yes |
-| **Logging** | Basic | Cloud Logging |
-| **Monitoring** | Basic | Cloud Monitoring |
-| **Batch Predictions** | No | Yes |
-| **Model Garden** | Limited | Full Access |
-| **Custom Models** | No | Yes |
-| **Data Residency** | Limited | Full Control |
+| Feature                 | Google AI Studio         | Vertex AI               |
+| ----------------------- | ------------------------ | ----------------------- |
+| **Authentication**      | API Key                  | Service Account / OAuth |
+| **SLA**                 | None                     | 99.9%                   |
+| **Pricing**             | Same as Vertex           | Same as AI Studio       |
+| **Setup Complexity**    | Low                      | Moderate                |
+| **Enterprise Features** | Limited                  | Full                    |
+| **VPC Integration**     | No                       | Yes                     |
+| **Logging**             | Basic                    | Cloud Logging           |
+| **Monitoring**          | Basic                    | Cloud Monitoring        |
+| **Batch Predictions**   | No                       | Yes                     |
+| **Model Garden**        | Limited                  | Full Access             |
+| **Custom Models**       | No                       | Yes                     |
+| **Data Residency**      | Limited                  | Full Control            |
 
 ### Authentication and Setup
 
@@ -514,8 +553,8 @@ export GOOGLE_API_KEY="AIza..."
 gcloud services enable aiplatform.googleapis.com[^3]
 ```
 
-3. Set up authentication (see Service Account Setup above)
-4. Install SDK[^12]
+1. Set up authentication (see Service Account Setup above)
+2. Install SDK[^12]
 
 ```bash
 pip install google-cloud-aiplatform[^12]
@@ -524,6 +563,7 @@ pip install google-cloud-aiplatform[^12]
 #### SDK Installation
 
 **Python**:
+
 ```bash
 # For Google AI Studio
 pip install google-generativeai  # [^11]
@@ -533,6 +573,7 @@ pip install google-cloud-aiplatform  # [^12]
 ```
 
 **Node.js**:
+
 ```bash
 # For Google AI Studio
 npm install @google/generative-ai  # [^13]
@@ -545,11 +586,13 @@ npm install @google-cloud/vertexai  # [^14]
 
 ## System Instructions for Coding
 
-System instructions provide persistent context that applies to all messages in a conversation. They are CRITICAL for consistent coding assistance.
+System instructions provide persistent context that applies to all messages in
+a conversation. They are **CRITICAL** for consistent coding assistance.
 
 ### Effective System Instructions
 
 System instructions SHOULD:
+
 - Define the assistant's role and expertise
 - Specify output format and structure
 - Establish code style preferences
@@ -557,6 +600,7 @@ System instructions SHOULD:
 - Include examples of desired behavior
 
 System instructions MUST:
+
 - Be clear and unambiguous
 - Avoid contradictions
 - Stay under 10,000 tokens for performance
@@ -712,7 +756,7 @@ Keep feedback specific, actionable, and constructive.
 
 ### Documentation Generation
 
-```python
+````python
 docs_instruction = """You are a technical documentation specialist.
 
 # Documentation Standards
@@ -745,7 +789,9 @@ def example_function(param1: str, param2: int) -> bool:
 ```
 
 ## Class Documentation
+
 Include:
+
 - Purpose of the class
 - Key attributes
 - Important methods
@@ -753,24 +799,27 @@ Include:
 - Thread safety notes (if applicable)
 
 ## Module Documentation
+
 At the top of each module:
+
 - Module purpose
 - Key classes/functions
 - Dependencies
 - Usage examples
 
 # Tone and Style
+
 - Use present tense ("Returns" not "Will return")
 - Be concise but complete
 - Include examples for complex behavior
 - Link to related functions/classes
 - Note any deprecations or future changes
 """
-```
+````
 
 ### Testing and Quality Assurance
 
-```python
+````python
 testing_instruction = """You are a test engineering specialist.
 
 # Testing Philosophy
@@ -795,19 +844,23 @@ def test_user_creation_with_valid_data_creates_user():
 ```
 
 # Coverage Requirements
+
 - Unit tests: 80%+ coverage
 - Integration tests: Critical paths must be covered
 - Edge cases: Empty inputs, None, boundary values
 - Error cases: Invalid inputs, network failures, etc.
 
 # Mocking Guidelines
+
 - Mock external services (APIs, databases in unit tests)
 - Use fixtures for test data
 - Reset mocks between tests
 - Verify mock calls when behavior matters
 
 # Test Generation
+
 When generating tests:
+
 1. Cover happy path first
 2. Add edge cases
 3. Add error cases
@@ -815,20 +868,23 @@ When generating tests:
 5. Include performance tests for hot paths (> 1000 calls/sec)
 
 # Output Format
+
 Provide complete, runnable test files with:
+
 - Necessary imports
 - Fixtures and setup
 - Complete test functions
 - Teardown if needed
 - Comments explaining complex assertions
 """
-```
+````
 
 ### System Instruction Best Practices
 
 #### DO
 
 1. **Be Specific About Output Format**
+
 ```python
 system_instruction = """
 # Output Format
@@ -848,8 +904,9 @@ Your responses MUST be valid JSON with this structure:
 """
 ```
 
-2. **Include Concrete Examples**
-```python
+1. **Include Concrete Examples**
+
+````python
 system_instruction = """
 When suggesting refactoring, use this format:
 
@@ -864,6 +921,7 @@ def bad_example():
 ```
 
 **After**:
+
 ```python
 def good_example():
     return get_value()
@@ -871,9 +929,10 @@ def good_example():
 
 **Reason**: The else clause is unnecessary; Python functions return None by default.
 """
-```
+````
 
-3. **Set Clear Boundaries**
+1. **Set Clear Boundaries**
+
 ```python
 system_instruction = """
 You MUST NOT:
@@ -893,6 +952,7 @@ You MUST:
 #### DON'T
 
 1. **Don't Be Vague**
+
 ```python
 # BAD
 system_instruction = "You are a helpful coding assistant."
@@ -902,7 +962,8 @@ system_instruction = """You are a Python expert specializing in Django web devel
 You provide code that follows Django best practices and the project's coding standards."""
 ```
 
-2. **Don't Contradict Yourself**
+1. **Don't Contradict Yourself**
+
 ```python
 # BAD
 system_instruction = """
@@ -912,7 +973,8 @@ Keep functions under 10 lines for readability.
 # These may conflict for complex error handling
 ```
 
-3. **Don't Overload with Information**
+1. **Don't Overload with Information**
+
 ```python
 # BAD - Too much information
 system_instruction = """
@@ -935,7 +997,9 @@ Key requirements:
 
 ## Function Calling
 
-Function calling[^16] enables Gemini to interact with external systems, APIs, and tools. This is ESSENTIAL for building AI agents and assistants that take actions.
+Function calling[^16] enables Gemini to interact with external systems, APIs,
+and tools. This is **ESSENTIAL** for building AI agents and assistants that
+take actions.
 
 ### Function Declaration
 
@@ -1097,7 +1161,7 @@ else:
 
 ### Function Call Flow
 
-```
+```text
 User Message
     ↓
 Gemini Processes Input
@@ -1179,7 +1243,7 @@ def get_weather(location: str, unit: str = "fahrenheit") -> dict:
 
 Gemini will incorporate error information into its response:
 
-```
+```text
 User: What's the weather in Atlantis?
 Gemini: I couldn't find weather information for Atlantis as it's not a recognized location.
 Could you provide a valid city name?
@@ -1190,6 +1254,7 @@ Could you provide a valid city name?
 #### DO
 
 1. **Provide Detailed Descriptions**
+
 ```python
 # GOOD
 {
@@ -1211,7 +1276,8 @@ Could you provide a valid city name?
 }
 ```
 
-2. **Use Enums for Constrained Values**
+1. **Use Enums for Constrained Values**
+
 ```python
 {
     "name": "create_file",
@@ -1228,7 +1294,8 @@ Could you provide a valid city name?
 }
 ```
 
-3. **Validate Function Arguments**
+1. **Validate Function Arguments**
+
 ```python
 def execute_query(sql: str, database: str) -> dict:
     # Validate before execution
@@ -1248,7 +1315,8 @@ def execute_query(sql: str, database: str) -> dict:
     ...
 ```
 
-4. **Return Structured Data**
+1. **Return Structured Data**
+
 ```python
 # GOOD - Structured response
 def search_code(pattern: str) -> dict:
@@ -1272,6 +1340,7 @@ def search_code(pattern: str) -> str:
 #### DON'T
 
 1. **Don't Use Generic Descriptions**
+
 ```python
 # BAD
 {
@@ -1288,7 +1357,8 @@ def search_code(pattern: str) -> str:
 }
 ```
 
-2. **Don't Allow Dangerous Operations Without Safeguards**
+1. **Don't Allow Dangerous Operations Without Safeguards**
+
 ```python
 # BAD - No validation
 def execute_code(code: str):
@@ -1303,7 +1373,8 @@ def execute_code(code: str, timeout: int = 5):
     ...
 ```
 
-3. **Don't Return Raw Exceptions**
+1. **Don't Return Raw Exceptions**
+
 ```python
 # BAD
 def get_file_contents(path: str):
@@ -1329,7 +1400,8 @@ def get_file_contents(path: str) -> dict:
 
 ## Grounding with Google Search
 
-Grounding[^8] allows Gemini to retrieve up-to-date information from Google Search, reducing hallucinations and providing current data.
+Grounding[^8] allows Gemini to retrieve up-to-date information from Google
+Search, reducing hallucinations and providing current data.
 
 ### Search Grounding Configuration
 
@@ -1420,24 +1492,28 @@ for chunk in metadata.grounding_chunks:
 #### Ideal Use Cases
 
 1. **Current Events and News**
+
 ```python
 prompt = "What are the major tech announcements from CES 2025?"
 # Grounding ensures up-to-date information
 ```
 
-2. **Recent API Documentation**
+1. **Recent API Documentation**
+
 ```python
 prompt = "How do I use the new React Server Components in Next.js 15?"
 # Gets latest documentation and examples
 ```
 
-3. **Version-Specific Information**
+1. **Version-Specific Information**
+
 ```python
 prompt = "What breaking changes were introduced in TypeScript 5.3?"
 # Retrieves accurate version-specific details
 ```
 
-4. **Factual Verification**
+1. **Factual Verification**
+
 ```python
 prompt = "What is the current market cap of NVIDIA?"
 # Grounds answer in current data
@@ -1451,12 +1527,14 @@ prompt = "What is the current market cap of NVIDIA?"
 4. **Refactoring Existing Code** - Context-based task
 
 You SHOULD use grounding when:
+
 - Information changes frequently
 - Accuracy of current data is critical
 - User asks about recent events (last 6 months)
 - Factual verification is needed
 
 You SHOULD NOT use grounding when:
+
 - Question is about established concepts
 - Speed is more important than currency
 - User's codebase context is more relevant than web search
@@ -1466,17 +1544,19 @@ You SHOULD NOT use grounding when:
 
 ## Large Context Window Usage
 
-Gemini models support massive context windows (1M-2M tokens), enabling analysis of entire codebases, long documents, and extensive conversations.
+Gemini models support massive context windows (1M-2M tokens), enabling analysis
+of entire codebases, long documents, and extensive conversations.
 
 ### Context Window Capabilities
 
-| Model | Input Tokens | Output Tokens | Equivalent |
-|-------|-------------|---------------|------------|
-| Gemini 2.0 Flash | 1,048,576 | 8,192 | ~800K words or ~3500 pages |
-| Gemini 1.5 Pro | 2,097,152 | 8,192 | ~1.6M words or ~7000 pages |
-| Gemini 1.5 Flash | 1,048,576 | 8,192 | ~800K words or ~3500 pages |
+| Model             | Input Tokens | Output Tokens | Equivalent                 |
+| ----------------- | ------------ | ------------- | -------------------------- |
+| Gemini 2.0 Flash  | 1,048,576    | 8,192         | ~800K words or ~3500 pages |
+| Gemini 1.5 Pro    | 2,097,152    | 8,192         | ~1.6M words or ~7000 pages |
+| Gemini 1.5 Flash  | 1,048,576    | 8,192         | ~800K words or ~3500 pages |
 
 **Token Estimation**:
+
 - 1 token ≈ 4 characters
 - 1 token ≈ 0.75 words
 - 1000 tokens ≈ 750 words
@@ -1568,9 +1648,11 @@ context = create_structured_context(
 
 ### Context Caching
 
-Context caching[^9] allows you to reuse large context prefixes, reducing costs by up to 75% and improving latency.
+Context caching[^9] allows you to reuse large context prefixes, reducing costs
+by up to 75% and improving latency.
 
 **How It Works**:
+
 1. First request: Full context is processed and cached
 2. Subsequent requests: Cached portion is reused (at 75% discount)
 3. Cache TTL: 1 hour (refreshed on each use)
@@ -1616,6 +1698,7 @@ cache.delete()
 ```
 
 **Cost Example**:
+
 - Codebase: 500K tokens
 - First request: 500K tokens × $1.25/1M = $0.625
 - Cached requests: 500K tokens × $0.3125/1M = $0.156 (75% savings)
@@ -1716,18 +1799,21 @@ def get_relevant_context(query: str, codebase_index: dict) -> str:
 #### Best Practices
 
 You MUST:
+
 - Structure context clearly with headers and sections
 - Include file paths and line numbers for code
 - Remove irrelevant files (build artifacts, dependencies)
 - Use markdown formatting for readability
 
 You SHOULD:
+
 - Prioritize important files at the beginning
 - Include README and architecture docs early
 - Use context caching for repeated queries
 - Compress whitespace and empty lines
 
 You SHOULD NOT:
+
 - Include generated code (build outputs)
 - Include binary files or images as text
 - Include entire dependency code
@@ -1889,11 +1975,13 @@ async def batch_analyze_files(files: list[str], batch_size: int = 10):
 ### Rate Limiting and Quotas
 
 **Google AI Studio** quotas (free tier)[^2]:
+
 - 15 requests per minute
 - 1,500 requests per day
 - 1 million tokens per minute
 
 **Vertex AI** quotas (default, can request increases)[^3]:
+
 - 300 requests per minute
 - 10,000 requests per hour
 - 4 million tokens per minute
@@ -1967,6 +2055,7 @@ model = genai.GenerativeModel(
 ```
 
 **Best Practice**:
+
 - Development: BLOCK_ONLY_HIGH for flexibility
 - Production: BLOCK_MEDIUM_AND_ABOVE for safety
 - Security tools: BLOCK_NONE with explicit disclaimers
@@ -2158,7 +2247,7 @@ else:
 
 #### DO: Be Specific and Structured
 
-```python
+````python
 # GOOD
 prompt = """Refactor this Python function following these requirements:
 
@@ -2176,7 +2265,7 @@ def fetch_data(url):
 
 Return only the refactored code with brief explanation of changes.
 """
-```
+````
 
 #### DON'T: Be Vague
 
@@ -2187,7 +2276,7 @@ prompt = "Make this code better: {code}"
 
 #### DO: Provide Examples for Complex Tasks
 
-```python
+````python
 # GOOD
 prompt = """Convert these API endpoint descriptions to OpenAPI spec.
 
@@ -2209,7 +2298,7 @@ Output:
 Now convert:
 {api_descriptions}
 """
-```
+````
 
 #### DON'T: Assume Model Knows Your Format
 
@@ -2589,24 +2678,28 @@ Code:
 **Google's Data Usage Policies**:
 
 **Google AI Studio**:
+
 - Prompts and responses MAY be used to improve models
 - NOT suitable for sensitive or private data
 - No data residency guarantees
 - Not covered by Google Cloud SLAs
 
 **Vertex AI**:
+
 - Your data is NOT used to train models (with standard agreement)
 - Suitable for sensitive business data
 - Data residency controls available
 - Covered by Google Cloud SLAs and compliance certifications
 
 You MUST:
+
 - Use Vertex AI for production and sensitive data
 - Never include PII, credentials, or secrets in prompts
 - Implement data sanitization before sending to API
 - Review Google's data usage policies for your use case
 
 You SHOULD:
+
 - Use environment variables for all API keys
 - Implement access controls on API endpoints
 - Log API usage for audit trails
@@ -2667,6 +2760,7 @@ model = genai.GenerativeModel(
 ### Compliance Considerations
 
 **Certifications** (Vertex AI)[^3]:
+
 - SOC 2/3
 - ISO 27001
 - HIPAA (with BAA)
@@ -2674,6 +2768,7 @@ model = genai.GenerativeModel(
 - GDPR compliant
 
 **Required for Compliance**:
+
 1. Use Vertex AI (not Google AI Studio)
 2. Enable VPC Service Controls
 3. Use customer-managed encryption keys (CMEK)
@@ -2844,35 +2939,45 @@ test_safety_filter("Analyze this SQL injection vulnerability: {code}")
 [^8]: [Grounding with Google Search](https://cloud.google.com/vertex-ai/docs/generative-ai/grounding/ground-with-google-search) - Search grounding documentation
 [^9]: [Context Caching](https://ai.google.dev/gemini-api/docs/caching) - Prompt caching guide for cost optimization
 [^10]: [Code Execution](https://cloud.google.com/vertex-ai/docs/generative-ai/code/code-execution-overview) - Python code execution feature
-[^11]: [Python SDK for Google AI](https://github.com/google/generative-ai-python) - Official Python client library
 [^12]: [Vertex AI Python SDK](https://cloud.google.com/python/docs/reference/aiplatform/latest) - Google Cloud AI Platform SDK
-[^13]: [Node.js SDK for Google AI](https://github.com/google/generative-ai-js) - Official JavaScript/TypeScript client
-[^14]: [Vertex AI Node.js SDK](https://cloud.google.com/nodejs/docs/reference/aiplatform/latest) - Google Cloud AI Platform for Node.js
-[^15]: [Gemini REST API Reference](https://ai.google.dev/api/rest) - REST API endpoint documentation
-[^16]: [Function Calling Guide](https://ai.google.dev/gemini-api/docs/function-calling) - Function calling documentation and best practices
+[^16]: [Function Calling Guide](https://ai.google.dev/gemini-api/docs/function-calling) -
+    Function calling documentation and best practices
 [^17]: [Multimodal Prompting](https://ai.google.dev/gemini-api/docs/vision) - Guide to using images, video, and audio with Gemini
 [^18]: [Safety Settings](https://ai.google.dev/gemini-api/docs/safety-settings) - Content filtering and safety configuration guide
-[^19]: [Streaming Responses](https://ai.google.dev/gemini-api/docs/streaming) - Guide to streaming API responses
+[^19]: [Streaming Responses](https://ai.google.dev/gemini-api/docs/streaming) -
+    Guide to streaming API responses
 [^20]: [JSON Mode](https://ai.google.dev/gemini-api/docs/json-mode) - Controlled generation with JSON schema
 
 ### Additional Resources
 
 **Official Documentation**:
+
 - [Gemini API Reference](https://ai.google.dev/api) - Complete API reference
-- [Generative AI on Vertex AI](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/overview) - Enterprise features and capabilities
+- [Generative AI on Vertex AI](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/overview)
+  - Enterprise features and capabilities
 
 **Security and Compliance**:
-- [Vertex AI Security](https://cloud.google.com/vertex-ai/docs/general/security) - Security features and best practices
-- [Data Usage FAQ](https://ai.google.dev/gemini-api/docs/faq) - Privacy and data usage policies
-- [Google Cloud Compliance](https://cloud.google.com/security/compliance) - Compliance certifications
+
+- [Vertex AI Security](https://cloud.google.com/vertex-ai/docs/general/security) - Security
+  features and best practices
+- [Data Usage FAQ](https://ai.google.dev/gemini-api/docs/faq) - Privacy and data usage
+  policies
+- [Google Cloud Compliance](https://cloud.google.com/security/compliance) - Compliance
+  certifications
 
 **Best Practices**:
-- [Prompt Engineering Guide](https://ai.google.dev/docs/prompt_best_practices) - Effective prompting strategies
-- [System Instructions](https://ai.google.dev/gemini-api/docs/system-instructions) - Using system instructions
-- [Safety Settings](https://ai.google.dev/gemini-api/docs/safety-settings) - Content filtering configuration
-- [Function Calling Guide](https://ai.google.dev/gemini-api/docs/function-calling) - Function calling documentation
+
+- [Prompt Engineering Guide](https://ai.google.dev/docs/prompt_best_practices) - Effective
+  prompting strategies
+- [System Instructions](https://ai.google.dev/gemini-api/docs/system-instructions) - Using
+  system instructions
+- [Safety Settings](https://ai.google.dev/gemini-api/docs/safety-settings) - Content
+  filtering configuration
+- [Function Calling Guide](https://ai.google.dev/gemini-api/docs/function-calling) - Function
+  calling documentation
 
 **Community and Support**:
+
 - [Google AI Discord](https://discord.gg/google-ai-dev) - Community discussions
 - [Stack Overflow](https://stackoverflow.com/questions/tagged/google-gemini) - Q&A tagged with google-gemini
 - [GitHub Discussions](https://github.com/google/generative-ai-python/discussions) - Python SDK discussions

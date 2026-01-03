@@ -2,7 +2,7 @@
 
 > [Doctrine](../../README.md) > [Documentation](README.md) > Specifications
 
-**The Spec for Specs: Engineering Documentation in the AI Era**
+The Spec for Specs: Engineering Documentation in the AI Era.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -31,31 +31,40 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ### The Documentation Paradox
 
-Documentation has two audiences in 2025: **humans** who make decisions and **AI agents** who execute work. The best specifications serve both without compromise.
+Documentation has two audiences in 2025: **humans** who make decisions and
+**AI agents** who execute work. The best specifications serve both without
+compromise.
 
 ### Core Principles
 
-**1. Narrative Over Bullets**
+#### 1. Narrative Over Bullets
 
-> "PowerPoint is a sales tool. Internally, the last thing you want to do is sell. You're truth-seeking." — Jeff Bezos
+> "PowerPoint is a sales tool. Internally, the last thing you want to do is
+> sell. You're truth-seeking." -- Jeff Bezos
 
-Full sentences force clarity of thought. Bullet points hide fuzzy thinking. Write narratively, then extract summaries for quick reference.
+Full sentences force clarity of thought. Bullet points hide fuzzy thinking.
+Write narratively, then extract summaries for quick reference.
 
-**2. Docs as Code**
+#### 2. Docs as Code
 
-Specifications **MUST** live alongside code in version control. They are first-class artifacts, reviewed in PRs, validated in CI, and deployed with releases.
+Specifications **MUST** live alongside code in version control. They are
+first-class artifacts, reviewed in PRs, validated in CI, and deployed
+with releases.
 
-**3. Single Source of Truth**
+#### 3. Single Source of Truth
 
-Each fact exists in exactly one place. Other documents link, never duplicate. When information changes, it changes once.
+Each fact exists in exactly one place. Other documents link, never duplicate.
+When information changes, it changes once.
 
-**4. Write for Change**
+#### 4. Write for Change
 
-Good specs anticipate evolution. Use ADRs to capture decisions. Version specs alongside code. Make deprecation explicit.
+Good specs anticipate evolution. Use ADRs to capture decisions. Version specs
+alongside code. Make deprecation explicit.
 
-**5. AI-Native by Default**
+#### 5. AI-Native by Default
 
-Modern specs are consumed by LLMs, AI coding assistants, and autonomous agents. Structure content for machine parsing without sacrificing human readability.
+Modern specs are consumed by LLMs, AI coding assistants, and autonomous agents.
+Structure content for machine parsing without sacrificing human readability.
 
 ---
 
@@ -63,21 +72,21 @@ Modern specs are consumed by LLMs, AI coding assistants, and autonomous agents. 
 
 Every engineering organization needs these document types. Each serves a distinct purpose:
 
-| Document | Purpose | Audience | Lifespan |
-|----------|---------|----------|----------|
-| **RFC** | Propose significant changes | Team/Org | Until decided |
-| **Design Doc** | Detail implementation approach | Engineers | Project duration |
-| **ADR** | Record architectural decisions | Future team | Permanent |
-| **PRD** | Define product requirements | Cross-functional | Feature lifecycle |
-| **PR/FAQ** | Validate customer value | Leadership | Until launch |
-| **Technical Spec** | Define system contracts | Engineers | System lifetime |
-| **Runbook** | Operational procedures | SREs/Operators | Continuous |
+| Document           | Purpose                        | Audience         | Lifespan          |
+| ------------------ | ------------------------------ | ---------------- | ----------------- |
+| **RFC**            | Propose significant changes    | Team/Org         | Until decided     |
+| **Design Doc**     | Detail implementation approach | Engineers        | Project duration  |
+| **ADR**            | Record architectural decisions | Future team      | Permanent         |
+| **PRD**            | Define product requirements    | Cross-functional | Feature lifecycle |
+| **PR/FAQ**         | Validate customer value        | Leadership       | Until launch      |
+| **Technical Spec** | Define system contracts        | Engineers        | System lifetime   |
+| **Runbook**        | Operational procedures         | SREs/Operators   | Continuous        |
 
 ### When to Use Each
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                     DECISION TREE                                │
+│                     DECISION TREE                               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  "I need to propose a significant change"                        │
@@ -110,43 +119,50 @@ Every engineering organization needs these document types. Each serves a distinc
 
 ### Tier 1: Strategic (Why)
 
-**PR/FAQ** — Working Backwards from the customer
+**PR/FAQ** -- Working Backwards from the customer
+
 - Written before any engineering work begins
 - Forces customer-centric thinking
 - Kills bad ideas cheaply (words are cheaper than code)
 
-**PRD** — Product Requirements
+**PRD** -- Product Requirements
+
 - Defines the "what" without the "how"
 - Owned by Product Management
 - Versioned with major releases
 
 ### Tier 2: Tactical (What/How)
 
-**RFC** — Request for Comments
+**RFC** -- Request for Comments
+
 - Proposes significant changes requiring consensus
 - Time-boxed discussion period
 - Results in accept/reject/modify decision
 
-**Design Doc** — Implementation Blueprint
+**Design Doc** -- Implementation Blueprint
+
 - Details the "how" for a specific project
 - Living document during development
 - Archived after completion
 
 ### Tier 3: Operational (Record)
 
-**ADR** — Architecture Decision Records
+**ADR** -- Architecture Decision Records
+
 - Captures decisions and context permanently
 - Never deleted, only superseded
 - Enables future archaeology
 
-**Technical Specs** — System Contracts
+**Technical Specs** -- System Contracts
+
 - API specifications (OpenAPI, GraphQL SDL)
 - Data schemas (JSON Schema, Protobuf)
 - Interface definitions
 
 ### Tier 4: Execution (Do)
 
-**Runbooks** — Operational Procedures
+**Runbooks** -- Operational Procedures
+
 - Step-by-step incident response
 - Deployment procedures
 - Maintenance tasks
@@ -158,6 +174,7 @@ Every engineering organization needs these document types. Each serves a distinc
 ### The Dual-Audience Challenge
 
 In 2025, your specifications will be read by:
+
 - **Engineers** making implementation decisions
 - **Product managers** understanding scope
 - **AI coding assistants** (Cursor, Copilot, Claude Code)
@@ -205,6 +222,7 @@ Technical details grouped together.
 ```
 
 **Anti-pattern:**
+
 ```markdown
 ## Feature
 See above for context...                  ← Lost when chunked
@@ -245,13 +263,15 @@ tags:
 Google's design doc culture emphasizes informal but rigorous documentation[^1].
 
 **Structure:**
+
 1. **Context and Scope** — Problem definition and boundaries
 2. **Goals and Non-Goals** — Explicit inclusions/exclusions
 3. **Design** — The proposed solution
 4. **Alternatives Considered** — Options evaluated and rejected
 5. **Cross-cutting Concerns** — Security, privacy, scalability
 
-**Key Practice:** Design docs are created in collaborative editors (Google Docs), not wikis. Comments and suggestions are inline, fostering discussion.
+**Key Practice:** Design docs are created in collaborative editors (Google Docs),
+not wikis. Comments and suggestions are inline, fostering discussion.
 
 **Duration:** Days to weeks of iteration before coding begins.
 
@@ -260,11 +280,13 @@ Google's design doc culture emphasizes informal but rigorous documentation[^1].
 Amazon banned PowerPoint in favor of narrative documents[^2].
 
 **6-Pager Structure:**
+
 - 2 pages: General background
 - 2 pages: Specific background
 - 2 pages: Action and plan
 
 **PR/FAQ Structure:**
+
 - Press Release (< 1 page): Customer announcement
 - FAQ (< 5 pages): Internal and external questions
 
@@ -277,6 +299,7 @@ Amazon banned PowerPoint in favor of narrative documents[^2].
 Stripe elevates writing to a core engineering skill[^3].
 
 **Key Practices:**
+
 - Sample docs (not templates) provide context, not fill-in-the-blanks
 - Engineers review writing like they review code
 - Documentation included in engineering career ladder
@@ -289,6 +312,7 @@ Stripe elevates writing to a core engineering skill[^3].
 Meta combines high velocity with documentation discipline[^4].
 
 **Key Practices:**
+
 - Internal Phabricator for code review includes doc review
 - Workplace serves as wiki + communication + social
 - Strong emphasis on ADRs for knowledge preservation across team changes
@@ -298,6 +322,7 @@ Meta combines high velocity with documentation discipline[^4].
 Microsoft formalizes documentation into frameworks[^5].
 
 **Key Artifacts:**
+
 - Functional Specification: What and why (not how)
 - Technical Specification: How (for engineering)
 - Architecture Design Specification: Decisions and diagrams
@@ -455,7 +480,7 @@ What led to this design? What's the current state?
 
 ### System Architecture
 
-```
+```text
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │   Client    │────▶│  API Gateway │────▶│   Payment   │
 └─────────────┘     └──────────────┘     │   Service   │
@@ -466,6 +491,7 @@ What led to this design? What's the current state?
               ┌──────────┐              ┌──────────┐  ┌──────────┐
               │  Stripe  │              │  PayPal  │  │  Square  │
               └──────────┘              └──────────┘  └──────────┘
+
 ```
 
 ### API Changes
@@ -525,6 +551,9 @@ Rejected because...
 ## Open Questions
 
 - [ ] Retry strategy for failed webhooks?
+
+```text
+
 ```
 
 ### PR/FAQ Format (Amazon Working Backwards)
@@ -601,7 +630,7 @@ a separate initiative.
 
 The C4 Model provides four levels of abstraction[^7]:
 
-```
+```text
 Level 1: System Context    — How system fits in the world
 Level 2: Container         — High-level technology choices
 Level 3: Component         — Components within containers
@@ -615,6 +644,7 @@ Level 4: Code              — Implementation details (optional)
 **MUST** use text-based diagramming for version control:
 
 **Mermaid** (GitHub/GitLab native):
+
 ```mermaid
 graph TD
     A[Client] --> B[API Gateway]
@@ -624,6 +654,7 @@ graph TD
 ```
 
 **PlantUML** (more expressive):
+
 ```plantuml
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
@@ -688,7 +719,8 @@ The llms.txt standard enables LLMs to efficiently consume documentation[^9].
 
 ### Model Context Protocol (MCP)
 
-MCP enables AI agents to retrieve structured context[^10]. **SHOULD** design APIs and documentation with MCP compatibility:
+MCP enables AI agents to retrieve structured context[^10]. Teams **SHOULD**
+design APIs and documentation with MCP compatibility:
 
 ```json
 {
@@ -717,13 +749,13 @@ MCP enables AI agents to retrieve structured context[^10]. **SHOULD** design API
 
 LLMs can assist documentation workflows[^11]:
 
-| Task | AI Contribution | Human Review |
-|------|-----------------|--------------|
-| First drafts | Generate from specs | Required |
-| Changelog entries | Generate from commits | Required |
-| API docs | Generate from OpenAPI | Required |
-| Translation | Translate content | Required |
-| Proofreading | Grammar, clarity | Recommended |
+| Task              | AI Contribution        | Human Review |
+| ----------------- | ---------------------- | ------------ |
+| First drafts      | Generate from specs    | Required     |
+| Changelog entries | Generate from commits  | Required     |
+| API docs          | Generate from OpenAPI  | Required     |
+| Translation       | Translate content      | Required     |
+| Proofreading      | Grammar, clarity       | Recommended  |
 
 **MUST NOT** publish AI-generated content without human review.
 
@@ -764,15 +796,15 @@ jobs:
 
 ### Recommended Tools
 
-| Category | Tool | Purpose |
-|----------|------|---------|
-| Linting | markdownlint | Markdown style |
-| Links | markdown-link-check | Broken link detection |
-| Diagrams | Mermaid, PlantUML | Diagrams as code |
-| Site | Mintlify, Docusaurus | Documentation sites |
-| API Docs | OpenAPI, AsyncAPI | API specifications |
-| ADRs | adr-tools | ADR management |
-| Search | Algolia DocSearch | Documentation search |
+| Category | Tool                 | Purpose               |
+| -------- | -------------------- | --------------------- |
+| Linting  | markdownlint         | Markdown style        |
+| Links    | markdown-link-check  | Broken link detection |
+| Diagrams | Mermaid, PlantUML    | Diagrams as code      |
+| Site     | Mintlify, Docusaurus | Documentation sites   |
+| API Docs | OpenAPI, AsyncAPI    | API specifications    |
+| ADRs     | adr-tools            | ADR management        |
+| Search   | Algolia DocSearch    | Documentation search  |
 
 ### ADR Tooling
 
@@ -798,6 +830,7 @@ adr new -s 42 "Switch to CockroachDB"
 **Problem:** Documentation written once, never updated.
 
 **Solution:**
+
 - Link docs to code in CI (fail if out of sync)
 - Review docs in PRs that change related code
 - Add expiration dates or review reminders
@@ -807,6 +840,7 @@ adr new -s 42 "Switch to CockroachDB"
 **Problem:** Documentation scattered across wikis, losing version history.
 
 **Solution:**
+
 - Docs live in code repositories
 - Single source of truth per topic
 - Wiki only for ephemeral/operational content
@@ -816,6 +850,7 @@ adr new -s 42 "Switch to CockroachDB"
 **Problem:** Empty templates filled with placeholder text.
 
 **Solution:**
+
 - Use sample docs, not blank templates
 - Delete sections that don't apply
 - Require narrative over checkboxes
@@ -825,6 +860,7 @@ adr new -s 42 "Switch to CockroachDB"
 **Problem:** 50-page specs no one reads.
 
 **Solution:**
+
 - Executive summary in first paragraph
 - Link to details, don't inline everything
 - Time-box reading: if it takes > 30 minutes, split it
@@ -834,6 +870,7 @@ adr new -s 42 "Switch to CockroachDB"
 **Problem:** Decisions made in Slack, lost forever.
 
 **Solution:**
+
 - Formal ADR process for architectural decisions
 - Bot to prompt "Should this be an ADR?"
 - Quarterly ADR audits
@@ -843,6 +880,7 @@ adr new -s 42 "Switch to CockroachDB"
 **Problem:** Documentation AI assistants can't parse.
 
 **Solution:**
+
 - Structured frontmatter
 - Consistent heading hierarchy
 - Self-contained sections
@@ -856,12 +894,12 @@ adr new -s 42 "Switch to CockroachDB"
 
 Copy the appropriate template and customize:
 
-| Template | Path | Use Case |
-|----------|------|----------|
-| RFC | [templates/rfc.md](#rfc-format) | Proposing changes |
-| ADR | [templates/adr.md](#adr-format) | Recording decisions |
-| Design Doc | [templates/design-doc.md](#design-doc-format) | Implementation planning |
-| PR/FAQ | [templates/prfaq.md](#prfaq-format-amazon-working-backwards) | Customer validation |
+| Template   | Path                                                                     | Use Case                |
+| ---------- | ------------------------------------------------------------------------ | ----------------------- |
+| RFC        | [templates/rfc.md](#rfc-format)                                          | Proposing changes       |
+| ADR        | [templates/adr.md](#adr-format)                                          | Recording decisions     |
+| Design Doc | [templates/design-doc.md](#design-doc-format)                            | Implementation planning |
+| PR/FAQ     | [templates/prfaq.md](#prfaq-format-amazon-working-backwards)             | Customer validation     |
 
 ### Minimal Spec (Quick Start)
 
@@ -908,12 +946,12 @@ What could go wrong and how we mitigate.
 
 The 2024 DORA Report confirms documentation directly impacts team performance[^13]:
 
-| Metric | Poor Docs | Good Docs | Impact |
-|--------|-----------|-----------|--------|
-| Onboarding time | Weeks | Days | 3x faster |
-| Deployment frequency | Monthly | Daily | 30x |
-| Change failure rate | 45% | 15% | 3x better |
-| Developer satisfaction | Low | High | Retention |
+| Metric                 | Poor Docs | Good Docs | Impact    |
+| ---------------------- | --------- | --------- | --------- |
+| Onboarding time        | Weeks     | Days      | 3x faster |
+| Deployment frequency   | Monthly   | Daily     | 30x       |
+| Change failure rate    | 45%       | 15%       | 3x better |
+| Developer satisfaction | Low       | High      | Retention |
 
 ### Leading Indicators
 
@@ -926,7 +964,9 @@ The 2024 DORA Report confirms documentation directly impacts team performance[^1
 
 ## Summary
 
-Modern specifications serve dual audiences—humans and AI—without compromise. They live as code, evolve with products, and encode organizational knowledge that outlasts any individual.
+Modern specifications serve dual audiences—humans and AI—without compromise. They
+live as code, evolve with products, and encode organizational knowledge that
+outlasts any individual.
 
 **Key Takeaways:**
 

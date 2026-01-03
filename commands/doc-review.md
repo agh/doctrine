@@ -4,7 +4,7 @@ Review documentation for accuracy, completeness, and clarity.
 
 ## Usage
 
-```
+```text
 /doc-review [file]
 /doc-review docs/api.md              # Review specific file
 /doc-review docs/                    # Review all docs in directory
@@ -22,6 +22,7 @@ Review documentation for accuracy, completeness, and clarity.
 ## Output
 
 Review report including:
+
 - Overall assessment (Excellent/Good/Needs Work/Critical)
 - Critical issues that MUST be fixed
 - Improvements that SHOULD be made
@@ -47,7 +48,7 @@ Output a structured review with prioritized findings.
 
 ## Example
 
-```
+```text
 > /doc-review docs/auth.md
 
 ## Documentation Review: docs/auth.md

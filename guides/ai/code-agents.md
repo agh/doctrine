@@ -2,7 +2,9 @@
 
 > [Doctrine](../../README.md) > [AI](./README.md) > Code Agents
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## Quick Reference
 
@@ -21,7 +23,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Overview
 
-The Doctrine Code Agent Family is a coordinated set of specialized AI agents for comprehensive code analysis and generation. Unlike monolithic review tools, this family provides:
+The Doctrine Code Agent Family is a coordinated set of specialized AI agents
+for comprehensive code analysis and generation. Unlike monolithic review tools,
+this family provides:
 
 1. **Specialized Expertise** - Each agent is an expert in its domain
 2. **Cost Optimization** - Right model for each task (Haiku → Sonnet → Opus)
@@ -31,7 +35,7 @@ The Doctrine Code Agent Family is a coordinated set of specialized AI agents for
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                       DOCTRINE CODE AGENT FAMILY                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -75,12 +79,14 @@ The **Code Architect** is the strategic coordinator for all code review efforts.
 | **File** | `configs/claude/agents/code/architect.md` |
 
 **Responsibilities**:
+
 - Assess overall code quality and architecture
 - Route to appropriate specialist agents
 - Synthesize findings across domains
 - Provide prioritized remediation roadmap
 
 **When to Use**:
+
 - Comprehensive code review
 - Cross-cutting concerns (security + performance + quality)
 - Major feature reviews
@@ -101,11 +107,13 @@ General-purpose code review with modes.
 | **File** | `configs/claude/agents/code/reviewer.md` |
 
 **Modes**:
+
 - **Quick** (Haiku): Critical issues only, <50 LOC
 - **Standard** (Sonnet): Security, performance, quality
 - **Deep** (Sonnet→Opus): Architecture, patterns, edge cases
 
 **Coverage**:
+
 - Security (OWASP Top 10 basics)
 - Performance (N+1, memory, algorithms)
 - Quality (complexity, duplication, naming)
@@ -124,6 +132,7 @@ Deep performance analysis.
 | **File** | `configs/claude/agents/code/performance.md` |
 
 **Coverage**:
+
 - Database queries (N+1, missing indexes)
 - Memory patterns (leaks, allocation)
 - Algorithmic complexity
@@ -145,6 +154,7 @@ WCAG/A11y compliance specialist.
 | **File** | `configs/claude/agents/code/accessibility.md` |
 
 **Coverage**:
+
 - WCAG 2.1 AA compliance
 - ARIA patterns
 - Keyboard navigation
@@ -167,6 +177,7 @@ REST API design specialist.
 | **File** | `configs/claude/agents/code/api-rest.md` |
 
 **Coverage**:
+
 - RESTful conventions
 - HTTP methods and status codes
 - Pagination patterns
@@ -187,6 +198,7 @@ GraphQL schema design specialist.
 | **File** | `configs/claude/agents/code/api-graphql.md` |
 
 **Coverage**:
+
 - Schema design
 - Query complexity
 - N+1 prevention (DataLoader)
@@ -207,6 +219,7 @@ Comprehensive test generation.
 | **File** | `configs/claude/agents/code/test-writer.md` |
 
 **Coverage**:
+
 - Mutation-first approach
 - Property-based testing
 - Visual regression testing
@@ -227,6 +240,7 @@ Complexity reduction specialist.
 | **File** | `configs/claude/agents/code/simplifier.md` |
 
 **Coverage**:
+
 - Cyclomatic complexity reduction
 - Extract method opportunities
 - Dead code removal
@@ -248,6 +262,7 @@ Documentation generation.
 | **File** | `configs/claude/agents/code/doc-writer.md` |
 
 **Output**:
+
 - API documentation
 - README sections
 - Code comments
@@ -362,7 +377,7 @@ All findings use RFC 2119 severity levels:
 
 All code agents **MUST** use this output format:
 
-```markdown
+````markdown
 ## Code Review: [Brief Title]
 
 | Metric | Value |
@@ -383,6 +398,7 @@ All code agents **MUST** use this output format:
   ```
 
   **After**:
+
   ```[lang]
   [fixed code]
   ```
@@ -390,12 +406,16 @@ All code agents **MUST** use this output format:
   **Why**: [explanation]
 
 ### 🟡 Warning (should fix)
+
 ### 🔵 Suggestion (consider)
+
 ### ✅ Positive Observations
 
 ### Summary
+
 [1-2 sentence overall assessment]
-```
+
+````
 
 ## Cost Optimization
 
@@ -412,6 +432,7 @@ All code agents **MUST** use this output format:
 | Doc Writer | Haiku | $0.02 | On request |
 
 **Cost by Mode**:
+
 | Mode | Typical Cost | Use Case |
 |------|--------------|----------|
 | `/code quick` | ~$0.02 | Every commit |

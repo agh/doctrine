@@ -2,14 +2,16 @@
 
 > [Doctrine](../../README.md) > [Languages](../README.md) > CSS
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 Extends [Google HTML/CSS Style Guide](google/htmlcss.html).
 
 ## Quick Reference
 
 | Task | Tool | Command |
-|------|------|---------|
+| ---- | ---- | ------- |
 | Lint | Stylelint[^1] | `npx stylelint "**/*.css"` |
 | Format | Prettier[^2] | `npx prettier --write "**/*.css"` |
 | Type check | - | - |
@@ -22,8 +24,8 @@ Extends [Google HTML/CSS Style Guide](google/htmlcss.html).
 
 ## Framework Recommendation: Tailwind CSS
 
-For new projects, you **SHOULD** use Tailwind CSS[^4]. It has the highest retention rate (75.5%)
-among CSS frameworks and provides:
+For new projects, you **SHOULD** use Tailwind CSS[^4]. It has the highest
+retention rate (75.5%) among CSS frameworks and provides:
 
 - Utility-first approach with granular control
 - JIT compiler that only includes used styles
@@ -33,11 +35,16 @@ among CSS frameworks and provides:
 
 Tailwind CSS offers significant advantages over traditional CSS frameworks:
 
-- **Performance**: The JIT compiler ensures only used styles are included, reducing CSS bundle size by up to 90% compared to full framework imports
-- **Developer Experience**: Utility classes enable rapid development without context switching between HTML and CSS files
-- **Maintainability**: Colocation of styles with markup reduces cognitive overhead and makes refactoring easier
-- **Consistency**: Design tokens built into the framework ensure consistent spacing, colors, and typography
-- **Community**: Highest retention rate (75.5%) indicates strong satisfaction and extensive ecosystem support
+- **Performance**: The JIT compiler ensures only used styles are included,
+  reducing CSS bundle size by up to 90% compared to full framework imports
+- **Developer Experience**: Utility classes enable rapid development without
+  context switching between HTML and CSS files
+- **Maintainability**: Colocation of styles with markup reduces cognitive
+  overhead and makes refactoring easier
+- **Consistency**: Design tokens built into the framework ensure consistent
+  spacing, colors, and typography
+- **Community**: Highest retention rate (75.5%) indicates strong satisfaction
+  and extensive ecosystem support
 
 ```bash
 npm install -D tailwindcss
@@ -62,9 +69,12 @@ npm install --save-dev stylelint stylelint-config-standard
 Stylelint[^1] is the industry-standard CSS linter because:
 
 - **Comprehensive**: Supports CSS, SCSS, Sass[^7], Less[^8], and CSS-in-JS
-- **Extensible**: Over 170 built-in rules with plugin architecture for custom rules
-- **Modern**: Actively maintained with support for latest CSS features (nesting, container queries, etc.)
-- **Framework Integration**: Official plugins for Tailwind, styled-components[^9], and other frameworks
+- **Extensible**: Over 170 built-in rules with plugin architecture for custom
+  rules
+- **Modern**: Actively maintained with support for latest CSS features
+  (nesting, container queries, etc.)
+- **Framework Integration**: Official plugins for Tailwind,
+  styled-components[^9], and other frameworks
 - **Auto-fix**: Many rules support automatic fixing, reducing manual corrections
 
 ### Configuration (.stylelintrc.json)
@@ -112,8 +122,10 @@ Prettier[^2] is the definitive code formatter for CSS:
 
 - **Consistency**: Enforces uniform formatting across teams and projects
 - **Zero Configuration**: Works out-of-the-box with sensible defaults
-- **Language Support**: Formats CSS, SCSS, Less[^8], and CSS-in-JS alongside HTML and JavaScript
-- **Editor Integration**: First-class support in all major editors (VS Code[^10], WebStorm, Vim, etc.)
+- **Language Support**: Formats CSS, SCSS, Less[^8], and CSS-in-JS alongside
+  HTML and JavaScript
+- **Editor Integration**: First-class support in all major editors
+  (VS Code[^10], WebStorm, Vim, etc.)
 - **Diff Quality**: Consistent formatting produces cleaner, more readable git diffs
 
 ## Tooling: 2025 Landscape
@@ -123,8 +135,8 @@ Prettier[^2] is the definitive code formatter for CSS:
 You **SHOULD** use Lightning CSS[^11] for production builds.
 
 | Tool | Use Case | Notes |
-|------|----------|-------|
-| **Lightning CSS**[^11] | Production build | 100x faster than PostCSS, Rust-based |
+| ---- | -------- | ----- |
+| **Lightning CSS**[^11] | Production build | 100x faster than PostCSS |
 | **PostCSS**[^12] | Plugin ecosystem | Still useful for specific plugins |
 | **Vite**[^13] | Development | Fast HMR, uses Lightning CSS |
 
@@ -147,7 +159,9 @@ Native CSS now supports variables and nesting. Preprocessors are **OPTIONAL**:
 }
 ```
 
-You **SHOULD** use native CSS features when possible. You **MAY** use Sass[^7] only when you need:
+You **SHOULD** use native CSS features when possible. You **MAY** use Sass[^7]
+only when you need:
+
 - Advanced conditionals (`@if`, `@for`)
 - Complex mixins
 - Functions
@@ -302,9 +316,9 @@ jobs:
 
 ## See Also
 
-- [TypeScript Style Guide](typescript.md) - For CSS-in-JS and styled-components in TypeScript projects
-- [Testing Guide](../testing.md) - Visual regression testing and component testing strategies
+- [TypeScript Style Guide](typescript.md) - For CSS-in-JS and styled-components
+- [Testing Guide](../testing.md) - Visual regression testing strategies
 - [CI/CD Guide](../ci.md) - Continuous integration best practices
-- [Google HTML/CSS Style Guide](google/htmlcss.html) - Base style guide extended by this document
-- [MDN CSS Reference](https://developer.mozilla.org/en-US/docs/Web/CSS) - Comprehensive CSS reference and tutorials
-- [Can I Use](https://caniuse.com/) - Browser compatibility tables for CSS features
+- [Google HTML/CSS Style Guide](google/htmlcss.html) - Base style guide
+- [MDN CSS Reference](https://developer.mozilla.org/en-US/docs/Web/CSS)
+- [Can I Use](https://caniuse.com/) - Browser compatibility tables

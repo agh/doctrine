@@ -8,10 +8,11 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ## Overview
 
-This guide covers cross-platform operating system concepts. Platform-specific details are in dedicated guides:
+This guide covers cross-platform operating system concepts. Platform-specific
+details are in dedicated guides:
 
 | Platform | Guide | Primary Use |
-|----------|-------|-------------|
+| -------- | ----- | ----------- |
 | Linux (Debian) | [linux.md](linux.md) | Servers, containers, workstations |
 | macOS | *Coming soon* | Development workstations |
 | Windows | *Coming soon* | Enterprise, .NET, gaming |
@@ -21,7 +22,7 @@ This guide covers cross-platform operating system concepts. Platform-specific de
 ## Quick Reference
 
 | Concept | Linux (systemd) | macOS | Windows |
-|---------|-----------------|-------|---------|
+| ------- | --------------- | ----- | ------- |
 | Service manager | `systemctl` | `launchctl` | `sc.exe`, Services MMC |
 | Package manager | `apt`, `dnf` | `brew` | `winget`, `choco` |
 | Firewall | `nftables`, `ufw` | `pf` | Windows Firewall |
@@ -52,7 +53,7 @@ This guide covers cross-platform operating system concepts. Platform-specific de
 All modern operating systems use users and groups to control access:
 
 | Concept | Description |
-|---------|-------------|
+| ------- | ----------- |
 | **User** | Identity that owns processes and files |
 | **Group** | Collection of users for shared permissions |
 | **Primary group** | Default group for new files |
@@ -62,7 +63,7 @@ All modern operating systems use users and groups to control access:
 ### Cross-Platform Comparison
 
 | Task | Linux | macOS | Windows |
-|------|-------|-------|---------|
+| ---- | ----- | ----- | ------- |
 | Current user | `whoami` | `whoami` | `whoami` |
 | List users | `getent passwd` | `dscl . list /Users` | `Get-LocalUser` |
 | Create user | `useradd` | `sysadminctl -addUser` | `New-LocalUser` |
@@ -91,7 +92,7 @@ getent passwd prometheus
 
 ### POSIX Permissions (Linux/macOS)
 
-```
+```text
 -rwxr-xr-- 1 owner group 4096 Jan 1 12:00 file.txt
 │└┬┘└┬┘└┬┘
 │ │  │  └── Other: read only
@@ -101,7 +102,7 @@ getent passwd prometheus
 ```
 
 | Permission | Files | Directories |
-|------------|-------|-------------|
+| ---------- | ----- | ----------- |
 | Read (r/4) | View contents | List contents |
 | Write (w/2) | Modify contents | Create/delete files |
 | Execute (x/1) | Run as program | Enter directory |
@@ -109,7 +110,7 @@ getent passwd prometheus
 ### Special Permissions
 
 | Permission | Octal | Effect |
-|------------|-------|--------|
+| ---------- | ----- | ------ |
 | setuid | 4000 | Run as file owner |
 | setgid | 2000 | Run as file group / inherit group in dirs |
 | sticky | 1000 | Only owner can delete (used on /tmp) |
@@ -117,7 +118,7 @@ getent passwd prometheus
 ### Standard Permission Patterns
 
 | Use Case | Octal | Symbolic | Example |
-|----------|-------|----------|---------|
+| -------- | ----- | -------- | ------- |
 | Private file | 0600 | `rw-------` | SSH private keys |
 | Private directory | 0700 | `rwx------` | `~/.ssh` |
 | Config file | 0644 | `rw-r--r--` | `/etc/app.conf` |
@@ -130,7 +131,7 @@ getent passwd prometheus
 Windows uses Access Control Lists (ACLs) with more granular permissions:
 
 | Permission | Description |
-|------------|-------------|
+| ---------- | ----------- |
 | Full Control | All permissions including changing ownership |
 | Modify | Read, write, execute, delete |
 | Read & Execute | View and run |
@@ -233,7 +234,7 @@ New-Service -Name "MyApp" -BinaryPathName "C:\app\myapp.exe" `
 ### Comparison
 
 | Feature | apt (Debian) | dnf (Fedora) | brew (macOS) | winget (Windows) |
-|---------|--------------|--------------|--------------|------------------|
+| ------- | ------------ | ------------ | ------------ | ---------------- |
 | Update index | `apt update` | `dnf check-update` | `brew update` | `winget upgrade` |
 | Upgrade all | `apt upgrade` | `dnf upgrade` | `brew upgrade` | `winget upgrade --all` |
 | Install | `apt install pkg` | `dnf install pkg` | `brew install pkg` | `winget install pkg` |
@@ -266,7 +267,7 @@ winget install nginx --version 1.24.0
 
 ### Linux (FHS)
 
-```
+```text
 /
 ├── bin/          # Essential user binaries (often → /usr/bin)
 ├── boot/         # Bootloader files
@@ -296,7 +297,7 @@ winget install nginx --version 1.24.0
 
 ### macOS
 
-```
+```text
 /
 ├── Applications/           # GUI applications
 ├── Library/               # System-wide support files
@@ -310,7 +311,7 @@ winget install nginx --version 1.24.0
 
 ### Windows
 
-```
+```text
 C:\
 ├── Program Files\         # 64-bit applications
 ├── Program Files (x86)\   # 32-bit applications
@@ -336,7 +337,7 @@ C:\
 ### Common Variables
 
 | Variable | Linux/macOS | Windows | Purpose |
-|----------|-------------|---------|---------|
+| -------- | ----------- | ------- | ------- |
 | Home directory | `$HOME` | `%USERPROFILE%` | User's home |
 | Temp directory | `$TMPDIR`, `/tmp` | `%TEMP%` | Temporary files |
 | Path | `$PATH` | `%PATH%` | Executable search path |
@@ -375,19 +376,19 @@ $env:MY_VAR = "value"
 ### Cross-Platform Commands
 
 | Task | Linux/macOS | Windows |
-|------|-------------|---------|
+| ---- | ----------- | ------- |
 | List processes | `ps aux` | `Get-Process` |
 | Find by name | `pgrep nginx` | `Get-Process nginx` |
 | Kill by PID | `kill 1234` | `Stop-Process -Id 1234` |
 | Kill by name | `pkill nginx` | `Stop-Process -Name nginx` |
 | Force kill | `kill -9 1234` | `Stop-Process -Id 1234 -Force` |
 | Process tree | `pstree` | `Get-CimInstance Win32_Process` |
-| Resource usage | `top`, `htop` | Task Manager, `Get-Process | Sort CPU` |
+| Resource usage | `top`, `htop` | Task Manager, `Get-Process \| Sort CPU` |
 
 ### Signals (Linux/macOS)
 
 | Signal | Number | Purpose |
-|--------|--------|---------|
+| ------ | ------ | ------- |
 | SIGHUP | 1 | Reload configuration |
 | SIGINT | 2 | Interrupt (Ctrl+C) |
 | SIGTERM | 15 | Graceful termination |
@@ -408,7 +409,7 @@ kill -KILL 1234             # Force kill (last resort)
 ### Decision Matrix
 
 | Use Case | Recommended | Why |
-|----------|-------------|-----|
+| -------- | ----------- | --- |
 | **Web servers** | Linux (Debian) | Stability, security, performance |
 | **Containers** | Linux | Native container support |
 | **Databases** | Linux | Performance, tooling |
@@ -422,14 +423,15 @@ kill -KILL 1234             # Force kill (last resort)
 ### Debian vs Ubuntu
 
 | Aspect | Debian | Ubuntu |
-|--------|--------|--------|
+| ------ | ------ | ------ |
 | Release cycle | ~2 years | 6 months (LTS: 2 years) |
 | Support length | ~5 years | 5 years (LTS) |
 | Stability | More conservative | Newer packages |
 | Use case | Servers, stability | Desktop, cloud |
 | Derivatives | Ubuntu, many others | Many derivatives |
 
-**Recommendation**: Use Debian for servers requiring maximum stability; Ubuntu LTS for cloud deployments with newer packages.
+**Recommendation**: Use Debian for servers requiring maximum stability; Ubuntu
+LTS for cloud deployments with newer packages.
 
 ---
 

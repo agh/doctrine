@@ -11,7 +11,7 @@ Targets Debian 13 (Trixie) and Debian 14, with notes for Ubuntu 24.04 LTS.
 ## Quick Reference
 
 | Task | Command |
-|------|---------|
+| ---- | ------- |
 | Update packages | `apt update && apt upgrade` |
 | Install package | `apt install nginx` |
 | Check service | `systemctl status nginx` |
@@ -88,7 +88,8 @@ EOF
 apt update
 ```
 
-**Why**: DEB822 format is clearer, supports per-repo signing keys, and is the modern standard replacing one-line sources.list entries.
+**Why**: DEB822 format is clearer, supports per-repo signing keys, and is the
+modern standard replacing one-line sources.list entries.
 
 ### Package Pinning
 
@@ -166,7 +167,7 @@ WantedBy=multi-user.target
 ### Service Types
 
 | Type | Description | Use When |
-|------|-------------|----------|
+| ---- | ----------- | -------- |
 | `simple` | Default, assumes process stays in foreground | Most services |
 | `exec` | Like simple, but waits for exec() | Preferred over simple |
 | `forking` | Process forks and parent exits | Legacy daemons |
@@ -252,7 +253,8 @@ ExecStart=/opt/myapp/bin/myapp
 StandardInput=socket
 ```
 
-**Why**: Socket activation allows zero-downtime restarts and reduces resource usage for rarely-accessed services.
+**Why**: Socket activation allows zero-downtime restarts and reduces resource
+usage for rarely-accessed services.
 
 ---
 
@@ -292,7 +294,7 @@ User=backup
 ### Timer Patterns
 
 | Pattern | Meaning |
-|---------|---------|
+| ------- | ------- |
 | `OnCalendar=hourly` | Every hour |
 | `OnCalendar=daily` | Every day at midnight |
 | `OnCalendar=weekly` | Every Monday at midnight |
@@ -317,7 +319,8 @@ systemctl start backup.service
 systemctl status backup.timer
 ```
 
-**Why**: Timers have better logging (journalctl), dependency management, resource controls, and randomized delays to prevent thundering herd.
+**Why**: Timers have better logging (journalctl), dependency management, resource
+controls, and randomized delays to prevent thundering herd.
 
 ---
 
@@ -423,7 +426,7 @@ apparmor_parser -r /etc/apparmor.d/
 
 ### Example AppArmor Profile
 
-```
+```text
 # /etc/apparmor.d/opt.myapp.bin.myapp
 #include <tunables/global>
 
@@ -459,6 +462,7 @@ apparmor_parser -r /etc/apparmor.d/
 See [SSH Service Guide](../services/ssh.md) for comprehensive SSH hardening.
 
 Quick checklist:
+
 - [ ] Disable root login
 - [ ] Key-based authentication only
 - [ ] Non-standard port (optional)

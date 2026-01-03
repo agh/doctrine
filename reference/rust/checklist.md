@@ -72,7 +72,6 @@
   - [ ] Public dependencies of a stable crate are stable ([C-STABLE])
   - [ ] Crate and its dependencies have a permissive license ([C-PERMISSIVE])
 
-
 [C-CASE]: naming.html#c-case
 [C-CONV]: naming.html#c-conv
 [C-GETTER]: naming.html#c-getter
@@ -102,7 +101,6 @@
 [C-FAILURE]: documentation.html#c-failure
 [C-LINK]: documentation.html#c-link
 [C-METADATA]: documentation.html#c-metadata
-[C-HTML-ROOT]: documentation.html#c-html-root
 [C-RELNOTES]: documentation.html#c-relnotes
 [C-HIDDEN]: documentation.html#c-hidden
 

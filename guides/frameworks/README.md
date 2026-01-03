@@ -5,7 +5,7 @@
 Style guides for web frameworks. Each extends the corresponding language guide.
 
 | Framework | Guide | Language Guide |
-|-----------|-------|----------------|
+| --------- | ----- | -------------- |
 | Django | [django.md](django.md) | [Python](../languages/python.md) |
 | FastAPI | [fastapi.md](fastapi.md) | [Python](../languages/python.md) |
 | Flask | [flask.md](flask.md) | [Python](../languages/python.md) |

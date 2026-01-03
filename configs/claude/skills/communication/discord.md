@@ -1,11 +1,12 @@
 # Discord Skill
 
-Provides messaging capabilities for notifications, alerts, and team communication through Discord webhooks and bot integration.
+Provides messaging capabilities for notifications, alerts, and team
+communication through Discord webhooks and bot integration.
 
 ## Overview
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Category** | Communication |
 | **MCP Server** | `mcp-discord` (community) or custom |
 | **Default Access** | post (send-only) |
@@ -76,7 +77,7 @@ For reading messages and richer interaction:
 ## Access Levels
 
 | Level | Method | Permissions | Use Case |
-|-------|--------|-------------|----------|
+| ----- | ------ | ----------- | -------- |
 | `post` | Webhook | Send messages only | Notifications, alerts |
 | `readonly` | Bot | Read messages, reactions | Context gathering |
 | `read-write` | Bot | Send, read, react | Interactive workflows |
@@ -84,7 +85,7 @@ For reading messages and richer interaction:
 
 ### Creating Webhooks
 
-1. Open Discord → Server Settings → Integrations → Webhooks
+1. Open Discord -> Server Settings -> Integrations -> Webhooks
 2. Click "New Webhook"
 3. Name it (e.g., "Release Bot", "Alert Bot")
 4. Select target channel
@@ -94,9 +95,9 @@ For reading messages and richer interaction:
 
 1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
 2. Create New Application
-3. Go to Bot → Add Bot
+3. Go to Bot -> Add Bot
 4. Copy token
-5. Under OAuth2 → URL Generator:
+5. Under OAuth2 -> URL Generator:
    - Scopes: `bot`
    - Permissions: Select required permissions
 6. Use generated URL to add bot to server
@@ -104,7 +105,7 @@ For reading messages and richer interaction:
 ## Capabilities
 
 | Capability | Access | Description |
-|------------|--------|-------------|
+| ---------- | ------ | ----------- |
 | `send_message` | post | Send message to channel |
 | `send_embed` | post | Send rich embed message |
 | `read_messages` | readonly | Read channel history |
@@ -119,12 +120,12 @@ For reading messages and richer interaction:
 ```markdown
 Send to #releases:
 
-**🚀 Release v1.2.0**
+**Release v1.2.0**
 
 **Changes:**
-• Added user profile editing
-• Fixed timezone display bug
-• Improved API performance by 40%
+- Added user profile editing
+- Fixed timezone display bug
+- Improved API performance by 40%
 
 **Breaking Changes:** None
 
@@ -136,17 +137,17 @@ Send to #releases:
 ```json
 {
   "embeds": [{
-    "title": "🚀 Release v1.2.0",
+    "title": "Release v1.2.0",
     "color": 5025616,
     "fields": [
       {
-        "name": "✨ Added",
-        "value": "• User profile editing\n• Rate limiting",
+        "name": "Added",
+        "value": "- User profile editing\n- Rate limiting",
         "inline": false
       },
       {
-        "name": "🐛 Fixed",
-        "value": "• Timezone display\n• Session handling",
+        "name": "Fixed",
+        "value": "- Timezone display\n- Session handling",
         "inline": false
       }
     ],
@@ -163,7 +164,7 @@ Send to #releases:
 ```markdown
 Send to #alerts:
 
-**⚠️ Deployment Alert**
+**Deployment Alert**
 
 Environment: **production**
 Status: **Elevated error rate**
@@ -182,12 +183,12 @@ CC: @oncall
 ```markdown
 Create thread in #incidents:
 
-**🔴 INC-1234: API Latency Spike**
+**INC-1234: API Latency Spike**
 
 **Timeline:**
-• 10:30 - Latency increase detected
-• 10:32 - Alert fired
-• 10:35 - Investigation started
+- 10:30 - Latency increase detected
+- 10:32 - Alert fired
+- 10:35 - Investigation started
 
 **Status:** Investigating
 
@@ -197,7 +198,7 @@ Updates will be posted in this thread.
 ## Agents That Use This Skill
 
 | Agent | Access | Purpose |
-|-------|--------|---------|
+| ----- | ------ | ------- |
 | `ops/release-manager` | post | Release announcements |
 | `ops/deploy-validator` | post | Deployment status |
 | `ops/rollback-advisor` | post | Rollback notifications |
@@ -208,7 +209,7 @@ Updates will be posted in this thread.
 When Discord is unavailable, agents should:
 
 | Scenario | Fallback |
-|----------|----------|
+| -------- | -------- |
 | Release notification | Log to file, continue release |
 | Alert | Use backup channel (email, PagerDuty) |
 | Incident thread | Create GitHub issue instead |
@@ -218,7 +219,7 @@ When Discord is unavailable, agents should:
 ### Release Announcement
 
 ```markdown
-## 🚀 {project} {version}
+## {project} {version}
 
 {summary}
 
@@ -226,8 +227,8 @@ When Discord is unavailable, agents should:
 {changelog}
 
 ### Links
-• [Release Notes]({release_url})
-• [Diff]({compare_url})
+- [Release Notes]({release_url})
+- [Diff]({compare_url})
 
 ---
 *Released by {agent} at {timestamp}*
@@ -245,7 +246,7 @@ When Discord is unavailable, agents should:
 {details}
 
 ---
-*{agent} • {timestamp}*
+*{agent} - {timestamp}*
 ```
 
 ### Alert
@@ -292,35 +293,35 @@ When Discord is unavailable, agents should:
 ### Rate Limits
 
 Discord rate limits:
+
 - Webhooks: 30 requests/minute per webhook
 - Bot API: Varies by endpoint
 
-```markdown
-Agents SHOULD:
+Agents **SHOULD**:
+
 - Batch notifications where sensible
 - Implement backoff on 429 responses
 - Queue non-urgent messages
 - Use threads to reduce channel noise
-```
 
 ## Channel Organization
 
 Recommended channel structure for agent notifications:
 
-```
-📢 NOTIFICATIONS
-├── #releases        → Release announcements
-├── #deployments     → Deploy status updates
-└── #changelog       → Automated changelog posts
+```text
+NOTIFICATIONS
++-- #releases        -> Release announcements
++-- #deployments     -> Deploy status updates
++-- #changelog       -> Automated changelog posts
 
-🚨 ALERTS
-├── #alerts          → System alerts
-├── #incidents       → Incident threads
-└── #security        → Security notifications
+ALERTS
++-- #alerts          -> System alerts
++-- #incidents       -> Incident threads
++-- #security        -> Security notifications
 
-🤖 AUTOMATION
-├── #agent-logs      → Agent activity logs
-└── #agent-debug     → Debug/verbose output
+AUTOMATION
++-- #agent-logs      -> Agent activity logs
++-- #agent-debug     -> Debug/verbose output
 ```
 
 ## Integration Patterns
