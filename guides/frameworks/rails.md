@@ -19,6 +19,9 @@ All Ruby tooling applies. Additional tools are **REQUIRED**:
 | Security | Brakeman[^3] | `bundle exec brakeman` |
 | Test | RSpec Rails[^4] | `bundle exec rspec` |
 | Coverage | SimpleCov[^5] | via test suite |
+| N+1 Detection | Bullet[^29] | via test suite |
+| Profiling | rack-mini-profiler[^28] | `?pp=flamegraph` |
+| Rate Limiting | Rails built-in or Rack::Attack[^24] | via middleware |
 
 ## StandardRB for Rails
 
@@ -387,6 +390,602 @@ production:
 
 **Why**: Solid Cable eliminates Redis dependency for Action Cable while retaining messages for debugging.
 
+## Hotwire: Turbo + Stimulus
+
+Projects **SHOULD** use Hotwire[^34] for modern, interactive UIs without writing custom JavaScript. Hotwire combines Turbo[^35] for HTML-over-the-wire updates with Stimulus[^36] for lightweight JavaScript sprinkles.
+
+### Why Hotwire
+
+- **Less JavaScript**: Build reactive UIs using server-rendered HTML
+- **Default in Rails 8**: Included by default, no additional gems needed
+- **Progressive enhancement**: Works without JavaScript, enhanced when available
+- **Simpler mental model**: Server controls application state, not client
+
+### Turbo Drive
+
+Turbo Drive accelerates navigation by intercepting link clicks and form submissions:
+
+```erb
+<%# Turbo Drive is enabled by default. Disable for specific links: %>
+<%= link_to "External Site", "https://example.com", data: { turbo: false } %>
+
+<%# Disable for forms that should do full page reload: %>
+<%= form_with model: @user, data: { turbo: false } do |f| %>
+  ...
+<% end %>
+```
+
+### Turbo Frames
+
+Turbo Frames enable partial page updates by scoping navigation to a frame:
+
+```erb
+<%# app/views/posts/index.html.erb %>
+<%= turbo_frame_tag "posts" do %>
+  <% @posts.each do |post| %>
+    <%= render post %>
+  <% end %>
+
+  <%# Link loads only the frame, not full page %>
+  <%= link_to "Load More", posts_path(page: @page + 1) %>
+<% end %>
+
+<%# Lazy-load content %>
+<%= turbo_frame_tag "comments", src: post_comments_path(@post), loading: :lazy do %>
+  <p>Loading comments...</p>
+<% end %>
+```
+
+```ruby
+# app/controllers/posts_controller.rb
+class PostsController < ApplicationController
+  def index
+    @posts = Post.page(params[:page])
+    # Turbo Frame requests only render the frame, not layout
+  end
+end
+```
+
+### Turbo Streams
+
+Turbo Streams enable real-time updates via WebSocket or HTTP responses:
+
+```ruby
+# app/controllers/comments_controller.rb
+class CommentsController < ApplicationController
+  def create
+    @comment = @post.comments.build(comment_params)
+
+    if @comment.save
+      respond_to do |format|
+        format.turbo_stream  # Renders create.turbo_stream.erb
+        format.html { redirect_to @post }
+      end
+    else
+      render :new, status: :unprocessable_entity
+    end
+  end
+end
+```
+
+```erb
+<%# app/views/comments/create.turbo_stream.erb %>
+<%= turbo_stream.append "comments", @comment %>
+<%= turbo_stream.update "comment_form", partial: "comments/form", locals: { comment: Comment.new } %>
+<%= turbo_stream.update "comment_count", @post.comments.count %>
+```
+
+### Turbo Stream Actions
+
+| Action | Description |
+|--------|-------------|
+| `append` | Add content to end of target |
+| `prepend` | Add content to start of target |
+| `replace` | Replace entire target element |
+| `update` | Replace content inside target |
+| `remove` | Remove target element |
+| `before` | Insert content before target |
+| `after` | Insert content after target |
+
+### Broadcasting with Action Cable
+
+```ruby
+# app/models/comment.rb
+class Comment < ApplicationRecord
+  belongs_to :post
+
+  after_create_commit -> {
+    broadcast_append_to post, target: "comments"
+  }
+
+  after_destroy_commit -> {
+    broadcast_remove_to post
+  }
+end
+```
+
+```erb
+<%# app/views/posts/show.html.erb %>
+<%= turbo_stream_from @post %>
+
+<div id="comments">
+  <%= render @post.comments %>
+</div>
+```
+
+### Stimulus Controllers
+
+Stimulus adds lightweight JavaScript behavior to HTML:
+
+```javascript
+// app/javascript/controllers/clipboard_controller.js
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["source"]
+  static values = { successMessage: String }
+
+  copy() {
+    navigator.clipboard.writeText(this.sourceTarget.value)
+    this.dispatch("copied", { detail: { content: this.sourceTarget.value } })
+  }
+}
+```
+
+```erb
+<div data-controller="clipboard" data-clipboard-success-message-value="Copied!">
+  <input type="text" value="Copy me!" data-clipboard-target="source">
+  <button data-action="clipboard#copy">Copy</button>
+</div>
+```
+
+### Stimulus Best Practices
+
+```javascript
+// GOOD: Use targets for DOM elements
+static targets = ["input", "output"]
+
+// GOOD: Use values for configuration
+static values = { url: String, delay: { type: Number, default: 300 } }
+
+// GOOD: Use classes for CSS manipulation
+static classes = ["active", "loading"]
+
+// GOOD: Small, focused controllers
+// BAD: Monolithic controllers with 500+ lines
+
+// GOOD: Use Stimulus outlets for controller communication
+static outlets = ["modal"]
+openModal() {
+  this.modalOutlet.open()
+}
+```
+
+### Testing Hotwire
+
+```ruby
+# spec/requests/comments_spec.rb
+RSpec.describe "Comments", type: :request do
+  describe "POST /posts/:post_id/comments" do
+    it "returns turbo stream response" do
+      post post_comments_path(post), params: { comment: { body: "Great!" } },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      expect(response).to have_http_status(:success)
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include("turbo-stream")
+    end
+  end
+end
+```
+
+```ruby
+# spec/system/comments_spec.rb
+RSpec.describe "Comments", type: :system, js: true do
+  it "adds comment without page reload" do
+    post = create(:post)
+    visit post_path(post)
+
+    fill_in "comment_body", with: "New comment"
+    click_button "Submit"
+
+    expect(page).to have_content("New comment")
+    expect(page).not_to have_current_path(post_comments_path(post))
+  end
+end
+```
+
+## ViewComponent
+
+Projects with complex views **SHOULD** use ViewComponent[^37] to encapsulate view logic in testable, reusable components.
+
+### Why ViewComponent
+
+- **Testable**: Components are unit-testable Ruby objects, 10x faster than system tests
+- **Encapsulated**: Components own their templates, no implicit instance variables
+- **Reusable**: Components are packaged for reuse across views
+- **Type-safe**: Works with Sorbet for compile-time type checking
+
+### Installation
+
+```ruby
+# Gemfile
+gem "view_component"
+```
+
+```bash
+bin/rails generate component Example title
+```
+
+### Basic Component
+
+```ruby
+# app/components/alert_component.rb
+class AlertComponent < ViewComponent::Base
+  VARIANTS = %w[info success warning error].freeze
+
+  def initialize(message:, variant: "info", dismissible: false)
+    @message = message
+    @variant = variant.to_s
+    @dismissible = dismissible
+  end
+
+  def variant_classes
+    case @variant
+    when "success" then "bg-green-100 text-green-800"
+    when "warning" then "bg-yellow-100 text-yellow-800"
+    when "error" then "bg-red-100 text-red-800"
+    else "bg-blue-100 text-blue-800"
+    end
+  end
+
+  def render?
+    @message.present?
+  end
+end
+```
+
+```erb
+<%# app/components/alert_component.html.erb %>
+<div class="alert <%= variant_classes %>" role="alert"
+     data-controller="<%= 'dismissible' if @dismissible %>">
+  <p><%= @message %></p>
+  <% if @dismissible %>
+    <button data-action="dismissible#dismiss">×</button>
+  <% end %>
+</div>
+```
+
+```erb
+<%# Usage in views %>
+<%= render AlertComponent.new(message: "Success!", variant: :success, dismissible: true) %>
+```
+
+### Components with Slots
+
+```ruby
+# app/components/card_component.rb
+class CardComponent < ViewComponent::Base
+  renders_one :header
+  renders_one :footer
+  renders_many :actions
+
+  def initialize(title: nil)
+    @title = title
+  end
+end
+```
+
+```erb
+<%# app/components/card_component.html.erb %>
+<div class="card">
+  <% if header? || @title %>
+    <div class="card-header">
+      <%= header || @title %>
+    </div>
+  <% end %>
+
+  <div class="card-body">
+    <%= content %>
+  </div>
+
+  <% if actions? %>
+    <div class="card-actions">
+      <% actions.each do |action| %>
+        <%= action %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if footer? %>
+    <div class="card-footer">
+      <%= footer %>
+    </div>
+  <% end %>
+</div>
+```
+
+```erb
+<%# Usage %>
+<%= render CardComponent.new do |card| %>
+  <% card.with_header do %>
+    <h2>Custom Header</h2>
+  <% end %>
+
+  <p>Card content goes here.</p>
+
+  <% card.with_action do %>
+    <%= link_to "Edit", edit_path %>
+  <% end %>
+  <% card.with_action do %>
+    <%= button_to "Delete", delete_path, method: :delete %>
+  <% end %>
+<% end %>
+```
+
+### Collection Rendering
+
+```ruby
+# app/components/user_row_component.rb
+class UserRowComponent < ViewComponent::Base
+  with_collection_parameter :user
+
+  def initialize(user:, user_counter: nil)
+    @user = user
+    @counter = user_counter
+  end
+end
+```
+
+```erb
+<%# Render collection efficiently %>
+<%= render UserRowComponent.with_collection(@users) %>
+```
+
+### Component Testing
+
+```ruby
+# spec/components/alert_component_spec.rb
+RSpec.describe AlertComponent, type: :component do
+  it "renders message" do
+    render_inline(described_class.new(message: "Hello"))
+
+    expect(page).to have_text("Hello")
+  end
+
+  it "applies variant classes" do
+    render_inline(described_class.new(message: "Error!", variant: :error))
+
+    expect(page).to have_css(".bg-red-100")
+  end
+
+  it "does not render when message is blank" do
+    render_inline(described_class.new(message: ""))
+
+    expect(page).not_to have_css(".alert")
+  end
+
+  context "when dismissible" do
+    it "renders close button" do
+      render_inline(described_class.new(message: "Dismiss me", dismissible: true))
+
+      expect(page).to have_button("×")
+    end
+  end
+end
+```
+
+### Component Previews
+
+```ruby
+# spec/components/previews/alert_component_preview.rb
+class AlertComponentPreview < ViewComponent::Preview
+  # @param message text
+  # @param variant select [info, success, warning, error]
+  # @param dismissible toggle
+  def default(message: "This is an alert", variant: :info, dismissible: false)
+    render AlertComponent.new(
+      message: message,
+      variant: variant,
+      dismissible: dismissible
+    )
+  end
+
+  def all_variants
+    render_with_template
+  end
+end
+```
+
+```erb
+<%# spec/components/previews/alert_component_preview/all_variants.html.erb %>
+<% %w[info success warning error].each do |variant| %>
+  <%= render AlertComponent.new(message: "#{variant.titleize} message", variant: variant) %>
+<% end %>
+```
+
+Visit `/rails/view_components` to browse component previews during development.
+
+### ViewComponent with Hotwire
+
+```ruby
+# app/components/live_counter_component.rb
+class LiveCounterComponent < ViewComponent::Base
+  def initialize(count:, resource:)
+    @count = count
+    @resource = resource
+  end
+
+  def dom_id
+    "#{@resource.class.name.underscore}_#{@resource.id}_counter"
+  end
+end
+```
+
+```erb
+<%# app/components/live_counter_component.html.erb %>
+<%= turbo_stream_from @resource, :counter %>
+<span id="<%= dom_id %>"><%= @count %></span>
+```
+
+```ruby
+# app/models/post.rb
+class Post < ApplicationRecord
+  after_update_commit -> {
+    broadcast_update_to self, :counter,
+      target: "post_#{id}_counter",
+      html: comments_count.to_s
+  }
+end
+```
+
+## Rate Limiting
+
+### Built-in Rate Limiting (Rails 8+)
+
+Rails 8 projects **SHOULD** use the built-in `rate_limit` method for simple throttling scenarios:
+
+```ruby
+# app/controllers/sessions_controller.rb
+class SessionsController < ApplicationController
+  rate_limit to: 10, within: 3.minutes, only: :create, with: -> {
+    redirect_to new_session_url, alert: "Try again later."
+  }
+
+  def create
+    # Login logic
+  end
+end
+
+# app/controllers/api/v1/base_controller.rb
+class Api::V1::BaseController < ApplicationController
+  rate_limit to: 100, within: 1.minute, by: -> { request.remote_ip }
+end
+```
+
+**Why**: Rails 8's built-in rate limiting requires no additional gems and uses your existing cache store (Redis, Memcached, or Solid Cache). It integrates seamlessly with Action Controller.
+
+### Rack::Attack for Advanced Scenarios
+
+Projects with complex rate limiting requirements **SHOULD** use Rack::Attack[^24]:
+
+```ruby
+# Gemfile
+gem "rack-attack"
+```
+
+```ruby
+# config/initializers/rack_attack.rb
+class Rack::Attack
+  # Use Redis for distributed rate limiting
+  Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
+    url: ENV["REDIS_URL"],
+    db: 1  # Separate database for throttling
+  )
+
+  # Block bad actors
+  blocklist("block bad IPs") do |req|
+    Blocklist.exists?(ip: req.ip)
+  end
+
+  # Throttle all requests by IP (100 req/min)
+  throttle("req/ip", limit: 100, period: 1.minute) do |req|
+    req.ip
+  end
+
+  # Stricter limits for authentication endpoints
+  throttle("logins/ip", limit: 5, period: 20.seconds) do |req|
+    req.ip if req.path == "/login" && req.post?
+  end
+
+  # Throttle by email for password resets (prevent enumeration)
+  throttle("password_resets/email", limit: 3, period: 1.hour) do |req|
+    if req.path == "/password" && req.post?
+      req.params["user"]["email"].to_s.downcase.gsub(/\s+/, "")
+    end
+  end
+
+  # Exponential backoff for failed logins
+  (1..5).each do |level|
+    blocklist("fail2ban/login/L#{level}") do |req|
+      Rack::Attack::Fail2Ban.filter(
+        "login-#{req.ip}",
+        maxretry: 5,
+        findtime: 1.minute,
+        bantime: (2**level).minutes
+      ) do
+        req.path == "/login" && req.post? && req.env["warden.options"]&.dig(:message) == :invalid
+      end
+    end
+  end
+
+  # Safelist trusted IPs
+  safelist("allow localhost") do |req|
+    req.ip == "127.0.0.1" || req.ip == "::1"
+  end
+
+  # Custom response for throttled requests
+  self.throttled_responder = lambda do |req|
+    retry_after = (req.env["rack.attack.match_data"] || {})[:period]
+    [
+      429,
+      {
+        "Content-Type" => "application/json",
+        "Retry-After" => retry_after.to_s
+      },
+      [{ error: "Rate limit exceeded", retry_after: retry_after }.to_json]
+    ]
+  end
+end
+```
+
+### User-Based Rate Limiting
+
+API applications **SHOULD** implement per-user rate limiting with tiered limits:
+
+```ruby
+# config/initializers/rack_attack.rb
+Rack::Attack.throttle("api/user", limit: proc { |req|
+  user = User.find_by(api_key: req.env["HTTP_X_API_KEY"])
+  case user&.plan
+  when "enterprise" then 10_000
+  when "pro" then 1_000
+  else 100
+  end
+}, period: 1.hour) do |req|
+  req.env["HTTP_X_API_KEY"] if req.path.start_with?("/api/")
+end
+
+# Include rate limit headers in responses
+class Api::V1::BaseController < ApplicationController
+  after_action :set_rate_limit_headers
+
+  private
+
+  def set_rate_limit_headers
+    match_data = request.env["rack.attack.throttle_data"]&.dig("api/user")
+    return unless match_data
+
+    response.headers["X-RateLimit-Limit"] = match_data[:limit].to_s
+    response.headers["X-RateLimit-Remaining"] = (match_data[:limit] - match_data[:count]).to_s
+    response.headers["X-RateLimit-Reset"] = (match_data[:epoch_time] + match_data[:period]).to_s
+  end
+end
+```
+
+**When to use Rack::Attack over built-in rate limiting**:
+
+| Feature | Built-in (Rails 8+) | Rack::Attack |
+|---------|---------------------|--------------|
+| Simple endpoint throttling | Yes | Yes |
+| IP blocking/safelisting | No | Yes |
+| Fail2ban patterns | No | Yes |
+| Custom response format | Limited | Full control |
+| Distributed (Redis) | Via cache store | Native support |
+| Request inspection | Limited | Full Rack access |
+
+**Why Rack::Attack?** Rack::Attack operates at the Rack middleware layer, blocking malicious requests before they reach your Rails controllers. This protects against credential stuffing attacks (often 1,000-10,000x normal traffic) and reduces load on your application stack.
+
 ## Security: Brakeman
 
 All Rails projects **MUST** use Brakeman[^3] for static security analysis.
@@ -403,6 +1002,342 @@ bundle exec brakeman --exit-on-warn --no-pager
 ```
 
 **Why Brakeman?** Brakeman performs static analysis to detect common Rails security vulnerabilities including SQL injection, XSS, CSRF, and mass assignment. It runs without executing code, making it safe for CI and pre-commit hooks.
+
+### Authentication: Devise + OmniAuth
+
+Legacy applications or those requiring OAuth integration **MAY** use Devise[^25] with OmniAuth[^26]:
+
+```ruby
+# Gemfile
+gem "devise"
+gem "omniauth"
+gem "omniauth-rails_csrf_protection"  # Required for OmniAuth 2.0+
+gem "omniauth-google-oauth2"
+```
+
+```ruby
+# config/initializers/devise.rb
+Devise.setup do |config|
+  config.omniauth :google_oauth2,
+    ENV["GOOGLE_CLIENT_ID"],
+    ENV["GOOGLE_CLIENT_SECRET"],
+    scope: "email,profile"
+end
+```
+
+```ruby
+# app/models/user.rb
+class User < ApplicationRecord
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :validatable,
+         :omniauthable, omniauth_providers: [:google_oauth2]
+
+  def self.from_omniauth(auth)
+    find_or_create_by(provider: auth.provider, uid: auth.uid) do |user|
+      user.email = auth.info.email
+      user.password = Devise.friendly_token[0, 20]
+    end
+  end
+end
+```
+
+**Why**: While Rails 8 includes built-in authentication, Devise remains the standard for applications requiring OAuth providers, two-factor authentication, or advanced account management features.
+
+### Authorization: Pundit
+
+Applications with role-based access control **SHOULD** use Pundit[^27]:
+
+```ruby
+# Gemfile
+gem "pundit"
+```
+
+```ruby
+# app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  include Pundit::Authorization
+
+  after_action :verify_authorized, except: :index
+  after_action :verify_policy_scoped, only: :index
+
+  rescue_from Pundit::NotAuthorizedError do |exception|
+    redirect_to root_path, alert: "You are not authorized to perform this action."
+  end
+end
+```
+
+```ruby
+# app/policies/post_policy.rb
+class PostPolicy < ApplicationPolicy
+  def update?
+    user.admin? || record.user == user
+  end
+
+  def destroy?
+    user.admin?
+  end
+
+  class Scope < ApplicationPolicy::Scope
+    def resolve
+      if user.admin?
+        scope.all
+      else
+        scope.where(published: true).or(scope.where(user: user))
+      end
+    end
+  end
+end
+```
+
+```ruby
+# app/controllers/posts_controller.rb
+class PostsController < ApplicationController
+  def index
+    @posts = policy_scope(Post)
+  end
+
+  def update
+    @post = Post.find(params[:id])
+    authorize @post
+
+    if @post.update(post_params)
+      redirect_to @post
+    else
+      render :edit
+    end
+  end
+end
+```
+
+**Why Pundit?** Pundit encapsulates authorization logic in plain Ruby policy classes, keeping controllers thin and making access rules testable. It enforces the principle of least privilege by requiring explicit authorization for each action.
+
+## Performance
+
+### Development Profiling
+
+Rails projects **SHOULD** use rack-mini-profiler[^28] for development profiling:
+
+```ruby
+# Gemfile
+group :development do
+  gem "rack-mini-profiler"
+  gem "flamegraph"        # Flame graph visualization
+  gem "stackprof"         # Stack profiler for flame graphs
+  gem "memory_profiler"   # Memory allocation profiling
+end
+```
+
+```ruby
+# config/initializers/rack_profiler.rb
+if defined?(Rack::MiniProfiler)
+  # Position badge on left side
+  Rack::MiniProfiler.config.position = "bottom-left"
+
+  # Enable memory profiling (add ?pp=profile-memory to URL)
+  Rack::MiniProfiler.config.enable_advanced_debugging_tools = true
+
+  # Store profiling data in memory (or use Redis for persistence)
+  Rack::MiniProfiler.config.storage = Rack::MiniProfiler::MemoryStore
+end
+```
+
+Access profiling features by appending query parameters:
+- `?pp=help` - Show all available profiling options
+- `?pp=flamegraph` - Generate flame graph visualization
+- `?pp=profile-memory` - Show memory allocations
+- `?pp=profile-gc` - Show garbage collection stats
+- `?pp=analyze-memory` - Detailed memory analysis
+
+**Why rack-mini-profiler?** It provides real-time performance visibility with minimal overhead, showing SQL queries, view rendering times, and memory usage directly in the browser during development.
+
+### N+1 Query Detection
+
+All Rails projects **MUST** use Bullet[^29] to detect N+1 queries:
+
+```ruby
+# Gemfile
+group :development, :test do
+  gem "bullet"
+end
+```
+
+```ruby
+# config/environments/development.rb
+Rails.application.configure do
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.alert = true           # JavaScript alert in browser
+    Bullet.bullet_logger = true   # Log to log/bullet.log
+    Bullet.console = true         # Browser console warnings
+    Bullet.rails_logger = true    # Rails logger
+    Bullet.add_footer = true      # Add details to page footer
+
+    # Raise errors in test environment
+    Bullet.raise = Rails.env.test?
+
+    # Ignore specific associations if needed
+    # Bullet.add_safelist type: :n_plus_one_query, class_name: "User", association: :posts
+  end
+end
+```
+
+```ruby
+# config/environments/test.rb
+Rails.application.configure do
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.raise = true  # Fail tests on N+1 queries
+  end
+end
+```
+
+**Why Bullet?** N+1 queries are the most common performance issue in Rails applications. Bullet detects them during development and can fail tests, preventing performance regressions from reaching production.
+
+### Memory Profiling
+
+Applications with memory concerns **SHOULD** use memory_profiler[^30] for detailed analysis:
+
+```ruby
+# Gemfile
+group :development, :test do
+  gem "memory_profiler"
+end
+```
+
+```ruby
+# lib/tasks/memory_profile.rake
+namespace :memory do
+  desc "Profile memory usage of a specific code path"
+  task profile: :environment do
+    report = MemoryProfiler.report do
+      # Code to profile
+      100.times { User.all.to_a }
+    end
+
+    report.pretty_print(
+      detailed_report: true,
+      scale_bytes: true,
+      normalize_paths: true
+    )
+  end
+end
+```
+
+```ruby
+# spec/support/memory_profiler.rb
+RSpec.configure do |config|
+  config.around(:each, :profile_memory) do |example|
+    report = MemoryProfiler.report { example.run }
+
+    if report.total_allocated_memsize > 10.megabytes
+      puts "WARNING: High memory allocation detected"
+      report.pretty_print(to_file: "tmp/memory_#{example.description.parameterize}.txt")
+    end
+  end
+end
+```
+
+### Production APM
+
+Production applications **SHOULD** use an Application Performance Monitoring (APM) service:
+
+```ruby
+# Gemfile
+# Choose ONE of the following based on requirements:
+gem "appsignal"   # AppSignal[^31] - Ruby-focused, GDPR compliant
+gem "skylight"    # Skylight[^32] - Rails-specific, simple pricing
+gem "newrelic_rpm" # New Relic - Enterprise features, broader ecosystem
+```
+
+```ruby
+# config/appsignal.yml (if using AppSignal)
+production:
+  active: true
+  name: "MyApp"
+  push_api_key: <%= ENV["APPSIGNAL_PUSH_API_KEY"] %>
+  enable_host_metrics: true
+  enable_minutely_probes: true
+```
+
+```ruby
+# Custom instrumentation for business-critical code
+class Orders::CreateService
+  def call
+    ActiveSupport::Notifications.instrument("orders.create", order_id: order.id) do
+      # Business logic
+    end
+  end
+end
+```
+
+| APM | Best For | Pricing Model |
+|-----|----------|---------------|
+| AppSignal[^31] | Ruby/Rails teams, GDPR requirements | Request-based ($23+/month) |
+| Skylight[^32] | Rails-only, simple performance tuning | Request-based ($20+/month) |
+| New Relic | Enterprise, polyglot environments | Host-based (varies) |
+
+**Why APM in production?** Development profiling misses issues that only appear under production load. APM tools provide continuous monitoring, alerting on performance regressions, slow queries, and error spikes before users complain.
+
+### Query Tracing
+
+Applications debugging slow queries **MAY** use active_record_query_trace[^33]:
+
+```ruby
+# Gemfile
+group :development do
+  gem "active_record_query_trace"
+end
+```
+
+```ruby
+# config/initializers/query_trace.rb
+if defined?(ActiveRecordQueryTrace) && Rails.env.development?
+  ActiveRecordQueryTrace.enabled = true
+  ActiveRecordQueryTrace.level = :app    # Only show app code, not gems
+  ActiveRecordQueryTrace.lines = 5       # Number of backtrace lines
+  ActiveRecordQueryTrace.colorize = true
+end
+```
+
+**Why**: When Bullet identifies an N+1 query, active_record_query_trace shows exactly where in your code the query originates, making it easier to add eager loading.
+
+### Benchmarking
+
+Performance-critical code **SHOULD** include benchmarks:
+
+```ruby
+# Gemfile
+group :development, :test do
+  gem "benchmark-ips"
+  gem "derailed_benchmarks"
+end
+```
+
+```ruby
+# spec/benchmarks/user_search_benchmark.rb
+require "benchmark/ips"
+
+RSpec.describe "User search performance", :benchmark do
+  let!(:users) { create_list(:user, 1000) }
+
+  it "compares search implementations" do
+    Benchmark.ips do |x|
+      x.report("LIKE query") { User.where("name LIKE ?", "%john%").to_a }
+      x.report("pg_search") { User.search_by_name("john").to_a }
+      x.compare!
+    end
+  end
+end
+```
+
+```bash
+# Profile boot time and memory
+bundle exec derailed bundle:mem
+bundle exec derailed bundle:objects
+
+# Profile specific request
+bundle exec derailed exec perf:stackprof PATH_TO_HIT=/users
+```
 
 ## Migrations
 
@@ -1087,3 +2022,31 @@ end
 [^22]: **Solid Cache** - Database-backed Rails cache store. Replaces Redis/Memcached with disk-based caching. [https://github.com/rails/solid_cache](https://github.com/rails/solid_cache)
 
 [^23]: **Solid Cable** - Database-backed Action Cable adapter. Replaces Redis for WebSocket pubsub in Rails 8+. [https://github.com/rails/solid_cable](https://github.com/rails/solid_cable)
+
+[^24]: **Rack::Attack** - Rack middleware for blocking and throttling abusive requests. Battle-tested rate limiting with 33+ million downloads. [https://github.com/rack/rack-attack](https://github.com/rack/rack-attack)
+
+[^25]: **Devise** - Flexible authentication solution for Rails with Warden. Industry standard for complex authentication requirements. [https://github.com/heartcombo/devise](https://github.com/heartcombo/devise)
+
+[^26]: **OmniAuth** - Flexible authentication system utilizing Rack middleware. Enables OAuth integration with third-party providers. [https://github.com/omniauth/omniauth](https://github.com/omniauth/omniauth)
+
+[^27]: **Pundit** - Minimal authorization library using plain Ruby objects. Encapsulates access rules in testable policy classes. [https://github.com/varvet/pundit](https://github.com/varvet/pundit)
+
+[^28]: **rack-mini-profiler** - Profiler for development and production Ruby rack apps. Shows SQL queries, view rendering times, and memory usage. [https://github.com/MiniProfiler/rack-mini-profiler](https://github.com/MiniProfiler/rack-mini-profiler)
+
+[^29]: **Bullet** - Helps detect N+1 queries and unused eager loading. Essential for Rails performance optimization. [https://github.com/flyerhzm/bullet](https://github.com/flyerhzm/bullet)
+
+[^30]: **memory_profiler** - Memory profiling routines for Ruby. Provides detailed allocation reports for debugging memory issues. [https://github.com/SamSaffron/memory_profiler](https://github.com/SamSaffron/memory_profiler)
+
+[^31]: **AppSignal** - Application performance monitoring and error tracking for Ruby. GDPR compliant with request-based pricing. [https://www.appsignal.com/](https://www.appsignal.com/) | [GitHub](https://github.com/appsignal/appsignal-ruby)
+
+[^32]: **Skylight** - Rails-focused application profiler and performance monitoring. Simple pricing with deep Rails integration. [https://www.skylight.io/](https://www.skylight.io/)
+
+[^33]: **active_record_query_trace** - Logs backtrace of all SQL queries executed by Active Record. Helps identify query origins in large applications. [https://github.com/brunofacca/active-record-query-trace](https://github.com/brunofacca/active-record-query-trace)
+
+[^34]: **Hotwire** - HTML over the wire. The default frontend approach in Rails 8+ combining Turbo and Stimulus for modern UIs without heavy JavaScript. [https://hotwired.dev/](https://hotwired.dev/)
+
+[^35]: **Turbo** - Core library of Hotwire for page navigation, partial updates (frames), and real-time updates (streams). [https://turbo.hotwired.dev/](https://turbo.hotwired.dev/) | [GitHub](https://github.com/hotwired/turbo)
+
+[^36]: **Stimulus** - Modest JavaScript framework for the HTML you already have. Adds behavior to HTML via data attributes. [https://stimulus.hotwired.dev/](https://stimulus.hotwired.dev/) | [GitHub](https://github.com/hotwired/stimulus)
+
+[^37]: **ViewComponent** - Framework for creating reusable, testable, and encapsulated view components in Ruby on Rails. By GitHub. [https://viewcomponent.org/](https://viewcomponent.org/) | [GitHub](https://github.com/ViewComponent/view_component)
