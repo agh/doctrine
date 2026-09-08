@@ -19,12 +19,13 @@ Extends [Google Python Style Guide](google/python.md).
 | Semantic | Semgrep[^4] | `uv run semgrep --config=p/python src/` |
 | Dead code | Vulture[^5] | `uv run vulture src/` |
 | Coverage | pytest-cov[^6] | `uv run pytest --cov=src` |
-| Complexity | Radon[^7] | `uv run radon cc src/ -a` |
+| Complexity (report) | Radon[^7] | `uv run radon cc src/ -a` |
+| Complexity (gate) | Ruff `C901`[^1] | `uv run ruff check .` |
 | Fuzz | Hypothesis[^8] | `uv run pytest` (with hypothesis tests) |
 | Test perf | pytest-xdist[^9] | `uv run pytest -n auto` |
 | Password hash | argon2-cffi[^34] | `PasswordHasher().hash(password)` |
 | Encryption | cryptography[^35] | `Fernet(key).encrypt(data)` |
-| Rate limit | limits[^37] | `strategies.MovingWindowRateLimiter()` |
+| Rate limit | limits[^37] | `strategies.MovingWindowRateLimiter(storage)` |
 | Circuit break | pybreaker[^39] | `@CircuitBreaker(fail_max=5)` |
 | Cache (memory) | cachetools[^41] | `@cached(TTLCache(maxsize=100, ttl=300))` |
 | Cache (disk) | diskcache[^42] | `Cache("/path").memoize()` |
@@ -86,6 +87,7 @@ select = [
     "UP",               # pyupgrade
     "B",                # flake8-bugbear
     "C4",               # flake8-comprehensions
+    "C90",              # mccabe (cyclomatic complexity, C901)
     "SIM",              # flake8-simplify
     "S",                # flake8-bandit (security)
     "N",                # pep8-naming
@@ -93,6 +95,9 @@ select = [
     "ANN",              # flake8-annotations
     "RUF",              # Ruff-specific
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -236,28 +241,67 @@ def is_non_empty_list[T](val: list[T] | None) -> TypeIs[list[T]]:
 ### PEP 750 Template Strings (Python 3.14+)
 
 Projects targeting Python 3.14+ **MAY** use template strings (t-strings) for
-safe string interpolation.
+context-aware string interpolation.
 
-**Why**: Template strings provide a safer alternative to f-strings for
-user-generated content, enabling validation and escaping before interpolation.
-They return `Template` objects rather than strings, allowing deferred
-evaluation and security checks.
+**Why**: A t-string evaluates to a `Template`[^47] instead of a `str`, so the
+consumer decides how each interpolated value is escaped. An f-string has already
+been flattened by the time a function receives it; a `Template` still exposes the
+literal text and the interpolated values separately, which is what makes an
+escaping processor possible.
+
+Projects **MUST NOT** treat a `Template` as inherently safe:
+
+- There is no `is_safe()` method.
+- `str(template)` returns the object's `repr`, not the rendered text, so
+  `str(t"Hello {name}")` is `"Template(strings=('Hello ', ''), ...)"`.
+- Interpolated values are evaluated when the t-string is constructed. Only their
+  *processing* is deferred, not their evaluation.
+
+Safety comes entirely from the processor that consumes `strings` and
+`interpolations`.
 
 ```python
-from string.templatelib import Template
+from html import escape
+from string.templatelib import Interpolation, Template
 
-name = "world"
-template = t"Hello {name}"  # Returns Template, not str
+def render_html(template: Template) -> str:
+    """Render a template, HTML-escaping every interpolated value."""
+    parts: list[str] = []
+    for item in template:
+        if isinstance(item, Interpolation):
+            parts.append(escape(str(item.value)))
+        else:
+            parts.append(item)
+    return "".join(parts)
 
-# Template can be validated before interpolation
-if template.is_safe():
-    result = str(template)  # "Hello world"
-
-# Useful for SQL query building, HTML generation, etc.
-user_input = get_user_input()
-query_template = t"SELECT * FROM users WHERE name = {user_input}"
-# Can validate/escape before converting to string
+user_input = '<script>alert("xss")</script>'
+render_html(t"<p>Hello {user_input}</p>")
+# '<p>Hello &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</p>'
 ```
+
+SQL **MUST** stay parameterised. A t-string processor **MUST** emit a placeholder
+per interpolation and bind the values; it **MUST NOT** splice them into the
+statement text.
+
+```python
+def to_sql(template: Template) -> tuple[str, list[object]]:
+    """Turn a template into a parameterised statement and its bound values."""
+    sql = template.strings[0]
+    params: list[object] = []
+    for interp, literal in zip(template.interpolations, template.strings[1:], strict=True):
+        params.append(interp.value)
+        sql += "?" + literal
+    return sql, params
+
+statement, params = to_sql(t"SELECT * FROM users WHERE name = {user_input}")
+# ("SELECT * FROM users WHERE name = ?", ['<script>alert("xss")</script>'])
+cursor.execute(statement, params)
+```
+
+Projects **SHOULD** prefer their rendering library's own escaping (for example a
+template engine's autoescaping, or the database driver's parameter binding) over
+a hand-written processor, and **MUST NOT** reuse an HTML processor for SQL or
+vice versa: escaping is context-specific.
 
 ### Standard Library Changes (Python 3.13+)
 
@@ -345,21 +389,36 @@ exclude_lines = [
 ]
 ```
 
-## Cyclomatic Complexity: Radon
+## Cyclomatic Complexity: Ruff C901 + Radon
 
-Projects **SHOULD** monitor cyclomatic complexity and **SHOULD NOT** exceed
-grade B (complexity > 10).
+Projects **MUST** enforce a cyclomatic complexity ceiling of 10 with Ruff's
+`C901` rule[^1] and **SHOULD** use Radon[^7] for complexity reporting.
 
 **Why**: High cyclomatic complexity indicates code that is difficult to test,
-understand, and maintain[^19]. Keeping functions below complexity 10 ensures
-code remains maintainable and testable.
+understand, and maintain[^19]. Enforcement and reporting are separate jobs:
+Ruff fails the build when a function exceeds the threshold, whereas Radon 6.0.1
+only reports. Radon has no option to fail on a grade — `radon cc src/ -a
+--fail B` exits 2 with `radon: error: unrecognized arguments: --fail B`.
+
+`C901` is off unless `C90` is selected, so the rule **MUST** appear in
+`[tool.ruff.lint] select` together with an explicit `max-complexity`. Installing
+Ruff is not enough on its own.
+
+```toml
+# Excerpt; see "Linting: Ruff" for the full select list.
+[tool.ruff.lint]
+select = ["C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+```
 
 ```bash
-# Show complexity grades (A=1-5, B=6-10, C=11-20, D=21-30, E=31-40, F=41+)
-uv run radon cc src/ -a
+# Fail the build when any function exceeds complexity 10 (C901)
+uv run ruff check .
 
-# Fail if any function exceeds grade B
-uv run radon cc src/ -a --fail B
+# Report complexity grades (A=1-5, B=6-10, C=11-20, D=21-30, E=31-40, F=41+)
+uv run radon cc src/ -a
 ```
 
 ## Fuzzing: Hypothesis + Atheris
@@ -436,48 +495,93 @@ addopts = ["-n", "auto", "--dist", "loadgroup"]
 
 ### Additional Performance Tips
 
+TOML forbids a repeated key, so every pytest option **MUST** live in a single
+`addopts` array. A second `[tool.pytest.ini_options]` table fails to parse with
+`TOMLDecodeError: Cannot declare ('tool', 'pytest', 'ini_options') twice`, and a
+repeated `addopts` inside one table fails with `Cannot overwrite a value` — in
+both cases before pytest starts.
+
+Flags **MUST NOT** be added unless the plugin defining them is installed:
+`-n`/`--dist` require pytest-xdist[^9], `--reuse-db` requires
+pytest-django[^48], and `--testmon` requires pytest-testmon[^49].
+
+```bash
+uv add --dev "pytest-xdist==3.8.0" "pytest-django==4.14.0" "pytest-testmon==2.2.0"
+```
+
 ```toml
 [tool.pytest.ini_options]
-# Reuse test database
-addopts = ["--reuse-db"]
-
-# Only run tests affected by changes
-# (requires pytest-testmon)
-addopts = ["--testmon"]
-
-# Cache test results
+# One array only. Extend the array above rather than repeating the key.
+addopts = ["-n", "auto", "--dist", "loadgroup", "--reuse-db", "--testmon"]
 cache_dir = ".pytest_cache"
 ```
 
+`--reuse-db` **MUST NOT** be used on a run that changes the schema, and
+`--testmon` **MUST NOT** be used for CI gating runs.
+
+**Why**: Both flags trade completeness for speed. A reused database hides
+migration defects, and test selection skips tests whose dependencies changed in
+ways the plugin's import graph did not observe.
+
 ## Pre-commit Configuration
+
+Hook revisions **MUST** be pinned to a tag that exists in the hook repository
+and **MUST** be new enough to parse the project's `target-version`.
+
+**Why**: Ruff 0.8.0 rejects this guide's Ruff configuration outright —
+`unknown variant py314, expected one of py37 ... py313` — and Mypy 1.13.0 cannot
+parse a t-string, reporting `invalid syntax; you likely need to run mypy using
+Python 3.14 or newer`. A stale pin is not a conservative choice; it is a
+lint stage that never runs.
 
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+    rev: v0.16.6
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         args: [--strict]
 
-  - repo: https://github.com/returntocorp/semgrep
-    rev: v1.102.0
+  - repo: https://github.com/semgrep/semgrep
+    rev: v1.176.0
     hooks:
       - id: semgrep
         args: [--config=p/python, --config=p/security-audit, --error]
 
   - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.14
+    rev: v2.16
     hooks:
       - id: vulture
         args: [src/, --min-confidence=90]
 ```
+
+### Migrating to These Pins
+
+Read this before bumping an older configuration; each item changes behaviour
+rather than just version numbers.
+
+| Change | Effect |
+| ------ | ------ |
+| Semgrep moved to `semgrep/semgrep` | `returntocorp/semgrep` still redirects, but the canonical URL **SHOULD** be used |
+| Ruff hook renamed to `ruff-check` | `ruff` survives as a legacy alias, so renaming is **RECOMMENDED**, not required |
+| Ruff 0.9 adopted the 2025 style guide | `ruff format` reformats existing code; land the reformat in its own commit |
+| Ruff 0.16 expanded the default rule set from 59 to 413 rules | Only affects projects with no explicit `select`; this guide sets one |
+| Ruff 0.16 formats Python blocks inside Markdown | Documentation files change on the first run |
+| Mypy 2.0 enables `--local-partial-types` | Cross-scope inference tightens; new errors are expected |
+| Mypy 2.0 enables `--strict-bytes` | `bytearray` and `memoryview` are no longer assignable to `bytes` (PEP 688) |
+| Mypy 2.0 changed `--allow-redefinition` | Behaves as the old `--allow-redefinition-new`; `--allow-redefinition-old` restores the previous semantics |
+
+**Why**: Ruff's formatter changes and Mypy's default changes both produce diffs
+or errors that look like regressions in the pre-commit run that follows the
+bump. Landing the pin, the reformat, and the type fixes as separate commits
+keeps the cause of each diff legible.
 
 ## CI Pipeline
 
@@ -489,7 +593,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv sync
+      - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy src/
@@ -500,7 +604,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv sync
+      - run: uv sync --locked
       - run: uv run pytest -n auto --cov=src --cov-fail-under=80
 ```
 
@@ -511,6 +615,8 @@ Projects **MUST**:
 - Use uv[^10] for package management (uv sync, uv add, uv lock)
 - Commit lock files (uv.lock) with SHA256 hashes
 - Specify version constraints in pyproject.toml
+- Run `uv sync --locked` (or set `UV_LOCKED=1`) everywhere the lockfile is
+  meant to be authoritative — CI, containers, and deployment
 - Scan for vulnerabilities using pip-audit[^24] or safety[^25]
 - Configure Dependabot[^26] or Renovate[^27] for automated dependency updates
 
@@ -518,22 +624,31 @@ Projects **MUST**:
 scanning catches security issues early. Automated updates reduce maintenance
 burden while keeping dependencies current.
 
+Lock enforcement **MUST NOT** be expressed as a `[tool.uv]` setting. There is no
+`locked` key: uv rejects it with `unknown field locked, expected one of ...` and
+then syncs anyway, writing a fresh `uv.lock` if none exists. Only the CLI flag
+or the environment variable actually enforce it.
+
 ```bash
 # Lock dependencies
 uv lock
 
-# Update dependencies
+# Install exactly what uv.lock pins; fail if it is missing or stale
+uv sync --locked
+
+# Update dependencies (rewrites uv.lock; commit the result)
 uv sync --upgrade
 ```
 
 ```toml
 [project]
 dependencies = ["requests>=2.32.0,<3"]
-
-[tool.uv]
-# Regenerate lock on sync
-locked = true
 ```
+
+A missing lockfile fails with `error: Unable to find lockfile at 'uv.lock', but
+'--locked' was provided`, and a lockfile that no longer matches `pyproject.toml`
+fails with `error: The lockfile at 'uv.lock' needs to be updated, but '--locked'
+was provided`. Both are the intended CI failures.
 
 ```bash
 # Security scanning
@@ -581,19 +696,50 @@ manifest under specific timing conditions. Explicit thread safety testing
 catches these issues before production.
 
 ```python
+import threading
 from concurrent.futures import ThreadPoolExecutor
+
+class Counter:
+    """Counter whose increments are serialised by a lock."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._value = 0
+
+    def increment(self) -> None:
+        with self._lock:
+            self._value += 1
+
+    @property
+    def value(self) -> int:
+        with self._lock:
+            return self._value
 
 def test_concurrent_access() -> None:
     counter = Counter()
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(counter.increment) for _ in range(100)]
-        assert counter.value == 100  # Should be thread-safe
+        for future in futures:
+            future.result()  # wait for completion and re-raise worker errors
+    assert counter.value == 100
 ```
 
+The test **MUST** await every future before asserting. Reading `counter.value`
+immediately after `submit` observes an arbitrary intermediate count — a
+correctly locked counter measured between 31 and 47 of 100 increments across 20
+runs — so the test fails for reasons that have nothing to do with thread safety.
+The object under test **MUST** also be synchronised; without the lock above, the
+same test fails for the real reason.
+
 ```bash
-# Run tests in parallel threads
-uv run pytest --workers=4
+# pytest-xdist distributes tests across worker processes; it has no
+# --workers option and rejects it with "unrecognized arguments".
+uv run pytest -n 4
 ```
+
+`-n 4` parallelises the suite, not the threads inside a single test. It speeds
+up the run; the thread concurrency being verified still comes from the
+`ThreadPoolExecutor` in the test body.
 
 ## Idempotence Testing
 
@@ -628,13 +774,24 @@ failures. Chaos engineering and fault injection reveal weaknesses before they
 cause production outages.
 
 ```python
+import pybreaker
+import pytest
+
 def test_circuit_breaker_opens(mocker) -> None:
     service = mocker.patch("external_service.call", side_effect=TimeoutError)
-    circuit = CircuitBreaker()
-    for _ in range(5):
+    circuit = pybreaker.CircuitBreaker(fail_max=5)
+
+    # The first four failures propagate unchanged. The fifth reaches the
+    # threshold, so pybreaker opens the circuit and raises CircuitBreakerError
+    # instead of the upstream TimeoutError.
+    for _ in range(4):
         with pytest.raises(TimeoutError):
             circuit.call(service)
-    assert circuit.state == "open"
+    with pytest.raises(pybreaker.CircuitBreakerError):
+        circuit.call(service)
+
+    # `circuit.state` is a state object, not a string; compare current_state.
+    assert circuit.current_state == pybreaker.STATE_OPEN
 ```
 
 ```json
@@ -661,10 +818,19 @@ encounter them.
 [tool.tox]
 env_list = ["py312", "py313", "py314"]
 
-[testenv]
-deps = ["pytest", "pytest-cov"]
-commands = ["pytest"]
+# Native TOML: shared settings go under env_run_base, and each command is an
+# array of arguments. A top-level [testenv] table is INI syntax; tox ignores it
+# in pyproject.toml, leaving every environment with empty deps and commands.
+[tool.tox.env_run_base]
+deps = ["pytest==9.1.1", "pytest-cov==7.1.0"]
+commands = [["pytest", "--cov=src"]]
 ```
+
+**Why**: The INI-style form fails open. `tox config` reports `commands =` and
+`deps =` as empty for `py312`, `py313`, and `py314`, so the compatibility matrix
+passes on every Python version while running no tests at all. Verify with
+`uv run tox config` that each environment lists the expected `commands` before
+trusting a green matrix.
 
 ```yaml
 # GitHub Actions matrix
@@ -720,11 +886,31 @@ def test_unique_constraint(db: Session) -> None:
 ```
 
 ```python
-def test_migration_reversible(db_engine) -> None:
-    alembic.upgrade("head")
-    alembic.downgrade("base")
-    alembic.upgrade("head")  # Should succeed
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+
+@pytest.fixture
+def alembic_config(tmp_path: Path) -> Config:
+    """Alembic configuration pointed at a throwaway database."""
+    config = Config("alembic.ini")
+    config.set_main_option("script_location", "migrations")
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{tmp_path / 'test.db'}")
+    return config
+
+def test_migration_reversible(alembic_config: Config) -> None:
+    command.upgrade(alembic_config, "head")
+    command.downgrade(alembic_config, "base")
+    command.upgrade(alembic_config, "head")  # Should succeed
 ```
+
+Every Alembic command takes a `Config` as its first argument; there is no
+`alembic.upgrade`, and aliasing `alembic.command` as `alembic` does not supply
+the missing argument. `downgrade(config, "base")` drops every table the
+migrations created, so it **MUST** run against a database created for the test
+and **MUST NOT** run against a shared, staging, or production database.
 
 ## A/B Testing & Feature Flags
 
@@ -743,11 +929,41 @@ def test_new_feature(flag_enabled: bool, mocker) -> None:
 ```
 
 ```python
+import os
+
 from flagsmith import Flagsmith
 
-flags = Flagsmith(environment_key="test")
-if flags.has_feature("new_checkout"):
-    return new_checkout_flow()
+flagsmith = Flagsmith(environment_key=os.environ["FLAGSMITH_ENVIRONMENT_KEY"])
+
+def checkout() -> Response:
+    # Flags are evaluated on a Flags result, not on the client itself: the
+    # client has no has_feature method.
+    flags = flagsmith.get_environment_flags()
+    if flags.is_feature_enabled("new_checkout"):
+        return new_checkout_flow()
+    return legacy_checkout_flow()
+
+def checkout_for(user: User) -> Response:
+    # Identity evaluation is required for segments and percentage rollouts.
+    flags = flagsmith.get_identity_flags(identifier=user.id, traits={"plan": user.plan})
+    if flags.is_feature_enabled("new_checkout"):
+        return new_checkout_flow()
+    return legacy_checkout_flow()
+```
+
+Tests **MUST NOT** reach the Flagsmith API. Use offline mode with a saved
+environment document so flag states are fixed and the suite stays hermetic:
+
+```python
+from flagsmith import Flagsmith
+from flagsmith.offline_handlers import LocalFileHandler
+
+def test_checkout_uses_new_flow() -> None:
+    client = Flagsmith(
+        offline_mode=True,
+        offline_handler=LocalFileHandler("tests/data/environment.json"),
+    )
+    assert client.get_environment_flags().is_feature_enabled("new_checkout")
 ```
 
 ## Profiling
@@ -809,12 +1025,20 @@ uv add --dev aiomonitor
 ```
 
 ```python
+import asyncio
+
 import aiomonitor
 
 async def main() -> None:
-    with aiomonitor.start_monitor():
+    # start_monitor requires the running loop; calling it with no arguments
+    # raises TypeError: missing 1 required positional argument: 'loop'.
+    with aiomonitor.start_monitor(asyncio.get_running_loop()):
         await run_server()
 ```
+
+The monitor binds `127.0.0.1` by default and offers an unauthenticated console.
+That default **MUST** be kept: exposing it on a routable interface hands out
+arbitrary introspection of a running process.
 
 ### Continuous Profiling
 
@@ -1071,22 +1295,32 @@ coroutine-based API, handles connection management automatically, and includes
 production-ready features like ping/pong, compression, and proper close
 handling.
 
+Projects **MUST** use the `websockets.asyncio` implementation. The
+`websockets.server`, `websockets.client`, and `websockets.legacy` modules and
+the `WebSocketServerProtocol` type are the deprecated legacy implementation:
+importing them under websockets 17.1 emits `websockets.server.serve is
+deprecated`, `websockets.legacy is deprecated`, and
+`websockets.WebSocketServerProtocol is deprecated`. The two implementations
+**MUST NOT** be mixed — `websockets.broadcast` now resolves to
+`websockets.asyncio.server.broadcast`, which does not accept legacy protocol
+objects. The top-level `websockets.serve` and `websockets.connect` aliases
+already point at the asyncio implementation.
+
 ### Server Implementation
 
 ```python
 import asyncio
-import websockets
-from websockets.server import serve
 
-async def handler(websocket):
+from websockets.asyncio.server import ServerConnection, serve
+
+async def handler(websocket: ServerConnection) -> None:
     async for message in websocket:
         # Echo back with processing
-        response = process_message(message)
-        await websocket.send(response)
+        await websocket.send(process_message(message))
 
-async def main():
+async def main() -> None:
     async with serve(handler, "localhost", 8765):
-        await asyncio.Future()  # Run forever
+        await asyncio.get_running_loop().create_future()  # Run forever
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -1096,11 +1330,12 @@ if __name__ == "__main__":
 
 ```python
 import asyncio
-import websockets
 
-async def client():
+from websockets.asyncio.client import connect
+
+async def client() -> None:
     uri = "ws://localhost:8765"
-    async with websockets.connect(uri) as websocket:
+    async with connect(uri) as websocket:
         await websocket.send("Hello, Server!")
         response = await websocket.recv()
         print(f"Received: {response}")
@@ -1111,45 +1346,53 @@ asyncio.run(client())
 ### Broadcast Pattern
 
 ```python
-import asyncio
-import websockets
-from websockets.server import serve
+from websockets.asyncio.server import ServerConnection, broadcast
 
-CLIENTS: set[websockets.WebSocketServerProtocol] = set()
+CLIENTS: set[ServerConnection] = set()
 
-async def register(websocket):
+async def handler(websocket: ServerConnection) -> None:
     CLIENTS.add(websocket)
     try:
         await websocket.wait_closed()
     finally:
         CLIENTS.discard(websocket)
 
-async def broadcast(message: str):
-    websockets.broadcast(CLIENTS, message)
+def announce(message: str) -> None:
+    """Queue a message on every open connection.
 
-async def handler(websocket):
-    await register(websocket)
+    broadcast() is synchronous and never awaits, so a slow client cannot
+    block the sender.
+    """
+    broadcast(CLIENTS, message)
 ```
 
 ### Connection Management
 
 ```python
 import asyncio
-import websockets
 
-async def robust_client(uri: str):
+from websockets.asyncio.client import connect
+from websockets.exceptions import ConnectionClosed
+
+async def robust_client(uri: str) -> None:
     """Reconnecting WebSocket client with exponential backoff."""
     backoff = 1
     while True:
         try:
-            async with websockets.connect(uri) as ws:
+            async with connect(uri) as websocket:
                 backoff = 1  # Reset on successful connection
-                async for message in ws:
+                async for message in websocket:
                     await process_message(message)
-        except websockets.ConnectionClosed:
+        except (ConnectionClosed, OSError):
+            # ConnectionClosed: the peer dropped an established connection.
+            # OSError: the connection could not be opened at all.
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 60)  # Max 60 seconds
 ```
+
+Both failure modes **MUST** be handled. Catching only `ConnectionClosed` leaves
+the client dead as soon as the server is unavailable at connect time, because
+`connect()` raises `OSError` rather than `ConnectionClosed` in that case.
 
 ## Rate Limiting
 
@@ -1162,8 +1405,12 @@ limits.
 
 ### Using limits Library
 
+`MovingWindowRateLimiter` **MUST** be constructed with a storage instance.
+Calling it with no arguments raises `TypeError: ... missing 1 required
+positional argument: 'storage'`.
+
 ```python
-from limits import storage, strategies, parse
+from limits import parse, storage, strategies
 
 # In-memory storage (use Redis for distributed systems)
 memory_storage = storage.MemoryStorage()
@@ -1173,10 +1420,8 @@ moving_window = strategies.MovingWindowRateLimiter(memory_storage)
 rate_limit = parse("100/minute")
 
 def check_rate_limit(user_id: str) -> bool:
-    """Check if request is allowed."""
-    if moving_window.hit(rate_limit, user_id):
-        return True
-    return False
+    """Check whether the request is allowed."""
+    return moving_window.hit(rate_limit, user_id)
 
 # With Redis storage for distributed systems
 # redis_storage = storage.RedisStorage("redis://localhost:6379")
@@ -1222,20 +1467,29 @@ else:
 
 ### Async Rate Limiting with pyrate-limiter
 
+```bash
+uv add "pyrate-limiter==4.5.0"
+```
+
 ```python
 from pyrate_limiter import Duration, Limiter, Rate
 
-# 5 requests per second, 100 per minute
-limiter = Limiter(
-    Rate(5, Duration.SECOND),
-    Rate(100, Duration.MINUTE),
-)
+# All rates MUST be passed as one list. Limiter's second positional parameter
+# is buffer_ms, so Limiter(Rate(...), Rate(...)) silently binds the second rate
+# to buffer_ms and enforces only the first.
+limiter = Limiter([Rate(5, Duration.SECOND), Rate(100, Duration.MINUTE)])
 
-async def rate_limited_call(user_id: str):
-    # Blocks until rate limit allows
-    async with limiter.ratelimit(user_id, delay=True):
-        return await make_api_call()
+async def rate_limited_call(user_id: str) -> dict:
+    # PyrateLimiter 4.x has no ratelimit context manager. try_acquire_async
+    # waits up to `timeout` seconds and returns whether capacity was granted.
+    if not await limiter.try_acquire_async(user_id, blocking=True, timeout=5):
+        raise RateLimitExceeded(user_id)
+    return await make_api_call()
 ```
+
+The boolean result **MUST** be checked before the call is made. `blocking=True`
+only bounds the wait; on timeout it returns `False` rather than raising, so an
+unchecked call proceeds straight past the limit.
 
 ### Decorator Pattern
 
@@ -1279,6 +1533,7 @@ They enable graceful degradation and faster failure detection.
 
 ```python
 import pybreaker
+import requests
 
 # Create circuit breaker with 5 failure threshold
 breaker = pybreaker.CircuitBreaker(
@@ -1289,7 +1544,13 @@ breaker = pybreaker.CircuitBreaker(
 
 @breaker
 def call_external_service(data: dict) -> dict:
-    response = requests.post("https://api.example.com/v1/data", json=data)
+    # (connect, read) timeouts in seconds. Without them requests waits
+    # indefinitely and the breaker never sees a failure to count.
+    response = requests.post(
+        "https://api.example.com/v1/data",
+        json=data,
+        timeout=(3.05, 10),
+    )
     response.raise_for_status()
     return response.json()
 
@@ -1303,6 +1564,18 @@ except requests.RequestException:
     # Request failed but circuit may still be closed
     result = handle_failure()
 ```
+
+Every production HTTP call **MUST** set an explicit timeout and **MUST** call
+`raise_for_status()` before decoding. The breaker counts whatever the wrapped
+function raises and `exclude` does not list: here `requests.Timeout`,
+`requests.ConnectionError`, and the `requests.HTTPError` produced by
+`raise_for_status()`. Without a timeout the call never raises, so the request
+occupies a worker indefinitely and the breaker cannot trip.
+
+**Note**: `timeout=(connect, read)` bounds each socket operation, not the total
+wall-clock duration of the request. A response that streams slowly can still
+exceed the read timeout in aggregate; a hard deadline requires an outer
+cancellation mechanism.
 
 ### With Listeners for Monitoring
 
@@ -1334,17 +1607,57 @@ breaker = pybreaker.CircuitBreaker(
 
 For async code, use aiobreaker[^40]:
 
-```python
-from aiobreaker import CircuitBreaker
+```bash
+uv add "aiobreaker==1.2.0"
+```
 
-breaker = CircuitBreaker(fail_max=5, timeout_duration=60)
+```python
+from datetime import timedelta
+
+import aiohttp
+from aiobreaker import CircuitBreaker, CircuitBreakerError
+from aiobreaker.state import CircuitBreakerState
+
+# timeout_duration MUST be a timedelta. aiobreaker adds it to a datetime when
+# the breaker opens, so an int raises
+# TypeError: unsupported operand type(s) for +: 'datetime.datetime' and 'int'
+# on the very failure path the breaker exists to handle.
+breaker = CircuitBreaker(fail_max=5, timeout_duration=timedelta(seconds=60))
 
 @breaker
-async def async_external_call(data: dict) -> dict:
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data) as response:
-            return await response.json()
+async def async_external_call(
+    session: aiohttp.ClientSession, url: str, data: dict
+) -> dict:
+    timeout = aiohttp.ClientTimeout(connect=3, total=10)
+    async with session.post(url, json=data, timeout=timeout) as response:
+        response.raise_for_status()
+        return await response.json()
 ```
+
+State transitions **MUST** be covered by a test, because the failure that opens
+the circuit is reported differently from the failures that precede it:
+
+```python
+async def test_breaker_opens_after_threshold() -> None:
+    breaker = CircuitBreaker(fail_max=2, timeout_duration=timedelta(seconds=60))
+
+    @breaker
+    async def failing() -> None:
+        raise RuntimeError("upstream down")
+
+    with pytest.raises(RuntimeError):
+        await failing()
+    with pytest.raises(CircuitBreakerError):  # threshold reached
+        await failing()
+    assert breaker.current_state is CircuitBreakerState.OPEN
+```
+
+**Note**: aiobreaker 1.2.0 was released in May 2021 and still calls the
+deprecated `datetime.utcnow()`, which warns on Python 3.12+. It works, and the
+release date alone does not prove abandonment, but projects **SHOULD** record it
+as a dependency risk and **MUST** pin it explicitly. pybreaker is not a
+substitute here: its `call_async` is a Tornado coroutine and raises `NameError`
+under plain asyncio.
 
 ### Redis State Storage (Distributed)
 
@@ -1416,7 +1729,11 @@ cache.set("api_response", response_data, expire=3600)
 # Memoization decorator
 @cache.memoize(expire=600)
 def fetch_data(url: str) -> dict:
-    return requests.get(url).json()
+    # Timeout first, then raise_for_status: without them a hung request blocks
+    # the caller and an error body is cached for the full expiry window.
+    response = requests.get(url, timeout=(3.05, 10))
+    response.raise_for_status()
+    return response.json()
 
 # Atomic operations
 with cache.transact():
@@ -1825,3 +2142,6 @@ def test_feature_behavior(flag_enabled: bool, mocker):
 [^44]: [concurrent.futures - Launching Parallel Tasks](https://docs.python.org/3/library/concurrent.futures.html)
 [^45]: [multiprocessing - Process-Based Parallelism](https://docs.python.org/3/library/multiprocessing.html)
 [^46]: [Feature Flag Providers - LaunchDarkly](https://launchdarkly.com/), [PostHog](https://posthog.com/feature-flags), [Flagsmith](https://flagsmith.com/)
+[^47]: [string.templatelib - Template Strings](https://docs.python.org/3.14/library/string.templatelib.html) and [PEP 750](https://peps.python.org/pep-0750/)
+[^48]: [pytest-django Documentation](https://pytest-django.readthedocs.io/)
+[^49]: [pytest-testmon Documentation](https://testmon.org/)
