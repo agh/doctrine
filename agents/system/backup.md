@@ -93,13 +93,28 @@ Backup: Daily at midnight
 [global]
 repo1-path=/backup
 
-# ✅ Production configuration
+# ✅ Production configuration - /etc/pgbackrest/pgbackrest.conf
 [global]
 repo1-path=/backup/pgbackrest
+# Keep 4 full backups, 14 differentials; comments never share a line with
+# a value, which pgBackRest would read as part of the value
 repo1-retention-full=4
 repo1-retention-diff=14
 repo1-cipher-type=aes-256-cbc
 repo1-cipher-pass=<encrypted>
+
+# Offsite replication - repo2-* options belong in [global]; a
+# [global:repo2] section is not a valid pgBackRest section
+repo2-type=s3
+repo2-s3-bucket=backup-bucket
+repo2-s3-endpoint=s3.amazonaws.com
+repo2-s3-region=us-east-1
+repo2-s3-key=<encrypted>
+repo2-s3-key-secret=<encrypted>
+repo2-retention-full=2
+repo2-cipher-type=aes-256-cbc
+repo2-cipher-pass=<encrypted>
+
 compress-type=zst
 compress-level=6
 
@@ -112,19 +127,16 @@ process-max=4
 
 [main]
 pg1-path=/var/lib/postgresql/data
-
-# Offsite replication
-[global:repo2]
-repo2-type=s3
-repo2-s3-bucket=backup-bucket
-repo2-s3-endpoint=s3.amazonaws.com
-repo2-s3-region=us-east-1
-repo2-retention-full=2
 ```
+
+`pgbackrest backup` writes to `repo1` unless `--repo=2` is given, so the
+off-site repository needs its own scheduled backup.
 
 **Severity**:
 
 - 🔴 **Critical**: No database backup configured
+- 🔴 **Critical**: Off-site repository configured but not in `[global]`, so
+  pgBackRest ignores it
 - 🟡 **Warning**: No WAL archiving (can't do PITR), no encryption
 - 🔵 **Suggestion**: Add offsite replication, test restoration
 
@@ -240,11 +252,30 @@ ExecStart=/usr/local/bin/backup.sh
 
 ### PostgreSQL Recovery
 
-1. Stop application services
-2. Restore from pgBackRest:
+1. Stop the application, then PostgreSQL:
 
    ```bash
-   pgbackrest --stanza=main restore --target-time="2024-01-01 12:00:00"
+   systemctl stop app.service postgresql.service
+   ```
+
+1. Restore to the chosen point in time. `--type=time` selects a timestamp
+   target; `--target-time` is not an option name, it abbreviates
+   `--target-timeline` and aborts with `invalid target timeline`. `--delta`
+   reuses the existing data directory instead of requiring an empty one, and
+   the target **MUST** lie within the WAL range `pgbackrest info` reports for
+   a retained backup:
+
+   ```bash
+   pgbackrest --stanza=main --type=time \
+     --target="2026-09-01 12:00:00+00" \
+     --target-action=promote --delta restore
+   ```
+
+1. Start PostgreSQL and wait for recovery to end:
+
+   ```bash
+   systemctl start postgresql
+   psql -Atc "SELECT pg_is_in_recovery();"  # f once recovery has finished
    ```
 
 1. Verify data integrity:
@@ -253,8 +284,8 @@ ExecStart=/usr/local/bin/backup.sh
    psql -c "SELECT count(*) FROM critical_table;"
    ```
 
-2. Start application services
-3. Verify application functionality
+1. Start application services
+1. Verify application functionality
 
 ### Last Recovery Test
 
