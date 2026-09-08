@@ -27,7 +27,7 @@ All Python tooling applies. Additional considerations:
 | Metrics | prometheus-fastapi-instrumentator | `uv add prometheus-fastapi-instrumentator` |
 | Tracing | OpenTelemetry | `uv add opentelemetry-instrumentation-fastapi` |
 | Background Jobs | ARQ | `uv add arq` |
-| Caching | fastapi-cache2 | `uv add fastapi-cache2[redis]` |
+| Caching | redis-py | `uv add "redis[hiredis]==8.1.0"` |
 | Rate Limiting | slowapi | `uv add slowapi` |
 | Circuit Breaker | aiobreaker | `uv add aiobreaker` |
 | Feature Flags | Unleash | `uv add UnleashClient` |
@@ -153,12 +153,27 @@ Projects **MUST** use Pydantic models[^4] for request/response validation:
 
 ```python
 # src/myapp/schemas/user.py
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, SecretStr, field_validator
+
+from myapp.security.passwords import screen_password
+
+# SP 800-63B-4 §3.1.1.2: 15 characters minimum for password-only authentication.
+MIN_PASSWORD_LENGTH = 15
+# SP 800-63B-4 §3.1.1.2: at least 64 characters SHOULD be accepted. The cap
+# bounds hashing cost; Argon2 and bcrypt both slow down on unbounded input.
+MAX_PASSWORD_LENGTH = 128
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: SecretStr = Field(
+        ..., min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH
+    )
     full_name: str
+
+    @field_validator("password")
+    @classmethod
+    def reject_compromised(cls, value: SecretStr) -> SecretStr:
+        return SecretStr(screen_password(value.get_secret_value()))
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
@@ -185,7 +200,7 @@ router = APIRouter()
 @router.post("/", response_model=UserResponse, status_code=201)
 async def create_user(user: UserCreate, db: Session = Depends(get_db)) -> User:
     db_user = User(**user.model_dump(exclude={"password"}))
-    db_user.set_password(user.password)
+    db_user.set_password(user.password.get_secret_value())
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -194,7 +209,99 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)) -> User:
 
 **Why**: Pydantic provides automatic validation, serialization, and helpful
 error messages. Separate request/response models prevent exposing sensitive
-fields and enable API evolution.
+fields and enable API evolution. `SecretStr` keeps the password out of
+`repr()`, logs, and tracebacks; raising `ValueError` inside a `field_validator`
+produces a 422 through Pydantic's own machinery rather than the application's
+exception handlers.
+
+### Password Policy
+
+Endpoints that authenticate a user with a password alone **MUST** apply
+NIST SP 800-63B-4[^22] §3.1.1.2:
+
+| Rule | Requirement |
+| ---- | ----------- |
+| Minimum length | **MUST** be at least 15 characters for password-only authentication; 8 is permitted only when the password is one factor of a multi-factor authentication process |
+| Maximum length | **SHOULD** permit at least 64 characters |
+| Character set | **SHOULD** accept all printing ASCII, the space character, and Unicode |
+| Truncation | **MUST** verify the entire submitted password without truncating it |
+| Composition rules | **MUST NOT** require mixed case, digits, or symbols |
+| Breach screening | **MUST** compare the whole password against a blocklist of commonly used, expected, or compromised values and **MUST** give the reason for rejection |
+| Periodic rotation | **MUST NOT** be required without evidence of compromise |
+| Normalisation | **SHOULD** apply Unicode NFC before hashing when Unicode is accepted |
+
+```python
+# src/myapp/security/passwords.py
+import unicodedata
+from pathlib import Path
+
+MIN_PASSWORD_LENGTH = 15
+BLOCKLIST_PATH = Path(__file__).with_name("breached_passwords.txt")
+_BLOCKLIST = frozenset(
+    line.strip().casefold()
+    for line in BLOCKLIST_PATH.read_text(encoding="utf-8").splitlines()
+    if line.strip()
+)
+
+def screen_password(password: str) -> str:
+    """Normalise, then reject short or known-compromised values.
+
+    SP 800-63B-4 §3.1.1.2 requires NFC normalisation before hashing, comparison
+    of the whole password against a breach blocklist, and a stated reason for
+    rejection. Load the corpus at import time, or query a k-anonymity range API
+    so that the password itself never leaves the process.
+    """
+    normalised = unicodedata.normalize("NFC", password)
+    if len(normalised) < MIN_PASSWORD_LENGTH:
+        raise ValueError(
+            f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+        )
+    if normalised.casefold() in _BLOCKLIST:
+        raise ValueError("This password appears in a breach corpus. Choose another.")
+    return normalised
+```
+
+```python
+# DON'T: an eight-character minimum with no breach screening
+password: str = Field(..., min_length=8)
+
+# DON'T: composition rules push users towards predictable substitutions
+password: str = Field(..., pattern=r"^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%]).{8,}$")
+
+# DO: length floor, generous ceiling, breach screening, no composition rules
+password: SecretStr = Field(..., min_length=15, max_length=128)
+```
+
+```python
+# tests/test_password_policy.py
+import pytest
+from pydantic import ValidationError
+
+from myapp.schemas.user import UserCreate
+
+BASE = {"email": "test@example.com", "full_name": "Test User"}
+
+@pytest.mark.parametrize("password", ["short-one", "password123"])
+def test_weak_passwords_are_rejected(password: str) -> None:
+    with pytest.raises(ValidationError):
+        UserCreate(**BASE, password=password)
+
+def test_sixty_four_character_passphrase_is_accepted() -> None:
+    user = UserCreate(**BASE, password="m" * 64)
+    assert len(user.password.get_secret_value()) == 64
+```
+
+**Why**: Length is the only password property that reliably resists offline
+guessing; composition rules and forced rotation measurably reduce entropy by
+pushing users towards predictable substitutions, which is why SP 800-63B-4
+prohibits both. An eight-character password drawn from a human-chosen
+distribution is recoverable in minutes against any hash. Breach screening blocks
+the credential-stuffing lists that defeat length requirements outright.
+
+Projects **SHOULD** state which factor the password is: SP 800-63B-4 permits an
+eight-character minimum only where the password is used as part of a
+multi-factor authentication process. The example above is password-only, so 15
+applies.
 
 ## Async Database Access
 
@@ -204,7 +311,11 @@ Projects using async FastAPI **MUST** use async database libraries:
 # src/myapp/database.py
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
 from myapp.config import settings
+
+class Base(DeclarativeBase):
+    pass
 
 engine = create_async_engine(settings.DATABASE_URL)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
@@ -216,7 +327,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 ```python
 # src/myapp/api/users.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from myapp.database import get_db
@@ -267,51 +378,65 @@ settings = Settings()
 
 ## Testing with TestClient
 
-Projects **MUST** test FastAPI applications using `TestClient`:
+Projects **MUST** test FastAPI applications using `TestClient`, and **MUST**
+override the exact dependency callable the route imports:
 
 ```python
 # tests/conftest.py
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from myapp.main import create_app
-from myapp.database import Base
-from myapp.dependencies import get_db
+import asyncio
+from collections.abc import AsyncGenerator, Iterator
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(bind=engine)
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
+
+from myapp.database import Base, get_db  # the same symbol the routers import
+from myapp.main import create_app
 
 @pytest.fixture
-def app():
-    Base.metadata.create_all(bind=engine)
+def session_factory(tmp_path) -> Iterator[async_sessionmaker[AsyncSession]]:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{tmp_path / 'test.db'}", poolclass=NullPool
+    )
+
+    async def create_schema() -> None:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.run(create_schema())
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    asyncio.run(engine.dispose())
+
+@pytest.fixture
+def app(session_factory) -> Iterator[FastAPI]:
     application = create_app()
 
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            yield session
 
     application.dependency_overrides[get_db] = override_get_db
     yield application
-    Base.metadata.drop_all(bind=engine)
+    application.dependency_overrides.clear()
 
 @pytest.fixture
-def client(app):
-    return TestClient(app)
+def client(app: FastAPI) -> Iterator[TestClient]:
+    with TestClient(app) as test_client:
+        yield test_client
 ```
 
 ```python
 # tests/test_users.py
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 def test_create_user(client: TestClient) -> None:
     response = client.post("/api/users/", json={
         "email": "test@example.com",
-        "password": "password123",
+        "password": "correct-battery-staple-2026",
         "full_name": "Test User"
     })
     assert response.status_code == 201
@@ -320,37 +445,141 @@ def test_create_user(client: TestClient) -> None:
 def test_create_user_invalid_email(client: TestClient) -> None:
     response = client.post("/api/users/", json={
         "email": "not-an-email",
-        "password": "password123",
+        "password": "correct-battery-staple-2026",
         "full_name": "Test User"
     })
     assert response.status_code == 422
+
+def test_application_session_factory_is_never_used(client: TestClient) -> None:
+    """Prove the override replaced the configured database, not a lookalike."""
+    tripwire = AssertionError("application session factory entered during tests")
+    with patch("myapp.database.AsyncSessionLocal", side_effect=tripwire):
+        response = client.get("/api/users/1")
+    assert response.status_code == 404
 ```
 
 **Why**: `TestClient` provides synchronous testing of async endpoints without
-running a server. Dependency overrides enable injecting test database sessions
-and mocked dependencies.
+running a server. `dependency_overrides` is keyed by the function object, so
+overriding `myapp.dependencies.get_db` has no effect on a route that depends on
+`myapp.database.get_db`[^21]: the request silently falls through to the
+application-configured database. Overriding the imported symbol and asserting
+that the application session factory is never entered makes that mistake fail
+the suite instead of corrupting real data.
+
+Projects **MUST NOT** override a same-named dependency from a different module,
+and **MUST NOT** substitute a synchronous `Session` for an `AsyncSession`:
+
+```python
+# DON'T: the route imports myapp.database.get_db, so this override is dead code
+from myapp.dependencies import get_db          # sync Session dependency
+application.dependency_overrides[get_db] = override_get_db
+
+# DO: override the callable the route actually depends on
+from myapp.database import get_db              # async AsyncSession dependency
+application.dependency_overrides[get_db] = override_get_db
+```
 
 ## Error Handling
 
-Projects **SHOULD** implement consistent error handling:
+Projects **SHOULD** implement consistent error handling, and **MUST NOT** map
+broad built-in exception types to client error statuses:
+
+```python
+# src/myapp/errors.py
+class DomainError(Exception):
+    """A request failure that is safe to describe to the caller."""
+
+    def __init__(self, code: str, message: str, status_code: int = 400) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.status_code = status_code
+
+class ItemLocked(DomainError):
+    def __init__(self) -> None:
+        super().__init__("item_locked", "This item is locked for editing.", 409)
+```
 
 ```python
 # src/myapp/main.py
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+
+from myapp.errors import DomainError
+
+logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     app = FastAPI()
 
-    @app.exception_handler(ValueError)
-    async def value_error_handler(request: Request, exc: ValueError):
+    @app.exception_handler(DomainError)
+    async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
         return JSONResponse(
-            status_code=400,
-            content={"detail": str(exc)}
+            status_code=exc.status_code,
+            content={"code": exc.code, "detail": exc.message},
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        correlation_id = getattr(request.state, "correlation_id", "unknown")
+        logger.exception("request.failed", extra={"correlation_id": correlation_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "internal_error",
+                "detail": "Internal server error",
+                "correlation_id": correlation_id,
+            },
         )
 
     return app
 ```
+
+```python
+# DON'T: every ValueError becomes a 400 and leaks its message to the client
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+# DO: raise an explicit domain exception where the client is at fault
+if item.locked:
+    raise ItemLocked()
+```
+
+```python
+# tests/test_errors.py
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+def test_domain_error_is_reported_to_the_client(client: TestClient) -> None:
+    response = client.get("/api/items/1/edit")
+    assert response.status_code == 409
+    assert response.json()["code"] == "item_locked"
+
+def test_internal_failure_is_a_500_without_internal_text(app: FastAPI) -> None:
+    """A route raising ValueError("shard=3 token=abc") must not leak either."""
+    # TestClient re-raises unhandled exceptions by default, which would bypass
+    # the handler under test.
+    with TestClient(app, raise_server_exceptions=False) as unsafe_client:
+        response = unsafe_client.get("/api/items/broken")
+    assert response.status_code == 500
+    assert "shard=3" not in response.text
+    assert "token=abc" not in response.text
+```
+
+**Why**: `ValueError` is raised throughout the standard library, Pydantic, and
+most third-party packages. A handler registered for it reclassifies internal
+invariant failures as client errors, so a genuine server bug returns 400,
+escapes 5xx alerting, and returns `str(exc)` — which routinely carries table
+names, identifiers, file paths, and configuration values — straight to the
+caller. A narrow domain exception carries a stable machine-readable `code` and a
+message written for disclosure, while everything unexpected stays a 500 whose
+detail lives only in the logs, correlated by request.
+
+Pydantic validation failures need no handler: FastAPI already converts them to
+422 responses that describe the offending field without exposing internals.
 
 ## Middleware
 
@@ -531,50 +760,122 @@ def create_app() -> FastAPI:
 
 ### Request Logging Middleware
 
+Request logs **MUST NOT** record raw query strings, request bodies, or
+`Authorization` headers:
+
 ```python
 # src/myapp/middleware.py
 import logging
+import time
+from collections.abc import Mapping
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
+# Only these query parameters are ever written to logs. Everything else is
+# redacted by name, so a new parameter cannot leak by being forgotten.
+LOGGABLE_QUERY_PARAMS = frozenset({"page", "per_page", "sort", "order"})
+REDACTED = "[redacted]"
+_CONTROL_CHARS = {codepoint: None for codepoint in [*range(0x20), 0x7F]}
+_MAX_LOGGED_VALUE = 64
+
+def scrub(value: str) -> str:
+    """Strip control characters and cap length to prevent log injection."""
+    return value.translate(_CONTROL_CHARS)[:_MAX_LOGGED_VALUE]
+
+def safe_query(params: Mapping[str, str]) -> dict[str, str]:
+    return {
+        scrub(key): scrub(value) if key in LOGGABLE_QUERY_PARAMS else REDACTED
+        for key, value in params.items()
+    }
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Log all requests with timing and status."""
+    """Log allowlisted request metadata with timing and status."""
 
-    async def dispatch(self, request: Request, call_next):
-        import time
+    async def dispatch(self, request: Request, call_next) -> Response:
         start = time.perf_counter()
-
-        # Get correlation ID if set
         correlation_id = getattr(request.state, "correlation_id", "unknown")
+        route = scrub(request.url.path)
 
         logger.info(
-            "Request started",
+            "request.started",
             extra={
                 "correlation_id": correlation_id,
                 "method": request.method,
-                "path": request.url.path,
-                "query": str(request.query_params),
-            }
+                "route": route,
+                "query": safe_query(request.query_params),
+            },
         )
 
-        response = await call_next(request)
-        duration = time.perf_counter() - start
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception(
+                "request.failed",
+                extra={
+                    "correlation_id": correlation_id,
+                    "method": request.method,
+                    "route": route,
+                    "duration": f"{time.perf_counter() - start:.4f}",
+                },
+            )
+            raise
 
         logger.info(
-            "Request completed",
+            "request.completed",
             extra={
                 "correlation_id": correlation_id,
                 "method": request.method,
-                "path": request.url.path,
+                "route": route,
                 "status": response.status_code,
-                "duration": f"{duration:.4f}",
-            }
+                "duration": f"{time.perf_counter() - start:.4f}",
+            },
         )
-
         return response
 ```
+
+```python
+# DON'T: the whole query string, including tokens and personal data
+"query": str(request.query_params),
+
+# DO: allowlisted names only, every other value redacted
+"query": safe_query(request.query_params),
+```
+
+```python
+# tests/test_request_logging.py
+import logging
+
+def started_record(caplog) -> logging.LogRecord:
+    return next(r for r in caplog.records if r.msg == "request.started")
+
+def test_secret_query_parameters_are_not_logged(caplog, client) -> None:
+    with caplog.at_level(logging.INFO, logger="myapp.middleware"):
+        client.get("/api/items/?page=2&access_token=s3cret&email=a@example.com")
+    assert started_record(caplog).query == {
+        "page": "2", "access_token": "[redacted]", "email": "[redacted]"
+    }
+
+def test_control_characters_are_stripped(caplog, client) -> None:
+    with caplog.at_level(logging.INFO, logger="myapp.middleware"):
+        client.get("/api/items/", params={"sort": "name\r\nINJECTED"})
+    assert started_record(caplog).query["sort"] == "nameINJECTED"
+```
+
+**Why**: OWASP's logging guidance[^23] lists access tokens, session identifiers,
+passwords, and sensitive personal data as values that **MUST NOT** be recorded.
+Query strings carry all of them in practice — this guide's own WebSocket example
+passes a bearer token as `?token=`, and password-reset and invitation links
+routinely put single-use secrets there. Application logs are replicated to
+aggregators, retained far longer than the tokens they contain, and readable by
+staff who are not authorised to see the underlying data, so a raw
+`str(request.query_params)` at INFO turns every such request into a durable
+credential disclosure. An allowlist fails safe when new parameters appear;
+a denylist does not. Stripping control characters stops an attacker-supplied
+parameter from forging log lines.
 
 ### Middleware Ordering
 
@@ -783,25 +1084,53 @@ oauth.register(
 
 ### Object-Level Permissions
 
-Projects **MUST** implement object-level permission checks:
+Projects **MUST** implement object-level permission checks that fail closed:
+a resource with no registered policy **MUST** be denied.
 
 ```python
 # src/myapp/permissions.py
+from collections.abc import Callable
+from enum import StrEnum
+from typing import Any
+
 from fastapi import HTTPException, status
 
-async def check_object_permission(user: User, obj: Any, action: str = "read") -> None:
-    """Verify user has permission to perform action on object."""
-    if hasattr(obj, "owner_id") and obj.owner_id != user.id:
-        if not user.is_admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Not authorized to {action} this resource",
-            )
+from myapp.models.item import Item
+from myapp.models.user import User
+
+class Action(StrEnum):
+    READ = "read"
+    UPDATE = "update"
+    DELETE = "delete"
+
+Policy = Callable[[User, Any, Action], bool]
+
+def item_policy(user: User, item: Item, action: Action) -> bool:
+    """Owners hold every right over their items; admins may only read them."""
+    if item.owner_id == user.id:
+        return True
+    return user.is_admin and action is Action.READ
+
+# Every protected resource type needs an entry. Types absent from this table
+# are denied, so adding a model without a policy fails loudly rather than
+# granting access.
+POLICIES: dict[type, Policy] = {Item: item_policy}
+
+def authorise(user: User, obj: object, action: Action) -> None:
+    """Raise 403 unless an explicit policy grants `action` on `obj`."""
+    policy = POLICIES.get(type(obj))
+    if policy is None or not policy(user, obj, action):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorised to perform this action on this resource",
+        )
 ```
 
 ```python
 # src/myapp/api/items.py
 from typing import Annotated
+
+from myapp.permissions import Action, authorise
 
 @router.get("/{item_id}", response_model=ItemResponse)
 async def get_item(
@@ -812,13 +1141,63 @@ async def get_item(
     item = await db.get(Item, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    await check_object_permission(current_user, item, "read")
+    authorise(current_user, item, Action.READ)
     return item
 ```
 
+```python
+# DON'T: probing for an attribute grants access whenever the attribute is
+# missing, so any model without owner_id is world-readable
+if hasattr(obj, "owner_id") and obj.owner_id != user.id:
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+# DO: look up an explicit policy and deny when none exists
+authorise(user, obj, Action.READ)
+```
+
+```python
+# tests/test_permissions.py
+import pytest
+from fastapi import HTTPException
+
+from myapp.permissions import Action, authorise
+from myapp.models.item import Item
+from myapp.models.user import User
+
+def test_owner_may_read_own_item() -> None:
+    authorise(User(id=1), Item(id=1, owner_id=1), Action.READ)
+
+@pytest.mark.parametrize("action", list(Action))
+def test_cross_tenant_access_is_denied(action: Action) -> None:
+    with pytest.raises(HTTPException) as excinfo:
+        authorise(User(id=1), Item(id=2, owner_id=2), action)
+    assert excinfo.value.status_code == 403
+
+def test_resource_without_a_policy_is_denied() -> None:
+    with pytest.raises(HTTPException):
+        authorise(User(id=1), object(), Action.READ)
+
+def test_admin_may_read_but_not_delete_another_users_item() -> None:
+    admin = User(id=9, is_admin=True)
+    authorise(admin, Item(id=2, owner_id=2), Action.READ)
+    with pytest.raises(HTTPException):
+        authorise(admin, Item(id=2, owner_id=2), Action.DELETE)
+```
+
 **Why**: Object-level permissions prevent horizontal privilege escalation where
-authenticated users access other users' data. This is one of the OWASP Top 10
-API security risks.
+authenticated users access other users' data. Broken object level authorization
+is the first entry in the OWASP API Security Top 10[^24], which requires every
+endpoint that receives an object identifier to validate the caller's permission
+for that specific object.
+
+Attribute probing inverts the safe default. `hasattr(obj, "owner_id")` returns
+`False` for any resource that models ownership differently — through a
+`team_id`, a join table, or a tenant column — and the check then falls through
+to an unconditional allow. The failure is silent: no model is flagged, no test
+fails, and the endpoint returns another tenant's record. A policy table keyed by
+resource type inverts that: an unregistered type is denied, and a typed `Action`
+enum means a mistyped or unknown action cannot match a permitted branch.
 
 ## WebSocket
 
@@ -892,28 +1271,57 @@ async def websocket_endpoint(
 
 ### Scaling WebSockets
 
-For multi-instance deployments, projects **SHOULD** use Redis Pub/Sub or broadcaster[^8]:
+For multi-instance deployments, projects **SHOULD** use Redis Pub/Sub or
+broadcaster[^8]. Redis Pub/Sub uses `redis.asyncio` from redis-py 8.1.0:
 
 ```python
 # src/myapp/websocket_redis.py
-import aioredis
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+import redis.asyncio as redis
+from fastapi import FastAPI
+
+from myapp.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.redis = await aioredis.from_url("redis://localhost")
-    app.state.pubsub = app.state.redis.pubsub()
-    await app.state.pubsub.subscribe("broadcasts")
-    yield
-    await app.state.redis.close()
+    client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    pubsub = client.pubsub()
+    await pubsub.subscribe("broadcasts")
+    app.state.redis = client
+    app.state.pubsub = pubsub
+    try:
+        yield
+    finally:
+        await pubsub.unsubscribe("broadcasts")
+        await pubsub.aclose()
+        await client.aclose()
 
-async def publish_message(redis, channel: str, message: str) -> None:
-    await redis.publish(channel, message)
+async def publish_message(client: redis.Redis, channel: str, message: str) -> None:
+    await client.publish(channel, message)
+```
+
+Projects **MUST NOT** depend on the standalone `aioredis` package:
+
+```python
+# DON'T: aioredis was merged into redis-py at 4.2.0rc1 and is abandoned. Its
+# last release (2.0.1) imports distutils, which was removed in Python 3.12, so
+# `import aioredis` raises ModuleNotFoundError on any supported interpreter.
+import aioredis
+app.state.redis = await aioredis.from_url("redis://localhost")
+await app.state.redis.close()
+
+# DO: use the maintained async client shipped inside redis-py
+import redis.asyncio as redis
+app.state.redis = redis.from_url(settings.REDIS_URL)
+await app.state.redis.aclose()
 ```
 
 **Why**: In-memory connection managers only work within a single process. Redis
 Pub/Sub enables message distribution across multiple server instances.
+`redis.from_url()` in the async client is a plain constructor rather than a
+coroutine, and redis-py documents `aclose()` as the explicit disconnect for the
+async client; `close()` survives only as a backwards-compatibility alias[^25].
 
 ## Performance and Observability
 
@@ -1109,45 +1517,118 @@ Caching reduces database load, decreases response latency, and improves API
 throughput. Redis provides distributed caching that works across multiple
 application instances.
 
-### fastapi-cache2
+### Redis Cache Service
 
-Projects **SHOULD** use fastapi-cache2[^15] with Redis backend:
+Projects **SHOULD** cache through a typed service built on `redis.asyncio`
+(redis-py 8.1.0)[^15]:
+
+```python
+# src/myapp/cache.py
+import json
+from datetime import timedelta
+from typing import Any
+
+import redis.asyncio as redis
+from fastapi import Request
+
+NAMESPACE = "myapp:v1"
+
+class Cache:
+    """Namespaced JSON cache with explicit keys, TTLs, and invalidation."""
+
+    def __init__(self, client: redis.Redis, namespace: str = NAMESPACE) -> None:
+        self._client = client
+        self._namespace = namespace
+
+    def key(self, *parts: object) -> str:
+        return ":".join([self._namespace, *(str(part) for part in parts)])
+
+    async def get_json(self, key: str) -> Any | None:
+        raw = await self._client.get(key)
+        return None if raw is None else json.loads(raw)
+
+    async def set_json(self, key: str, value: Any, ttl: timedelta) -> None:
+        await self._client.set(key, json.dumps(value), ex=ttl)
+
+    async def delete(self, *keys: str) -> None:
+        if keys:
+            await self._client.unlink(*keys)
+
+    async def collection_version(self, collection: str) -> int:
+        raw = await self._client.get(self.key(collection, "version"))
+        return int(raw) if raw is not None else 0
+
+    async def bump_collection(self, collection: str) -> int:
+        """Invalidate every cached page of a collection in one round trip."""
+        return await self._client.incr(self.key(collection, "version"))
+
+def get_cache(request: Request) -> Cache:
+    return request.app.state.cache
+```
 
 ```python
 # src/myapp/main.py
 from contextlib import asynccontextmanager
+
+import redis.asyncio as redis
 from fastapi import FastAPI
-from fastapi_cache import FastAPICache
-from fastapi_cache.backends.redis import RedisBackend
-from redis import asyncio as aioredis
+
+from myapp.cache import Cache
+from myapp.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    redis = aioredis.from_url(
-        "redis://localhost",
-        encoding="utf-8",
-        decode_responses=False,  # Required for fastapi-cache2
-    )
-    FastAPICache.init(RedisBackend(redis), prefix="myapp-cache")
-    yield
-    await redis.close()
+    client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    app.state.cache = Cache(client)
+    try:
+        yield
+    finally:
+        await client.aclose()
 
 app = FastAPI(lifespan=lifespan)
 ```
 
 ```python
 # src/myapp/api/items.py
-from fastapi_cache.decorator import cache
+from datetime import timedelta
+
+from myapp.cache import Cache, get_cache
+
+CACHE_TTL = timedelta(minutes=5)
 
 @router.get("/", response_model=list[ItemResponse])
-@cache(expire=300)  # Cache for 5 minutes
 async def list_items(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-) -> list[Item]:
+    cache: Cache = Depends(get_cache),
+) -> list[ItemResponse]:
+    version = await cache.collection_version("items")
+    key = cache.key("items", version, skip, limit)
+    if (cached := await cache.get_json(key)) is not None:
+        return [ItemResponse.model_validate(row) for row in cached]
+
     result = await db.execute(select(Item).offset(skip).limit(limit))
-    return result.scalars().all()
+    items = [ItemResponse.model_validate(row) for row in result.scalars()]
+    await cache.set_json(key, [item.model_dump(mode="json") for item in items], CACHE_TTL)
+    return items
+```
+
+Projects **MUST NOT** build cache keys from injected infrastructure, and
+**MUST NOT** install `fastapi-cache2` alongside redis-py 8:
+
+```python
+# DON'T: fastapi-cache2 0.2.2 imports Starlette's private _TemplateResponse, so
+# `import fastapi_cache` raises "jinja2 must be installed to use
+# Jinja2Templates" on the documented dependency set, and its [redis] extra pins
+# redis<5.0.0, which cannot resolve against the redis 8.1.0 used elsewhere here.
+from fastapi_cache.decorator import cache
+
+@cache(expire=300)                      # default key builder hashes every argument,
+async def list_items(db: AsyncSession = Depends(get_db)): ...  # including `db`
+
+# DO: derive the key from the query inputs alone
+key = cache.key("items", version, skip, limit)
 ```
 
 ### Cache Invalidation
@@ -1155,29 +1636,17 @@ async def list_items(
 Projects **MUST** invalidate cache when underlying data changes:
 
 ```python
-# src/myapp/cache.py
-from fastapi_cache import FastAPICache
-
-async def invalidate_item_cache(item_id: int) -> None:
-    """Invalidate specific item cache."""
-    await FastAPICache.clear(namespace=f"item:{item_id}")
-
-async def invalidate_list_cache() -> None:
-    """Invalidate list cache after create/update/delete."""
-    await FastAPICache.clear(namespace="items")
-```
-
-```python
 # src/myapp/api/items.py
 @router.post("/", response_model=ItemResponse, status_code=201)
 async def create_item(
     item: ItemCreate,
     db: AsyncSession = Depends(get_db),
+    cache: Cache = Depends(get_cache),
 ) -> Item:
     db_item = Item(**item.model_dump())
     db.add(db_item)
     await db.commit()
-    await invalidate_list_cache()  # Clear list cache
+    await cache.bump_collection("items")
     return db_item
 
 @router.put("/{item_id}", response_model=ItemResponse)
@@ -1185,18 +1654,49 @@ async def update_item(
     item_id: int,
     item: ItemUpdate,
     db: AsyncSession = Depends(get_db),
+    cache: Cache = Depends(get_cache),
 ) -> Item:
     db_item = await db.get(Item, item_id)
     for key, value in item.model_dump(exclude_unset=True).items():
         setattr(db_item, key, value)
     await db.commit()
-    await invalidate_item_cache(item_id)
-    await invalidate_list_cache()
+    await cache.delete(cache.key("item", item_id))
+    await cache.bump_collection("items")
     return db_item
+```
+
+```python
+# tests/test_cache.py
+from datetime import timedelta
+
+import pytest
+from fakeredis import aioredis as fakeredis
+
+from myapp.cache import Cache
+
+@pytest.mark.asyncio
+async def test_invalidation_forces_a_reload() -> None:
+    client = fakeredis.FakeRedis(decode_responses=True)
+    cache = Cache(client)
+    key = cache.key("items", await cache.collection_version("items"), 0, 100)
+    await cache.set_json(key, [{"id": 1}], timedelta(minutes=5))
+
+    await cache.bump_collection("items")
+    fresh = cache.key("items", await cache.collection_version("items"), 0, 100)
+    assert await cache.get_json(fresh) is None
+    await client.aclose()
 ```
 
 **Why**: Stale cache data causes data consistency issues. Invalidate-on-write
 ensures cache freshness while maintaining performance benefits for reads.
+
+Keys are built by hand for two reasons. A decorator's automatic key builder
+hashes the endpoint's arguments, which include the `AsyncSession` injected for
+that request; a fresh session object per request means a fresh key, so the cache
+never hits. Writing the key from `skip` and `limit` alone keeps it stable across
+requests and makes it reproducible from the write path. The version counter then
+invalidates every page of a collection with a single `INCR`, avoiding a `SCAN`
+over the keyspace and guaranteeing that reads and writes agree on the namespace.
 
 ## Rate Limiting
 
@@ -1251,35 +1751,141 @@ async def list_items(request: Request) -> list[Item]:
 
 ### User-Based Rate Limits
 
-Projects **SHOULD** implement different limits per user tier:
+Projects **SHOULD** implement different limits per user tier. SlowAPI calls a
+dynamic limit provider with **no arguments**, or with the key string when the
+provider declares a parameter named `key`; it never passes the `Request`[^26]:
 
 ```python
 # src/myapp/limiter.py
+from dataclasses import dataclass
+
+from fastapi import Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+TIER_LIMITS = {"free": "100/hour", "pro": "1000/hour", "enterprise": "10000/hour"}
+ANONYMOUS_LIMIT = "50/hour"
+
+@dataclass(frozen=True)
+class Identity:
+    user_id: str
+    tier: str
+
 def get_rate_limit_key(request: Request) -> str:
-    """Return user ID for authenticated requests, IP for anonymous."""
-    if user := getattr(request.state, "user", None):
-        return f"user:{user.id}"
-    return get_remote_address(request)
+    """Encode the caller's identity and tier into the limiter key."""
+    identity: Identity | None = getattr(request.state, "identity", None)
+    if identity is None:
+        return f"anon:{get_remote_address(request)}"
+    return f"user:{identity.user_id}:{identity.tier}"
 
-def dynamic_limit(request: Request) -> str:
-    """Return rate limit based on user tier."""
-    if user := getattr(request.state, "user", None):
-        limits = {
-            "free": "100/hour",
-            "pro": "1000/hour",
-            "enterprise": "10000/hour",
-        }
-        return limits.get(user.tier, "100/hour")
-    return "50/hour"  # Anonymous users
+def dynamic_limit(key: str) -> str:
+    """Return the limit for the identity that get_rate_limit_key produced."""
+    scope, _, remainder = key.partition(":")
+    if scope != "user":
+        return ANONYMOUS_LIMIT
+    _, _, tier = remainder.partition(":")
+    return TIER_LIMITS.get(tier, TIER_LIMITS["free"])
 
+limiter = Limiter(
+    key_func=get_rate_limit_key,          # wire the identity-aware key function
+    default_limits=[ANONYMOUS_LIMIT],
+    storage_uri="redis://localhost:6379",
+)
+```
+
+```python
+# src/myapp/middleware.py
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+from myapp.auth import decode_token
+from myapp.limiter import Identity
+
+class IdentityMiddleware(BaseHTTPMiddleware):
+    """Resolve the caller before any rate limit is evaluated."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        header = request.headers.get("Authorization", "")
+        token = header.removeprefix("Bearer ") if header.startswith("Bearer ") else ""
+        claims = await decode_token(token) if token else None
+        request.state.identity = (
+            Identity(user_id=claims["sub"], tier=claims["tier"]) if claims else None
+        )
+        return await call_next(request)
+```
+
+```python
+# src/myapp/main.py
+# Middleware runs in reverse order of registration, so identity resolution
+# must be added after SlowAPIMiddleware to run before it.
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(IdentityMiddleware)
+```
+
+```python
+# src/myapp/api/items.py
 @router.get("/")
 @limiter.limit(dynamic_limit)
 async def list_items(request: Request) -> list[Item]:
     ...
 ```
 
+```python
+# DON'T: SlowAPI inspects the signature and finds no `key` parameter, so it
+# calls dynamic_limit() with no arguments and every request becomes a 500:
+# TypeError: dynamic_limit() missing 1 required positional argument: 'request'
+def dynamic_limit(request: Request) -> str: ...
+
+# DO: accept the key SlowAPI supplies from the limiter's key_func
+def dynamic_limit(key: str) -> str: ...
+```
+
+```python
+# tests/test_rate_limits.py
+from types import SimpleNamespace
+
+from myapp.limiter import (
+    ANONYMOUS_LIMIT,
+    TIER_LIMITS,
+    Identity,
+    dynamic_limit,
+    get_rate_limit_key,
+)
+
+def request_from(identity: Identity | None) -> SimpleNamespace:
+    return SimpleNamespace(
+        state=SimpleNamespace(identity=identity),
+        client=SimpleNamespace(host="203.0.113.7"),
+    )
+
+def test_anonymous_callers_are_keyed_by_ip() -> None:
+    key = get_rate_limit_key(request_from(None))
+    assert key == "anon:203.0.113.7"
+    assert dynamic_limit(key) == ANONYMOUS_LIMIT
+
+def test_two_users_behind_one_ip_get_separate_buckets() -> None:
+    """A free customer must not exhaust a paid neighbour's budget."""
+    alice = get_rate_limit_key(request_from(Identity("alice", "free")))
+    bob = get_rate_limit_key(request_from(Identity("bob", "pro")))
+    assert alice != bob
+    assert dynamic_limit(alice) == TIER_LIMITS["free"]
+    assert dynamic_limit(bob) == TIER_LIMITS["pro"]
+```
+
 **Why**: User-based rate limiting ensures fair API access based on subscription
-tiers while protecting against anonymous abuse.
+tiers while protecting against anonymous abuse. Wiring `get_rate_limit_key` into
+`Limiter(key_func=...)` is what makes the tier reachable: SlowAPI derives the
+counter bucket and the dynamic limit from the same key, so two customers behind
+one NAT gateway no longer share a budget, and a paid tier cannot be exhausted by
+an anonymous neighbour.
+
+Resolve the identity in middleware rather than an endpoint dependency.
+`SlowAPIMiddleware` evaluates the default limits before routing, so a dependency
+that sets `request.state.identity` has not yet run and every caller is counted
+as anonymous. Decorated routes do observe a dependency's identity, because
+`@limiter.limit` wraps the endpoint itself — which means the two paths key the
+same caller differently unless the identity is established in middleware.
 
 ## Circuit Breakers
 
@@ -1293,26 +1899,57 @@ graceful degradation.
 
 ### aiobreaker
 
-Projects **SHOULD** use aiobreaker[^17] for async circuit breakers:
+Projects **SHOULD** use aiobreaker[^17] for async circuit breakers.
+`timeout_duration` **MUST** be a `datetime.timedelta`, and listeners receive
+state objects whose enum is exposed as `.state`[^27]:
 
 ```python
 # src/myapp/breakers.py
-from aiobreaker import CircuitBreaker, CircuitBreakerListener
 import logging
+from datetime import timedelta
+
+from aiobreaker import CircuitBreaker, CircuitBreakerListener
+from aiobreaker.state import CircuitBreakerBaseState
 
 logger = logging.getLogger(__name__)
 
 class LoggingListener(CircuitBreakerListener):
-    def state_change(self, cb: CircuitBreaker, old_state, new_state) -> None:
-        logger.warning(f"Circuit breaker {cb.name}: {old_state.name} -> {new_state.name}")
+    def state_change(
+        self,
+        breaker: CircuitBreaker,
+        old: CircuitBreakerBaseState | None,
+        new: CircuitBreakerBaseState,
+    ) -> None:
+        # aiobreaker passes state objects, not enum members; the enum is .state
+        previous = old.state.name if old is not None else "NONE"
+        logger.warning(
+            "circuit_breaker_state_change breaker=%s from=%s to=%s",
+            breaker.name,
+            previous,
+            new.state.name,
+        )
 
 # Configure circuit breaker
 payment_breaker = CircuitBreaker(
-    fail_max=5,           # Open after 5 failures
-    timeout_duration=30,  # Try again after 30 seconds
+    fail_max=5,                             # Open after 5 failures
+    timeout_duration=timedelta(seconds=30),  # Try again after 30 seconds
     listeners=[LoggingListener()],
     name="payment_service",
 )
+```
+
+```python
+# DON'T: timeout_duration is added to a datetime, so an int raises
+# TypeError: unsupported operand type(s) for +: 'datetime.datetime' and 'int'
+timeout_duration=30
+
+# DON'T: state objects have no .name, so the listener raises AttributeError
+# from inside the transition and the breaker silently stays CLOSED for ever
+f"{old_state.name} -> {new_state.name}"
+
+# DO: pass a timedelta and read the enum through .state
+timeout_duration=timedelta(seconds=30)
+f"{old.state.name} -> {new.state.name}"
 ```
 
 ```python
@@ -1359,9 +1996,58 @@ async def charge_payment(payment: PaymentRequest) -> PaymentResponse:
 | Open | Requests fail immediately without calling service |
 | Half-Open | Limited requests allowed to test recovery |
 
+```python
+# tests/test_breakers.py
+import asyncio
+from datetime import timedelta
+
+import pytest
+from aiobreaker import CircuitBreaker, CircuitBreakerError
+from aiobreaker.state import CircuitBreakerState
+
+from myapp.breakers import LoggingListener
+
+@pytest.mark.asyncio
+async def test_breaker_opens_times_out_and_closes_again() -> None:
+    breaker = CircuitBreaker(
+        fail_max=5,
+        timeout_duration=timedelta(seconds=1),
+        listeners=[LoggingListener()],
+        name="test",
+    )
+    failing = True
+
+    @breaker
+    async def call_upstream() -> str:
+        if failing:
+            raise RuntimeError("upstream down")
+        return "ok"
+
+    for _ in range(5):
+        with pytest.raises((RuntimeError, CircuitBreakerError)):
+            await call_upstream()
+    assert breaker.current_state is CircuitBreakerState.OPEN
+
+    with pytest.raises(CircuitBreakerError):
+        await call_upstream()          # fails fast without calling upstream
+
+    await asyncio.sleep(1.1)           # breaker moves to HALF_OPEN
+    failing = False
+    assert await call_upstream() == "ok"
+    assert breaker.current_state is CircuitBreakerState.CLOSED
+```
+
+The failure that trips the breaker surfaces as `CircuitBreakerError` rather than
+the underlying exception, so callers **MUST** handle both.
+
 **Why**: Circuit breakers prevent thread pool exhaustion from slow failing calls
 and give external services time to recover without being overwhelmed by retry
-storms.
+storms. Both defects above are silent: an integer `timeout_duration` only fails
+when the breaker first tries to open, and a listener that raises during a
+transition aborts that transition, so the breaker reports CLOSED indefinitely
+and keeps hammering the failing dependency. Exercising the full
+CLOSED → OPEN → HALF\_OPEN → CLOSED cycle with the real listener attached is the
+only way to catch either.
 
 ## Feature Flags
 
@@ -1480,9 +2166,16 @@ enabling experimentation without code changes.
 [^12]: [ARQ](https://arq-docs.helpmanual.io/) - Async Redis Queue for Python
 [^13]: [Celery](https://docs.celeryq.dev/) - Distributed task queue
 [^14]: [SAQ](https://github.com/tobymao/saq) - Simple Async Queue with web UI
-[^15]: [fastapi-cache2](https://github.com/long2ice/fastapi-cache) - Caching for FastAPI with Redis/Memcached backends (v0.2.2+)
+[^15]: [redis-py](https://redis.readthedocs.io/en/stable/examples/asyncio_examples.html) - Async Redis client shipped with redis-py (v8.1.0)
 [^16]: [slowapi](https://github.com/laurentS/slowapi) - Rate limiting for FastAPI based on flask-limiter
 [^17]: [aiobreaker](https://github.com/arlyon/aiobreaker) - Async circuit breaker implementation
 [^18]: [Unleash](https://www.getunleash.io/) - Open source feature flag platform
 [^19]: [LaunchDarkly](https://launchdarkly.com/) - Enterprise feature management platform
 [^20]: [Flagsmith](https://www.flagsmith.com/) - Open source feature flag and remote config service
+[^21]: [FastAPI Testing Dependencies](https://fastapi.tiangolo.com/advanced/testing-dependencies/) - `dependency_overrides` is keyed by the original function object
+[^22]: [NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html) - Digital Identity Guidelines: Authentication and Authenticator Management ([change log](https://pages.nist.gov/800-63-4/sp800-63b/changelog/))
+[^23]: [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html) - Data to exclude from application logs
+[^24]: [OWASP API1:2023](https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/) - Broken Object Level Authorization
+[^25]: [redis-py asyncio examples](https://redis.readthedocs.io/en/stable/examples/asyncio_examples.html) - `Redis.aclose()` is the explicit async disconnect
+[^26]: [SlowAPI LimitGroup](https://github.com/laurentS/slowapi/blob/master/slowapi/wrappers.py) - Dynamic limit providers are called with no arguments, or with the key when the parameter is named `key`
+[^27]: [aiobreaker state module](https://github.com/arlyon/aiobreaker/blob/master/aiobreaker/state.py) - Listeners receive state objects whose enum is exposed as `.state`
