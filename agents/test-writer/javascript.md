@@ -16,6 +16,7 @@ JavaScript and TypeScript-specific guidance for test generation.
 | ---- | ---- | ------- |
 | Run tests | Jest | `npm test` |
 | Run tests | Vitest | `npx vitest` |
+| Type tests | Vitest | `npx vitest --typecheck` |
 | Coverage | c8/Jest | `npm test -- --coverage` |
 | Watch mode | Jest/Vitest | `npm test -- --watch` |
 
@@ -273,15 +274,23 @@ end_of_record
 
 ### Type-Safe Mocks
 
+A Vitest example **MUST** use Vitest's own mock types. `jest.Mocked` is not declared in a
+Vitest-only project.
+
+**Why**: `tsc` reports `error TS2503: Cannot find namespace 'jest'` for the copied factory,
+so the test file never compiles. `MockedObject<T>` is Vitest's equivalent and is exported
+from `vitest` (verified against Vitest 5.0.0 and TypeScript 7.0.2).
+
 ```typescript
-import { Mock } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { MockedObject } from 'vitest';
 
 interface UserRepository {
   findById(id: number): Promise<User | null>;
   save(user: User): Promise<void>;
 }
 
-function createMockRepository(): jest.Mocked<UserRepository> {
+function createMockRepository(): MockedObject<UserRepository> {
   return {
     findById: vi.fn(),
     save: vi.fn(),
@@ -301,17 +310,71 @@ describe('UserService', () => {
 });
 ```
 
-### Testing Types
+Don't mix the two mock type systems in one file:
 
 ```typescript
-import { expectTypeOf } from 'vitest';
+// Don't: Jest types in a Vitest file — TS2503: Cannot find namespace 'jest'.
+import { Mock } from 'vitest';
 
-describe('type tests', () => {
-  it('returns correct type', () => {
-    const result = parseConfig('{}');
-    expectTypeOf(result).toEqualTypeOf<Config>();
+function createMockRepository(): jest.Mocked<UserRepository> {
+  return { findById: vi.fn(), save: vi.fn() };
+}
+```
+
+### Testing Types
+
+Type assertions **MUST** live in `*.test-d.ts` files and run under Vitest's type checker.
+
+**Why**: `expectTypeOf` compiles to a no-op at runtime, so a plain `vitest run` reports a
+pass even when the asserted type is wrong. With `parseConfig` declared as returning
+`string` and the assertion demanding `Config`, Vitest 5.0.0 reported `1 passed` and exited
+0 until type checking was enabled.
+
+```typescript
+// config.test-d.ts
+import { describe, expectTypeOf, it } from 'vitest';
+import { parseConfig, type Config } from './config';
+
+describe('parseConfig types', () => {
+  it('returns Config', () => {
+    expectTypeOf(parseConfig('{}')).toEqualTypeOf<Config>();
   });
 });
+```
+
+Enable checking in `vitest.config.ts` so the default test command covers type tests:
+
+```typescript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    typecheck: {
+      enabled: true,
+      include: ['**/*.test-d.ts'],
+      tsconfig: './tsconfig.json',
+    },
+  },
+});
+```
+
+Pin the toolchain that the assertions are checked against:
+
+```json
+{
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
+}
+```
+
+A wrong return type then fails `npx vitest run` with exit code 1. Projects that leave
+`typecheck.enabled` unset **MUST** pass `--typecheck` on the command line instead:
+
+```text
+FAIL  src/config.test-d.ts:6 > parseConfig types > returns Config
+TypeCheckError: Type 'Config' does not satisfy the constraint '"Expected ..., Actual string"'.
 ```
 
 ## See Also
