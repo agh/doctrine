@@ -47,7 +47,61 @@ dotnet --list-runtimes
 
 ### global.json
 
-You SHOULD pin SDK version per solution using `global.json`:
+You **SHOULD** pin the SDK per solution using `global.json`. The pinned version
+**MUST** name the SDK feature band you actually install, because `latestPatch`
+resolves only within a single feature band.
+
+```json
+{
+  "sdk": {
+    "version": "10.0.400",
+    "rollForward": "latestPatch"
+  }
+}
+```
+
+#### Why
+
+An SDK version is `major.minor.Fxx`, where `F` is the feature band. `10.0.100`
+and `10.0.400` are different bands, and `rollForward: latestPatch` never crosses
+a band boundary. Pinning `10.0.100` on a machine that has only the current
+`10.0.400` SDK fails resolution outright:
+
+```text
+A compatible .NET SDK was not found.
+Requested SDK version: 10.0.100
+Installed SDKs:
+10.0.400 [/usr/local/share/dotnet/sdk]
+```
+
+The current .NET 10 SDK feature band is `10.0.400`, which ships runtime
+`10.0.11`.[^31]
+
+You **MUST** keep the local pin and the CI installation identical. Point
+`actions/setup-dotnet` at the same file rather than restating a version:
+
+```yaml
+- uses: actions/setup-dotnet@v4
+  with:
+    global-json-file: global.json
+```
+
+**Do:**
+
+```bash
+# Create global.json at solution root, naming the installed feature band
+dotnet new globaljson --sdk-version 10.0.400
+```
+
+**Don't:**
+
+```bash
+# Don't omit global.json - leads to build inconsistencies
+```
+
+Don't pin an SDK feature band that your developers and CI do not install. The
+following pin fails on any machine carrying only `10.0.400`, because
+`latestPatch` cannot roll forward from the `1xx` band to the `4xx` band:[^32]
 
 ```json
 {
@@ -58,17 +112,18 @@ You SHOULD pin SDK version per solution using `global.json`:
 }
 ```
 
-**Do:**
+You **MAY** use `rollForward: latestFeature` instead when any later .NET 10
+feature band is acceptable. That policy tolerates a newer band but still
+rejects an older one, so the pinned version **MUST** be the oldest band the
+solution supports:
 
-```bash
-# Create global.json at solution root
-dotnet new globaljson --sdk-version 10.0.100
-```
-
-**Don't:**
-
-```bash
-# Don't omit global.json - leads to build inconsistencies
+```json
+{
+  "sdk": {
+    "version": "10.0.100",
+    "rollForward": "latestFeature"
+  }
+}
 ```
 
 ### Project Templates
@@ -84,8 +139,8 @@ dotnet new console -n MyApp                    # Console application
 dotnet new classlib -n MyLibrary              # Class library
 dotnet new webapi -n MyApi                    # ASP.NET Core Web API[^4]
 dotnet new mvc -n MyWebApp                    # ASP.NET Core MVC[^4]
-dotnet new blazorserver -n MyBlazorApp        # Blazor Server[^5]
-dotnet new blazorwasm -n MyBlazorWasm         # Blazor WebAssembly[^5]
+dotnet new blazor -n MyBlazorApp              # Blazor Web App[^5]
+dotnet new blazorwasm -n MyBlazorWasm         # Blazor WebAssembly standalone[^5]
 dotnet new worker -n MyWorker                 # Worker Service[^6]
 dotnet new xunit -n MyTests                   # xUnit test project[^7]
 dotnet new nunit -n MyTests                   # NUnit test project[^8]
@@ -101,6 +156,31 @@ dotnet new sln -n MySolution
 dotnet sln add src/MyApi/MyApi.csproj
 dotnet sln add tests/MyApi.Tests/MyApi.Tests.csproj
 ```
+
+The `blazorserver` and `blazorserver-empty` templates were removed. You **MUST**
+use the `blazor` (Blazor Web App) template and select a render mode with
+`--interactivity`; server-side interactivity is the default:
+
+```bash
+# Server interactivity (replaces the removed blazorserver template)
+dotnet new blazor -n MyBlazorApp --interactivity Server
+
+# WebAssembly interactivity inside a hosted Blazor Web App
+dotnet new blazor -n MyBlazorApp --interactivity WebAssembly
+
+# Server first, then WebAssembly once assets are downloaded
+dotnet new blazor -n MyBlazorApp --interactivity Auto --all-interactive
+
+# Static server rendering only
+dotnet new blazor -n MyBlazorApp --interactivity None
+```
+
+#### Why
+
+A Blazor Web App chooses render mode per component, so a single project covers
+what `blazorserver` and hosted WebAssembly used to need two templates for.
+`blazorwasm` remains for a standalone WebAssembly app with no ASP.NET Core
+host.[^5]
 
 ### Custom Templates
 
@@ -158,9 +238,6 @@ dotnet test --collect:"XPlat Code Coverage"
 dotnet test --filter "FullyQualifiedName~MyNamespace"
 dotnet test --filter "Category=Integration"
 
-# Run in parallel
-dotnet test --parallel
-
 # Verbose output
 dotnet test --logger "console;verbosity=detailed"
 
@@ -170,6 +247,72 @@ dotnet test tests/MyApi.Tests/MyApi.Tests.csproj
 # Set environment variable
 dotnet test -e ASPNETCORE_ENVIRONMENT=Testing
 ```
+
+#### Test Parallelism
+
+`dotnet test` has no `--parallel` switch; passing one aborts the run with
+`MSBUILD : error MSB1001: Unknown switch`. Parallelism **MUST** be configured
+through the runner, and the .NET 10 SDK offers two.[^33]
+
+**VSTest mode (the default):** xUnit parallelises test collections inside an
+assembly. Configure it in `xunit.runner.json` and copy the file to the output
+directory:
+
+```json
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "parallelizeAssembly": true,
+  "parallelizeTestCollections": true,
+  "maxParallelThreads": 4
+}
+```
+
+```xml
+<ItemGroup>
+  <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+</ItemGroup>
+```
+
+Arguments after `--` are RunSettings, which override the file for a single run
+and control how many test assemblies VSTest runs concurrently:
+
+```bash
+# Override the xUnit thread count for one run
+dotnet test -- xUnit.MaxParallelThreads=4
+
+# Run up to four test assemblies concurrently
+dotnet test -- RunConfiguration.MaxCpuCount=4
+```
+
+**Microsoft.Testing.Platform (MTP) mode:** opt in through `global.json`, then
+use the platform's own switch. MTP mode requires every test project in the
+solution to support MTP:
+
+```json
+{
+  "sdk": {
+    "version": "10.0.400",
+    "rollForward": "latestPatch"
+  },
+  "test": {
+    "runner": "Microsoft.Testing.Platform"
+  }
+}
+```
+
+```bash
+# Run up to four test modules concurrently
+dotnet test --max-parallel-test-modules 4
+```
+
+#### Why
+
+`dotnet test` is a thin front end: in VSTest mode it forwards to MSBuild and
+vstest.console, so unknown switches fail in MSBuild rather than in the test
+runner, and thread counts belong to xUnit's own configuration. MTP mode, new in
+the .NET 10 SDK, runs test projects as executables and therefore exposes
+`--max-parallel-test-modules` directly. Mixing the two runners in one solution
+is unsupported.[^33]
 
 ### Publishing
 
@@ -356,6 +499,10 @@ You SHOULD use `Directory.Build.props` for shared MSBuild properties:
 </Project>
 ```
 
+The `Version` attribute above is correct only while the solution does not use
+Central Package Management. Under CPM this file **MUST** drop it; see
+[Central Package Management](#central-package-management-cpm).
+
 ### Project References
 
 You MUST use project references for internal dependencies:
@@ -452,6 +599,10 @@ You SHOULD use Central Package Management for solutions with multiple projects:
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
     <PackageVersion Include="xUnit" Version="2.6.6" />
     <PackageVersion Include="Moq" Version="4.20.70" />
+
+    <!-- References inherited from Directory.Build.props need entries too -->
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.12.0" />
+    <PackageVersion Include="MinVer" Version="5.0.0" />
   </ItemGroup>
 </Project>
 ```
@@ -465,6 +616,37 @@ You SHOULD use Central Package Management for solutions with multiple projects:
   <PackageReference Include="Serilog.Sinks.Console" />
 </ItemGroup>
 ```
+
+Once `ManagePackageVersionsCentrally` is set, **no** `PackageReference` anywhere
+in the tree may carry a `Version` attribute — including analyser and build-only
+references inherited from `Directory.Build.props`. Restore fails otherwise:
+
+```text
+error NU1008: The following PackageReference items cannot define a value for
+Version: Roslynator.Analyzers. Projects using Central Package Management must
+define a Version value on a PackageVersion item.
+```
+
+**Directory.Build.props under CPM:**
+
+```xml
+<ItemGroup>
+  <!-- Version comes from Directory.Packages.props; the asset metadata stays -->
+  <PackageReference Include="Roslynator.Analyzers">
+    <PrivateAssets>all</PrivateAssets>
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+  </PackageReference>
+</ItemGroup>
+```
+
+#### Why
+
+CPM makes `Directory.Packages.props` the single source of truth for versions,
+and NuGet enforces that by rejecting reference-level versions rather than
+silently letting one project drift.[^34] `PrivateAssets` and `IncludeAssets`
+stay on the `PackageReference`; only `Version` moves. Removing a version without
+enabling CPM fails the other way, with `NU1015`, so the two files **MUST** be
+changed together.
 
 ### Package Lock Files
 
@@ -785,10 +967,12 @@ public class UserService
 
 **Do:**
 
+`UseSqlServer` comes from Entity Framework Core.[^10]
+
 ```csharp
 // Scoped - DbContext per request
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer[^10](builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Singleton - configuration, caching
 builder.Services.AddSingleton<IMemoryCache, MemoryCache>();
@@ -977,24 +1161,53 @@ You SHOULD implement health checks:
 ```csharp
 // Program.cs
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<ApplicationDbContext>()
+    .AddDbContextCheck<ApplicationDbContext>(
+        name: "database",
+        tags: ["ready"])
     .AddSqlServer(
         connectionString: builder.Configuration.GetConnectionString("DefaultConnection"),
-        name: "sql-server")
-    .AddUrlGroup(new Uri("https://api.external.com/health"), name: "external-api");
+        name: "sql-server",
+        tags: ["ready"])
+    .AddUrlGroup(
+        new Uri("https://api.external.com/health"),
+        name: "external-api",
+        tags: ["ready"]);
 
 var app = builder.Build();
 
+// Every registered check
 app.MapHealthChecks("/health");
+
+// Readiness: only checks tagged "ready"
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+// Liveness: no dependency checks, so a sick dependency never restarts the pod
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
-    Predicate = _ => false // Just check if app is running
+    Predicate = _ => false
 });
 ```
+
+#### Why readiness tags matter
+
+`/health/ready` filters by tag, so every dependency it is meant to gate **MUST**
+be registered with the `ready` tag. An untagged dependency check is silently
+excluded, and the readiness probe returns `200 Healthy` while the application
+cannot serve traffic:
+
+| Endpoint | Untagged checks | Checks tagged `ready` |
+| -------- | --------------- | --------------------- |
+| `/health` | 503 Unhealthy | 503 Unhealthy |
+| `/health/ready` | **200 Healthy** | 503 Unhealthy |
+| `/health/live` | 200 Healthy | 200 Healthy |
+
+A load balancer reading the untagged readiness probe admits traffic to an
+instance whose database is unreachable. Liveness keeps the empty predicate on
+purpose: it answers "is this process running", and adding dependency checks to
+it turns a database outage into a restart loop.
 
 **Custom health check:**
 
@@ -1014,16 +1227,35 @@ public class DatabaseHealthCheck : IHealthCheck
     {
         try
         {
-            await _context.Database.CanConnectAsync(cancellationToken);
-            return HealthCheckResult.Healthy("Database is reachable");
+            return await _context.Database.CanConnectAsync(cancellationToken)
+                ? HealthCheckResult.Healthy("Database is reachable")
+                : HealthCheckResult.Unhealthy("Database is unreachable");
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Unhealthy("Database is unreachable", ex);
+            return HealthCheckResult.Unhealthy("Database connection check failed", ex);
         }
     }
 }
 ```
+
+**Don't:**
+
+```csharp
+// Discards the result. CanConnectAsync reports failure by returning false,
+// not only by throwing, so this reports Healthy against a dead database.
+await _context.Database.CanConnectAsync(cancellationToken);
+return HealthCheckResult.Healthy("Database is reachable");
+```
+
+#### Why the Boolean result matters
+
+`DatabaseFacade.CanConnectAsync` returns `Task<bool>` and documents that "any
+exceptions thrown when attempting to connect are caught and not propagated to
+the application".[^10] Connection failure is therefore reported by the return
+value, and a check that only catches exceptions reports `Healthy` against a
+database it could not reach. The `try`/`catch` remains for
+`OperationCanceledException`, which the method does propagate.
 
 ## Entity Framework Core
 
@@ -1403,10 +1635,10 @@ public class UserServiceTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(null)]
-    public async Task CreateUserAsync_WithInvalidEmail_ThrowsArgumentException(string email)
+    public async Task CreateUserAsync_WithInvalidEmail_ThrowsArgumentException(string? email)
     {
-        // Arrange
-        var request = new CreateUserRequest { Email = email, Name = "Test" };
+        // Arrange - email is deliberately invalid; null is a valid negative case
+        var request = new CreateUserRequest { Email = email!, Name = "Test" };
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -1415,13 +1647,32 @@ public class UserServiceTests
 }
 ```
 
+#### Why
+
+The parameter **MUST** be `string?` whenever `[InlineData(null)]` supplies it.
+With `Nullable` enabled the xUnit analyser rejects the mismatch, and
+`TreatWarningsAsErrors` turns that into a build failure:
+
+```text
+error xUnit1012: Null should not be used for type parameter 'email' of type
+'string'. Use a non-null value, or convert the parameter to a nullable type.
+```
+
+The null-forgiving `!` on `Email = email!` is deliberate: the DTO contract
+requires a non-null e-mail, and the test's whole purpose is to prove that
+supplying null is rejected at runtime. Removing the `[InlineData(null)]` case
+instead is acceptable only when null genuinely cannot reach the API surface.
+
 ### Integration Testing with WebApplicationFactory
+
+`WebApplicationFactory<TEntryPoint>` boots the application in-process and serves
+requests through a `TestServer`.[^11]
 
 **Do:**
 
 ```csharp
 // Tests/ApiTests.cs
-public class UserApiTests : IClassFixture<WebApplicationFactory<Program>>[^11]
+public class UserApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
@@ -1472,41 +1723,38 @@ public class UserApiTests : IClassFixture<WebApplicationFactory<Program>>[^11]
 
 ```csharp
 // Tests/CustomWebApplicationFactory.cs
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>[^11]
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
         {
-            // Remove the app's ApplicationDbContext registration
-            var descriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-
-            if (descriptor != null)
-            {
-                services.Remove(descriptor);
-            }
+            // Remove the app's provider configuration, not just its options object
+            services.RemoveAll(typeof(IDbContextOptionsConfiguration<ApplicationDbContext>));
 
             // Add ApplicationDbContext using an in-memory database for testing
             services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseInMemoryDatabase("InMemoryDbForTesting");
             });
-
-            // Build the service provider
-            var sp = services.BuildServiceProvider();
-
-            // Create a scope to obtain a reference to the database contexts
-            using var scope = sp.CreateScope();
-            var scopedServices = scope.ServiceProvider;
-            var db = scopedServices.GetRequiredService<ApplicationDbContext>();
-
-            // Ensure the database is created
-            db.Database.EnsureCreated();
-
-            // Seed test data
-            SeedTestData(db);
         });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+
+        // Seed through the test host's own container, once it exists
+        using var scope = host.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        db.Database.EnsureCreated();
+        SeedTestData(db);
+
+        return host;
     }
 
     private static void SeedTestData(ApplicationDbContext context)
@@ -1519,6 +1767,52 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>[^11]
     }
 }
 ```
+
+**Don't:**
+
+```csharp
+// Removing only DbContextOptions<T> leaves the app's provider configuration
+// registered, so SQL Server and InMemory are both active
+var descriptor = services.SingleOrDefault(
+    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
+
+if (descriptor != null)
+{
+    services.Remove(descriptor);
+}
+
+services.AddDbContext<ApplicationDbContext>(options =>
+{
+    options.UseInMemoryDatabase("InMemoryDbForTesting");
+});
+
+// Builds a second, throwaway container inside ConfigureServices
+var sp = services.BuildServiceProvider();
+using var scope = sp.CreateScope();
+scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
+    .Database.EnsureCreated();
+```
+
+#### Why
+
+`AddDbContext` registers two things: the `DbContextOptions<T>` singleton and an
+`IDbContextOptionsConfiguration<T>` entry holding the `UseSqlServer` callback.
+Removing only the former leaves the original provider callback in place, so the
+replacement registration adds a second provider and every test fails when EF
+Core builds the context:
+
+```text
+System.InvalidOperationException: Services for database providers
+'Microsoft.EntityFrameworkCore.SqlServer', 'Microsoft.EntityFrameworkCore.InMemory'
+have been registered in the service provider. Only a single database provider
+can be registered in a service provider.
+```
+
+Seeding **SHOULD** run against the host's own container. `BuildServiceProvider()`
+inside `ConfigureServices` builds a second container with its own copy of every
+singleton, so whether the seeded data reaches the application depends on
+provider internals rather than on the registrations under test. Overriding
+`CreateHost` seeds through the same scope the application resolves from.
 
 ### Mocking with Moq
 
@@ -1833,11 +2127,13 @@ dotnet run -c Release
 
 ### Response Caching
 
+`AddResponseCaching` registers the HTTP response caching middleware.[^15]
+
 **Do:**
 
 ```csharp
 // Program.cs
-builder.Services.AddResponseCaching()[^15];
+builder.Services.AddResponseCaching();
 
 var app = builder.Build();
 app.UseResponseCaching();
@@ -1854,11 +2150,13 @@ public async Task<ActionResult<IEnumerable<User>>> GetUsers(int page = 1)
 
 ### Output Caching (.NET 7+)
 
+`AddOutputCache` registers the output caching middleware.[^16]
+
 **Do:**
 
 ```csharp
 // Program.cs
-builder.Services.AddOutputCache[^16](options =>
+builder.Services.AddOutputCache(options =>
 {
     options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(60)));
     options.AddPolicy("Expire20", builder => builder.Expire(TimeSpan.FromSeconds(20)));
@@ -2106,9 +2404,11 @@ builder.Configuration.AddSecretsManager(configurator: options =>
 
 ### Rate Limiting (.NET 7+)
 
+`AddRateLimiter` registers the rate limiting middleware.[^21]
+
 ```csharp
 // Program.cs
-builder.Services.AddRateLimiter[^21](options =>
+builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("fixed", options =>
     {
@@ -2367,6 +2667,19 @@ You SHOULD use Semantic Versioning and embed version in assemblies:
 ```xml
 <ItemGroup>
   <PackageReference Include="MinVer" Version="5.0.0">
+    <PrivateAssets>all</PrivateAssets>
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+  </PackageReference>
+</ItemGroup>
+```
+
+Under Central Package Management, drop the `Version` attribute here and declare
+`<PackageVersion Include="MinVer" Version="5.0.0" />` in
+`Directory.Packages.props` instead; otherwise restore fails with NU1008:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="MinVer">
     <PrivateAssets>all</PrivateAssets>
     <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
   </PackageReference>
@@ -2743,3 +3056,7 @@ See [Docker Guide](../infrastructure/docker.md) for:
 [^28]: [OpenTelemetry for .NET](https://opentelemetry.io/docs/languages/net/) - Observability framework
 [^29]: [Application Insights](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) - Application performance management service
 [^30]: [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) - Cloud-native stack for building distributed applications
+[^31]: [.NET release metadata index](https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json) - Machine-readable channel, SDK, and runtime versions
+[^32]: [global.json overview](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json) - SDK version selection and rollForward policies
+[^33]: [Testing with dotnet test](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test) - VSTest and Microsoft.Testing.Platform modes
+[^34]: [NU1008](https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1008) - PackageReference cannot define Version under Central Package Management
