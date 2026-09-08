@@ -255,28 +255,15 @@ style guides are licensed under CC-BY 3.0.
 | [reference/ietf/rfc2119.txt](reference/ietf/rfc2119.txt) | [IETF RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) |
 | [reference/rubocop/rails.adoc](reference/rubocop/rails.adoc) | [rubocop/rails-style-guide](https://github.com/rubocop/rails-style-guide) |
 | [reference/rubocop/ruby.adoc](reference/rubocop/ruby.adoc) | [rubocop/ruby-style-guide](https://github.com/rubocop/ruby-style-guide) |
-| [reference/rust/about.md](reference/rust/about.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/api-guidelines-summary.md](reference/rust/api-guidelines-summary.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/checklist.md](reference/rust/checklist.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/debuggability.md](reference/rust/debuggability.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/dependability.md](reference/rust/dependability.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/documentation.md](reference/rust/documentation.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/flexibility.md](reference/rust/flexibility.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/future-proofing.md](reference/rust/future-proofing.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/interoperability.md](reference/rust/interoperability.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/macros.md](reference/rust/macros.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/naming.md](reference/rust/naming.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/necessities.md](reference/rust/necessities.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/predictability.md](reference/rust/predictability.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
-| [reference/rust/type-safety.md](reference/rust/type-safety.md) | [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) |
 | [reference/shopify/ruby.md](reference/shopify/ruby.md) | [Shopify/ruby-style-guide](https://github.com/Shopify/ruby-style-guide) |
 | [reference/uber/go.md](reference/uber/go.md) | [uber-go/guide](https://github.com/uber-go/guide) |
 
-Two directories are indexed rather than listed file by file:
+Three directories are indexed rather than listed file by file:
 
 | Directory | Contents | Provenance |
 | --------- | -------- | ---------- |
 | [reference/ietf/](reference/ietf/) | RFC 2119 plus a Doctrine-written index | [reference/ietf/README.md](reference/ietf/README.md) |
+| [reference/rust/](reference/rust/) | Rust API Guidelines plus a Doctrine 2024 supplement | [reference/rust/README.md](reference/rust/README.md) |
 | [reference/security/](reference/security/) | Security corpora (MITRE, OWASP, NIST, CIS, CWE, KEV) | [reference/security/manifest.json](reference/security/manifest.json) records the upstream, version and licence of every source |
 
 ---

@@ -7,6 +7,18 @@ Google style guides and silently corrupted them. This script guards against a
 repeat by checking every file listed in reference/UPSTREAM.json against its
 recorded sha256.
 
+An entry MAY declare one or more `transform`s, in which case the recorded
+`sha256` covers the transformed file and `upstream_sha256` covers the
+untouched download. Two transforms exist:
+
+* `mdbook-chapter-links` repoints mdBook's generated `.html` cross-chapter
+  links at the vendored `.md` files, so navigation works when the book
+  sources are read as plain files.
+* `rustdoc-std-relocations` repoints standard-library documentation URLs that
+  rustdoc has moved since the upstream text was written.
+
+Applying them here, rather than by hand, keeps --refresh idempotent.
+
 Usage:
     python3 scripts/check_vendored.py            # verify checksums, exit 1 on drift
     python3 scripts/check_vendored.py --refresh  # re-download and update manifest
@@ -14,17 +26,72 @@ Usage:
 import argparse
 import hashlib
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 PROJECT_ROOT = Path(__file__).parent.parent
 MANIFEST_FILE = PROJECT_ROOT / "reference/UPSTREAM.json"
 COMMITS_API = "https://api.github.com/repos/{repo}/commits"
 NETWORK_TIMEOUT = 30
+
+# A markdown link target that is a bare chapter slug plus ".html": the shape
+# mdBook produces from "naming.md". Targets containing "/" or an extra "."
+# (../enum.Value.html, trait.Deserialize.html) are rustdoc illustrations
+# inside code fences, not navigation, and are deliberately left alone.
+CHAPTER_LINK_RE = re.compile(
+    rb"(\]\(|\]:[ \t]*)([A-Za-z0-9_][A-Za-z0-9_-]*)\.html(#[^\s)]*)?(?=[\s)]|\Z)"
+)
+
+# std items whose rustdoc URL moved after the upstream text was written.
+# AtomicBool became `pub type AtomicBool = Atomic<bool>`, so its page is now a
+# type-alias stub and its methods are documented on Atomic<T>. Verified on
+# 2026-09-08: the old URL returns 404, the new one returns 200 and carries the
+# #method.into_inner and #method.get_mut anchors.
+STD_DOC_RELOCATIONS = {
+    b"https://doc.rust-lang.org/std/sync/atomic/struct.AtomicBool.html": (
+        b"https://doc.rust-lang.org/std/sync/atomic/struct.Atomic.html"
+    ),
+}
+
+
+def rewrite_mdbook_chapter_links(payload: bytes) -> bytes:
+    """Repoint mdBook's generated .html chapter links at the vendored .md files."""
+    return CHAPTER_LINK_RE.sub(rb"\1\2.md\3", payload)
+
+
+def rewrite_std_doc_relocations(payload: bytes) -> bytes:
+    """Repoint standard-library documentation URLs that rustdoc has moved."""
+    for old, new in STD_DOC_RELOCATIONS.items():
+        payload = payload.replace(old, new)
+    return payload
+
+
+TRANSFORMS: Dict[str, Callable[[bytes], bytes]] = {
+    "mdbook-chapter-links": rewrite_mdbook_chapter_links,
+    "rustdoc-std-relocations": rewrite_std_doc_relocations,
+}
+
+
+def transform_names(entry: Dict[str, Any]) -> List[str]:
+    """Declared transforms for an entry, accepting a string or a list."""
+    declared: Union[str, List[str], None] = entry.get("transform")
+    if declared is None:
+        return []
+    if isinstance(declared, str):
+        return [declared]
+    return list(declared)
+
+
+def apply_transforms(payload: bytes, names: List[str]) -> bytes:
+    """Apply declared transforms in order. Raises KeyError for an unknown name."""
+    for name in names:
+        payload = TRANSFORMS[name](payload)
+    return payload
 
 
 def load_manifest(path: Path) -> Dict[str, Any]:
@@ -103,7 +170,9 @@ def verify(entries: List[Dict[str, Any]]) -> int:
             print(f"           actual   sha256 {actual}")
             failures += 1
             continue
-        print(f"OK       {entry['path']}")
+        transform = ", ".join(transform_names(entry))
+        note = f"  (transform: {transform})" if transform else ""
+        print(f"OK       {entry['path']}{note}")
     return failures
 
 
@@ -122,6 +191,15 @@ def refresh(entries: List[Dict[str, Any]]) -> int:
             continue
 
         old_sha = entry.get("sha256", "")
+        names = transform_names(entry)
+        if names:
+            entry["upstream_sha256"] = hashlib.sha256(payload).hexdigest()
+        try:
+            payload = apply_transforms(payload, names)
+        except KeyError as exc:
+            print(f"  ERROR: unknown transform {exc.args[0]!r}")
+            failures += 1
+            continue
         new_sha = hashlib.sha256(payload).hexdigest()
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(payload)

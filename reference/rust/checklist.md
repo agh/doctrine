@@ -72,67 +72,69 @@
   - [ ] Public dependencies of a stable crate are stable ([C-STABLE])
   - [ ] Crate and its dependencies have a permissive license ([C-PERMISSIVE])
 
-[C-CASE]: naming.html#c-case
-[C-CONV]: naming.html#c-conv
-[C-GETTER]: naming.html#c-getter
-[C-ITER]: naming.html#c-iter
-[C-ITER-TY]: naming.html#c-iter-ty
-[C-FEATURE]: naming.html#c-feature
-[C-WORD-ORDER]: naming.html#c-word-order
 
-[C-COMMON-TRAITS]: interoperability.html#c-common-traits
-[C-CONV-TRAITS]: interoperability.html#c-conv-traits
-[C-COLLECT]: interoperability.html#c-collect
-[C-SERDE]: interoperability.html#c-serde
-[C-SEND-SYNC]: interoperability.html#c-send-sync
-[C-GOOD-ERR]: interoperability.html#c-good-err
-[C-NUM-FMT]: interoperability.html#c-num-fmt
-[C-RW-VALUE]: interoperability.html#c-rw-value
+[C-CASE]: naming.md#c-case
+[C-CONV]: naming.md#c-conv
+[C-GETTER]: naming.md#c-getter
+[C-ITER]: naming.md#c-iter
+[C-ITER-TY]: naming.md#c-iter-ty
+[C-FEATURE]: naming.md#c-feature
+[C-WORD-ORDER]: naming.md#c-word-order
 
-[C-EVOCATIVE]: macros.html#c-evocative
-[C-MACRO-ATTR]: macros.html#c-macro-attr
-[C-ANYWHERE]: macros.html#c-anywhere
-[C-MACRO-VIS]: macros.html#c-macro-vis
-[C-MACRO-TY]: macros.html#c-macro-ty
+[C-COMMON-TRAITS]: interoperability.md#c-common-traits
+[C-CONV-TRAITS]: interoperability.md#c-conv-traits
+[C-COLLECT]: interoperability.md#c-collect
+[C-SERDE]: interoperability.md#c-serde
+[C-SEND-SYNC]: interoperability.md#c-send-sync
+[C-GOOD-ERR]: interoperability.md#c-good-err
+[C-NUM-FMT]: interoperability.md#c-num-fmt
+[C-RW-VALUE]: interoperability.md#c-rw-value
 
-[C-CRATE-DOC]: documentation.html#c-crate-doc
-[C-EXAMPLE]: documentation.html#c-example
-[C-QUESTION-MARK]: documentation.html#c-question-mark
-[C-FAILURE]: documentation.html#c-failure
-[C-LINK]: documentation.html#c-link
-[C-METADATA]: documentation.html#c-metadata
-[C-RELNOTES]: documentation.html#c-relnotes
-[C-HIDDEN]: documentation.html#c-hidden
+[C-EVOCATIVE]: macros.md#c-evocative
+[C-MACRO-ATTR]: macros.md#c-macro-attr
+[C-ANYWHERE]: macros.md#c-anywhere
+[C-MACRO-VIS]: macros.md#c-macro-vis
+[C-MACRO-TY]: macros.md#c-macro-ty
 
-[C-SMART-PTR]: predictability.html#c-smart-ptr
-[C-CONV-SPECIFIC]: predictability.html#c-conv-specific
-[C-METHOD]: predictability.html#c-method
-[C-NO-OUT]: predictability.html#c-no-out
-[C-OVERLOAD]: predictability.html#c-overload
-[C-DEREF]: predictability.html#c-deref
-[C-CTOR]: predictability.html#c-ctor
+[C-CRATE-DOC]: documentation.md#c-crate-doc
+[C-EXAMPLE]: documentation.md#c-example
+[C-QUESTION-MARK]: documentation.md#c-question-mark
+[C-FAILURE]: documentation.md#c-failure
+[C-LINK]: documentation.md#c-link
+[C-METADATA]: documentation.md#c-metadata
+[C-HTML-ROOT]: documentation.md#c-html-root
+[C-RELNOTES]: documentation.md#c-relnotes
+[C-HIDDEN]: documentation.md#c-hidden
 
-[C-INTERMEDIATE]: flexibility.html#c-intermediate
-[C-CALLER-CONTROL]: flexibility.html#c-caller-control
-[C-GENERIC]: flexibility.html#c-generic
-[C-OBJECT]: flexibility.html#c-object
+[C-SMART-PTR]: predictability.md#c-smart-ptr
+[C-CONV-SPECIFIC]: predictability.md#c-conv-specific
+[C-METHOD]: predictability.md#c-method
+[C-NO-OUT]: predictability.md#c-no-out
+[C-OVERLOAD]: predictability.md#c-overload
+[C-DEREF]: predictability.md#c-deref
+[C-CTOR]: predictability.md#c-ctor
 
-[C-NEWTYPE]: type-safety.html#c-newtype
-[C-CUSTOM-TYPE]: type-safety.html#c-custom-type
-[C-BITFLAG]: type-safety.html#c-bitflag
-[C-BUILDER]: type-safety.html#c-builder
+[C-INTERMEDIATE]: flexibility.md#c-intermediate
+[C-CALLER-CONTROL]: flexibility.md#c-caller-control
+[C-GENERIC]: flexibility.md#c-generic
+[C-OBJECT]: flexibility.md#c-object
 
-[C-VALIDATE]: dependability.html#c-validate
-[C-DTOR-FAIL]: dependability.html#c-dtor-fail
-[C-DTOR-BLOCK]: dependability.html#c-dtor-block
+[C-NEWTYPE]: type-safety.md#c-newtype
+[C-CUSTOM-TYPE]: type-safety.md#c-custom-type
+[C-BITFLAG]: type-safety.md#c-bitflag
+[C-BUILDER]: type-safety.md#c-builder
 
-[C-DEBUG]: debuggability.html#c-debug
-[C-DEBUG-NONEMPTY]: debuggability.html#c-debug-nonempty
+[C-VALIDATE]: dependability.md#c-validate
+[C-DTOR-FAIL]: dependability.md#c-dtor-fail
+[C-DTOR-BLOCK]: dependability.md#c-dtor-block
 
-[C-SEALED]: future-proofing.html#c-sealed
-[C-STRUCT-PRIVATE]: future-proofing.html#c-struct-private
-[C-NEWTYPE-HIDE]: future-proofing.html#c-newtype-hide
-[C-STRUCT-BOUNDS]: future-proofing.html#c-struct-bounds
+[C-DEBUG]: debuggability.md#c-debug
+[C-DEBUG-NONEMPTY]: debuggability.md#c-debug-nonempty
 
-[C-STABLE]: necessities.html#c-stable
-[C-PERMISSIVE]: necessities.html#c-permissive
+[C-SEALED]: future-proofing.md#c-sealed
+[C-STRUCT-PRIVATE]: future-proofing.md#c-struct-private
+[C-NEWTYPE-HIDE]: future-proofing.md#c-newtype-hide
+[C-STRUCT-BOUNDS]: future-proofing.md#c-struct-bounds
+
+[C-STABLE]: necessities.md#c-stable
+[C-PERMISSIVE]: necessities.md#c-permissive

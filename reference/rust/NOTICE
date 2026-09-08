@@ -16,11 +16,28 @@ Doctrine redistributes this material under the MIT option.
 
 Modifications by Doctrine
 -------------------------
-The copies in this directory are NOT byte-identical to upstream: files taken
-from upstream src/ have been flattened into this directory and reflowed. The
-upstream revision was not recorded at vendoring time. Under Apache-2.0
-section 4(b) a change notice would be required if redistributed under that
-option; this file serves as that notice.
+The copies in this directory are NOT byte-identical to upstream. The book
+sources from upstream src/ are vendored here under their upstream file names,
+taken from branch master on 2026-09-08 when its HEAD was
+97a0969cb07fe4cabb0eed8a56234053f47d83dc (2025-07-08), with two deterministic
+link transforms applied at import:
+
+  mdbook-chapter-links     Rewrites the 59 cross-chapter links that mdBook
+                           generates as "naming.html#c-case" into
+                           "naming.md#c-case", so navigation works when the
+                           sources are read as plain files.
+
+  rustdoc-std-relocations  Repoints two links in naming.md from
+                           std/sync/atomic/struct.AtomicBool.html, which now
+                           returns 404, to struct.Atomic.html, which carries
+                           the referenced method anchors.
+
+No prose was changed. Both transforms are implemented in
+../../scripts/check_vendored.py and declared per file in
+../UPSTREAM.json, which also records the sha256 of the untouched upstream
+download (upstream_sha256) beside the sha256 of the file on disk. Under
+Apache-2.0 section 4(b) a change notice would be required if this material
+were redistributed under that option; this file serves as that notice.
 
 Upstream ships no NOTICE file (verified: GitHub contents API returns 404 for
 rust-lang/api-guidelines/NOTICE), so Apache-2.0 section 4(d) imposes no
