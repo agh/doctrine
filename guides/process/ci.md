@@ -234,7 +234,7 @@ jobs:
 
 Rust-specific lanes — MSRV, feature matrix, cross-target checks and fuzzing —
 are in the [Rust Style Guide](../languages/rust.md). Actions are pinned to full
-commit SHAs; see [Pinning Actions](../languages/rust.md#pinning-actions).
+commit SHAs; see [Pinning Actions](../languages/rust/ci.md#pinning-actions).
 
 ```yaml
 name: CI

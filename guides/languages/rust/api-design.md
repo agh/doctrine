@@ -12,9 +12,10 @@ when, they appear in all capitals, as shown here.
 This guide covers the traits a public type **MUST** implement and the naming,
 documentation and type-safety rules for a published Rust API, organised around
 the vendored [Rust API Guidelines](../../../reference/rust/checklist.md). The
-toolchain, lint, formatting, dependency and CI rules in the [Rust Style
-Guide](../rust.md) apply and are not repeated here; every version quoted is
-listed in its [Tested Version Matrix](../rust.md#tested-version-matrix) and was
+toolchain, lint, formatting and pre-commit rules in the
+[Rust Style Guide](../rust.md) apply and are not repeated here, and so do the
+[dependency](dependencies.md) and [CI](ci.md) rules; every version quoted is
+listed in the [Tested Version Matrix](versions.md#tested-version-matrix) and was
 current on 8 September 2026.
 
 ## Common Trait Implementations

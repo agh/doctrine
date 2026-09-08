@@ -12,9 +12,10 @@ when, they appear in all capitals, as shown here.
 This guide covers the tools that make a Rust test suite trustworthy: coverage,
 fuzzing, property and mutation testing, public-API compatibility checks,
 benchmarking, suite throughput and concurrency permutation testing with Loom.
-The toolchain, lint, formatting, dependency and CI rules in the [Rust Style
-Guide](../rust.md) apply and are not repeated here; every version quoted is
-listed in its [Tested Version Matrix](../rust.md#tested-version-matrix) and was
+The toolchain, lint, formatting and pre-commit rules in the
+[Rust Style Guide](../rust.md) apply and are not repeated here, and so do the
+[dependency](dependencies.md) and [CI](ci.md) rules; every version quoted is
+listed in the [Tested Version Matrix](versions.md#tested-version-matrix) and was
 current on 8 September 2026.
 
 ## Code Coverage

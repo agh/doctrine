@@ -44,6 +44,9 @@ Every category is indexed in [guides/README.md](guides/README.md).
 | Rust: Rust Testing Scenarios | [guides/languages/rust/testing-scenarios.md](guides/languages/rust/testing-scenarios.md) | Official |
 | Rust: Unsafe Rust | [guides/languages/rust/unsafe.md](guides/languages/rust/unsafe.md) | Official |
 | Rust: WebAssembly | [guides/languages/rust/wasm.md](guides/languages/rust/wasm.md) | Official |
+| Rust: CI Pipeline | [guides/languages/rust/ci.md](guides/languages/rust/ci.md) | Official |
+| Rust: Dependencies and Supply Chain | [guides/languages/rust/dependencies.md](guides/languages/rust/dependencies.md) | Official |
+| Rust: Tested Version Matrix | [guides/languages/rust/versions.md](guides/languages/rust/versions.md) | Official |
 | TypeScript | [guides/languages/typescript.md](guides/languages/typescript.md) | [Google](reference/google/typescript.html) |
 | C# | [guides/languages/csharp.md](guides/languages/csharp.md) | [Google](reference/google/csharp.md) |
 | .NET | [guides/languages/dotnet.md](guides/languages/dotnet.md) | Microsoft |

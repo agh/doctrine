@@ -45,9 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cargo-tarpaulin by cargo-llvm-cov; the Cargo.lock rule replaced by a
   decision table; every action SHA-pinned.
 - `guides/languages/rust.md` split into a core guide plus
-  `guides/languages/rust/` topic guides (API design, async, features, macros,
-  testing tools, testing scenarios, unsafe, WebAssembly) with a routing
-  table, so an agent loads only the material a task needs.
+  `guides/languages/rust/` topic guides (API design, async, CI, dependencies
+  and supply chain, features, macros, testing tools, testing scenarios,
+  unsafe, tested version matrix, WebAssembly) with a routing table, so an
+  agent loads only the material a task needs.
 - `guides/frameworks/axum.md`: one pinned dependency matrix at Axum 0.8.9;
   the 0.8 migration completed (`Utf8Bytes`, no `async_trait`, a graceful
   shutdown that coordinates background tasks); the extractor-order and
