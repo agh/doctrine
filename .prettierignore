@@ -1,0 +1,4 @@
+# Vendored third-party material is stored byte-for-byte as published upstream.
+# Formatting it rewrites the payload and invalidates the checksums recorded in
+# reference/UPSTREAM.json (see scripts/check_vendored.py).
+reference/**
