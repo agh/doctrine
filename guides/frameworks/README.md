@@ -6,6 +6,7 @@ Style guides for web frameworks. Each extends the corresponding language guide.
 
 | Framework | Guide | Language Guide |
 | --------- | ----- | -------------- |
+| Axum | [axum.md](axum.md) | [Rust](../languages/rust.md) |
 | Django | [django.md](django.md) | [Python](../languages/python.md) |
 | FastAPI | [fastapi.md](fastapi.md) | [Python](../languages/python.md) |
 | Flask | [flask.md](flask.md) | [Python](../languages/python.md) |
@@ -16,6 +17,7 @@ Style guides for web frameworks. Each extends the corresponding language guide.
 | React | [react.md](react.md) | [TypeScript](../languages/typescript.md) |
 | Sinatra | [sinatra.md](sinatra.md) | [Ruby](../languages/ruby.md) |
 | Strawberry | [strawberry.md](strawberry.md) | [Python](../languages/python.md) |
+| Tailwind CSS | [tailwind.md](tailwind.md) | [CSS](../languages/css.md) |
 
 ## See Also
 

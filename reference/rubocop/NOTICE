@@ -1,0 +1,31 @@
+NOTICE — RuboCop community style guides vendored in Doctrine
+
+Upstream (ruby.adoc):
+  Ruby Style Guide
+  https://github.com/rubocop/ruby-style-guide — https://rubystyle.guide
+
+Upstream (rails.adoc):
+  Rails Style Guide
+  https://github.com/rubocop/rails-style-guide — https://rails.rubystyle.guide
+
+Copyright:     Bozhidar Batsov and the Ruby/Rails style guide contributors
+Licence:       Creative Commons Attribution 3.0 Unported (CC BY 3.0), stated
+               inline in the "License" section at the end of each upstream
+               document. Neither upstream repository ships a standalone
+               licence file.
+Licence URL:   https://creativecommons.org/licenses/by/3.0/
+Licence text:  ./LICENSE (CC BY 3.0 Unported legal code, included because
+               upstream ships no licence file of its own)
+
+Modifications by Doctrine
+-------------------------
+The copies in this directory are NOT byte-identical to upstream: content has
+been reflowed and files renamed from README.adoc. The upstream revision was
+not recorded at vendoring time. Treat these as adaptations under CC BY 3.0
+section 3(b).
+
+Required attribution
+--------------------
+"Ruby Style Guide / Rails Style Guide by Bozhidar Batsov and contributors,
+licensed under CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Modified by Doctrine."

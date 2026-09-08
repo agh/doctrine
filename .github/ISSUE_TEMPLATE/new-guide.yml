@@ -1,0 +1,94 @@
+name: New guide proposal
+description: Propose a language, framework, process or topic that Doctrine should cover.
+title: "feat(<scope>): add <topic> guide"
+labels: ["new-guide"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new guide is a real commitment: it has to be maintained, its tool
+        versions kept current, and its claims kept true. Make the case.
+
+  - type: input
+    id: topic
+    attributes:
+      label: Topic
+      placeholder: Elixir
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Language
+        - Framework
+        - API design
+        - Process
+        - Design
+        - Infrastructure
+        - Documentation
+        - AI-assisted development
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why Doctrine should cover this
+      description: >
+        What decisions would this guide settle that are currently unsettled?
+        Who is asking?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tooling
+    attributes:
+      label: Proposed toolchain
+      description: >
+        Lint, format, type check, test, coverage, fuzz, package management and
+        vulnerability scanning. Name the tool, the version, and why it beats
+        the alternatives. Every version MUST be pinned and sourced.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: upstream
+    attributes:
+      label: Upstream style guides to reference
+      description: >
+        Existing authoritative guides for this topic, with URLs and their
+        licences. Anything vendored into `reference/` must have its licence
+        recorded in THIRD_PARTY_NOTICES.md.
+
+  - type: textarea
+    id: overlap
+    attributes:
+      label: Overlap with existing guides
+      description: >
+        Which existing Doctrine guides does this touch? Doctrine links rather
+        than duplicates.
+
+  - type: dropdown
+    id: offer
+    attributes:
+      label: Are you offering to write it?
+      options:
+        - "Yes, I will write and maintain it"
+        - "Yes, I will write the first draft"
+        - "No, this is a request"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: houserules
+    attributes:
+      label: Before submitting
+      options:
+        - label: I read CONTRIBUTING.md and the house rules for guide structure.
+          required: true
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
