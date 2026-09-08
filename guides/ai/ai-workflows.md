@@ -143,6 +143,10 @@ Report any failures and fix them.
 - **Manual**: Try the feature yourself
 - **Review**: Have AI (or human) review the changes
 
+Where verification is automated through hooks or wrapper scripts, those checks
+**MUST** surface failures rather than absorb them — see
+[Automated Checks MUST NOT Swallow Failures](#automated-checks-must-not-swallow-failures).
+
 ### 5. Commit
 
 **MUST** document changes properly:
@@ -344,8 +348,17 @@ Continue iterating until the implementation matches the design.
 
 - **Manual**: Paste screenshots into conversation
 - **Browser extensions**: Auto-capture tools
-- **Puppeteer/Playwright**: Programmatic screenshots
+- **Built-in browser integration**: Where the tool ships one, prefer it —
+  Claude Code drives Chrome directly, with no MCP server to install
+  ([Claude Code CLI](claude-code.md#mcp-for-visual-iteration))
+- **Playwright MCP**: Programmatic screenshots via a version-pinned
+  `@playwright/mcp` server
 - **Visual regression**: CI-based comparison
+
+Screenshot tooling **MUST** be pinned to an exact version and reviewed before
+use. `@anthropic/mcp-puppeteer`, still widely copied from older guides, does
+not exist on the npm registry, and `@modelcontextprotocol/server-puppeteer` is
+deprecated; both fail before the first screenshot.
 
 ---
 
@@ -377,6 +390,12 @@ This task is complete when:
 
 Keep working until all criteria are met.
 ```
+
+Automated continuation is **bounded**. Where a tool re-prompts the agent from
+a completion hook, it caps the number of consecutive continuations — Claude
+Code stops after eight[^2]. Completion criteria **MUST** be treated as a gate
+that reports unfinished work, not as a guarantee that the agent never stops
+early: check the result yourself before treating a long-running task as done.
 
 ### Verification Between Steps
 
@@ -458,6 +477,38 @@ If any check fails:
 Only report complete when all verification passes.
 ```
 
+### Automated Checks MUST NOT Swallow Failures
+
+An automated check is only worth running if its failure reaches the agent.
+Wrapper commands that mask a non-zero status defeat the whole loop:
+
+```bash
+# Don't: the hook reports success whatever the formatter did
+npm run format -- --write "$file" || true
+
+# Don't: a per-file check that only ever prints to a log nobody reads
+npm run lint:file -- "$file" 2>/dev/null
+
+# Do: fail loudly, with the reason on stderr
+if ! output=$(npm run lint:file -- "$file" 2>&1); then
+  printf 'lint failed on %s:\n%s\n' "$file" "$output" >&2
+  exit 2  # the exit status your runner treats as blocking
+fi
+```
+
+Rules:
+
+- Per-file automation **MUST NOT** append `|| true` or otherwise rewrite a
+  failing status as success.
+- A failing check **MUST** produce a short, specific reason the agent can act
+  on — the failing command, the file, and the first lines of its output.
+- Per-file checks are a fast signal, not proof. Every task **MUST** end with a
+  deterministic whole-change gate that runs the full test, lint, and type-check
+  commands over the repository.
+- The gate's exit status **MUST** match the convention its runner treats as
+  blocking. Claude Code, for example, blocks on exit code 2 and ignores exit
+  code 1[^2]; see [Claude Code CLI](claude-code.md#hook-exit-codes).
+
 ### Why Verification 2-3x Quality
 
 Without verification:
@@ -496,3 +547,6 @@ For tool-specific configuration:
     important thing to get great results out of Claude Code — give Claude a way
     to verify its work. If Claude has that feedback loop, it will 2-3x the
     quality of the final result."
+[^2]: [Claude Code hooks reference](https://code.claude.com/docs/en/hooks) —
+    Exit code 2 is the blocking status; other non-zero codes are non-blocking
+    errors. Claude Code ends the turn after eight consecutive stop-hook blocks.
