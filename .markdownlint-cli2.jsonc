@@ -1,0 +1,11 @@
+// markdownlint-cli2 configuration.
+//
+// Rule configuration stays in .markdownlint.json, which this tool reads
+// automatically. This file exists only to make .markdownlintignore effective:
+// markdownlint-cli2 does not read .markdownlintignore the way markdownlint-cli
+// did (see node_modules/markdownlint-cli2/README.md, "markdownlint-cli"
+// differences), but its `gitignore` option accepts a glob naming the ignore
+// files to honour.
+{
+  "gitignore": ".markdownlintignore"
+}
