@@ -831,6 +831,6 @@ For each performance concern, suggest specific benchmarks:
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** — General code review
-- **[REST API Reviewer](./rest-api-reviewer.md)** — API design review
+- **[Code Reviewer](reviewer.md)** — General code review
+- **[REST API Reviewer](api-rest.md)** — API design review
 - **[Test Writer](./test-writer.md)** — Generate performance tests

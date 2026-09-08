@@ -696,7 +696,7 @@ type User {
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** - General code review
-- **[REST API Reviewer](./rest-api-reviewer.md)** - REST API review
-- **[Performance Reviewer](./performance-reviewer.md)** - API performance analysis
+- **[Code Reviewer](reviewer.md)** - General code review
+- **[REST API Reviewer](api-rest.md)** - REST API review
+- **[Performance Reviewer](performance.md)** - API performance analysis
 - **[Test Writer](./test-writer.md)** - Generate GraphQL tests

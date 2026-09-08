@@ -467,7 +467,7 @@ paths:
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** - General code review
-- **[GraphQL API Reviewer](./graphql-api-reviewer.md)** - GraphQL API review
-- **[Performance Reviewer](./performance-reviewer.md)** - API performance analysis
+- **[Code Reviewer](reviewer.md)** - General code review
+- **[GraphQL API Reviewer](api-graphql.md)** - GraphQL API review
+- **[Performance Reviewer](performance.md)** - API performance analysis
 - **[Test Writer](./test-writer.md)** - Generate API tests

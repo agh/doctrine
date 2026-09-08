@@ -101,7 +101,7 @@ recommended action.
 - Sensitive data in logs or error messages
 - Insecure dependencies (known CVEs)
 
-**Reference**: [Doctrine Security Guide](../../../guides/ai/security.md)
+**Reference**: [Doctrine Security Guide](../../guides/ai/security.md)
 
 ### Performance
 
@@ -116,7 +116,7 @@ recommended action.
 - Unnecessary re-renders (React: missing memo, useMemo, useCallback)
 - Large bundle imports (tree-shaking opportunities)
 
-**Reference**: [Doctrine Performance Patterns](../../../guides/process/testing.md)
+**Reference**: [Doctrine Performance Patterns](../../guides/process/testing.md)
 
 ### Quality
 
@@ -175,7 +175,7 @@ recommended action.
 | 80-89% | ✅ Acceptable | Pass for most code |
 | ≥ 90% | ✅ Strong | Required for critical code |
 
-**Reference**: [Doctrine Testing Guide](../../../guides/process/testing.md),
+**Reference**: [Doctrine Testing Guide](../../guides/process/testing.md),
 [Test Writer Agent](./test-writer.md)
 
 ### Documentation
@@ -214,7 +214,7 @@ from typing import Optional      # Type hints
 with open() as f:               # Context managers
 ```
 
-**Reference**: [Doctrine Python Guide](../../../guides/languages/python.md)
+**Reference**: [Doctrine Python Guide](../test-writer/python.md)
 
 ### TypeScript / JavaScript
 
@@ -238,7 +238,7 @@ satisfies Type                   // Type checking without widening
 ??                               // Nullish coalescing
 ```
 
-**Reference**: [Doctrine TypeScript Guide](../../../guides/languages/typescript.md)
+**Reference**: [Doctrine TypeScript Guide](../../guides/languages/typescript.md)
 
 ### Go
 
@@ -259,7 +259,7 @@ errors.Is / errors.As            // Error comparison
 context.Context                  // Cancellation/timeouts
 ```
 
-**Reference**: [Doctrine Go Guide](../../../guides/languages/go.md)
+**Reference**: [Doctrine Go Guide](../test-writer/go.md)
 
 ### Rust
 
@@ -276,7 +276,7 @@ panic!() in library              // Return Result
 impl From<E> for Error           // Error conversion
 ```
 
-**Reference**: [Doctrine Rust Guide](../../../guides/languages/rust.md)
+**Reference**: [Doctrine Rust Guide](../test-writer/rust.md)
 
 ### Ruby / Rails
 
@@ -297,7 +297,7 @@ strong_parameters                # Allowlist fields
 frozen_string_literal: true      # Memory optimization
 ```
 
-**Reference**: [Doctrine Ruby Guide](../../../guides/languages/ruby.md)
+**Reference**: [Doctrine Ruby Guide](../../guides/languages/ruby.md)
 
 ---
 
@@ -331,8 +331,8 @@ frozen_string_literal: true      # Memory optimization
 
 When applicable, link to Doctrine guides:
 
-- `[See: Python Guide](../../../guides/languages/python.md)`
-- `[See: Testing Guide](../../../guides/process/testing.md)`
+- `[See: Python Guide](../test-writer/python.md)`
+- `[See: Testing Guide](../../guides/process/testing.md)`
 - `[See: REST API Guide](../../../guides/api/rest.md)`
 
 ---
@@ -365,8 +365,8 @@ with good security patterns for password handling.
 
 ## Related Agents
 
-- **[Performance Reviewer](./performance-reviewer.md)** — Deep performance analysis
-- **[Accessibility Reviewer](./accessibility-reviewer.md)** — WCAG/A11y compliance
-- **[REST API Reviewer](./rest-api-reviewer.md)** — REST API design review
-- **[GraphQL API Reviewer](./graphql-api-reviewer.md)** — GraphQL schema review
+- **[Performance Reviewer](performance.md)** — Deep performance analysis
+- **[Accessibility Reviewer](accessibility.md)** — WCAG/A11y compliance
+- **[REST API Reviewer](api-rest.md)** — REST API design review
+- **[GraphQL API Reviewer](api-graphql.md)** — GraphQL schema review
 - **[Test Writer](./test-writer.md)** — Generate tests for reviewed code

@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `LICENSE` (MIT) for Doctrine-authored content and `THIRD_PARTY_NOTICES.md`
+  recording the licence, upstream and required attribution of every vendored
+  source, with licence texts and NOTICE files placed next to the material
+  under `reference/`.
+- Community files mandated by the GitHub templates guide: `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md` (Contributor Covenant 3.0), `SECURITY.md`, three
+  issue forms and a pull request template.
+- `scripts/check_vendored.py` and `reference/UPSTREAM.json`: checksum
+  verification of vendored files against their recorded upstream commits.
+- `scripts/check_snippets.py`: syntax checks for fenced code in every guide
+  (warn-only until the Wave 1 example repairs land).
+- `scripts/gen_nav.py`: regenerates `SUMMARY.md` and fails CI when a guide is
+  missing from the navigation or a navigation link is dead.
+- `guides/README.md` as the index of guide categories, and a Reference
+  material table in `README.md`.
+- `Makefile` whose `check` target runs the same checks as CI; `package.json`
+  and lockfile pinning the documentation tools; `.github/dependabot.yml`.
+
+### Changed
+
+- The repository moved to `agh/doctrine`; all references updated (the old
+  URL redirects).
+- `CLAUDE.md` and `GEMINI.md` are real files importing `AGENTS.md` instead
+  of symlinks, and the `configs/claude/agents` and `configs/claude/commands`
+  symlinks are removed in favour of the root `agents/` and `commands/`
+  directories, so source archives and Windows clones work.
+- `AGENTS.md` now describes the actual repository tree, adds a Commands
+  section, uses the full BCP 14 boilerplate (RFC 2119 and RFC 8174) and
+  states that Codex and Copilot read it natively.
+- Documentation CI rebuilt: Node 24 and Python 3.14, SHA-pinned actions,
+  read-only token permissions, Gitleaks replacing the secrets grep that
+  matched the guides' own examples, link checking across all first-party
+  Markdown, the version validator run as a blocking step. The security
+  reference monitor reads SLSA from tags and fails on HTTP errors.
+- `sync-doctrine.yml` and `doc-sync.yml` moved to
+  `configs/github/workflows/` as downstream templates, with the Boolean
+  `dry_run` comparison, `rsync --delete` synchronisation and complete
+  change reporting fixed.
+- `reference/security/manifest.json` licence fields corrected (MITRE terms,
+  Apache-2.0 for ATLAS, DRL 1.1 for Sigma, FoxIO 1.1 for JA4+, Community
+  Specification 1.0 for SLSA) and review dates brought forward.
+
+### Fixed
+
+- The five vendored Google style guides were corrupted by the January
+  formatter run (404 list markers glued to their text); re-vendored
+  byte-for-byte from upstream, and formatters now skip `reference/**`.
+- The Ansible Quick Reference commands lost their operands in the same run.
+- 111 dead internal links (breadcrumbs to a missing guides index, wrong
+  relative paths to the process guides and vendored files, and renamed
+  agent files).
+
 ## [2.11.0] - 2026-01-02
 
 ### Added
