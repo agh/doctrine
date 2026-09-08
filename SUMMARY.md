@@ -232,7 +232,8 @@
     - [Prometheus / VictoriaMetrics Skill](configs/claude/skills/monitoring/prometheus.md)
     - [VictoriaLogs Skill](configs/claude/skills/monitoring/victorialogs.md)
 - cursor/
-  - [.cursorrules.template](configs/cursor/.cursorrules.template)
+  - rules/
+    - [project-rules.mdc.template](configs/cursor/rules/project-rules.mdc.template)
 - editorconfig/
   - [.editorconfig](configs/editorconfig/.editorconfig)
   - [EditorConfig](configs/editorconfig/README.md)

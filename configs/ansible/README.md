@@ -63,13 +63,11 @@ use it. Aggregate callbacks are named by FQCN
 Production-profile linting with:
 
 - Opt-in security rules (no-log-password, etc.)
-- Task name prefix enforcement via `task_name_prefix` (a string template)
+- Task name prefix enforcement via `name[prefix]` and `task_name_prefix`
 - FQCN requirements
 
-Validated against ansible-lint 26.8.0. The configuration schema is closed:
-unknown keys and wrong value types make ansible-lint exit 3 before it lints
-anything. Declare the minimum ansible-core version in `meta/runtime.yml` as
-`requires_ansible: ">=2.18.0"` — there is no `min_ansible_version` config key.
+ansible-lint has no minimum-ansible-core setting, so pin the supported range
+in your Python requirements (for example `ansible-core>=2.18,<2.22`).
 
 ### .yamllint
 
@@ -87,13 +85,7 @@ Multi-cloud secrets management:
 - Production: AWS KMS
 - Staging: PGP
 - Development: age (modern PGP alternative)
-- Allow-list encryption: every value is encrypted except the metadata keys
-  named in `unencrypted_regex`
-
-Rules use `unencrypted_regex`, not `encrypted_regex`. A deny-list of key
-names anchored with `^...$` leaves fields such as `database_password`,
-`api_key`, and `ssl_private_key` in plaintext while `sops` still reports
-success.
+- Every value encrypted by default; no `encrypted_regex` allowlist to outgrow
 
 ### requirements.yml
 
@@ -103,11 +95,8 @@ Essential collections, pinned to the current Galaxy releases:
 - Community: general, docker, postgresql, crypto
 - Database: ansible.mysql (community.mysql is deprecated)
 - Security: community.sops
-- Cloud: AWS, Azure, GCP, OpenStack, VMware
-- Observability: prometheus.prometheus, community.grafana
-
-Every dynamic inventory plugin listed in `ansible.cfg` has its collection
-declared here. `enable_plugins` names a plugin; it does not install one.
+- Cloud: AWS, Azure, GCP
+- Observability: `prometheus.prometheus`, `community.grafana`
 
 ## Customization
 

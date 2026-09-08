@@ -1,12 +1,11 @@
 ---
 # ansible-lint configuration
 # Copy to project root as .ansible-lint
-# Schema: https://docs.ansible.com/projects/lint/configuring/
-#
-# Validated against ansible-lint 26.8.0. The schema is closed: an unknown
-# key or a wrong value type makes ansible-lint exit 3 without linting.
-# The minimum ansible-core version belongs in meta/runtime.yml as
-# `requires_ansible: ">=2.18.0"`, not here.
+# See: https://ansible-lint.readthedocs.io/
+
+# ansible-lint rejects unknown top-level keys, and it has no setting for a
+# minimum ansible-core version. Pin the supported range in the project's Python
+# requirements instead, for example `ansible-core>=2.18,<2.22`.
 
 # Enable all rules by default, opt-out problematic ones
 skip_list:
@@ -33,8 +32,8 @@ exclude_paths:
   - venv/
   - .venv/
 
-# Prefix template for name[prefix]; must be a string, {stem} is the
-# task file name
+# Task name prefix used by the opt-in name[prefix] rule.
+# Must be a string; {stem} expands to the task file name without its extension.
 task_name_prefix: "{stem} | "
 
 # Offline mode (don't check Galaxy)
@@ -50,6 +49,10 @@ offline: false
 mock_modules: []
 mock_roles: []
 
-# Enable or disable specific rules
+# Warn instead of failing on these rules
 warn_list:
   - experimental  # Warn on experimental features
+
+# Per-rule configuration objects accept only `exclude_paths`; there is no
+# `prefix` key. The name[prefix] rule is turned on in enable_list above and
+# configured through task_name_prefix.
