@@ -77,7 +77,7 @@ repos:
   #       pass_filenames: false
   #     - id: cargo-clippy
   #       name: cargo clippy
-  #       entry: cargo clippy --all-targets -- -D warnings
+  #       entry: cargo clippy --all-targets --all-features -- -D warnings
   #       language: system
   #       types: [rust]
   #       pass_filenames: false

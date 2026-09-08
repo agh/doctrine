@@ -6,6 +6,15 @@ The canonical source is ``configs/pre-commit/.pre-commit-config.yaml``. Every
 MUST agree with it, so a reader who copies a snippet gets the version Doctrine
 has actually reviewed.
 
+Two kinds of pin are compared:
+
+    repo/rev pairs      third-party hooks, matched by ``owner/name``
+    local hook entries  ``repo: local`` hooks, matched by hook ``id``
+
+Local hooks carry no ``rev``, so a guide that quotes ``cargo clippy
+--all-targets`` while the canonical config says ``cargo clippy --all-targets
+--all-features`` used to pass unnoticed. Matching on ``id`` closes that gap.
+
 Scanned surfaces:
     guides/**    the style guides themselves
     agents/**    agent briefs, which also carry copy-and-paste config
@@ -61,6 +70,20 @@ KNOWN_UNPINNED: dict[str, str] = {
     "thibaudcolas/pre-commit-stylelint": "optional CSS hook",
 }
 
+# Local hooks whose ``entry`` deliberately differs from the canonical config,
+# pending a decision by the area that owns the guide. Listing one reports the
+# divergence on every run without failing the gate, which is how KNOWN_UNPINNED
+# already treats third-party pins. Remove an entry once the owning area has
+# chosen a single command.
+#   key   -> hook id
+#   value -> why the divergence is tolerated, and who owns the decision
+KNOWN_HOOK_DIVERGENCE: dict[str, str] = {
+    "standardrb": (
+        "guides/languages/ruby.md deliberately shows the reporting form; the "
+        "canonical config auto-corrects with --fix. Owned by the Ruby area."
+    ),
+}
+
 # ``  - repo: https://github.com/owner/name``, optionally commented out.
 REPO_RE = re.compile(r"^\s*(?:#\s*)?-?\s*repo:\s*(?P<url>\S+)\s*$")
 REV_RE = re.compile(r"^\s*(?:#\s*)?rev:\s*(?P<rev>\S+)\s*$")
@@ -74,6 +97,12 @@ PAIR_RE = re.compile(
     r"^[ \t]*(?:#[ \t]*)?rev:[ \t]*(?P<rev>\S+)[ \t]*$",
     re.MULTILINE,
 )
+
+# ``  - repo: local``, optionally commented out, and the ``id``/``entry`` keys
+# of the hooks inside such a block.
+LOCAL_REPO_RE = re.compile(r"^\s*(?:#\s*)?-?\s*repo:\s*local\s*$")
+HOOK_ID_RE = re.compile(r"^\s*(?:#\s*)?-\s*id:\s*(?P<id>\S+)\s*$")
+HOOK_ENTRY_RE = re.compile(r"^\s*(?:#\s*)?entry:\s*(?P<entry>\S.*?)\s*$")
 
 # A bare hostname followed by a path, used to decide whether the leading
 # segment of a normalised URL is a host or already the owner.
@@ -149,6 +178,84 @@ def parse_canonical(config_path: Path) -> dict[str, str]:
             pins[current] = rev_match.group("rev").strip("\"'")
             current = None
     return pins
+
+
+def parse_local_hooks(text: str) -> Iterator[tuple[int, str, str]]:
+    """Yield ``(line, hook_id, entry)`` for every hook in a ``repo: local`` block.
+
+    Commented-out blocks count, for the same reason ``parse_canonical`` counts
+    them: Doctrine keeps optional hooks commented but treats them as canonical.
+    """
+    in_local = False
+    current: str | None = None
+    for number, raw in enumerate(text.splitlines(), start=1):
+        if LOCAL_REPO_RE.match(raw):
+            in_local, current = True, None
+            continue
+        if REPO_RE.match(raw):
+            in_local, current = False, None
+            continue
+        if not in_local:
+            continue
+        id_match = HOOK_ID_RE.match(raw)
+        if id_match:
+            current = id_match.group("id").strip("\"'")
+            continue
+        entry_match = HOOK_ENTRY_RE.match(raw)
+        if entry_match and current is not None:
+            yield number, current, entry_match.group("entry").strip("\"'")
+            current = None
+
+
+def parse_canonical_hooks(config_path: Path) -> dict[str, str]:
+    """Read local hook ``id``/``entry`` pairs from the canonical config."""
+    if not config_path.is_file():
+        raise FileNotFoundError(config_path)
+    return {
+        hook_id: entry
+        for _, hook_id, entry in parse_local_hooks(config_path.read_text(encoding="utf-8"))
+    }
+
+
+def collect_hook_mismatches(
+    canonical_hooks: dict[str, str],
+    root: Path = PROJECT_ROOT,
+    dirs: Sequence[str] = SCAN_DIRS,
+) -> list[dict[str, object]]:
+    """Find local hooks that reuse a canonical ``id`` with a different ``entry``.
+
+    Hook ids absent from the canonical config are ignored: a guide may
+    legitimately illustrate a project-specific hook.
+    """
+    canonical = CONFIG_FILE.resolve()
+    mismatches: list[dict[str, object]] = []
+
+    for path in iter_files(root, dirs):
+        if path.resolve() == canonical:
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for line, hook_id, entry in parse_local_hooks(content):
+            expected = canonical_hooks.get(hook_id)
+            if expected is None or entry == expected:
+                continue
+            try:
+                location = f"{path.resolve().relative_to(PROJECT_ROOT)}:{line}"
+            except ValueError:
+                location = f"{path}:{line}"
+            mismatches.append(
+                {
+                    "location": location,
+                    "repo": f"local hook {hook_id}",
+                    "found": entry,
+                    "expected": expected,
+                    "documented": hook_id in KNOWN_HOOK_DIVERGENCE,
+                    "reason": KNOWN_HOOK_DIVERGENCE.get(hook_id, ""),
+                }
+            )
+    return mismatches
 
 
 def iter_files(root: Path, dirs: Sequence[str] = SCAN_DIRS) -> Iterator[Path]:
@@ -248,15 +355,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"ERROR: no repo/rev pairs parsed from {CONFIG_FILE}", file=sys.stderr)
         return 2
 
+    canonical_hooks = parse_canonical_hooks(CONFIG_FILE)
+
     references = collect_references(args.root)
     mismatches, unknown = evaluate(references, canonical)
+
+    hook_findings = collect_hook_mismatches(canonical_hooks, args.root)
+    hook_divergences = [h for h in hook_findings if h["documented"]]
+    mismatches.extend(h for h in hook_findings if not h["documented"])
     undocumented = [u for u in unknown if not u["documented"]]
 
     if args.json:
         json.dump(
             {
                 "canonical_count": len(canonical),
+                "canonical_hook_count": len(canonical_hooks),
                 "reference_count": len(references),
+                "hook_divergences": hook_divergences,
                 "mismatches": mismatches,
                 "unknown": unknown,
                 "strict": args.strict,
@@ -268,7 +383,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stdout.write("\n")
     else:
         rel = CONFIG_FILE.relative_to(PROJECT_ROOT)
-        print(f"Canonical config: {rel} ({len(canonical)} pinned tools)")
+        print(
+            f"Canonical config: {rel} ({len(canonical)} pinned tools, "
+            f"{len(canonical_hooks)} local hooks)"
+        )
         print(f"Scanned {', '.join(SCAN_DIRS)}: {len(references)} repo/rev references")
         print()
 
@@ -277,6 +395,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"  tool:     {item['repo']}")
             print(f"  found:    {item['found']}")
             print(f"  expected: {item['expected']}")
+
+        for item in hook_divergences:
+            print(f"DIVERGENT {item['location']}  {item['repo']}")
+            print(f"  found:    {item['found']}")
+            print(f"  expected: {item['expected']}")
+            print(f"  tolerated: {item['reason']}")
 
         for item in unknown:
             level = "UNPINNED" if item["documented"] else "UNKNOWN "
@@ -287,6 +411,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"FAILURE: {len(mismatches)} version mismatches.")
         else:
             print("OK: every comparable reference matches the canonical configuration.")
+        if hook_divergences:
+            print(
+                f"{len(hook_divergences)} local hook(s) diverge from the canonical "
+                "config by documented exception."
+            )
         if unknown:
             print(
                 f"{len(unknown)} references are outside the canonical set "
