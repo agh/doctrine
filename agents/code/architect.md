@@ -12,7 +12,7 @@ comprehensive code analysis.
 
 **Model**: Opus 4.5
 **Command**: `/code`
-**Reference**: [Doctrine Code Agent Family](../../../guides/ai/code-agents.md)
+**Reference**: [Doctrine Code Agent Family](../../guides/ai/code-agents.md)
 
 ---
 

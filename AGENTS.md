@@ -1,5 +1,10 @@
 # AGENTS.md - Doctrine Style Guide
 
+This file is the canonical instruction file for every coding agent working on
+Doctrine. OpenAI Codex and GitHub Copilot read `AGENTS.md` natively; Claude Code
+reaches it through `CLAUDE.md`, which contains an `@AGENTS.md` import, and
+Gemini CLI through `GEMINI.md`. Edit this file — never the importers.
+
 ## Overview
 
 Doctrine is a comprehensive style guide repository covering 13+ programming
@@ -7,19 +12,59 @@ languages, frameworks, and AI-assisted development practices. All guides use
 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) language to clearly
 distinguish requirements from recommendations.
 
+## Commands
+
+| Task | Command |
+| ---- | ------- |
+| Run every check below | `make check` |
+| Lint Markdown | `npx --yes markdownlint-cli2@0.23.2 "**/*.md" "#reference"` |
+| Check links | `npx --yes markdown-link-check@3.15.0 --quiet README.md` |
+| Validate tool versions | `python3 scripts/validate_versions.py` |
+| Check navigation coverage | `python3 scripts/gen_nav.py --check` |
+| Regenerate `SUMMARY.md` | `python3 scripts/gen_nav.py` |
+
+`make check` **MUST** pass before every commit. `scripts/gen_nav.py --check`
+fails when a guide is missing from `README.md` or from its category
+`README.md`, or when either lists a file that no longer exists; run
+`python3 scripts/gen_nav.py` after adding or removing a guide to rewrite
+`SUMMARY.md`.
+
 ## Repository Structure
 
 ```text
 doctrine/
-├── guides/
-│   ├── languages/     # Language-specific style guides (Python, Go, Rust, etc.)
-│   ├── frameworks/    # Framework guides (Rails, Django)
-│   ├── ai/            # AI-assisted development practices
-│   ├── docs/          # Documentation standards (Markdown)
-│   └── process/       # Testing, CI, versioning, GitHub templates
+├── agents/            # 53 agent definitions, grouped by family
+│   ├── code/          # Review, performance, accessibility, API, tests
+│   ├── docs/          # Documentation planning, writing, review, publishing
+│   ├── ops/           # Release management, changelog, deploy, rollback
+│   ├── security/      # Threat modelling, compliance, detection, red team
+│   ├── system/        # Docker, Ansible, Linux, networking, storage
+│   └── test-writer/   # Per-language test generation
+├── commands/          # Slash-command definitions (/code, /security, ...)
 ├── configs/           # Ready-to-copy configuration files
-├── reference/google/  # Vendored Google style guides (CC-BY 3.0)
+│   ├── agents/        # AGENTS.md.template
+│   ├── ansible/       # ansible.cfg, ansible-lint, yamllint, SOPS
+│   ├── claude/        # settings.json, skills, infrastructure context
+│   ├── cursor/        # .cursorrules.template
+│   ├── editorconfig/  # .editorconfig
+│   ├── pre-commit/    # .pre-commit-config.yaml
+│   └── prettier/      # .prettierrc
+├── guides/
+│   ├── ai/            # AI-assisted development practices
+│   ├── api/           # GraphQL and REST API design
+│   ├── design/        # Design systems, components, accessibility, motion
+│   ├── docs/          # Documentation standards (Markdown, specifications)
+│   ├── frameworks/    # Framework guides (Rails, Django, React, ...)
+│   ├── infrastructure/# Operating systems, services, Ansible, Docker
+│   ├── languages/     # Language style guides (Python, Go, Rust, ...)
+│   └── process/       # Testing, CI, versioning, GitHub templates
+├── reference/         # Vendored third-party guides, unmodified
+├── scripts/           # Repository validators (gen_nav, validate_versions)
+├── AGENTS.md          # Canonical agent instructions (this file)
+├── CLAUDE.md          # `@AGENTS.md` import for Claude Code
+├── GEMINI.md          # `@./AGENTS.md` import for Gemini CLI
 ├── README.md          # Landing page with full navigation
+├── SUMMARY.md         # Generated navigation index
 ├── CHANGELOG.md       # Version history (Keep a Changelog format)
 └── VERSION            # Current version number
 ```
@@ -42,9 +87,17 @@ Every guide **MUST** include this after the title:
 
 ```markdown
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" in this document are to be interpreted as described in
+BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
+[RFC 8174](https://datatracker.ietf.org/doc/html/rfc8174) when, and only
+when, they appear in all capitals, as shown here.
 ```
+
+This is the full BCP 14 form from [RFC 8174 section
+2](https://datatracker.ietf.org/doc/html/rfc8174#section-2). It supersedes the
+bare RFC 2119 sentence still present in most guides; those are migrated
+separately rather than piecemeal.
 
 ## Guide Template Structure
 
@@ -79,8 +132,9 @@ Code examples.
 3. Include Quick Reference table
 4. Add navigation breadcrumb
 5. Include "See Also" section
-6. Update `README.md` navigation tables
-7. Update `CHANGELOG.md`
+6. Update `README.md` navigation tables and the category `README.md`
+7. Run `python3 scripts/gen_nav.py` to rewrite `SUMMARY.md`
+8. Update `CHANGELOG.md`
 
 ### Updating Tool Versions
 
@@ -93,15 +147,11 @@ When updating tool versions:
 
 ### Testing Changes Locally
 
+Run `make check`, or the individual commands from
+[Commands](#commands) above. To preview GitHub-flavoured rendering:
+
 ```bash
-# Verify markdown formatting
-npx markdownlint-cli2 "**/*.md"
-
-# Check for broken links
-npx markdown-link-check README.md
-
-# Preview with grip (GitHub-flavored markdown)
-pip install grip && grip
+pipx run grip==4.6.2
 ```
 
 ## Key Files
@@ -109,10 +159,12 @@ pip install grip && grip
 | File | Purpose |
 | ---- | ------- |
 | `README.md` | Landing page, full navigation |
+| `SUMMARY.md` | Generated navigation index (`scripts/gen_nav.py`) |
 | `CHANGELOG.md` | Version history |
 | `VERSION` | Current version (SemVer) |
+| `agents/`, `commands/` | Agent and slash-command definitions |
 | `configs/` | Copy-paste config files |
-| `reference/google/` | Upstream Google guides |
+| `reference/` | Vendored third-party guides, unmodified |
 
 ## Conventions
 
