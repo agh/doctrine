@@ -135,6 +135,87 @@ The agent MUST adhere to these principles:
 Signal collectors gather information from various sources to inform release
 decisions. Each collector MUST implement the `SignalCollector` interface.
 
+### Evidence Binding
+
+Every signal **MUST** be bound to the exact artefact being released. A signal
+that cannot be bound **MUST** be treated as missing, never as passing.
+
+#### Why
+
+Release readiness is a claim about one specific commit and one specific
+artefact. "Recent workflow runs are green" is not that claim: the green run
+may have tested an earlier tree, an approval may predate the last force-push,
+and the scanned container may not be the one about to be published. GitHub's
+own protected-branch controls encode the same invariant — required status
+checks are evaluated against the head commit, and
+[stale approvals are dismissed when new commits change the diff](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+A collector that reads "the latest run" reintroduces exactly the gap those
+controls close.
+
+#### Required Fields
+
+Every collected signal record **MUST** carry:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `target_sha` | `string` | Full 40-character SHA of the commit being released |
+| `evidence_sha` | `string` | Full SHA the evidence was actually produced from |
+| `source` | `string` | Concrete producer, e.g. `github_actions`, `trivy`, `codeowners` |
+| `run_id` | `string` | Workflow run, job or scan ID that produced the evidence |
+| `event` | `string` | Trigger that produced it, e.g. `push`, `pull_request` |
+| `lockfile_digest` | `string` | SHA-256 of the resolved dependency lockfile |
+| `artifact_digest` | `string` | SHA-256 digest of the artefact the evidence covers |
+| `collected_at` | `timestamp` | When the collector read the evidence |
+| `expires_at` | `timestamp` | When the evidence stops counting |
+
+#### Validation Rules
+
+Collectors **MUST**:
+
+- Reject any signal whose `evidence_sha` differs from `target_sha`.
+- Reject any signal read after its `expires_at`.
+- Reject any signal whose `artifact_digest` differs from the digest of the
+  artefact that will be promoted and published.
+- Reject any dependency signal whose `lockfile_digest` differs from the
+  lockfile at `target_sha`.
+- Record a rejection as a missing signal with its reason, so the confidence
+  score and the report show the gap rather than silently omitting it.
+
+Collectors **MUST NOT** substitute evidence from a parent commit, a sibling
+branch, a rebuilt artefact, or a re-run whose inputs were not the target tree.
+
+```yaml
+evidence_binding:
+  enabled: true
+  # Resolved once, then passed to every collector
+  target_sha: ${RELEASE_SHA}
+  require_exact_sha: true
+  require_artifact_digest: true
+  # Evidence older than this is treated as missing, per signal class
+  max_age:
+    tests: 24h
+    security_scans: 24h
+    reviews: 7d
+    artifacts: 24h
+  on_mismatch: fail  # fail | warn — `warn` is for dry runs only
+```
+
+**Don't** — take the newest run for the branch:
+
+```yaml
+cicd:
+  workflow_lookup: latest_on_branch
+```
+
+**Do** — look up runs by the release commit and reject anything else:
+
+```yaml
+cicd:
+  workflow_lookup: by_head_sha
+  head_sha: ${RELEASE_SHA}
+  require_conclusion: success
+```
+
 ### Git Collector
 
 The Git Collector analyzes repository history since the last release.
@@ -215,10 +296,10 @@ The CI/CD Collector gathers build and test status from CI systems.
 
 | Signal | Type | Description |
 |--------|------|-------------|
-| `workflow_runs` | `WorkflowRun[]` | Recent workflow executions |
-| `test_results` | `TestSuite[]` | Test pass/fail/skip counts |
-| `coverage` | `CoverageReport` | Code coverage metrics |
-| `build_artifacts` | `Artifact[]` | Produced build outputs |
+| `workflow_runs` | `WorkflowRun[]` | Workflow executions whose `head_sha` equals the release SHA |
+| `test_results` | `TestSuite[]` | Test pass/fail/skip counts from those runs |
+| `coverage` | `CoverageReport` | Code coverage metrics from those runs |
+| `build_artifacts` | `Artifact[]` | Build outputs, recorded with their SHA-256 digests |
 | `duration_trends` | `DurationTrend[]` | Build time analysis |
 
 #### Supported Platforms
@@ -236,11 +317,21 @@ signal_collectors:
   cicd:
     enabled: true
     platform: github_actions
+    # Look runs up by commit, never "latest on branch" (see Evidence Binding)
+    workflow_lookup: by_head_sha
+    head_sha: ${RELEASE_SHA}
     # Required workflows for release
     required_workflows:
       - "CI"
       - "Security Scan"
       - "Integration Tests"
+    # A required workflow with no run at this SHA is missing, not passing
+    treat_absent_run_as: missing
+    # Reject evidence produced from a different tree or too long ago
+    require_exact_sha: true
+    max_signal_age: 24h
+    # Record the digest of every artefact the runs produced
+    record_artifact_digests: true
     # Minimum coverage threshold
     coverage_threshold: 80
     # Max allowed test failures
@@ -278,6 +369,11 @@ LOW       → Informational only
 signal_collectors:
   security:
     enabled: true
+    # Scans MUST have been produced from the release commit and artefact
+    scanned_sha: ${RELEASE_SHA}
+    require_exact_sha: true
+    require_artifact_digest: true
+    max_scan_age: 24h
     # Block release on these severities
     blocking_severities:
       - critical
@@ -317,6 +413,12 @@ The Code Review Collector analyzes pull request review status.
 signal_collectors:
   code_review:
     enabled: true
+    # Only count approvals of the diff that is actually being released
+    require_approval_of_merged_sha: true
+    ignore_dismissed_reviews: true
+    # An approval that predates the last change to the diff does not count
+    ignore_approvals_before_last_push: true
+    max_approval_age: 7d
     # Minimum approvals required
     min_approvals: 1
     # Require all comments resolved
@@ -349,6 +451,10 @@ The Dependency Collector analyzes dependency changes and impacts.
 signal_collectors:
   dependencies:
     enabled: true
+    # Resolve from the lockfile at the release commit, and record its digest
+    lockfile_sha: ${RELEASE_SHA}
+    record_lockfile_digest: true
+    require_exact_sha: true
     # Package managers to analyze
     package_managers:
       - npm
@@ -511,8 +617,16 @@ outcome_tracking:
 
     errors:
       provider: sentry
-      dsn: ${SENTRY_DSN}
-      project: my-project
+      # Read APIs are authenticated with a bearer auth token, never a DSN
+      base_url: https://sentry.io/api/0
+      auth_token: ${SENTRY_AUTH_TOKEN}
+      organization: my-org       # organisation slug or ID
+      projects: [my-project]     # project slugs read for this release
+      scopes: [org:read, project:read, event:read]
+      pagination: link_header    # follow rel="next" while results="true"
+      rate_limit:
+        respect_headers: true    # X-Sentry-Rate-Limit-*
+        max_requests_per_second: 20
 
     metrics:
       provider: datadog
@@ -522,6 +636,44 @@ outcome_tracking:
     deployments:
       provider: github  # or: argocd, spinnaker
 ```
+
+#### Why Sentry Needs an Auth Token, Not a DSN
+
+A DSN authenticates **event ingestion**. It encodes a public key and project
+ID and is used to build submission endpoints such as
+`{BASE_URI}/api/{PROJECT_ID}/envelope/`; the Sentry SDK specification defines
+it purely as a
+[transport credential for submitting events](https://develop.sentry.dev/sdk/foundations/transport/authentication/).
+
+Outcome tracking does the opposite: it **reads** organisation and project
+data. Those endpoints — for example
+`GET /api/0/organizations/{organization_id_or_slug}/stats_v2/`, which returns
+event counts by outcome — authenticate with
+[auth tokens](https://github.com/getsentry/sentry-docs/blob/master/docs/api/auth.mdx)
+passed as `Authorization: Bearer <token>`, and require an organisation
+identifier that a DSN does not carry. Configuring only a DSN produces 401
+responses, so the entire outcome-tracking loop silently yields no data.
+
+Collectors **MUST**:
+
+- Use a least-privilege token from a Sentry
+  [internal integration](https://github.com/getsentry/sentry-docs/blob/master/docs/api/auth.mdx),
+  not a personal token tied to one engineer's account.
+- Request only the read
+  [scopes](https://github.com/getsentry/sentry-docs/blob/master/docs/api/permissions.mdx)
+  the queries need — `org:read` for organisation statistics, `project:read`
+  for project metadata, `event:read` for issues and events.
+- Send the organisation slug or ID and the project slugs explicitly.
+- Follow [Link-header pagination](https://github.com/getsentry/sentry-docs/blob/master/docs/api/pagination.mdx)
+  until the `rel="next"` link reports `results="false"`, rather than reading
+  only the first page.
+- Honour the `X-Sentry-Rate-Limit-*` response
+  [headers](https://github.com/getsentry/sentry-docs/blob/master/docs/api/ratelimits.mdx)
+  and back off on 429. `stats_v2` is rate limited to 20 requests per second
+  per IP, user and organisation.
+
+Collectors **MUST NOT** put a DSN in a read configuration. A DSN belongs in a
+configuration block only where the agent itself emits telemetry to Sentry.
 
 #### Outcome Report
 
@@ -621,7 +773,7 @@ CREATE TABLE releases (
 CREATE TABLE outcomes (
   id UUID PRIMARY KEY,
   release_id UUID REFERENCES releases(id),
-  window VARCHAR NOT NULL,  -- immediate, short_term, etc.
+  outcome_window VARCHAR NOT NULL,  -- immediate, short_term, etc.
   collected_at TIMESTAMP NOT NULL,
   metrics JSONB,
   incidents JSONB,
@@ -641,6 +793,17 @@ CREATE TABLE learnings (
   created_at TIMESTAMP DEFAULT NOW()
 );
 ```
+
+#### Why `outcome_window` and not `window`
+
+Column names **MUST NOT** collide with PostgreSQL reserved keywords.
+[`WINDOW` is reserved](https://www.postgresql.org/docs/current/sql-keywords-appendix.html),
+so `window VARCHAR NOT NULL` is rejected with `syntax error at or near
+"window"` unless the identifier is double-quoted at every use site.
+`outcome_window` needs no quoting and keeps consuming queries readable.
+
+Schema examples **MUST** be validated with a PostgreSQL parser rather than a
+generic YAML or Markdown check, which cannot detect reserved-word collisions.
 
 ### Predictive Intelligence
 
@@ -1292,6 +1455,10 @@ permissions:
 
 #### GitHub Actions Workflow
 
+The `doctrine/release-manager-agent` action below is **illustrative**: it
+names the interface a conforming implementation would expose, not a published
+action. Substitute your own implementation before running this workflow.
+
 ```yaml
 name: Release Manager
 
@@ -1312,24 +1479,41 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for changelog
+          ref: ${{ github.sha }}  # Pin the tree; do not follow the branch
+
+      - name: Resolve release commit
+        id: target
+        run: echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
       - name: Run Release Manager Agent
-        uses: doctrine/release-manager-agent@v1
+        uses: doctrine/release-manager-agent@v1  # illustrative
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           config_file: .release-manager.yml
           dry_run: ${{ inputs.dry_run }}
+          # Every collector binds its evidence to this SHA
+          release_sha: ${{ steps.target.outputs.sha }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
+A full-history checkout supplies commits, not evidence identity. `fetch-depth:
+0` says nothing about which tree the tests ran against or which artefact was
+scanned, so `release_sha` **MUST** be resolved once and passed to every
+collector, and the collectors **MUST** apply the rules in
+[Evidence Binding](#evidence-binding).
+
 ### GitLab Integration
+
+The `doctrine/release-manager-agent` image and the `release-manager` CLI below
+are **illustrative**: neither is published by this repository. Substitute your
+own image, pinned to a digest, before running this job.
 
 ```yaml
 # .gitlab-ci.yml
 release:
   stage: release
-  image: doctrine/release-manager-agent:latest
+  image: doctrine/release-manager-agent:latest  # illustrative
   script:
     - release-manager analyze
     - release-manager release --if-ready
@@ -1404,10 +1588,17 @@ project:
 # LLM configuration
 llm:
   provider: anthropic  # anthropic | openai | azure
-  model: claude-sonnet-4-5-20250329
-  temperature: 0.3
-  # Fallback model for simple tasks
-  fallback_model: claude-haiku-3-5-20241022
+  # Pinned snapshot IDs only; verify against the provider model list on every run
+  model: claude-sonnet-5
+  # Fallback model for high-volume, simpler tasks
+  fallback_model: claude-haiku-4-5-20251001
+  # Thinking depth on Claude 5 models; replaces temperature (see below)
+  effort: high
+  # Reject unknown, deprecated or retired IDs before any release work starts
+  model_lifecycle_check:
+    enabled: true
+    fail_closed: true
+    max_metadata_age: 24h
 
 # Signal collectors configuration
 signal_collectors:
@@ -1517,6 +1708,93 @@ advanced:
   debug: false
 ```
 
+### Model Selection and Lifecycle
+
+Configured model IDs **MUST** be exact, currently available snapshot IDs from
+the provider. The agent **MUST** validate every configured ID against the
+provider's model list before collecting signals, and **MUST** refuse to run
+when an ID is unknown, deprecated or retired.
+
+#### Why
+
+A release gate that cannot reach its model produces no assessment, and a
+release pipeline that silently falls back to an unvalidated model produces an
+assessment nobody reviewed. Model IDs also churn: Anthropic
+[retired `claude-3-5-haiku-20241022` on 2026-02-19](https://platform.claude.com/docs/en/about-claude/model-deprecations),
+and requests to retired models fail. Validating up front turns a mid-release
+API failure into a configuration error before any state is mutated.
+
+#### Current Anthropic IDs
+
+Verified against the
+[Claude models overview](https://platform.claude.com/docs/en/models/overview)
+and [model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+(both fetched 2026-09-08):
+
+| Role | Model ID | Lifecycle state |
+|------|----------|-----------------|
+| Release decision, breaking-change analysis | `claude-opus-5` | Active, retirement not sooner than 2027-07-24 |
+| Changelog generation, risk assessment | `claude-sonnet-5` | Active, retirement not sooner than 2027-06-30 |
+| Commit classification (high volume) | `claude-haiku-4-5-20251001` | Active, retirement not sooner than 2026-10-15 |
+
+These are starting points, not a fixed ranking. Teams **SHOULD** select the
+model for each task from their own evaluations on their own repositories, and
+**MUST** re-run the lifecycle check on a schedule rather than trusting a
+static table.
+
+#### Why `effort` Replaces `temperature`
+
+Claude 5 models reject non-default sampling parameters: setting `temperature`,
+`top_p` or `top_k` returns
+[HTTP 400](https://platform.claude.com/docs/en/models/sonnet-5/migration-guide).
+Thinking depth is controlled with the
+[effort parameter](https://platform.claude.com/docs/en/build-with-claude/effort)
+instead. Configuration **MUST NOT** carry `temperature` for these models.
+
+**Don't** — rejected with 400 on `claude-sonnet-5`:
+
+```yaml
+llm:
+  model: claude-sonnet-5
+  temperature: 0.3
+```
+
+**Do** — determinism comes from schema-constrained output and deterministic
+gates, not from a sampling parameter:
+
+```yaml
+llm:
+  model: claude-sonnet-5
+  effort: high
+```
+
+#### Lifecycle Validation
+
+The check **MUST** run before signal collection and **MUST** fail closed. The
+[Models API](https://platform.claude.com/docs/en/api/models/list) returns the
+IDs currently available to the calling account; retired IDs are absent from it
+and requests naming them fail.
+
+```bash
+#!/usr/bin/env bash
+# check-models.sh claude-sonnet-5 claude-haiku-4-5-20251001
+set -euo pipefail
+
+# limit defaults to 20; ask for the full list so long lineups are not truncated.
+available="$(curl -sSf 'https://api.anthropic.com/v1/models?limit=1000' \
+  -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+  -H 'anthropic-version: 2023-06-01' | jq -r '.data[].id')"
+
+status=0
+for id in "$@"; do
+  if ! grep -qxF -- "${id}" <<<"${available}"; then
+    printf 'release-manager: model %s is unknown or retired\n' "${id}" >&2
+    status=1
+  fi
+done
+exit "${status}"
+```
+
 ### Environment Variables
 
 | Variable | Required | Description |
@@ -1551,7 +1829,12 @@ The agent MUST:
 
 ### LLM Data Privacy
 
-When using LLM providers:
+Content **MUST** be sanitised before prompt construction, not after. Once a
+credential reaches the provider it has left the trust boundary, and no
+downstream masking undoes that.
+
+Secret handling is therefore two stages: **detect and drop**, then **redact
+what remains**.
 
 ```yaml
 llm:
@@ -1565,11 +1848,168 @@ llm:
       - "**/*.env*"
       - "**/credentials*"
 
-    # Redact patterns
-    redact_patterns:
-      - "password[=:].*"
-      - "api[_-]?key[=:].*"
-      - "secret[=:].*"
+    # Stage 1: scan every candidate input with a maintained detector.
+    secret_scan:
+      tool: gitleaks
+      version: v8.30.1        # pinned; bump deliberately
+      on_detection: drop      # drop the whole input, never send a patched copy
+      fail_closed: true       # scanner error or timeout blocks the run
+
+    # Stage 2: format-aware redaction of everything that survives stage 1.
+    redaction:
+      mode: structured        # parse JSON/YAML/dotenv, redact by key
+      case_sensitive: false
+      key_patterns:           # matched against keys, not whole lines
+        - "pass(word|wd|phrase)"
+        - "secret"
+        - "token"
+        - "api[_-]?key"
+        - "access[_-]?key"
+        - "auth(orization|[_-]?token)?"
+        - "credentials?"
+        - "private[_-]?key"
+        - "session[_-]?id"
+      value_patterns:         # forms with no key at all
+        - credential_header   # Authorization: Bearer <token>
+        - url_userinfo        # scheme://user:secret@host
+        - pem_block           # -----BEGIN ... PRIVATE KEY-----
+      verify_after_redaction: true  # re-scan; refuse to send if anything matches
+```
+
+#### Why Line-Oriented Regexes Are Not Enough
+
+The patterns this guide previously recommended — `password[=:].*`,
+`api[_-]?key[=:].*` and `secret[=:].*` — miss most real credential formats.
+Executed against a 14-case corpus of ordinary credential shapes, **10 samples
+survived redaction intact**: uppercase `PASSWORD=`, quoted JSON
+`"password": "…"` and `"api_key": "…"`, `Authorization: Bearer …`, `token=…`,
+`private_key=…`, `AWS_ACCESS_KEY_ID = …`, `passphrase: '…'`, a database URL
+with inline userinfo, and a multiline PEM block. None of these are adversarial
+or encoded; they are what configuration files and log lines normally look
+like.
+
+Path exclusions do not compensate. A credential pasted into a commit message,
+a test fixture or a stack trace lives outside `**/secrets/**`, and
+`send_code: false` still ships summaries derived from that text.
+
+#### Reference Redaction
+
+The following implementation redacts all 14 corpus cases with no false
+positives on benign text, and is idempotent so the verification pass is a
+simple equality check:
+
+```python
+import re
+
+PLACEHOLDER = "[REDACTED]"
+
+SECRET_KEY = r"""(?:
+      pass(?:word|wd|phrase) | secret | token | api[_-]?key
+    | access[_-]?key | auth(?:orization|[_-]?token)? | credentials?
+    | private[_-]?key | session[_-]?id
+)"""
+
+ASSIGNMENT = re.compile(
+    rf"""(?ix)
+    (?P<key>["']?[A-Za-z0-9_.\-]*{SECRET_KEY}[A-Za-z0-9_.\-]*["']?)
+    (?P<sep>[ \t]*[:=][ \t]*)
+    (?P<value>\[REDACTED\] | "[^"\n]*" | '[^'\n]*' | [^\s,;}}\]]+)
+    """
+)
+CREDENTIAL_HEADER = re.compile(
+    r"(?i)\b(?P<scheme>bearer|basic|token|dsn)[ \t]+"
+    r"(?P<value>[A-Za-z0-9._~+/=\-]{8,})"
+)
+URL_USERINFO = re.compile(
+    r"(?i)(?P<scheme>[a-z][a-z0-9+.\-]*://)"
+    r"(?P<user>[^/\s:@]+):(?P<secret>[^/\s@]+)@"
+)
+PEM_BLOCK = re.compile(
+    r"(?s)-----BEGIN(?P<label>[A-Z ]*)PRIVATE KEY-----"
+    r"(?P<body>.*?)-----END(?P=label)PRIVATE KEY-----"
+)
+
+
+def _assignment(m: re.Match) -> str:
+    value = m.group("value")
+    if value.strip("\"'") == PLACEHOLDER:
+        return m.group(0)
+    quote = value[0] if value[:1] in {'"', "'"} else ""
+    return f"{m.group('key')}{m.group('sep')}{quote}{PLACEHOLDER}{quote}"
+
+
+def _userinfo(m: re.Match) -> str:
+    if m.group("secret") == PLACEHOLDER:
+        return m.group(0)
+    return f"{m.group('scheme')}{m.group('user')}:{PLACEHOLDER}@"
+
+
+def _pem(m: re.Match) -> str:
+    if m.group("body") == PLACEHOLDER:
+        return m.group(0)
+    label = m.group("label")
+    return f"-----BEGIN{label}PRIVATE KEY-----{PLACEHOLDER}-----END{label}PRIVATE KEY-----"
+
+
+def redact(text: str) -> str:
+    """Redact credentials in structured and unstructured text. Idempotent."""
+    text = PEM_BLOCK.sub(_pem, text)
+    text = URL_USERINFO.sub(_userinfo, text)
+    text = CREDENTIAL_HEADER.sub(lambda m: f"{m.group('scheme')} {PLACEHOLDER}", text)
+    return ASSIGNMENT.sub(_assignment, text)
+
+
+def is_clean(text: str) -> bool:
+    """Fail-closed gate: run after redaction, before prompt construction."""
+    return redact(text) == text
+```
+
+Ordering matters. `PEM_BLOCK` runs before the line-oriented rules so a
+multiline key is not truncated at its first newline, and `CREDENTIAL_HEADER`
+runs before `ASSIGNMENT` so `Authorization: Bearer <token>` redacts the token
+rather than the scheme name.
+
+#### Regression Corpus
+
+Redaction rules **MUST** ship with a regression test, and the test **MUST**
+assert on the redacted output rather than on pattern coverage. Every entry
+below **MUST** be covered:
+
+| Format | Example shape |
+|--------|---------------|
+| dotenv, lower and upper case | `password=…`, `PASSWORD=…` |
+| JSON, quoted key and value | `{"api_key": "…"}` |
+| YAML, quoted and bare | `client_secret: …` |
+| Authorization header | `Authorization: Bearer …` |
+| Custom header | `x-api-key: …` |
+| Bare assignment | `token=…`, `private_key=…` |
+| Spaced assignment | `AWS_ACCESS_KEY_ID = …` |
+| URL userinfo | `postgres://app:…@host/db` |
+| Multiline PEM | `-----BEGIN … PRIVATE KEY-----` |
+
+The corpus **MUST** also contain benign text that redaction leaves byte-identical
+(`The password reset flow sends an email.`, `timeout = 30`), so tightening the
+rules cannot quietly start mangling changelog prose.
+
+**Don't** — treat redaction as best-effort and send whatever comes out:
+
+```yaml
+redact_patterns:
+  - "password[=:].*"
+  - "api[_-]?key[=:].*"
+  - "secret[=:].*"
+```
+
+**Do** — scan, drop, redact, verify, and refuse to build the prompt when
+verification fails:
+
+```python
+if scanner.findings(content):
+    raise SecretDetected(source)      # drop, do not patch and send
+redacted = redact(content)
+if not is_clean(redacted):
+    raise RedactionUnverified(source)  # fail closed
+prompt = build_prompt(redacted)
 ```
 
 ### Audit Logging
@@ -1593,6 +2033,10 @@ audit:
 ---
 
 ## CLI Reference
+
+This section describes the command surface a conforming implementation
+**SHOULD** expose. The `release-manager` binary and the session transcript
+below are **illustrative**; no such binary is published by this repository.
 
 ### Commands
 

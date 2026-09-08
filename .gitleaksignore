@@ -1,0 +1,12 @@
+# Gitleaks fingerprints (commit:file:rule:line) that are verified documentation
+# examples, not credentials. Each entry names the value's purpose. The values
+# were replaced by placeholder-marked equivalents in later commits on the same
+# branches, but the original commits remain in history and would otherwise
+# fail the full-history scan on every push to main.
+# fastapi.md test fixture password ("correct-battery-staple-2026") — example only
+c6c33e3172d1f0e418ba263e014ebb740a0bc307:guides/frameworks/fastapi.md:generic-api-key:439
+c6c33e3172d1f0e418ba263e014ebb740a0bc307:guides/frameworks/fastapi.md:generic-api-key:448
+# hanami.md sample SESSION_SECRET in a .env example — illustrative hex, never used
+1fd7cac583dc5fc28469555581e228e149dd8e92:guides/frameworks/hanami.md:generic-api-key:740
+# graphql.md test fixture password ("test-fixture-passphrase-01") — example only
+27cddefa7ad92de78cb0d978b94b174cbf93dbc4:guides/api/graphql.md:generic-api-key:833

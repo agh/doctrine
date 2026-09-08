@@ -128,34 +128,93 @@ sops -d secrets.yaml
 
 #### Pattern 1: Environment Variable Injection
 
+`sops exec-env` decrypts into the environment of one child process. Nothing is
+written to disk, and a failed decryption stops the launch instead of starting
+the agent with empty variables.
+
+The file `exec-env` reads **MUST** be flat, one top-level key per variable.
+SOPS rejects a nested document with `cannot use complex value in environment;
+offending key <name>`, so keep the environment file separate from any nested
+`secrets.yaml`:
+
+```yaml
+# secrets.env.yaml - one top-level key per environment variable
+POSTGRES_PASSWORD: ENC[AES256_GCM,data:abc123...,type:str]
+GITHUB_TOKEN: ENC[AES256_GCM,data:def456...,type:str]
+DISCORD_WEBHOOK: ENC[AES256_GCM,data:ghi789...,type:str]
+```
+
 ```bash
-#!/bin/bash
-# run-agent.sh - Launch agent with decrypted secrets
+#!/usr/bin/env bash
+# run-agent.sh - launch the agent with decrypted secrets
 
-# Decrypt secrets and export as env vars
+set -euo pipefail
+
+SECRETS_FILE="${SECRETS_FILE:-secrets.env.yaml}"
+
+if [[ -z "${AGENT_SECRETS_LOADED:-}" ]]; then
+  # Re-exec this script inside the decrypted environment. sops exits
+  # non-zero when decryption fails, so the agent never starts without
+  # its secrets. printf %q preserves the original arguments.
+  exec sops exec-env "${SECRETS_FILE}" \
+    "AGENT_SECRETS_LOADED=1 $(printf '%q ' "$0" "$@")"
+fi
+
+exec claude "$@"
+```
+
+**Why**: `eval $(sops -d ...)` interprets decrypted values as shell source, and
+both `eval` and `export NAME=$(...)` return the status of `eval`/`export`, not
+of `sops`. A failed decryption therefore launches the agent with empty
+credentials. `exec-env` passes the values as data to a single child.
+
+**Don't** — every failure here is silent:
+
+```bash
 eval $(sops -d --output-type dotenv secrets.yaml)
-
-# Or for specific secrets:
 export POSTGRES_PASSWORD=$(sops -d --extract '["database"]["password"]' \
   secrets.yaml)
-export GITHUB_TOKEN=$(sops -d --extract '["github"]["token"]' secrets.yaml)
-export DISCORD_WEBHOOK=$(sops -d --extract '["discord"]["webhook_url"]' \
-  secrets.yaml)
-
-# Run agent with secrets in environment
-claude "$@"
 ```
+
+`--pristine` clears every inherited variable, including `HOME`, so it **SHOULD
+NOT** be used for tools that read a home directory, such as Claude Code.
+Reserve it for a child process that needs nothing but its secrets.
 
 #### Pattern 2: Wrapper Script for Skills
 
-```bash
-#!/bin/bash
-# sops-secret.sh - Fetch secret at runtime
+`exec-env` needs a flat file. To read one value out of a nested file, extract
+it by path. The helper takes a dotted path and builds the SOPS extraction
+expression from it:
 
-SECRET_PATH="$1"
+```bash
+#!/usr/bin/env bash
+# sops-secret - print one secret from a nested SOPS file
+
+set -euo pipefail
+
+SECRET_PATH="${1:?usage: sops-secret <dotted.path>}"
 SECRETS_FILE="${SECRETS_FILE:-secrets.yaml}"
 
-# Decrypt specific secret
+extract=""
+IFS='.' read -ra components <<< "${SECRET_PATH}"
+for component in "${components[@]}"; do
+  extract+="[\"${component}\"]"
+done
+
+sops -d --extract "${extract}" "${SECRETS_FILE}"
+```
+
+`sops-secret database.password` extracts `["database"]["password"]` and exits
+non-zero, with the SOPS error, when the path is absent.
+
+**Why**: a SOPS extraction expression addresses one component per bracket
+pair. Wrapping the whole argument in a single pair asks for a key literally
+named `database.password`, which fails with `error truncating tree: component
+['database.password'] not found`.
+
+**Don't**:
+
+```bash
 sops -d --extract "[\"${SECRET_PATH}\"]" "$SECRETS_FILE"
 ```
 
@@ -165,13 +224,32 @@ Usage in MCP config:
 {
   "mcpServers": {
     "postgres": {
-      "command": "mcp-postgres",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub@1.2.3"],
       "env": {
-        "POSTGRES_PASSWORD": "$(sops-secret database.password)"
+        "DSN": "postgres://agent_readonly:${POSTGRES_PASSWORD}@db:5432/app"
       }
     }
   }
 }
+```
+
+Claude Code expands `${VAR}` and `${VAR:-default}` in an MCP server's
+`command`, `args`, `env`, `url`, and `headers`. It **MUST NOT** be given shell
+command substitution: `"$(sops-secret database.password)"` reaches the server
+as that literal string. Put the value in Claude Code's own environment first,
+then reference it:
+
+```bash
+sops exec-env secrets.env.yaml claude
+claude mcp get postgres   # ✔ Connected
+```
+
+**Don't**:
+
+```json
+{ "env": { "POSTGRES_PASSWORD": "$(sops-secret database.password)" } }
 ```
 
 #### Pattern 3: SOPS MCP Server
@@ -357,23 +435,48 @@ access_control:
 ### Key Rotation
 
 ```bash
-#!/bin/bash
-# rotate-secrets.sh
+#!/usr/bin/env bash
+# rotate-age-key.sh - replace the age identity that decrypts secrets.yaml
 
-# 1. Generate new age key
-NEW_KEY=$(age-keygen 2>&1 | grep "public key" | cut -d: -f2 | tr -d ' ')
+set -euo pipefail
+umask 077
 
-# 2. Add new key to .sops.yaml
-# (manual step - add to age recipients)
+NEW_KEY_FILE="${1:?usage: rotate-age-key.sh <new-identity-file>}"
 
-# 3. Re-encrypt with new key
-sops updatekeys secrets.yaml
+# 1. Generate and persist the new identity (mode 0600 from the umask)
+age-keygen -o "${NEW_KEY_FILE}"
 
-# 4. Rotate the actual secrets
+# 2. Derive the recipient that belongs in .sops.yaml
+NEW_RECIPIENT="$(age-keygen -y "${NEW_KEY_FILE}")"
+echo "Add this recipient to .sops.yaml next to the current one:"
+echo "  ${NEW_RECIPIENT}"
+read -r -p "Press enter once .sops.yaml lists both recipients: " _
+
+# 3. Re-encrypt the data key to both recipients (overlap period)
+sops updatekeys --yes secrets.yaml
+
+# 4. Prove the new identity works before anything is retired
+SOPS_AGE_KEY_FILE="${NEW_KEY_FILE}" sops -d secrets.yaml > /dev/null
+echo "New identity verified against secrets.yaml."
+
+# 5. Rotate the secret values themselves
 sops secrets.yaml
-# Update passwords, tokens, etc.
 
-# 5. Remove old key from .sops.yaml after transition period
+# 6. Remove the old recipient from .sops.yaml, then run
+#    sops updatekeys --yes secrets.yaml again to retire it
+```
+
+**Why**: `age-keygen` writes the private identity to stdout, or to the `-o`
+file, and prints only the public recipient to stderr. A pipeline that greps
+stderr for the public key therefore keeps the recipient and throws the
+identity away. Existing recipients still decrypt during the overlap, so the
+loss stays hidden until the old key is retired — at which point the file is
+unreadable.
+
+**Don't** — this persists no private key:
+
+```bash
+NEW_KEY=$(age-keygen 2>&1 | grep "public key" | cut -d: -f2 | tr -d ' ')
 ```
 
 ### Audit Secret Access
@@ -421,9 +524,28 @@ jobs:
           chmod +x sops-v3.8.1.linux.amd64
           sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
 
-      - name: Decrypt secrets
+      - name: Run the deploy with secrets in its environment
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: sops exec-env secrets.env.yaml ./deploy.sh
+
+      - name: Run a tool that needs a secrets file
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: sops exec-file secrets.prod.yaml './deploy.sh --config {}'
+```
+
+**Why**: a shell redirection writes plaintext to disk before the consumer
+runs, and `rm` on the success path never executes when decryption or the
+consumer fails — under the common `umask 022` the leftover file is mode 0644
+on a runner whose workspace other steps and caches can read. `exec-env` keeps
+the values in one child's environment; `exec-file` passes them through a FIFO,
+so the plaintext never reaches disk and disappears when the child exits. Both
+abort the step when decryption fails.
+
+**Don't**:
+
+```yaml
         run: |
           sops -d secrets.prod.yaml > /tmp/secrets.yaml
           # Use secrets...
@@ -435,28 +557,52 @@ jobs:
 For agents using SSH + CLI:
 
 ```bash
-#!/bin/bash
-# agent-ssh-command.sh - Run command on remote server with secrets
+#!/usr/bin/env bash
+# agent-ssh-command.sh - run a named task on a remote server
 
-SERVER="$1"
-COMMAND="$2"
+set -euo pipefail
 
-# Get SSH key from SOPS
-SSH_KEY=$(mktemp)
-sops -d --extract '["ssh"]["private_key"]' secrets.yaml > "$SSH_KEY"
-chmod 600 "$SSH_KEY"
+SERVER="${1:?usage: agent-ssh-command.sh <server> <task>}"
+TASK="${2:?usage: agent-ssh-command.sh <server> <task>}"
 
-# Get any needed env vars
-DB_PASSWORD=$(sops -d \
+SSH_KEY="$(mktemp)"
+trap 'rm -f "${SSH_KEY}"' EXIT INT TERM
+chmod 600 "${SSH_KEY}"
+sops -d --extract '["ssh"]["private_key"]' secrets.yaml > "${SSH_KEY}"
+
+# The remote task fetches its own credentials, so no secret crosses the
+# wire and none appears in the remote command line
+ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=accept-new "${SERVER}" \
+  /usr/local/bin/agent-task "${TASK}"
+```
+
+When a remote host genuinely cannot reach a secret store, send the value on
+stdin and let the remote shell read it as data:
+
+```bash
+DB_PASSWORD="$(sops -d \
   --extract '["databases"]["postgres"]["production"]["password"]' \
-  secrets.yaml)
+  secrets.yaml)"
 
-# Run command on remote server
-ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$SERVER" \
-  "export DB_PASSWORD='$DB_PASSWORD'; $COMMAND"
+printf '%s\n' "${DB_PASSWORD}" |
+  ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=accept-new "${SERVER}" \
+    'IFS= read -r DB_PASSWORD; export DB_PASSWORD; exec /usr/local/bin/agent-task'
+```
 
-# Clean up
-rm -f "$SSH_KEY"
+**Why**: `ssh` joins its command arguments into one string that the remote
+login shell re-parses, so an interpolated secret becomes remote shell source.
+A password containing `'` ends the quoting and the command dies with
+`unexpected EOF while looking for matching "'"` before the task runs; a
+password containing `$(...)` would be executed. Values read from stdin are
+never parsed and never appear in `ps` output on either host. `TASK` **MUST**
+come from a fixed set of task names, because it is re-parsed remotely too.
+`read` consumes one line, so a secret that contains a newline **MUST** be
+encoded, for example with `base64`, before it is sent.
+
+**Don't**:
+
+```bash
+ssh -i "$SSH_KEY" "$SERVER" "export DB_PASSWORD='$DB_PASSWORD'; $COMMAND"
 ```
 
 ## Summary

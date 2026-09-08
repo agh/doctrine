@@ -562,9 +562,33 @@ Good test data is realistic, isolated, and reproducible.
 
 ### Factory Pattern
 
+Every factory draws from one shared, seeded Faker instance. An unseeded
+`faker` import produces different values on each run, so a failure cannot be
+reproduced by re-running the same command.
+
+```typescript
+// test/faker.ts - the only Faker instance the suite constructs
+import { Faker, en } from '@faker-js/faker';
+
+export const faker = new Faker({ locale: en });
+
+const BASE_SEED = 20260908;
+
+// A fixed seed plus a fixed reference date makes every generated value -
+// including faker.date.* - identical on every run. The worker offset gives
+// each parallel worker a different sequence, so workers sharing a database
+// do not replay the same emails and IDs.
+export function resetFaker(seed: number = BASE_SEED): void {
+  faker.seed(seed + Number(process.env.TEST_WORKER_INDEX ?? 0));
+  faker.setDefaultRefDate('2026-01-01T00:00:00.000Z');
+}
+
+resetFaker();
+```
+
 ```typescript
 // factories/user.factory.ts
-import { faker } from '@faker-js/faker';
+import { faker } from '../test/faker';
 
 interface User {
   id: string;
@@ -609,67 +633,172 @@ test('admin can delete users', async () => {
 });
 ```
 
+`resetFaker()` runs once per worker process on import, so values stay unique
+within a worker. A test that needs a byte-identical value on every run
+**MAY** call `resetFaker()` in `beforeEach`, but then every test in that file
+generates the same email and ID, so such tests **MUST NOT** share a database
+with each other.
+
 ### Database Seeding
 
 ```typescript
-// test/setup.ts
+// test/seed.ts
 import { db } from '../src/db';
-import { buildUser, buildOrder } from './factories';
+import { resetFaker } from './faker';
+import { buildAdmin, buildOrder, buildUser } from './factories';
 
-export async function seedTestData() {
-  // Clear previous test data
-  await db.orders.deleteMany({});
-  await db.users.deleteMany({});
+const TEST_DATABASE = /(^|[_-])test($|[_-])/;
 
-  // Create deterministic test data
-  const users = [
-    buildUser({ id: 'user-1', email: 'alice@test.com', name: 'Alice' }),
-    buildUser({ id: 'user-2', email: 'bob@test.com', name: 'Bob' }),
-    buildAdmin({ id: 'admin-1', email: 'admin@test.com' }),
-  ];
-
-  await db.users.createMany({ data: users });
-
-  // Create related data
-  await db.orders.createMany({
-    data: [
-      buildOrder({ userId: 'user-1', status: 'pending' }),
-      buildOrder({ userId: 'user-1', status: 'completed' }),
-      buildOrder({ userId: 'user-2', status: 'pending' }),
-    ],
-  });
+// Seeding truncates tables, so refuse to run against anything that is not
+// an explicitly named test database.
+export function assertTestDatabase(url = process.env.DATABASE_URL): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to seed: NODE_ENV is production');
+  }
+  if (!url) {
+    throw new Error('Refusing to seed: DATABASE_URL is not set');
+  }
+  const name = new URL(url).pathname.replace(/^\//, '');
+  if (!TEST_DATABASE.test(name)) {
+    throw new Error(`Refusing to seed: "${name}" is not a test database`);
+  }
 }
 
-// In playwright.config.ts or jest setup
-beforeAll(async () => {
+export async function seedTestData(): Promise<void> {
+  assertTestDatabase();
+  resetFaker();
+
+  const users = [
+    buildUser({ id: 'user-1', email: 'alice@example.com', name: 'Alice' }),
+    buildUser({ id: 'user-2', email: 'bob@example.com', name: 'Bob' }),
+    buildAdmin({ id: 'admin-1', email: 'admin@example.com' }),
+  ];
+  const orders = [
+    buildOrder({ userId: 'user-1', status: 'pending' }),
+    buildOrder({ userId: 'user-1', status: 'completed' }),
+    buildOrder({ userId: 'user-2', status: 'pending' }),
+  ];
+
+  // One transaction: the suite starts against the complete fixture set or
+  // against the previous state, never against a half-truncated database.
+  await db.$transaction(async (tx) => {
+    await tx.orders.deleteMany({});
+    await tx.users.deleteMany({});
+    await tx.users.createMany({ data: users });
+    await tx.orders.createMany({ data: orders });
+  });
+}
+```
+
+Playwright runs seeding as a setup project, not as a hook in the config file:
+
+```typescript
+// test/global.setup.ts - an ordinary test, run by the "setup db" project
+import { test as setup } from '@playwright/test';
+import { seedTestData } from './seed';
+
+setup('seed test database', async () => {
   await seedTestData();
 });
 ```
 
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    { name: 'setup db', testMatch: /global\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup db'],
+    },
+  ],
+});
+```
+
+Destructive setup **MUST** hard-fail when the target database is not an
+explicitly named test database. Seeding **MUST NOT** be attached to a bare
+`beforeAll` in `playwright.config.ts`. Only the setup project writes fixture
+rows; specs **MUST** treat the seeded set as read-only and create anything
+they mutate themselves. Parallel workers **MUST** be isolated, either by
+giving each worker its own database or schema keyed on
+`process.env.TEST_WORKER_INDEX`, or by running each test inside a transaction
+that is rolled back.
+
+**Why**: `deleteMany({})` on `../src/db` truncates whichever database that
+module resolves, which is the developer database whenever `DATABASE_URL`
+points there. The guard turns a wrong environment into a failed test run
+instead of lost data, and checking `NODE_ENV` as well as the database name
+catches a production database whose name happens to satisfy the pattern.
+
+`playwright.config.ts` is loaded as configuration, not as a test file, so a
+bare `beforeAll` is not defined there and `test.beforeAll` throws
+`Playwright Test did not expect test.beforeAll() to be called here`.
+[Project dependencies][pw-setup] are Playwright's recommended replacement:
+the setup project appears in the HTML report, records traces, and can use
+fixtures, none of which `globalSetup` supports.
+
+Wrapping delete and insert in one transaction matters because a crash between
+`deleteMany` and `createMany` otherwise leaves an empty database that the next
+run happily seeds on top of, producing failures that look like application
+bugs. Isolation matters for the same reason in reverse: two workers truncating
+one shared database delete each other's rows mid-run.
+
+[pw-setup]: https://playwright.dev/docs/test-global-setup-teardown
+
 ### Snapshot Fixtures
 
 ```typescript
-// For complex objects, snapshot and reuse
-import { writeFileSync, readFileSync } from 'fs';
+// test/fixtures.ts
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
-// Generate once, reuse forever
-export function generateFixture<T>(name: string, generator: () => T): T {
-  const path = `./fixtures/${name}.json`;
+// `npm run test:update-fixtures` sets UPDATE_FIXTURES=1. Nothing else writes.
+const updating = process.env.UPDATE_FIXTURES === '1';
+
+export function loadFixture<T>(name: string, generate: () => T): T {
+  const path = join('test/fixtures', `${name}.json`);
+  let raw: string;
 
   try {
-    return JSON.parse(readFileSync(path, 'utf-8'));
-  } catch {
-    const data = generator();
-    writeFileSync(path, JSON.stringify(data, null, 2));
+    raw = readFileSync(path, 'utf-8');
+  } catch (error) {
+    // A missing file is the only recoverable case. Permission and I/O
+    // errors must surface rather than trigger a silent regeneration.
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+    if (!updating) {
+      throw new Error(`Missing fixture ${path}; run npm run test:update-fixtures`);
+    }
+    const data = generate();
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
     return data;
   }
+
+  // A malformed fixture is a bug: let JSON.parse throw instead of masking it.
+  return JSON.parse(raw) as T;
 }
 
 // Usage
-const largeDataset = generateFixture('large-order-history', () => {
-  return Array.from({ length: 1000 }, () => buildOrder());
-});
+const largeDataset = loadFixture('large-order-history', () =>
+  Array.from({ length: 1000 }, () => buildOrder())
+);
 ```
+
+Fixture files **MUST** be committed and regenerated only through an explicit
+command. A normal test run **MUST NOT** write to `test/fixtures`.
+
+**Why**: `catch { regenerate }` treats a corrupt file, a permission error, and
+a wrong working directory identically to a missing file. Each one silently
+rewrites the committed fixture from an unseeded generator, so the assertions
+that fixture backs pass against data the test itself has just invented, and
+the diff appears in an unrelated pull request. Failing on anything but
+`ENOENT` keeps the fixture authoritative; gating regeneration behind
+`UPDATE_FIXTURES=1` makes each change a deliberate, reviewable commit.
 
 ### Test Data Guidelines
 
