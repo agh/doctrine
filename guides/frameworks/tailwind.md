@@ -484,24 +484,29 @@ defineProps<{ className?: string }>()
 
 Projects implementing dark mode **MUST** use Tailwind's dark mode utilities[^4].
 
-### Configuration
+By default `dark:*` compiles to a `@media (prefers-color-scheme: dark)` query.
+Theme variables **MUST NOT** be used to change this: `@theme` declares design
+tokens, not variants, so a `--color-scheme` entry has no effect on the `dark`
+variant and does not set the CSS `color-scheme` property.
+
+### Class-Based Dark Mode
+
+Projects **SHOULD** override the `dark` variant with a selector so users
+control the theme:
 
 ```css
 /* app.css */
 @import "tailwindcss";
 
-@theme {
-  /* Enable dark mode via class or media query */
-  --color-scheme: light dark;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 ```
 
-### Class-Based Dark Mode
-
-Projects **SHOULD** use class-based dark mode for user control:
+With that override `dark:bg-gray-900` compiles to
+`.dark\:bg-gray-900:where(.dark, .dark *)` rather than a media query, so adding
+`dark` to the `html` element switches the theme:
 
 ```html
-<!-- Dark mode toggled by .dark class on html/body -->
+<!-- GOOD: .dark on <html> drives every dark: utility -->
 <html class="dark">
   <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <div class="bg-gray-100 dark:bg-gray-800 p-4">
@@ -511,20 +516,56 @@ Projects **SHOULD** use class-based dark mode for user control:
 </html>
 ```
 
+```html
+<!-- DON'T: without @custom-variant, dark: still follows the media query -->
+<!-- and this class toggle changes nothing -->
+<html class="dark">
+```
+
+The preference script **MUST** run in `head` before the first paint, otherwise
+the page renders in the wrong theme and then flips:
+
+```html
+<head>
+  <link rel="stylesheet" href="/styles/app.css">
+  <script>
+    document.documentElement.classList.toggle(
+      'dark',
+      localStorage.theme === 'dark' ||
+        (!('theme' in localStorage) &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+    )
+  </script>
+</head>
+```
+
 ```javascript
-// Toggle dark mode
-function toggleDarkMode() {
-  document.documentElement.classList.toggle('dark')
-  localStorage.setItem('theme',
-    document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+// Explicit user choices, written by the theme control
+function setTheme(choice) {
+  if (choice === 'system') {
+    localStorage.removeItem('theme')
+  } else {
+    localStorage.theme = choice
+  }
+  document.documentElement.classList.toggle(
+    'dark',
+    localStorage.theme === 'dark' ||
+      (!('theme' in localStorage) &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches)
   )
 }
+```
 
-// Initialize from localStorage
-if (localStorage.theme === 'dark' ||
-    (!localStorage.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-  document.documentElement.classList.add('dark')
-}
+### Native Control Colours
+
+`color-scheme` is a separate CSS property that tells the browser which palette
+to use for scrollbars, form controls and system colours. It is not the `dark`
+variant. Projects **SHOULD** set it with the `scheme-*` utilities so native
+widgets follow the selected theme:
+
+```html
+<!-- GOOD: scheme-dark wins whenever .dark is present -->
+<html class="dark scheme-light dark:scheme-dark">
 ```
 
 ### Media Query Dark Mode
@@ -532,7 +573,8 @@ if (localStorage.theme === 'dark' ||
 Projects **MAY** use media query-based dark mode for automatic system preference:
 
 ```html
-<!-- Automatically follows system preference -->
+<!-- Automatically follows system preference: this is the default, -->
+<!-- so app.css needs no @custom-variant override -->
 <div class="bg-white dark:bg-gray-900">
   Content
 </div>
@@ -680,12 +722,27 @@ const Button = ({ color }: { color: 'blue' | 'red' }) => {
   }
   return <button className={colorClasses[color]}>Click</button>
 }
+```
 
-// ALSO GOOD: Use safelist for truly dynamic content
+Classes that only ever appear in CMS or API data are never in a source file, so
+projects **MUST** safelist them with `@source inline(...)`. `@custom-variant`
+defines a variant and `@variant` applies one; neither generates a utility:
+
 ```css
+/* app.css - ALSO GOOD: safelist utilities that only exist in remote data */
+@import "tailwindcss";
+
+@source inline("{hover:,}bg-{blue,red}-{500,600}");
+```
+
+The argument is brace-expanded, so this emits `bg-blue-500`, `bg-blue-600`,
+`bg-red-500`, `bg-red-600` and a `hover:` variant of each.
+
+```css
+/* DON'T: variant directives do not safelist anything, and this fails the */
+/* build with "defines an invalid variant name" */
 @import "tailwindcss";
 @variant data-[color="blue"] (.data-color-blue);
-@variant data-[color="red"] (.data-color-red);
 ```
 
 **Why complete class names:**
@@ -703,16 +760,55 @@ Projects **SHOULD** follow these bundle size best practices:
 3. **Extract common patterns**: Reduce repetition in HTML
 4. **Split CSS**: Load only critical CSS initially
 
+Critical CSS **MUST** be extracted at build time from compiled Tailwind output.
+A browser resolves an `@import` string as a stylesheet URL, so an uncompiled
+`@import "tailwindcss"` inside a `style` element fetches nothing, generates no
+utilities and leaves the page unstyled.
+
+Build a second entry point restricted to the above-the-fold templates:
+
+```css
+/* src/critical.css - only the shell that renders above the fold */
+@import "tailwindcss" source(none);
+@source "../templates/shell.html";
+```
+
+```bash
+# Compile both sheets; src/app.css is the project's existing entry point
+npx @tailwindcss/cli@4.3.3 -i src/app.css -o dist/app.css --minify
+npx @tailwindcss/cli@4.3.3 -i src/critical.css -o dist/critical.css --minify
+```
+
+Inline the compiled critical sheet server-side and link the full sheet
+normally. Inline event handlers **MUST NOT** be used to defer stylesheets,
+because CSP's `script-src` covers handlers such as `onload`; a blocked handler
+leaves a `media="print"` sheet print-only forever:
+
 ```html
-<!-- Critical CSS inline -->
+<head>
+  <!-- GOOD: compiled CSS inlined at render time, nonce for a strict CSP -->
+  <style nonce="{{ cspNonce }}">{{ include "dist/critical.css" }}</style>
+  <link rel="stylesheet" href="/styles/app.css">
+</head>
+```
+
+```html
+<!-- DON'T: the browser cannot resolve an npm package, and a CSP that -->
+<!-- blocks the onload handler leaves the full sheet print-only -->
 <style>
   @import "tailwindcss";
-  /* Only critical utilities */
 </style>
-
-<!-- Full CSS deferred -->
 <link rel="stylesheet" href="/styles/app.css" media="print" onload="this.media='all'">
 ```
+
+**Why build-time extraction:**
+
+- Correctness: Only the Tailwind CLI, Vite, PostCSS or webpack adapter turns
+  `@import "tailwindcss"` into utilities
+- Resilience: The full sheet loads without JavaScript, so a blocked or failed
+  script cannot leave the page unstyled
+- CSP compatibility: A nonced `style` element needs no `'unsafe-inline'` and no
+  inline event handler
 
 ## Integration with Frameworks
 
@@ -796,9 +892,22 @@ const variantClasses = computed(() => {
 
 ### Next.js
 
+Next.js has no built-in Tailwind step, so the PostCSS adapter **MUST** be
+installed and configured[^8]. Without it `@import "tailwindcss"` reaches the
+browser untransformed and no utilities exist.
+
 ```bash
-# Install
-npm install tailwindcss
+# Install (Next.js 16.3.4, Tailwind CSS 4.3.3)
+npm install -D tailwindcss@4.3.3 @tailwindcss/postcss@4.3.3
+```
+
+```javascript
+// postcss.config.mjs
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
 ```
 
 ```css
@@ -810,7 +919,11 @@ npm install tailwindcss
 // app/layout.tsx
 import './globals.css'
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -823,12 +936,16 @@ export default function RootLayout({ children }) {
 // app/page.tsx
 export default function Home() {
   return (
-    <div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <h1 class="text-4xl font-bold">Welcome</h1>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <h1 className="text-4xl font-bold">Welcome</h1>
     </div>
   )
 }
 ```
+
+JSX **MUST** use `className`; `class` is not a React DOM property and fails
+type checking. Layout `children` **MUST** be typed as `React.ReactNode`,
+otherwise `strict` mode rejects the implicit `any`.
 
 ### Svelte
 
@@ -879,3 +996,4 @@ export default defineConfig({
 [^5]: [Typography Plugin](https://tailwindcss.com/docs/typography-plugin) - Beautiful typographic defaults for prose content
 [^6]: [Forms Plugin](https://github.com/tailwindlabs/tailwindcss-forms) - Better form element styling
 [^7]: [Container Queries](https://tailwindcss.com/docs/hover-focus-and-other-states#container-queries) - Container query utilities
+[^8]: [CSS - Next.js](https://nextjs.org/docs/app/getting-started/css#tailwind-css) - Official Next.js Tailwind CSS setup

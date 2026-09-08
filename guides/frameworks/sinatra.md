@@ -76,11 +76,20 @@ Classic style **MAY** only be used for simple scripts or prototypes.
 
 ### Modular Style (Recommended)
 
+Response helpers **MUST** take the payload as a positional argument, and every
+code path **MUST** call `halt` at most once. Base controllers **MUST** parse
+request bodies through a helper that checks the media type, caps the body size
+and maps parse failures to a 4xx response.
+
 ```ruby
 # app/controllers/application_controller.rb
+require "json"
 require "sinatra/base"
 
 class ApplicationController < Sinatra::Base
+  # Largest request body the API will read, in bytes.
+  MAX_BODY_BYTES = 1_048_576
+
   configure do
     set :show_exceptions, :after_handler
     enable :sessions
@@ -90,21 +99,88 @@ class ApplicationController < Sinatra::Base
     def current_user
       @current_user ||= User.find_by(id: session[:user_id])
     end
+
+    # The payload is positional and the status is a keyword, so the helper
+    # cannot swallow the caller's payload into its own keyword arguments.
+    def respond_json(payload, status: 200)
+      content_type :json
+      halt status, payload.to_json
+    end
+
+    # RFC 9457 problem details. This helper halts, so callers MUST NOT nest
+    # it inside another halt.
+    def problem(status, title, detail: nil, **members)
+      content_type "application/problem+json"
+      document = { type: "about:blank", title: title, status: status }
+      document[:detail] = detail if detail
+      halt status, document.merge(members).to_json
+    end
+
+    # Reads, size-caps and parses the request body. Returns a Hash or halts.
+    def json_body
+      unless request.media_type == "application/json"
+        problem(415, "Unsupported media type",
+          detail: "Send the body as application/json.")
+      end
+
+      raw = request.body.read(MAX_BODY_BYTES + 1).to_s
+      if raw.bytesize > MAX_BODY_BYTES
+        problem(413, "Payload too large",
+          detail: "The body limit is #{MAX_BODY_BYTES} bytes.")
+      end
+
+      document = JSON.parse(raw)
+      return document if document.is_a?(Hash)
+
+      problem(400, "Malformed request body",
+        detail: "The body must be a JSON object.")
+    rescue JSON::ParserError => e
+      problem(400, "Malformed request body", detail: e.message)
+    end
   end
 
-  error 404 do
-    json error: "Not found"
+  # Keyed on the exception, not on the status, so that a route's own
+  # `problem(404, ...)` response is not overwritten by this handler.
+  error Sinatra::NotFound do
+    problem(404, "Not found")
   end
 
   error StandardError do
-    json error: "Internal server error"
+    problem(500, "Internal server error")
   end
+end
+```
 
-  private
+**Why a positional payload?** Ruby 3 separates positional and keyword
+arguments. Given `def json(data, status: 200)`, the call `json error: "Not
+found"` binds nothing to `data` and raises
+`ArgumentError: wrong number of arguments (given 0, expected 1)`.
 
-  def json(data, status: 200)
-    content_type :json
-    halt status, data.to_json
+**Why one `halt`?** `halt` unwinds the request immediately by throwing
+`:halt`. In `halt 401, respond_json({ error: "Unauthorized" })` the argument
+is evaluated first, so the inner `halt 200` wins and the client receives
+`200 {"error":"Unauthorized"}`. Pass the status to the helper instead.
+
+**Why `error Sinatra::NotFound` rather than `error 404`?** A status-keyed
+handler also fires for a deliberate `halt 404` from a route and replaces its
+body, discarding the specific message. The exception-keyed handler only
+covers unmatched routes.
+
+Records **MUST NOT** be serialised with `to_h`: `ActiveRecord::Base` does not
+define it. Models **MUST** expose an explicit allowlist instead.
+
+```ruby
+# app/models/user.rb
+class User < ActiveRecord::Base
+  PUBLIC_FIELDS = %w[id name email created_at].freeze
+
+  validates :name, presence: true
+  validates :email, presence: true
+
+  # ActiveRecord::Base has no #to_h. Serialise an explicit allowlist so a new
+  # column such as password_digest can never reach a response body.
+  def public_attributes
+    serializable_hash(only: PUBLIC_FIELDS)
   end
 end
 ```
@@ -113,32 +189,37 @@ end
 # app/controllers/users_controller.rb
 class UsersController < ApplicationController
   get "/users" do
-    users = User.all
-    json users: users.map(&:to_h)
+    respond_json({ users: User.all.map(&:public_attributes) })
   end
 
   get "/users/:id" do
     user = User.find_by(id: params[:id])
-    halt 404 unless user
-    json user: user.to_h
+    problem(404, "User not found") unless user
+    respond_json({ user: user.public_attributes })
   end
 
   post "/users" do
     user = User.new(user_params)
-    if user.save
-      json user: user.to_h, status: 201
-    else
-      json errors: user.errors.full_messages, status: 422
+    unless user.save
+      problem(422, "Validation failed", errors: user.errors.full_messages)
     end
+    respond_json({ user: user.public_attributes }, status: 201)
   end
 
   private
 
   def user_params
-    JSON.parse(request.body.read).slice("name", "email")
+    json_body.slice("name", "email")
   end
 end
 ```
+
+**Why an allowlist?** `user.to_h` raises
+`NoMethodError: undefined method 'to_h' for an instance of User` on
+ActiveRecord 8.1. The obvious replacements, `as_json` and `serializable_hash`
+with no arguments, return *every* column, so adding `password_digest` or
+`token` to the table silently publishes it. Naming the fields makes the
+response contract explicit and lets a test assert that secrets are absent.
 
 ```ruby
 # config.ru
@@ -174,47 +255,111 @@ end
 
 ## Routing Patterns
 
-Routes **SHOULD** follow RESTful conventions where applicable.
+Routes **SHOULD** follow RESTful conventions where applicable. Routes **MUST
+NOT** report an outcome that did not happen: a missing record **MUST** return
+404, and a route **MUST** branch on the result of `save` or `update` before
+answering with a success status. Request bodies **MUST** be validated against
+an explicit schema before they reach the model.
 
 ```ruby
-class ArticlesController < Sinatra::Base
+# app/controllers/articles_controller.rb
+require "json_schemer"
+
+class ArticlesController < ApplicationController
+  ARTICLE_SCHEMA = JSONSchemer.schema({
+    "type" => "object",
+    "additionalProperties" => false,
+    "required" => ["title"],
+    "properties" => {
+      "title" => { "type" => "string", "minLength" => 1, "maxLength" => 200 },
+      "body" => { "type" => "string", "maxLength" => 50_000 }
+    }
+  })
+
   # Index
   get "/articles" do
-    @articles = Article.all
-    json articles: @articles
+    respond_json({ articles: Article.all.map(&:public_attributes) })
   end
 
   # Show
   get "/articles/:id" do
-    @article = Article.find(params[:id])
-    json article: @article
+    article = find_article!
+    respond_json({ article: article.public_attributes })
   end
 
   # Create
   post "/articles" do
-    @article = Article.create(article_params)
-    status 201
-    json article: @article
+    article = Article.new(article_params)
+    unless article.save
+      problem(422, "Validation failed", errors: article.errors.full_messages)
+    end
+    respond_json({ article: article.public_attributes }, status: 201)
   end
 
   # Update
   patch "/articles/:id" do
-    @article = Article.find(params[:id])
-    @article.update(article_params)
-    json article: @article
+    article = find_article!
+    unless article.update(article_params)
+      problem(422, "Validation failed", errors: article.errors.full_messages)
+    end
+    respond_json({ article: article.public_attributes })
   end
 
   # Delete
   delete "/articles/:id" do
-    Article.find(params[:id]).destroy
+    find_article!.destroy
     status 204
   end
 
   private
 
-  def article_params
-    JSON.parse(request.body.read).slice("title", "body")
+  def find_article!
+    Article.find_by(id: params[:id]) || problem(404, "Article not found")
   end
+
+  def article_params
+    payload = json_body
+    errors = ARTICLE_SCHEMA.validate(payload).map { |error| error.fetch("error") }
+    problem(422, "Validation failed", errors: errors) if errors.any?
+    payload.slice("title", "body")
+  end
+end
+```
+
+**Why check every outcome?** The unchecked variant of this controller answers
+`201 {"article":{"id":null,...}}` for input that failed validation, `200` for
+an update that was rejected, and `500` for both a missing record and a
+malformed body, because `Article.find` raises `ActiveRecord::RecordNotFound`
+and `JSON.parse` raises `JSON::ParserError` with nothing to catch them. A
+client cannot distinguish "created" from "silently discarded".
+
+`Article` defines `public_attributes` the same way as `User` above.
+
+**Why `find_by` rather than a rescue?** `Article.find_by(id:)` returns `nil`
+for a missing row, so the route decides the status itself. A blanket
+`rescue ActiveRecord::RecordNotFound` around the whole route also swallows
+not-found errors raised deeper in the call stack and reports them as a client
+error.
+
+Don't:
+
+```ruby
+post "/articles" do
+  @article = Article.create(article_params)  # Returns an unsaved record
+  status 201                                 # ...and claims success anyway
+  json article: @article
+end
+```
+
+Do:
+
+```ruby
+post "/articles" do
+  article = Article.new(article_params)
+  unless article.save
+    problem(422, "Validation failed", errors: article.errors.full_messages)
+  end
+  respond_json({ article: article.public_attributes }, status: 201)
 end
 ```
 
@@ -241,6 +386,105 @@ class ApiController < Sinatra::Base
   get "/search/?:query?" do
     params[:query] || "default"
   end
+end
+```
+
+## JSON Requests and Error Responses
+
+APIs **MUST** apply the following request policy before any handler touches a
+model, and **MUST** use a single error representation across every failure.
+
+| Condition | Status | Enforced by |
+| --------- | ------ | ----------- |
+| Media type is not `application/json` | 415 | `json_body` |
+| Body exceeds `MAX_BODY_BYTES` | 413 | `json_body` |
+| Body is not well-formed JSON | 400 | `json_body` |
+| Body is well-formed but not an object | 400 | `json_body` |
+| Body fails the route schema | 422 | `JSONSchemer` |
+| Record does not exist | 404 | route |
+| Persistence fails | 422 | route |
+
+Applications **MUST** choose exactly one JSON parsing path, and **SHOULD**
+serve errors as RFC 9457[^5] problem details with the
+`application/problem+json` media type.
+
+**Why one parser?** Stacking `Rack::JSONBodyParser`[^6] in front of an
+in-route parser makes the request contract ambiguous, and the middleware
+writes whatever it parsed into `rack.request.form_hash`. A well-formed
+top-level array such as `[1, 2, 3]` therefore replaces the params hash, and
+Sinatra fails with `TypeError: no implicit conversion of Array into Hash`,
+producing a 500 for a malformed *request*. The middleware also answers with
+its own `{"error": ...}` shape, which will not match the rest of the API.
+
+**Why a size cap?** Without one, a single request can force the process to
+buffer an unbounded body; OWASP tracks this as API4:2023 Unrestricted
+Resource Consumption[^7]. `request.body.read(MAX_BODY_BYTES + 1)` reads one
+byte past the limit, which is enough to detect an overrun without holding the
+whole payload.
+
+**Why reject non-object bodies?** `JSON.parse("[1,2,3]")` succeeds, so a
+`rescue JSON::ParserError` alone does not protect the route: `payload.slice`
+then fails with `NoMethodError` and the client sees a 500 instead of a 400.
+
+Don't:
+
+```ruby
+def article_params
+  JSON.parse(request.body.read).slice("title", "body")
+end
+```
+
+Do:
+
+```ruby
+def article_params
+  payload = json_body  # 415, 413 or 400 before this returns
+  errors = ARTICLE_SCHEMA.validate(payload).map { |error| error.fetch("error") }
+  problem(422, "Validation failed", errors: errors) if errors.any?
+  payload.slice("title", "body")
+end
+```
+
+A problem document from the `problem` helper looks like this:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Validation failed",
+  "status": 422,
+  "errors": ["string length at `/title` is less than: 1"]
+}
+```
+
+Tests **MUST** cover every branch of the table above:
+
+```ruby
+# spec/controllers/users_controller_spec.rb
+it "returns 415 for a non-JSON media type" do
+  post "/users", "name=Charlie",
+    "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+
+  expect(last_response.status).to eq(415)
+end
+
+it "returns 400 for malformed JSON" do
+  post "/users", "{oops", "CONTENT_TYPE" => "application/json"
+
+  expect(last_response.status).to eq(400)
+end
+
+it "returns 400 for a non-object body" do
+  post "/users", "[1, 2, 3]", "CONTENT_TYPE" => "application/json"
+
+  expect(last_response.status).to eq(400)
+end
+
+it "returns 413 for an oversized body" do
+  oversized = { name: "a" * (ApplicationController::MAX_BODY_BYTES + 1) }
+
+  post "/users", oversized.to_json, "CONTENT_TYPE" => "application/json"
+
+  expect(last_response.status).to eq(413)
 end
 ```
 
@@ -291,12 +535,17 @@ end
 
 ## Testing with rack-test
 
-Projects **MUST** use rack-test[^2] for testing Sinatra applications.
+Projects **MUST** use rack-test[^2] for testing Sinatra applications. Every
+constant a test helper references **MUST** be declared as a pinned dependency
+and required before use.
 
 ```ruby
 # Gemfile
-gem "rack-test", group: :test
-gem "rspec", group: :test
+group :test do
+  gem "database_cleaner-active_record", "~> 2.2.2"
+  gem "rack-test", "~> 2.2.0"
+  gem "rspec", "~> 3.13.2"
+end
 ```
 
 ```ruby
@@ -304,6 +553,7 @@ gem "rspec", group: :test
 ENV["RACK_ENV"] = "test"
 
 require_relative "../config/environment"
+require "database_cleaner/active_record"
 require "rack/test"
 require "rspec"
 
@@ -311,16 +561,32 @@ RSpec.configure do |config|
   config.include Rack::Test::Methods
 
   config.before(:suite) do
-    DatabaseCleaner.strategy = :transaction
+    DatabaseCleaner[:active_record].strategy = :transaction
   end
 
   config.around(:each) do |example|
-    DatabaseCleaner.cleaning do
+    DatabaseCleaner[:active_record].cleaning do
       example.run
     end
   end
 end
 ```
+
+**Why the explicit require and adapter?** `database_cleaner` is a family of
+gems; the `DatabaseCleaner` constant arrives with an adapter, not with
+Sinatra, ActiveRecord or rack-test. Without
+`gem "database_cleaner-active_record"` and its require, the `before(:suite)`
+hook above raises `NameError: uninitialized constant DatabaseCleaner` and no
+example in the suite runs. Selecting the cleaner with
+`DatabaseCleaner[:active_record]` also keeps the setting explicit when a
+second adapter (Redis, Mongoid) is added later.
+
+**Why not always `:transaction`?** The transaction strategy simply rolls the
+work back, which is the fastest option, but it only covers the connection the
+test itself uses. Tests whose application runs in a different process — a
+Capybara system test against a booted server, or a background worker — do not
+share that transaction and **MUST** use `:truncation` or `:deletion`
+instead.[^9]
 
 ```ruby
 # spec/controllers/users_controller_spec.rb
@@ -332,8 +598,9 @@ RSpec.describe UsersController do
   end
 
   describe "GET /users" do
-    it "returns all users" do
-      User.create!(name: "Alice", email: "alice@example.com")
+    it "returns all users without sensitive columns" do
+      User.create!(name: "Alice", email: "alice@example.com",
+        password_digest: "secret")
       User.create!(name: "Bob", email: "bob@example.com")
 
       get "/users"
@@ -343,6 +610,18 @@ RSpec.describe UsersController do
 
       body = JSON.parse(last_response.body)
       expect(body["users"].size).to eq(2)
+      expect(body["users"].first.keys)
+        .to contain_exactly("id", "name", "email", "created_at")
+    end
+  end
+
+  describe "GET /users/:id" do
+    it "returns 404 for a missing user" do
+      get "/users/999"
+
+      expect(last_response.status).to eq(404)
+      expect(last_response.content_type).to include("application/problem+json")
+      expect(JSON.parse(last_response.body)["title"]).to eq("User not found")
     end
   end
 
@@ -357,11 +636,12 @@ RSpec.describe UsersController do
       expect(body["user"]["name"]).to eq("Charlie")
     end
 
-    it "returns errors for invalid data" do
+    it "returns errors for invalid data and persists nothing" do
       post "/users", { name: "" }.to_json,
         "CONTENT_TYPE" => "application/json"
 
       expect(last_response.status).to eq(422)
+      expect(User.count).to eq(0)
 
       body = JSON.parse(last_response.body)
       expect(body["errors"]).not_to be_empty
@@ -402,13 +682,31 @@ end
 ## Middleware Usage
 
 Projects **SHOULD** use Rack middleware to implement cross-cutting concerns.
+Every middleware constant a project references **MUST** come from a pinned
+gem that the application requires explicitly.
+
+```ruby
+# Gemfile
+source "https://rubygems.org"
+
+gem "json_schemer", "~> 2.5.0"
+gem "rack", "~> 3.2.7"
+gem "rack-attack", "~> 6.8.0"
+gem "rack-cors", "~> 3.0.0"
+gem "sentry-ruby", "~> 7.0.0"
+gem "sinatra", "~> 4.2.1"
+```
 
 ```ruby
 # app/controllers/application_controller.rb
-class ApplicationController < Sinatra::Base
-  # Request parsing
-  use Rack::JSONBodyParser  # Parse JSON request bodies
+require "rack/attack"
+require "rack/cors"
+require "rack/deflater"
+require "rack/protection"
+require "sentry-ruby"
+require "sinatra/base"
 
+class ApplicationController < Sinatra::Base
   # Security
   use Rack::Protection  # XSS, CSRF, etc.
   use Rack::Deflater    # Gzip compression
@@ -421,9 +719,27 @@ class ApplicationController < Sinatra::Base
 end
 ```
 
+**Why explicit requires?** `Rack::Attack`, `Rack::Cors` and
+`Sentry::Rack::CaptureExceptions` are not part of Rack or Sinatra; after
+`require "sinatra/base"` all three constants are undefined and `use` raises
+`NameError` at class-definition time. `Bundler.require` is not a substitute:
+rack-cors and rack-attack ship only `lib/rack/cors.rb` and
+`lib/rack/attack.rb`, so Bundler's default `require "rack-cors"` fails with
+`LoadError`. Either require the entry points as above, or declare
+`gem "rack-cors", "~> 3.0.0", require: "rack/cors"`.
+
+`Rack::JSONBodyParser` is deliberately absent — see
+[JSON Requests and Error Responses](#json-requests-and-error-responses) for
+why the body is parsed in the route helper instead.
+
 ```ruby
 # app/middleware/authentication_middleware.rb
+require "json"
+require "rack"
+
 class AuthenticationMiddleware
+  PUBLIC_PATHS = ["/health", "/login"].freeze
+
   def initialize(app)
     @app = app
   end
@@ -432,28 +748,62 @@ class AuthenticationMiddleware
     request = Rack::Request.new(env)
 
     # Skip authentication for public routes
-    return @app.call(env) if public_route?(request.path)
+    return @app.call(env) if PUBLIC_PATHS.include?(request.path)
 
     # Validate token
-    token = request.env["HTTP_AUTHORIZATION"]&.split(" ")&.last
-    unless valid_token?(token)
-      return [401, { "Content-Type" => "application/json" },
-        [{ error: "Unauthorized" }.to_json]]
-    end
+    token = request.get_header("HTTP_AUTHORIZATION")&.split(" ")&.last
+    user = token && User.find_by(token: token)
+    return unauthorized unless user
 
     # Add user to env
-    env["current_user"] = User.find_by_token(token)
+    env["current_user"] = user
     @app.call(env)
   end
 
   private
 
-  def public_route?(path)
-    ["/health", "/login"].include?(path)
+  # Rack 3 response header names MUST be lower case.
+  def unauthorized
+    document = { type: "about:blank", title: "Unauthorized", status: 401 }
+    [401, { "content-type" => "application/problem+json" },
+      [document.to_json]]
+  end
+end
+```
+
+**Why lower-case header names?** Rack 3 requires every response header name
+to be lower case so that servers no longer have to normalise them.[^8]
+Returning `"Content-Type"` fails validation with
+`Rack::Lint::LintError: uppercase character in header name: Content-Type`,
+and Sinatra 4 runs on Rack 3.
+
+Custom middleware **MUST** be exercised through `Rack::Lint` so that an
+invalid response shape fails a test rather than a deployment:
+
+```ruby
+# spec/middleware/authentication_middleware_spec.rb
+require "spec_helper"
+require "rack/lint"
+
+RSpec.describe AuthenticationMiddleware do
+  def app
+    Rack::Lint.new(
+      AuthenticationMiddleware.new(->(_env) { [200, {}, []] })
+    )
   end
 
-  def valid_token?(token)
-    token && User.exists?(token: token)
+  it "returns a Rack 3-compliant 401 for an unauthenticated request" do
+    get "/users"
+
+    expect(last_response.status).to eq(401)
+    expect(last_response.headers["content-type"])
+      .to eq("application/problem+json")
+  end
+
+  it "passes public paths through" do
+    get "/health"
+
+    expect(last_response.status).to eq(200)
   end
 end
 ```
@@ -461,10 +811,12 @@ end
 ### Common Middleware Stack
 
 ```ruby
-class ApplicationController < Sinatra::Base
-  # Parse request bodies
-  use Rack::JSONBodyParser
+require "rack/attack"
+require "rack/cors"
+require "rack/protection"
+require "sentry-ruby"
 
+class ApiController < ApplicationController
   # CORS for APIs
   use Rack::Cors do
     allow do
@@ -491,18 +843,16 @@ end
 
 ## Helpers and Extensions
 
-Projects **SHOULD** use helpers to encapsulate common functionality.
+Projects **SHOULD** use helpers to encapsulate common functionality. A helper
+that calls `halt` **MUST NOT** be used as an argument to another `halt`.
 
 ```ruby
 class ApplicationController < Sinatra::Base
   helpers do
-    def json(data, status: 200)
-      content_type :json
-      halt status, data.to_json
-    end
-
     def authenticate!
-      halt 401, json(error: "Unauthorized") unless current_user
+      # A single halt. `halt 401, problem(...)` would evaluate the argument
+      # first, so the inner halt would answer with its own status instead.
+      problem(401, "Unauthorized") unless current_user
     end
 
     def current_user
@@ -518,6 +868,26 @@ class ApplicationController < Sinatra::Base
 end
 ```
 
+Don't:
+
+```ruby
+def authenticate!
+  # Two bugs. `json(error: "Unauthorized")` raises ArgumentError under Ruby 3
+  # because nothing binds to the positional parameter; written positionally as
+  # `json({ error: "Unauthorized" })` the inner halt wins and the client
+  # receives `200 {"error":"Unauthorized"}`.
+  halt 401, json(error: "Unauthorized") unless current_user
+end
+```
+
+Do:
+
+```ruby
+def authenticate!
+  problem(401, "Unauthorized") unless current_user
+end
+```
+
 ```ruby
 class UsersController < ApplicationController
   before do
@@ -526,11 +896,11 @@ class UsersController < ApplicationController
 
   get "/users" do
     users = paginate(User.all, page: params[:page])
-    json users: users.map(&:to_h)
+    respond_json({ users: users.map(&:public_attributes) })
   end
 
   get "/profile" do
-    json user: current_user.to_h
+    respond_json({ user: current_user.public_attributes })
   end
 end
 ```
@@ -575,3 +945,8 @@ end
 [^2]: [rack-test](https://github.com/rack/rack-test) - Small, simple testing API for Rack apps
 [^3]: [SimpleCov](https://github.com/simplecov-ruby/simplecov) - Code coverage analysis tool for Ruby
 [^4]: [Sinatra](https://sinatrarb.com/) - DSL for quickly creating web applications in Ruby
+[^5]: [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) - Problem Details for HTTP APIs
+[^6]: [Rack::JSONBodyParser](https://github.com/rack/rack-contrib/blob/main/lib/rack/contrib/json_body_parser.rb) - rack-contrib JSON body middleware
+[^7]: [OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/) - Unrestricted Resource Consumption
+[^8]: [Rack 3 upgrade guide](https://github.com/rack/rack/blob/main/UPGRADE-GUIDE.md) - Response headers must be lower case
+[^9]: [DatabaseCleaner](https://github.com/DatabaseCleaner/database_cleaner#what-strategy-is-fastest) - Strategy trade-offs for multi-process tests

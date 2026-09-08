@@ -255,22 +255,31 @@ spec:
               pod_hash="{{args.candidate-hash}}"}[5m]))
 ```
 
-## Commands
+## Invocation
 
-When invoked with `/deploy-validate`:
+Doctrine ships this agent as a subagent definition, **not** as a slash command.
+There is no `/deploy-validate` command, and `claude` parses anything after the
+prompt that starts with `--` as one of its own CLI flags, so
+`claude /deploy-validate --pre` fails with `unknown option '--pre'` before any
+validation runs.
+
+Install the file at `.claude/agents/ops/deploy-validator.md` and select it with
+`--agent deploy-validator`. Describe the mode in the prompt:
+
+| Mode | Prompt |
+| ---- | ------ |
+| Pre-deployment | "Run pre-deployment checks for `<version>` in `<environment>`." |
+| Post-deployment | "Run post-deployment validation for `<version>`." |
+| Canary analysis | "Compare canary and baseline metrics for `<version>`." |
+| Smoke tests | "Run the smoke test suite against `<environment>`." |
+
+### Steps
 
 1. **Check** pre-deployment requirements
 2. **Verify** environment configuration
 3. **Test** dependency connectivity
 4. **Assess** risk level
 5. **Output** recommendation
-
-Options:
-
-- `/deploy-validate --pre` - Pre-deployment checks only
-- `/deploy-validate --post` - Post-deployment validation
-- `/deploy-validate --canary` - Canary analysis
-- `/deploy-validate --smoke` - Run smoke tests
 
 ## Integration
 
@@ -283,19 +292,64 @@ Works with:
 
 ## CI Integration
 
+The gate **MUST** parse the recommendation and fail the job on a blocking
+value. A step that only prints a report blocks nothing.
+
 ```yaml
-- name: Pre-Deploy Validation
+- name: Pre-deploy validation
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    RELEASE_SHA: ${{ github.sha }}
+    ENVIRONMENT: production
   run: |
-    claude /deploy-validate --pre
-    # Blocks if critical issues found
+    set -euo pipefail
+
+    schema='{"type":"object","additionalProperties":false,
+      "required":["recommendation","risk_level","blockers"],
+      "properties":{
+        "recommendation":{"enum":["proceed","proceed_with_caution","hold"]},
+        "risk_level":{"enum":["low","medium","high"]},
+        "blockers":{"type":"array","items":{"type":"string"}}}}'
+
+    claude -p --agent deploy-validator \
+      --output-format json --json-schema "${schema}" \
+      "Run pre-deployment checks for ${RELEASE_SHA} in ${ENVIRONMENT}." \
+      > predeploy.json
+
+    jq -e '.is_error == false and .structured_output != null' predeploy.json > /dev/null
+
+    if [ "$(jq -r '.structured_output.recommendation' predeploy.json)" = "hold" ]; then
+      jq -r '.structured_output.blockers[]' predeploy.json >&2
+      exit 1
+    fi
 
 - name: Deploy
   run: ./deploy.sh
 
-- name: Post-Deploy Validation
+- name: Post-deploy validation
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    RELEASE_SHA: ${{ github.sha }}
   run: |
-    claude /deploy-validate --post
-    # Alerts if anomalies detected
+    set -euo pipefail
+
+    schema='{"type":"object","additionalProperties":false,
+      "required":["recommendation","anomalies"],
+      "properties":{
+        "recommendation":{"enum":["healthy","monitor","investigate","rollback"]},
+        "anomalies":{"type":"array","items":{"type":"string"}}}}'
+
+    claude -p --agent deploy-validator \
+      --output-format json --json-schema "${schema}" \
+      "Run post-deployment validation for ${RELEASE_SHA}." > postdeploy.json
+
+    jq -e '.is_error == false and .structured_output != null' postdeploy.json > /dev/null
+
+    recommendation=$(jq -r '.structured_output.recommendation' postdeploy.json)
+    jq -r '.structured_output.anomalies[]' postdeploy.json >&2
+    if [ "${recommendation}" = "rollback" ]; then
+      exit 1
+    fi
 ```
 
 ## Service SLO Policy

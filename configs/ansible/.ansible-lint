@@ -1,10 +1,12 @@
 ---
 # ansible-lint configuration
 # Copy to project root as .ansible-lint
-# See: https://ansible-lint.readthedocs.io/
-
-# Require minimum ansible-core version
-min_ansible_version: "2.18"
+# Schema: https://docs.ansible.com/projects/lint/configuring/
+#
+# Validated against ansible-lint 26.8.0. The schema is closed: an unknown
+# key or a wrong value type makes ansible-lint exit 3 without linting.
+# The minimum ansible-core version belongs in meta/runtime.yml as
+# `requires_ansible: ">=2.18.0"`, not here.
 
 # Enable all rules by default, opt-out problematic ones
 skip_list:
@@ -31,9 +33,9 @@ exclude_paths:
   - venv/
   - .venv/
 
-# Task name prefix rules
-task_name_prefix:
-  add_at_start: true
+# Prefix template for name[prefix]; must be a string, {stem} is the
+# task file name
+task_name_prefix: "{stem} | "
 
 # Offline mode (don't check Galaxy)
 offline: false
@@ -51,9 +53,3 @@ mock_roles: []
 # Enable or disable specific rules
 warn_list:
   - experimental  # Warn on experimental features
-
-# Rules configuration
-rules:
-  name:
-    # Require task names to start with uppercase
-    prefix: ""
