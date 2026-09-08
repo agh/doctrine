@@ -341,13 +341,29 @@ func FuzzReverse(f *testing.F) {
 }
 ```
 
-```bash
-# Run fuzzer
-go test -fuzz=FuzzReverse -fuzztime=30s
+Active fuzzing **MUST** name exactly one package and one fuzz target. `go test`
+rejects `-fuzz` with a multi-package pattern such as `./...`, failing with
+`cannot use -fuzz flag with multiple packages`.
 
-# Run with specific corpus
-go test -fuzz=FuzzReverse -fuzztime=1m ./...
+```bash
+# Fuzz the target in the current package
+go test -fuzz=FuzzReverse -fuzztime=30s .
+
+# Fuzz a target in another package: name that package, never ./...
+go test -fuzz=FuzzReverse -fuzztime=1m ./internal/strutil
+
+# Replay the seed and failure corpus in every package without fuzzing
+go test ./...
 ```
+
+### Why One Package at a Time
+
+- **Tool constraint**: `-fuzz` mutates inputs for a single target, so the
+  toolchain refuses ambiguous package patterns
+- **Corpus locality**: seed inputs live in `testdata/fuzz/<FuzzTarget>/` beside
+  the test; failing inputs are written back there for replay
+- **Regression replay**: a plain `go test ./...` still runs every stored corpus
+  entry as an ordinary test case across all packages
 
 ## Benchmarking
 
@@ -659,8 +675,10 @@ func TestUserHandler(t *testing.T) {
 
 ### chromedp for Browser Testing
 
+chromedp[^11] drives a real Chrome instance over the DevTools Protocol.
+
 ```go
-import "github.com/chromedp/chromedp"[^11]
+import "github.com/chromedp/chromedp"
 
 func TestLoginFlow(t *testing.T) {
     ctx, cancel := chromedp.NewContext(context.Background())
@@ -687,6 +705,8 @@ func TestLoginFlow(t *testing.T) {
 
 ### godog for BDD/Cucumber
 
+godog[^12] executes Gherkin feature files against Go step definitions.
+
 ```go
 // features/login.feature
 // Feature: User Login
@@ -695,7 +715,7 @@ func TestLoginFlow(t *testing.T) {
 //     When I enter valid credentials
 //     Then I should see the dashboard
 
-import "github.com/cucumber/godog"[^12]
+import "github.com/cucumber/godog"
 
 func InitializeScenario(ctx *godog.ScenarioContext) {
     ctx.Step(`^I am on the login page$`, iAmOnLoginPage)
@@ -766,6 +786,39 @@ type UserService struct {
 func NewUserService(repo UserRepository, mailer EmailSender) *UserService {
     return &UserService{repo: repo, mailer: mailer}
 }
+
+func (s *UserService) GetUser(ctx context.Context, id string) (*User, error) {
+    return s.repo.FindByID(ctx, id)
+}
+
+func (s *UserService) SaveUser(ctx context.Context, user *User) error {
+    return s.repo.Save(ctx, user)
+}
+
+// Rename loads the user, persists the new name, then reloads it so that
+// callers observe the stored record rather than the in-memory copy.
+func (s *UserService) Rename(ctx context.Context, id, name string) (*User, error) {
+    user, err := s.repo.FindByID(ctx, id)
+    if err != nil {
+        return nil, err
+    }
+
+    user.Name = name
+    if err := s.repo.Save(ctx, user); err != nil {
+        return nil, err
+    }
+
+    return s.repo.FindByID(ctx, id)
+}
+
+func (s *UserService) SendWelcomeEmail(ctx context.Context, id string) error {
+    user, err := s.repo.FindByID(ctx, id)
+    if err != nil {
+        return err
+    }
+
+    return s.mailer.Send(ctx, user.Email, "Welcome!", "Welcome aboard, "+user.Name)
+}
 ```
 
 ### Using Generated Mocks
@@ -829,37 +882,87 @@ func TestUserService_SendWelcomeEmail(t *testing.T) {
 
 ### Advanced Matchers
 
+Every expectation registered without `AnyTimes()` is required, so each test
+**MUST** call the system under test until the declared counts are satisfied.
+Independent matcher demonstrations **MUST** live in separate subtests with
+their own controller: a broad matcher such as `gomock.Any()` otherwise
+consumes a call intended for a narrower expectation. `gomock.NewController(t)`
+registers the final verification through `t.Cleanup`, so `ctrl.Finish()` is
+not called explicitly.
+
 ```go
 func TestAdvancedMatchers(t *testing.T) {
-    ctrl := gomock.NewController(t)
-    defer ctrl.Finish()
+    ctx := context.Background()
 
-    mockRepo := mocks.NewMockUserRepository(ctrl)
+    t.Run("any argument", func(t *testing.T) {
+        ctrl := gomock.NewController(t)
+        mockRepo := mocks.NewMockUserRepository(ctrl)
 
-    // gomock.Any() matches any value
-    mockRepo.EXPECT().
-        FindByID(gomock.Any(), gomock.Any()).
-        Return(&User{}, nil)
+        // gomock.Any() matches any value
+        mockRepo.EXPECT().
+            FindByID(gomock.Any(), gomock.Any()).
+            Return(&User{ID: "user-123"}, nil)
 
-    // Custom matcher
-    mockRepo.EXPECT().
-        Save(gomock.Any(), gomock.Cond(func(u any) bool {
-            user := u.(*User)
-            return user.Email != "" && user.Name != ""
-        })).
-        Return(nil)
+        svc := NewUserService(mockRepo, nil)
+        if _, err := svc.GetUser(ctx, "user-123"); err != nil {
+            t.Fatalf("GetUser: %v", err)
+        }
+    })
 
-    // Times() for call count expectations
-    mockRepo.EXPECT().
-        FindByID(gomock.Any(), "user-456").
-        Return(&User{}, nil).
-        Times(3)
+    t.Run("custom matcher", func(t *testing.T) {
+        ctrl := gomock.NewController(t)
+        mockRepo := mocks.NewMockUserRepository(ctrl)
 
-    // AnyTimes() for optional calls
-    mockRepo.EXPECT().
-        FindByID(gomock.Any(), "cached-user").
-        Return(&User{}, nil).
-        AnyTimes()
+        // gomock.Cond is generic: the function only receives values of the
+        // declared type, so no unchecked type assertion is needed.
+        mockRepo.EXPECT().
+            Save(gomock.Any(), gomock.Cond(func(u *User) bool {
+                return u.Email != "" && u.Name != ""
+            })).
+            Return(nil)
+
+        svc := NewUserService(mockRepo, nil)
+        user := &User{ID: "user-123", Name: "Alice", Email: "alice@example.com"}
+        if err := svc.SaveUser(ctx, user); err != nil {
+            t.Fatalf("SaveUser: %v", err)
+        }
+    })
+
+    t.Run("exact call count", func(t *testing.T) {
+        ctrl := gomock.NewController(t)
+        mockRepo := mocks.NewMockUserRepository(ctrl)
+
+        // Times() for call count expectations
+        mockRepo.EXPECT().
+            FindByID(gomock.Any(), "user-456").
+            Return(&User{ID: "user-456"}, nil).
+            Times(3)
+
+        svc := NewUserService(mockRepo, nil)
+        for i := 0; i < 3; i++ {
+            if _, err := svc.GetUser(ctx, "user-456"); err != nil {
+                t.Fatalf("GetUser call %d: %v", i, err)
+            }
+        }
+    })
+
+    t.Run("optional calls", func(t *testing.T) {
+        ctrl := gomock.NewController(t)
+        mockRepo := mocks.NewMockUserRepository(ctrl)
+
+        // AnyTimes() for optional calls: zero calls also satisfy it
+        mockRepo.EXPECT().
+            FindByID(gomock.Any(), "cached-user").
+            Return(&User{ID: "cached-user"}, nil).
+            AnyTimes()
+
+        svc := NewUserService(mockRepo, nil)
+        for i := 0; i < 2; i++ {
+            if _, err := svc.GetUser(ctx, "cached-user"); err != nil {
+                t.Fatalf("GetUser call %d: %v", i, err)
+            }
+        }
+    })
 }
 ```
 
@@ -868,18 +971,26 @@ func TestAdvancedMatchers(t *testing.T) {
 ```go
 func TestCallOrder(t *testing.T) {
     ctrl := gomock.NewController(t)
-    defer ctrl.Finish()
-
     mockRepo := mocks.NewMockUserRepository(ctrl)
 
     // InOrder ensures calls happen in sequence
     gomock.InOrder(
-        mockRepo.EXPECT().FindByID(gomock.Any(), "1").Return(&User{}, nil),
+        mockRepo.EXPECT().FindByID(gomock.Any(), "1").Return(&User{ID: "1"}, nil),
         mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil),
-        mockRepo.EXPECT().FindByID(gomock.Any(), "1").Return(&User{}, nil),
+        mockRepo.EXPECT().
+            FindByID(gomock.Any(), "1").
+            Return(&User{ID: "1", Name: "Alice"}, nil),
     )
 
-    // Test code that should make calls in this order
+    // Rename issues FindByID, Save, then FindByID, satisfying the sequence.
+    svc := NewUserService(mockRepo, nil)
+    user, err := svc.Rename(context.Background(), "1", "Alice")
+    if err != nil {
+        t.Fatalf("Rename: %v", err)
+    }
+    if user.Name != "Alice" {
+        t.Errorf("got name %q, want Alice", user.Name)
+    }
 }
 ```
 
@@ -1146,28 +1257,55 @@ func TestTimeout(t *testing.T) {
 
 ### Circuit Breaker Testing
 
+gobreaker[^15] v2 (`github.com/sony/gobreaker/v2` v2.4.0) is generic over the
+request result. Tests **MUST** configure `ReadyToTrip` for the threshold they
+assert: `MaxRequests` bounds half-open admission, not closed-state failures,
+and the default `ReadyToTrip` needs more than five consecutive failures. Calls
+up to the threshold return the service error; only the call after the breaker
+opens returns `ErrOpenState`.
+
 ```go
-import "github.com/sony/gobreaker"[^15]
+import (
+    "errors"
+    "testing"
+    "time"
+
+    "github.com/sony/gobreaker/v2"
+)
+
+var errUnavailable = errors.New("service unavailable")
 
 func TestCircuitBreaker(t *testing.T) {
-    cb := gobreaker.NewCircuitBreaker(gobreaker.Settings{
-        MaxRequests: 3,
+    const threshold = 3
+
+    cb := gobreaker.NewCircuitBreaker[string](gobreaker.Settings{
+        Name:        "downstream",
+        MaxRequests: 1,
         Interval:    time.Second,
         Timeout:     time.Second,
+        ReadyToTrip: func(counts gobreaker.Counts) bool {
+            return counts.ConsecutiveFailures >= threshold
+        },
     })
 
-    failingService := func() (interface{}, error) {
-        return nil, errors.New("service unavailable")
+    failingService := func() (string, error) {
+        return "", errUnavailable
     }
 
-    // Trigger circuit breaker to open
-    for i := 0; i < 5; i++ {
-        cb.Execute(failingService)
+    // The breaker stays closed until ReadyToTrip fires, so every call up to
+    // the threshold returns the service error, not ErrOpenState.
+    for i := 1; i <= threshold; i++ {
+        if _, err := cb.Execute(failingService); !errors.Is(err, errUnavailable) {
+            t.Fatalf("call %d: got error %v, want %v", i, err, errUnavailable)
+        }
     }
 
-    // Circuit should be open now
-    _, err := cb.Execute(failingService)
-    if err != gobreaker.ErrOpenState {
+    if state := cb.State(); state != gobreaker.StateOpen {
+        t.Fatalf("got state %v, want %v", state, gobreaker.StateOpen)
+    }
+
+    // Only the call after the breaker opened is rejected without dialling out.
+    if _, err := cb.Execute(failingService); !errors.Is(err, gobreaker.ErrOpenState) {
         t.Errorf("got error %v, want ErrOpenState", err)
     }
 }
@@ -1254,22 +1392,18 @@ Projects **MAY** use cgo[^17] to call C code from Go when necessary, but
 package main
 
 /*
+#cgo linux LDFLAGS: -lm
+
+#include <math.h>
 #include <stdlib.h>
-#include <string.h>
 
 // C function definition
-int add(int a, int b) {
+static int add(int a, int b) {
     return a + b;
 }
-
-// Using system headers
-#include <math.h>
 */
 import "C"
-import (
-    "fmt"
-    "unsafe"
-)
+import "fmt"
 
 func main() {
     // Call C function
@@ -1282,12 +1416,46 @@ func main() {
 }
 ```
 
+Preamble helpers **MUST** be declared `static`. cgo compiles the preamble once
+per Go file, so a package with two cgo files that both define `int add(...)`
+fails to link with `duplicate symbol '_add'`; `static` gives the helper
+internal linkage. Platform linker flags **MUST** be declared with `#cgo`:
+glibc needs `-lm` for `math.h` symbols, whereas macOS resolves them from
+libSystem.
+
 ### Memory Management
 
+Every C symbol a fence calls **MUST** be declared in that fence's preamble;
+`C.some_c_function` and `C.process_buffer` below stand in for a real library.
+
 ```go
+package clib
+
 /*
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Returns a newly allocated upper-cased copy that the caller owns.
+static char *some_c_function(const char *in) {
+    size_t n = strlen(in);
+    char *out = malloc(n + 1);
+    if (out == NULL) {
+        return NULL;
+    }
+    for (size_t i = 0; i < n; i++) {
+        out[i] = (char)toupper((unsigned char)in[i]);
+    }
+    out[n] = '\0';
+    return out;
+}
+
+// Transforms a caller-owned buffer in place.
+static void process_buffer(char *data, int len) {
+    for (int i = 0; i < len; i++) {
+        data[i] = (char)toupper((unsigned char)data[i]);
+    }
+}
 */
 import "C"
 import "unsafe"
@@ -1308,6 +1476,9 @@ func processString(input string) string {
 
     // Call C function that returns new string
     cOutput := C.some_c_function(cInput)
+    if cOutput == nil {
+        return ""
+    }
     defer C.free(unsafe.Pointer(cOutput))
 
     // Convert back to Go string
@@ -1329,7 +1500,18 @@ func processBytes(data []byte) {
 
 ### Linking External Libraries
 
+Each snippet below is a complete file that compiles only where the named
+library and headers are installed. A Go file **MUST** contain exactly one
+preamble, and that comment block **MUST** sit immediately above its own
+`import "C"`: cgo treats every comment line adjacent to `import "C"` as C
+source, so descriptive `//` labels belong in prose, not directly above the
+preamble.
+
+Absolute include and library search paths:
+
 ```go
+package clib
+
 /*
 #cgo CFLAGS: -I/usr/local/include
 #cgo LDFLAGS: -L/usr/local/lib -lmylibrary
@@ -1337,16 +1519,26 @@ func processBytes(data []byte) {
 #include <mylibrary.h>
 */
 import "C"
+```
 
-// Platform-specific flags
+Platform-specific flags, applied per `GOOS`:
+
+```go
+package clib
+
 /*
 #cgo linux LDFLAGS: -lm -lpthread
 #cgo darwin LDFLAGS: -framework CoreFoundation
 #cgo windows LDFLAGS: -lws2_32
 */
 import "C"
+```
 
-// pkg-config integration
+`pkg-config` resolving flags at build time:
+
+```go
+package clib
+
 /*
 #cgo pkg-config: libpng openssl
 #include <png.h>
@@ -1357,12 +1549,18 @@ import "C"
 
 ### Error Handling
 
+A cgo call's second result carries `errno`, which is only meaningful once the
+C status has reported failure. Code **MUST** test the status first, then the
+`errno` value.
+
 ```go
+package cerr
+
 /*
 #include <errno.h>
 #include <stdlib.h>
 
-int divide(int a, int b, int* result) {
+static int divide(int a, int b, int *result) {
     if (b == 0) {
         errno = EINVAL;
         return -1;
@@ -1379,10 +1577,15 @@ import (
 
 func Divide(a, b int) (int, error) {
     var result C.int
-    _, err := C.divide(C.int(a), C.int(b), &result)
-    if err != nil {
-        return 0, fmt.Errorf("divide: %w", err)
+
+    status, errno := C.divide(C.int(a), C.int(b), &result)
+    if status != 0 {
+        if errno != nil {
+            return 0, fmt.Errorf("divide: %w", errno)  // wraps syscall.EINVAL
+        }
+        return 0, errors.New("divide: failed without setting errno")
     }
+
     return int(result), nil
 }
 ```
@@ -1488,10 +1691,18 @@ func TestRuneIteration(t *testing.T) {
 
 ### golang.org/x/text for i18n
 
+golang.org/x/text[^13] (v0.41.0) supplies locale-aware formatting.
+`message.Printer` localises number formatting and looks translations up in a
+catalogue; it does **not** infer plural forms from a source string such as
+`"%d item(s)"`. Plural selection **MUST** be registered explicitly with
+`plural.Selectf`, otherwise the printer falls back to the untranslated format
+string and returns `"1 item(s)"` for every count.
+
 ```go
 import (
-    "golang.org/x/text/language"[^13]
-    "golang.org/x/text/message"[^13]
+    "golang.org/x/text/feature/plural"
+    "golang.org/x/text/language"
+    "golang.org/x/text/message"
 )
 
 func TestMessageFormatting(t *testing.T) {
@@ -1504,21 +1715,49 @@ func TestMessageFormatting(t *testing.T) {
     }
 }
 
+// registerMessages installs plural-aware translations for the "%d item(s)"
+// key. The printer then selects the CLDR plural form for its locale.
+func registerMessages() error {
+    err := message.Set(language.English, "%d item(s)",
+        plural.Selectf(1, "%d",
+            plural.One, "%d item",
+            plural.Other, "%d items",
+        ))
+    if err != nil {
+        return err
+    }
+
+    return message.Set(language.French, "%d item(s)",
+        plural.Selectf(1, "%d",
+            plural.One, "%d article",
+            plural.Other, "%d articles",
+        ))
+}
+
 func TestPluralization(t *testing.T) {
+    if err := registerMessages(); err != nil {
+        t.Fatalf("register messages: %v", err)
+    }
+
     tests := []struct {
         lang  language.Tag
         count int
         want  string
     }{
+        {language.English, 0, "0 items"},
         {language.English, 1, "1 item"},
         {language.English, 5, "5 items"},
+        // French uses the "one" form for both 0 and 1.
+        {language.French, 0, "0 article"},
+        {language.French, 1, "1 article"},
+        {language.French, 5, "5 articles"},
     }
 
     for _, tt := range tests {
         p := message.NewPrinter(tt.lang)
         got := p.Sprintf("%d item(s)", tt.count)
         if got != tt.want {
-            t.Errorf("%v: got %q, want %q", tt.lang, got, tt.want)
+            t.Errorf("%v/%d: got %q, want %q", tt.lang, tt.count, got, tt.want)
         }
     }
 }
@@ -1526,8 +1765,11 @@ func TestPluralization(t *testing.T) {
 
 ### Unicode Normalization Tests
 
+`golang.org/x/text/unicode/norm`[^13] converts between the composed and
+decomposed forms.
+
 ```go
-import "golang.org/x/text/unicode/norm"[^13]
+import "golang.org/x/text/unicode/norm"
 
 func TestNormalization(t *testing.T) {
     // "é" can be represented two ways
@@ -1608,51 +1850,162 @@ func TestTransactionCommit(t *testing.T) {
 
 ### Migration Testing
 
+golang-migrate[^14] (v4.19.1) resolves `file://` and `postgres://` URLs through
+a driver registry. Source and database drivers **MUST** therefore be imported
+for their side effects, or `migrate.New` fails with
+`unknown driver 'file' (forgotten import?)`. The database driver is imported by
+name below because `TestMigrationIdempotence` calls `postgres.WithInstance`;
+a package that only uses URL construction **MUST** import it blank
+(`_ "github.com/golang-migrate/migrate/v4/database/postgres"`).
+
+Migration tests **MUST** run against a database of their own, since `Up` and
+`Down` rewrite the whole schema, and **MUST** check every `Up`, `Down`,
+`Version` and `Close` result. Only the first `Up` may legitimately return
+`migrate.ErrNoChange`. The `database/sql` driver lib/pq[^18] (v1.12.3) is
+imported explicitly rather than relied on transitively through
+`database/postgres`.
+
 ```go
-import "github.com/golang-migrate/migrate/v4"[^14]
+import (
+    "database/sql"
+    "errors"
+    "fmt"
+    "net/url"
+    "os"
+    "testing"
+    "time"
 
-func TestMigrations(t *testing.T) {
-    db := setupTestDB(t)
+    "github.com/golang-migrate/migrate/v4"
+    "github.com/golang-migrate/migrate/v4/database/postgres"
+    _ "github.com/golang-migrate/migrate/v4/source/file"
+    _ "github.com/lib/pq"
+)
 
-    m, err := migrate.New(
-        "file://migrations",
-        "postgres://localhost/testdb",
-    )
-    if err != nil {
-        t.Fatal(err)
+// newTestDB creates a throwaway database for a single test and drops it
+// afterwards, so migrations never run against a shared schema.
+func newTestDB(t *testing.T) (*sql.DB, string) {
+    t.Helper()
+
+    adminURL := os.Getenv("TEST_DATABASE_URL")
+    if adminURL == "" {
+        t.Skip("TEST_DATABASE_URL is not set")
     }
 
+    admin, err := sql.Open("postgres", adminURL)
+    if err != nil {
+        t.Fatalf("open admin connection: %v", err)
+    }
+    t.Cleanup(func() { _ = admin.Close() })
+
+    // The name is generated here rather than taken from input; PostgreSQL
+    // does not accept placeholders in CREATE DATABASE.
+    name := fmt.Sprintf("migrate_test_%d", time.Now().UnixNano())
+    if _, err := admin.Exec(`CREATE DATABASE "` + name + `"`); err != nil {
+        t.Fatalf("create database %s: %v", name, err)
+    }
+
+    dsn, err := url.Parse(adminURL)
+    if err != nil {
+        t.Fatalf("parse TEST_DATABASE_URL: %v", err)
+    }
+    dsn.Path = "/" + name
+
+    db, err := sql.Open("postgres", dsn.String())
+    if err != nil {
+        t.Fatalf("open %s: %v", name, err)
+    }
+    t.Cleanup(func() {
+        _ = db.Close()
+        if _, err := admin.Exec(`DROP DATABASE "` + name + `"`); err != nil {
+            t.Errorf("drop database %s: %v", name, err)
+        }
+    })
+
+    return db, dsn.String()
+}
+
+func TestMigrations(t *testing.T) {
+    db, dsn := newTestDB(t)
+
+    m, err := migrate.New("file://migrations", dsn)
+    if err != nil {
+        t.Fatalf("new migrator: %v", err)
+    }
+    t.Cleanup(func() {
+        if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+            t.Errorf("close migrator: source=%v database=%v", srcErr, dbErr)
+        }
+    })
+
     // Migrate up
-    if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-        t.Fatal(err)
+    if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+        t.Fatalf("migrate up: %v", err)
     }
 
     // Verify schema
     var tableCount int
-    db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&tableCount)
+    err = db.QueryRow(
+        `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'`,
+    ).Scan(&tableCount)
+    if err != nil {
+        t.Fatalf("count tables: %v", err)
+    }
     if tableCount == 0 {
         t.Error("no tables created")
     }
 
     // Test rollback
-    if err := m.Down(); err != nil {
-        t.Fatal(err)
+    if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+        t.Fatalf("migrate down: %v", err)
     }
 }
 
 func TestMigrationIdempotence(t *testing.T) {
-    db := setupTestDB(t)
-    m := setupMigrate(t)
+    db, _ := newTestDB(t)
 
-    // Run migrations twice
-    m.Up()
-    version1, _, _ := m.Version()
+    // NewWithDatabaseInstance reuses the test's *sql.DB instead of opening a
+    // second connection pool from a URL.
+    driver, err := postgres.WithInstance(db, &postgres.Config{})
+    if err != nil {
+        t.Fatalf("postgres driver: %v", err)
+    }
 
-    m.Up()
-    version2, _, _ := m.Version()
+    m, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
+    if err != nil {
+        t.Fatalf("new migrator: %v", err)
+    }
+    t.Cleanup(func() {
+        if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+            t.Errorf("close migrator: source=%v database=%v", srcErr, dbErr)
+        }
+    })
+
+    if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+        t.Fatalf("first up: %v", err)
+    }
+    version1, dirty, err := m.Version()
+    if err != nil {
+        t.Fatalf("first version: %v", err)
+    }
+    if dirty {
+        t.Fatal("schema is dirty after the first migration")
+    }
+
+    // A second run must report ErrNoChange rather than advancing the version.
+    if err := m.Up(); !errors.Is(err, migrate.ErrNoChange) {
+        t.Fatalf("second up: got %v, want ErrNoChange", err)
+    }
+    version2, dirty, err := m.Version()
+    if err != nil {
+        t.Fatalf("second version: %v", err)
+    }
+    if dirty {
+        t.Fatal("schema is dirty after the second migration")
+    }
 
     if version1 != version2 {
-        t.Error("migrations should be idempotent")
+        t.Errorf("version moved from %d to %d; migrations must be idempotent",
+            version1, version2)
     }
 }
 ```
@@ -1773,9 +2126,10 @@ func TestFeatureBehavior(t *testing.T) {
 [^12]: [godog](https://github.com/cucumber/godog) - Cucumber/BDD framework for Go with Gherkin support
 [^13]: [golang.org/x/text](https://pkg.go.dev/golang.org/x/text) - Go supplementary text processing packages for internationalization
 [^14]: [golang-migrate](https://github.com/golang-migrate/migrate) - Database migration tool with support for multiple databases
-[^15]: [gobreaker](https://github.com/sony/gobreaker) - Circuit breaker implementation for Go
+[^15]: [gobreaker](https://github.com/sony/gobreaker) - Circuit breaker implementation for Go; current major is `github.com/sony/gobreaker/v2`
 [^16]: [gomock](https://github.com/uber-go/mock) - Mock framework for Go interfaces (uber-go fork of official golang/mock)
 [^17]: [cgo](https://pkg.go.dev/cmd/cgo) - Go tool for calling C code from Go programs
+[^18]: [lib/pq](https://github.com/lib/pq) - Pure Go PostgreSQL driver for database/sql
 
 ## See Also
 

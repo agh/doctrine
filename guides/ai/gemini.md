@@ -10,9 +10,10 @@ interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc
 
 - [Introduction](#introduction)
 - [Model Selection](#model-selection)
-  - [Gemini 2.0 Flash](#gemini-20-flash)
-  - [Gemini 1.5 Pro](#gemini-15-pro)
-  - [Gemini 1.5 Flash](#gemini-15-flash)
+  - [Model Availability](#model-availability)
+  - [Gemini 3.8 Flash](#gemini-38-flash)
+  - [Gemini 3.1 Pro Preview](#gemini-31-pro-preview)
+  - [Stable Fallbacks and Retired Models](#stable-fallbacks-and-retired-models)
   - [Model Comparison Matrix](#model-comparison-matrix)
   - [Pricing Structure](#pricing-structure)
   - [Selection Guidelines](#selection-guidelines)
@@ -118,168 +119,192 @@ Readers SHOULD have:
 
 ## Model Selection
 
-### Gemini 2.0 Flash[^4]
+### Model Availability
 
-**Release**: December 2024[^4]
+Model IDs are not stable over time: once a model is shut down its endpoint is
+removed and requests fail outright rather than degrading. You MUST check the
+Gemini API deprecations page[^6] and the Gemini Enterprise Agent Platform model
+versions page[^21] before pinning a model, and you MUST record the shutdown or
+retirement date next to every pinned ID in your own configuration.
 
-**Context Window**: 1,048,576 tokens (1M input), 8,192 tokens (output)[^4]
+**Why**: The two platforms run separate lifecycles. A model that the Gemini API
+still serves can already have a retirement date on Vertex AI, so a single
+"current model" list is wrong for at least one of the two audiences.
+
+The following table was verified on 8 September 2026 against the Gemini API
+deprecations page[^6] and the Gemini Enterprise Agent Platform model versions
+page[^21]. "GEAP" is the Gemini Enterprise Agent Platform, the Vertex AI
+surface for Gemini models.
+
+| Model ID                 | Stage     | Released     | Gemini API shutdown | GEAP retirement | Replacement                             |
+| ------------------------ | --------- | ------------ | ------------------- | --------------- | --------------------------------------- |
+| `gemini-3.8-flash`       | GA        | 2 Sep 2026   | None announced      | None announced  | —                                       |
+| `gemini-3.7-flash`       | GA        | 13 Aug 2026  | None announced      | None announced  | —                                       |
+| `gemini-3.6-flash`       | GA        | 21 Jul 2026  | None announced      | None announced  | —                                       |
+| `gemini-3.1-pro-preview` | Preview   | 19 Feb 2026  | None announced      | Not offered     | —                                       |
+| `gemini-2.5-pro`         | GA        | 17 Jun 2025  | None announced      | 20 Oct 2026     | Gemini 3.5 Flash                        |
+| `gemini-2.5-flash`       | GA        | 17 Jun 2025  | None announced      | 20 Oct 2026     | Gemini 3.5 or 3.1 Flash-Lite            |
+| `gemini-2.0-flash`       | Shut down | 5 Feb 2025   | 1 Jun 2026          | 1 Jun 2026      | `gemini-3.6-flash` / `gemini-3.1-flash-lite` |
+| `gemini-1.5-pro-002`     | Retired   | 24 Sep 2024  | Shut down           | 24 Sep 2025     | `gemini-2.5-flash`                      |
+| `gemini-1.5-flash-002`   | Retired   | 24 Sep 2024  | Shut down           | 24 Sep 2025     | `gemini-2.5-flash-lite`                 |
+| `gemini-1.5-pro-001`     | Retired   | 24 May 2024  | Shut down           | 24 May 2025     | `gemini-2.5-flash`                      |
+
+You MUST NOT send traffic to `gemini-2.0-flash`, `gemini-1.5-pro`,
+`gemini-1.5-flash`, or any `-001`/`-002` variant of those families: those
+endpoints no longer exist on either platform[^6][^21].
+
+On the Gemini Enterprise Agent Platform, the 3.6, 3.7, and 3.8 Flash models sit
+in the short-availability tier: they retire 45 days after a replacement model
+ships[^21]. Models in the 12-month tier, such as `gemini-3.5-flash`, are
+guaranteed for at least a year from release[^21]. Choose the tier deliberately
+if a migration costs you more than 45 days of notice.
+
+You MUST pin an exact stable ID such as `gemini-3.8-flash` in production rather
+than a `-latest` alias. Aliases are hot-swapped on each release of that model
+variation, with only two weeks' notice of breaking changes[^1].
+
+**Why**: An alias silently changes the model behind your evaluation baseline,
+so regressions appear as unexplained quality drift rather than as a deploy.
+
+### Gemini 3.8 Flash[^4]
+
+**Model ID**: `gemini-3.8-flash` — GA, released 2 September 2026, no shutdown
+date announced[^4][^6]
+
+**Context Window**: 1,048,576 tokens (1M input), 65,536 tokens (64K output)[^4]
+
+**Default thinking level**: `medium`, tunable to `low` or `high`. The `minimal`
+level is not supported on this model[^4].
 
 **Key Features**[^4]:
 
-- Multimodal live API support (audio and video streaming)
-- Native image generation
-- Native tool use and function calling
-- Multilingual text-to-speech
-- Fastest inference in the Gemini family
-- Best price-to-performance ratio
+- Long-horizon software engineering across multi-file refactors
+- Resilient multi-step planning and tool orchestration for autonomous agents
+- Deterministic tool execution with the full built-in tool suite
+- Default model for the Antigravity managed agent
+- Flash-class latency and pricing
 
 **Use Cases**:
 
-- Real-time coding assistance
-- Interactive development environments
-- Chat applications requiring low latency
+- Interactive coding assistance and development environments
+- Agentic workflows that call tools iteratively
 - High-volume API calls with cost constraints
-- Multimodal applications (code + diagrams)
+- Multimodal applications (code plus diagrams)
 
 **Limitations**:
 
-- Smaller maximum output tokens compared to Pro models
-- May require more careful prompt engineering for complex tasks
+- Spends more tokens by design on long, complex tasks, because it takes smaller
+  reasoning steps and verifies its own work[^4]
+- Preview-only capabilities (for example Live audio) require a different model
 
-You SHOULD use Gemini 2.0 Flash when:
+You SHOULD use Gemini 3.8 Flash as the default for new work, and you SHOULD
+lower `thinking_level` to `low` for latency-critical or high-throughput paths
+rather than switching to an older family[^4].
 
-- Response time is critical (< 1 second)
-- Processing millions of requests per day
-- Budget constraints are primary concern
-- Tasks are well-defined and structured
+### Gemini 3.1 Pro Preview[^5]
 
-You SHOULD NOT use Gemini 2.0 Flash when:
+**Model ID**: `gemini-3.1-pro-preview` — preview, released 19 February 2026, no
+shutdown date announced[^5][^6]
 
-- Generating very long-form content (> 4K tokens)
-- Requiring highest possible reasoning quality
-- Complex multi-step planning is needed
+**Context Window**: 1,048,576 tokens (1M input), 65,536 tokens (64K output);
+knowledge cutoff January 2025[^5]
 
-### Gemini 1.5 Pro[^5]
-
-**Current Version**: 1.5 Pro (002)[^5]
-
-**Context Window**: 2,097,152 tokens (2M input), 8,192 tokens (output)[^5]
+**Default thinking level**: `high` (dynamic); `minimal` is not supported[^5]
 
 **Key Features**[^5]:
 
-- Largest context window available (2M tokens)
-- Superior reasoning on complex tasks
-- Better code understanding and generation
-- Enhanced multilingual capabilities
-- Audio understanding (speech, music, ambient sounds)
-- Video understanding
+- Strongest reasoning in the Gemini 3 family for broad world knowledge
+- Improved token efficiency and factual consistency over Gemini 3 Pro
+- Optimised for agentic workflows needing precise tool usage
+- A companion `gemini-3.1-pro-preview-customtools` endpoint that prioritises
+  caller-defined tools such as `view_file` or `search_code`[^5]
 
 **Use Cases**:
 
-- Analyzing entire codebases (up to ~1M lines)
-- Complex refactoring tasks
-- Architectural decision support
-- Long-form documentation generation
-- Multi-file code reviews
-- Processing large log files or data dumps
+- Cross-repository refactoring and architectural decision support
+- Multi-file code review where reasoning quality dominates cost
+- Long-form documentation generation from large sources
 
 **Limitations**:
 
-- Higher latency than Flash models
-- Significantly higher cost per token
-- Slower experimental releases for new features
+- Preview stage: deprecation needs only two weeks' notice[^1]
+- Roughly 2.8x the cost of Gemini 3.8 Flash on a typical review workload (see
+  [Cost-Performance Trade-offs](#cost-performance-trade-offs))
+- Higher latency, because thinking defaults to `high`
 
-You MUST use Gemini 1.5 Pro when:
+You SHOULD use Gemini 3.1 Pro Preview when reasoning quality dominates cost,
+and you MUST treat it as a preview dependency: pin the exact ID, subscribe to
+the deprecations page[^6], and keep a tested fallback to `gemini-3.8-flash`.
 
-- Analyzing codebases exceeding 500K tokens
-- Maximum reasoning quality is required
-- Complex multi-step tasks with dependencies
-- Processing extensive documentation sets
+**Why**: Preview models can be withdrawn on two weeks' notice[^1]. Without a
+tested fallback that notice period becomes an unplanned migration.
 
-You SHOULD use Gemini 1.5 Pro when:
+### Stable Fallbacks and Retired Models
 
-- Code generation requires deep contextual understanding
-- Performing complex refactoring operations
-- Generating comprehensive test suites
-- Quality is more important than cost
+`gemini-2.5-pro` and `gemini-2.5-flash` are still served by the Gemini API with
+no announced shutdown date[^6], but both retire on the Gemini Enterprise Agent
+Platform on **20 October 2026**[^21].
 
-### Gemini 1.5 Flash[^6]
+If you run on Vertex AI you MUST migrate off the 2.5 series before
+20 October 2026. If you run on the Gemini API you MAY keep 2.5 models for
+workloads with a frozen evaluation baseline, and you MUST re-check the
+deprecations page[^6] each quarter.
 
-**Current Version**: 1.5 Flash (002)[^6]
-
-**Context Window**: 1,048,576 tokens (1M input), 8,192 tokens (output)[^6]
-
-**Key Features**[^6]:
-
-- Balanced performance and cost
-- Fast inference speeds
-- Multimodal capabilities
-- Good code understanding
-- Reliable function calling
-
-**Use Cases**:
-
-- General-purpose coding assistance
-- Moderate-complexity tasks
-- API integrations with balanced requirements
-- Development tools with moderate context needs
-
-**Status**: Being superseded by Gemini 2.0 Flash
-
-You **SHOULD** consider Gemini 2.0 Flash instead of 1.5 Flash for new projects
-due to improved capabilities and similar pricing.
+**Why**: Retirement dates may be extended but are never moved earlier[^21], so
+a dated check is cheap insurance and an undated "current" list is not.
 
 ### Model Comparison Matrix
 
-| Feature                 | Gemini 2.0 Flash | Gemini 1.5 Pro | Gemini 1.5 Flash |
-| ----------------------- | ---------------- | -------------- | ---------------- |
-| **Input Context**       | 1M tokens        | 2M tokens      | 1M tokens        |
-| **Output Tokens**       | 8,192            | 8,192          | 8,192            |
-| **Latency**             | Fastest          | Moderate       | Fast             |
-| **Reasoning Quality**   | Good             | Excellent      | Good             |
-| **Code Generation**     | Good             | Excellent      | Good             |
-| **Cost (per 1M input)** | $0.15            | $1.25          | $0.15            |
-| **Cost (per 1M output)**| $0.60            | $5.00          | $0.60            |
-| **Multimodal**          | Yes (advanced)   | Yes            | Yes              |
-| **Function Calling**    | Yes (native)     | Yes            | Yes              |
-| **Grounding**           | Yes              | Yes            | Yes              |
-| **Audio I/O**           | Yes              | Yes (input)    | Yes (input)      |
-| **Video Understanding** | Yes              | Yes            | Yes              |
-| **Image Generation**    | Yes              | No             | No               |
+Verified 8 September 2026. Blank cells mean the figure is not published on the
+cited pages; check the model page before relying on one.
+
+| Feature                  | `gemini-3.8-flash`     | `gemini-3.1-pro-preview`      |
+| ------------------------ | ---------------------- | ----------------------------- |
+| **Stage**                | GA                     | Preview                       |
+| **Input context**        | 1M tokens              | 1M tokens                     |
+| **Output tokens**        | 65,536                 | 65,536                        |
+| **Default thinking**     | `medium`               | `high` (dynamic)              |
+| **`minimal` thinking**   | Not supported          | Not supported                 |
+| **Cost (per 1M input)**  | $0.75                  | $2.00 (<200K), $4.00 (>200K)  |
+| **Cost (per 1M output)** | $3.75                  | $12.00 (<200K), $18.00 (>200K)|
+| **Knowledge cutoff**     | Not published          | January 2025                  |
+| **Function calling**     | Yes                    | Yes                           |
+| **Grounding**            | Yes                    | Yes                           |
+| **Shutdown date**        | None announced         | None announced                |
+
+Gemini 3.8 Flash prices are the introductory rates that apply through
+31 December 2026; see [Pricing Structure](#pricing-structure).
 
 ### Pricing Structure
 
-**As of December 2024**[^7] (Google AI Studio / Vertex AI pricing):
+**Verified 8 September 2026**[^7][^5] (Google AI Studio and Gemini Enterprise
+Agent Platform), per 1M tokens in USD, paid tier:
 
-#### Gemini 2.0 Flash
+#### Gemini 3.8 Flash
 
-- Input tokens (≤128K): $0.00 / 1M tokens (free tier)
-- Input tokens (>128K): $0.15 / 1M tokens
-- Output tokens: $0.60 / 1M tokens
-- Cached tokens: $0.0375 / 1M tokens (75% discount)
-- Audio input: $0.15 / 1M tokens
-- Video input: $0.15 / 1M tokens
+- Input: $0.75 through 31 December 2026, then $1.50 from 1 January 2027
+- Output (including thinking tokens): $3.75, then $7.50 from 1 January 2027
+- Context caching: $0.075, then $0.15 from 1 January 2027
+- Cache storage: $0.50 per 1M tokens per hour, then $1.00 from 1 January 2027
+- Batch and Flex tiers: half the standard input and output rates
+- Priority tier: $1.35 input, $6.75 output
 
-#### Gemini 1.5 Pro
+Introductory pricing also covers Gemini 3.7 Flash and Gemini 3.6 Flash through
+31 December 2026[^7].
 
-- Input tokens (≤128K): $1.25 / 1M tokens
-- Input tokens (>128K): $2.50 / 1M tokens
-- Output tokens: $5.00 / 1M tokens
-- Cached tokens: $0.3125 / 1M tokens (75% discount)
-- Audio input: $2.50 / 1M tokens
-- Video input: $2.50 / 1M tokens
+#### Gemini 3.1 Pro Preview
 
-#### Gemini 1.5 Flash
+- Input: $2.00 for requests under 200K tokens, $4.00 above 200K tokens
+- Output: $12.00 under 200K tokens, $18.00 above 200K tokens
 
-- Input tokens (≤128K): $0.075 / 1M tokens
-- Input tokens (>128K): $0.15 / 1M tokens
-- Output tokens: $0.30 / 1M tokens
-- Cached tokens: $0.01875 / 1M tokens (75% discount)
-- Audio input: $0.15 / 1M tokens
-- Video input: $0.15 / 1M tokens
+#### Grounding with Google Search
 
-**Note**: Pricing **MAY** vary between Google AI Studio and Vertex AI. Always
-verify current pricing in the official documentation.
+- 5,000 free search requests per month, shared across all Gemini 3.x models
+- $14 per 1,000 requests thereafter[^7]
+
+**Note**: Free-tier usage of the Gemini API MAY be used to improve Google's
+products; paid-tier usage MAY NOT[^7]. See
+[Data Handling](#data-handling) before sending any proprietary source code.
 
 ### Selection Guidelines
 
@@ -287,27 +312,23 @@ verify current pricing in the official documentation.
 
 ```text
 START
-├─ Need 2M+ token context?
-│  └─ YES → Gemini 1.5 Pro
+├─ Running a 2.5-series model on Vertex AI?
+│  └─ YES → migrate before 20 Oct 2026 → gemini-3.8-flash
 │  └─ NO → Continue
 │
-├─ Processing > 10M requests/month?
-│  └─ YES → Gemini 2.0 Flash
+├─ Prompt larger than 1M tokens?
+│  └─ YES → split or retrieve; no current model exceeds 1M input
 │  └─ NO → Continue
 │
-├─ Complex reasoning required?
-│  └─ YES → Gemini 1.5 Pro
-│  └─ NO → Gemini 2.0 Flash
-│
-├─ Need < 500ms response time?
-│  └─ YES → Gemini 2.0 Flash
+├─ Reasoning quality dominates cost (architecture, cross-repo refactor)?
+│  └─ YES → gemini-3.1-pro-preview (pin it; keep a Flash fallback)
 │  └─ NO → Continue
 │
-├─ Budget < $100/month?
-│  └─ YES → Gemini 2.0 Flash
-│  └─ NO → Gemini 1.5 Pro
+├─ Latency- or throughput-critical, well-defined task?
+│  └─ YES → gemini-3.8-flash with thinking_level="low"
+│  └─ NO → Continue
 │
-└─ Default → Gemini 2.0 Flash
+└─ Default → gemini-3.8-flash (thinking_level="medium")
 ```
 
 #### Cost-Performance Trade-offs
@@ -319,21 +340,23 @@ Each PR analysis requires:
 - Average input: 50,000 tokens
 - Average output: 2,000 tokens
 
-**Monthly Costs**:
+That is 1,500M input tokens and 60M output tokens per 30-day month.
 
-Gemini 2.0 Flash:
+**Monthly Costs** (introductory rates, through 31 December 2026):
 
-- Input: 30 days × 1,000 PRs × 50K tokens × $0.15/1M = $22.50
-- Output: 30 days × 1,000 PRs × 2K tokens × $0.60/1M = $36.00
-- **Total: $58.50/month**
+Gemini 3.8 Flash:
 
-Gemini 1.5 Pro:
+- Input: 1,500M tokens × $0.75/1M = $1,125.00
+- Output: 60M tokens × $3.75/1M = $225.00
+- **Total: $1,350.00/month** (doubles to $2,700.00 from 1 January 2027)
 
-- Input: 30 days × 1,000 PRs × 50K tokens × $1.25/1M = $187.50
-- Output: 30 days × 1,000 PRs × 2K tokens × $5.00/1M = $300.00
-- **Total: $487.50/month**
+Gemini 3.1 Pro Preview (requests under 200K tokens):
 
-**Cost Difference**: 8.3x more expensive for Pro
+- Input: 1,500M tokens × $2.00/1M = $3,000.00
+- Output: 60M tokens × $12.00/1M = $720.00
+- **Total: $3,720.00/month**
+
+**Cost Difference**: 2.8x more expensive for Pro
 
 **When Pro is Worth It**:
 
@@ -369,21 +392,75 @@ Gemini models with minimal setup.
 
 #### Authentication
 
-You MUST use API keys for authentication:
+The Gemini API accepts two kinds of API key and they are not interchangeable[^22]:
+
+- **Authorization (auth) keys** are bound to a Google Cloud service account.
+  Requests run under that service account's identity, the key is restricted to
+  the Gemini API by default, and Google's leaked-key enforcement disables it
+  quickly when detection fires.
+- **Standard keys** identify only the billing project. They name no caller, so
+  they cannot carry granular permissions.
+
+You MUST authenticate with an auth key. Every key created in Google AI Studio
+today is an auth key, but keys created earlier MAY still be standard ones. The
+Gemini API already rejects requests from unrestricted standard keys, and from
+**September 2026** it rejects standard keys entirely[^22].
+
+**Why**: A standard key proves only which project pays. An auth key carries a
+service account identity, so IAM decides what the caller may do and a leaked
+key can be revoked without disturbing every other consumer of the project.
+
+**Migration checklist** — work through this for each environment[^22]:
+
+1. Open the AI Studio API Keys page and read the **Key Type** column.
+2. For every key marked **Standard**, click **Create API key**; new keys are
+   created as auth keys automatically.
+3. Update application code, environment variables, and deployment
+   configuration to the new key.
+4. Test the application against the new key.
+5. Delete or revoke the old standard key once traffic has moved.
+
+Creating an auth key requires these project IAM permissions[^22]:
+`resourcemanager.projects.get`, `apikeys.keys.create`,
+`serviceusage.services.enable`, `iam.serviceAccounts.create`, and
+`iam.serviceAccountApiKeyBindings.create`.
+
+Supply the key through the environment. The client libraries read
+`GEMINI_API_KEY` or `GOOGLE_API_KEY`, and `GOOGLE_API_KEY` wins if both are
+set[^22]:
 
 ```bash
-export GOOGLE_API_KEY="your-api-key-here"
+export GEMINI_API_KEY="your-auth-key-here"
 ```
+
+You MUST send the key in the `x-goog-api-key` header rather than a `key` query
+parameter[^22]:
+
+```bash
+curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent" \
+    -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+    -H "Content-Type: application/json" \
+    -X POST \
+    -d '{"contents": [{"parts": [{"text": "Explain recursion in one sentence"}]}]}'
+```
+
+**Why**: Query strings leak. They land in proxy and load-balancer access logs,
+browser history, `Referer` headers, and shell history, none of which are
+designed to hold credentials. A header is not logged by default.
 
 You SHOULD NOT:
 
 - Commit API keys to version control
 - Share API keys across teams
 - Use the same key for dev and production
+- Ship a key in client-side web or mobile code; proxy through your backend[^22]
 
 You MUST:
 
-- Store keys in environment variables or secret managers
+- Store keys in environment variables or a secret manager such as Google Cloud
+  Secret Manager[^22]
+- Apply application restrictions to every key; the API blocks unrestricted keys
+  that have been dormant for an extended period since 7 May 2026[^22]
 - Rotate keys regularly (every 90 days recommended)
 - Use separate keys per environment
 
@@ -395,7 +472,7 @@ import google.generativeai as genai
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemini-3.8-flash")
 
 response = model.generate_content(
     "Write a Python function to calculate factorial recursively"
@@ -407,13 +484,15 @@ print(response.text)
 #### Endpoint Structure
 
 ```text
-POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent[^15]
+POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
 ```
 
 You **MUST** include:
 
-- API key as query parameter: `?key=YOUR_API_KEY`
+- The auth key in an `x-goog-api-key` request header[^22]
 - Content-Type header: `application/json`
+
+You **MUST NOT** append the key as a `?key=` query parameter.
 
 ### Vertex AI
 
@@ -453,7 +532,7 @@ aiplatform.init(
     location="us-central1"
 )
 
-model = GenerativeModel("gemini-2.0-flash")
+model = GenerativeModel("gemini-3.8-flash")
 
 response = model.generate_content(
     "Write a Python function to calculate factorial recursively"
@@ -464,12 +543,26 @@ print(response.text)
 
 #### Service Account Setup
 
-You MUST:
+Vertex AI uses Application Default Credentials (ADC): the client libraries find
+credentials from the environment, so the same code runs locally and in
+production without a credentials file[^23].
 
-1. Create a service account with appropriate permissions
-2. Grant `Vertex AI User` role minimum
-3. Download and secure the JSON key file
-4. Set GOOGLE_APPLICATION_CREDENTIALS environment variable
+You MUST choose the credential source by environment, in this order[^25]:
+
+1. **Running on Google Cloud** — attach a service account to the resource (or
+   use Workload Identity Federation for GKE) and grant it `roles/aiplatform.user`
+2. **Running outside Google Cloud with an external identity provider** —
+   configure workload identity federation
+3. **Local development** — `gcloud auth application-default login`, and
+   impersonate a service account when you need to match production's identity
+4. **Downloaded JSON key** — only when none of the above is possible
+
+You MUST NOT download a service account key when an alternative applies.
+
+**Why**: A downloaded key is a long-lived credential that never expires on its
+own. Google's own guidance treats user-managed keys as an exception rather than
+the norm, because they leak into repositories, buckets, inboxes, and CI logs,
+and a leaked key authenticates with no further challenge[^24].
 
 ```bash
 # Create service account
@@ -481,13 +574,35 @@ gcloud projects add-iam-policy-binding your-project-id \
     --member="serviceAccount:gemini-service@your-project-id.iam.gserviceaccount.com" \
     --role="roles/aiplatform.user"
 
-# Create key
-gcloud iam service-accounts keys create key.json \
-    --iam-account=gemini-service@your-project-id.iam.gserviceaccount.com
+# Production on Google Cloud: attach the service account to the workload;
+# no key material is created or stored.
+gcloud run deploy gemini-app \
+    --service-account=gemini-service@your-project-id.iam.gserviceaccount.com
 
-# Set environment variable
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
+# Local development: user credentials for ADC, impersonating the same
+# service account so local and production authorisation match.
+gcloud auth application-default login
+gcloud config set auth/impersonate_service_account \
+    gemini-service@your-project-id.iam.gserviceaccount.com
 ```
+
+If you have an exception that genuinely requires a downloaded key, you MUST
+write it straight to its destination, keep it out of source control and out of
+the downloads folder, restrict its permissions, rotate it on a schedule, and
+delete it once the workload can use a safer method[^24]:
+
+```bash
+# EXCEPTION ONLY: no attached identity and no federation available
+gcloud iam service-accounts keys create /etc/gemini/key.json \
+    --iam-account=gemini-service@your-project-id.iam.gserviceaccount.com
+chmod 600 /etc/gemini/key.json
+export GOOGLE_APPLICATION_CREDENTIALS="/etc/gemini/key.json"
+```
+
+You SHOULD block the exception from becoming the habit by setting the
+organisation policy constraint that disables service account key creation, and
+granting exemptions only to projects that have demonstrated they cannot use a
+safer method[^24].
 
 #### Regional Endpoints
 
@@ -537,49 +652,56 @@ aiplatform.init(
 
 1. Visit [Google AI Studio](https://aistudio.google.com/)[^2]
 2. Sign in with Google account
-3. Create API key[^2]
-4. Set environment variable
+3. Create an API key; keys created in AI Studio are auth keys[^22]
+4. Set the environment variable
 
 ```bash
-export GOOGLE_API_KEY="AIza..."
+export GEMINI_API_KEY="your-auth-key-here"
 ```
 
 #### Vertex AI Setup
 
-1. Create or select GCP project
-2. Enable Vertex AI API[^3]
+1. Create or select a GCP project
+2. Enable the Vertex AI API, `aiplatform.googleapis.com`[^3]:
 
-```bash
-gcloud services enable aiplatform.googleapis.com[^3]
-```
+   ```bash
+   gcloud services enable aiplatform.googleapis.com
+   ```
 
-1. Set up authentication (see Service Account Setup above)
-2. Install SDK[^12]
+3. Set up authentication (see Service Account Setup above)
+4. Install the Vertex AI SDK, `google-cloud-aiplatform`[^12]:
 
-```bash
-pip install google-cloud-aiplatform[^12]
-```
+   ```bash
+   pip install google-cloud-aiplatform
+   ```
+
+Footnote markers MUST stay in the surrounding prose. A marker such as
+`[^n]` inside a command changes what the command means: `pip` reads
+`google-cloud-aiplatform[^n]` as a malformed extras group and refuses the
+requirement, and a shell reads `aiplatform.googleapis.com[^n]` as a bracket
+glob that can expand to a neighbouring filename.
 
 #### SDK Installation
 
-**Python**:
+Install the Google AI Studio SDK (`google-generativeai`) or the Vertex AI SDK
+(`google-cloud-aiplatform`[^12]) for Python:
 
 ```bash
 # For Google AI Studio
-pip install google-generativeai  # [^11]
+pip install google-generativeai
 
 # For Vertex AI
-pip install google-cloud-aiplatform  # [^12]
+pip install google-cloud-aiplatform
 ```
 
-**Node.js**:
+For Node.js, install `@google/generative-ai` or `@google-cloud/vertexai`:
 
 ```bash
 # For Google AI Studio
-npm install @google/generative-ai  # [^13]
+npm install @google/generative-ai
 
 # For Vertex AI
-npm install @google-cloud/vertexai  # [^14]
+npm install @google-cloud/vertexai
 ```
 
 ---
@@ -610,7 +732,7 @@ System instructions MUST:
 
 ```python
 model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
+    model_name="gemini-3.8-flash",
     system_instruction="""You are an expert software engineer specializing in Python, JavaScript, and Go.
 
 Your responses MUST:
@@ -697,7 +819,7 @@ For each issue found:
 """
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
+    model_name="gemini-3.1-pro-preview",
     system_instruction=system_instruction
 )
 ```
@@ -1028,7 +1150,7 @@ get_weather_function = {
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
+    model_name="gemini-3.8-flash",
     tools=[get_weather_function]
 )
 ```
@@ -1099,7 +1221,7 @@ tools = [
 
 # Create model with tools
 model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
+    model_name="gemini-3.8-flash",
     tools=tools
 )
 
@@ -1116,15 +1238,17 @@ chat = model.start_chat()
 user_message = "What's the weather in New York and the stock price of GOOGL?"
 response = chat.send_message(user_message)
 
-# Check if model wants to call functions
-if response.candidates[0].content.parts[0].function_call:
-    # Process function calls
-    function_calls = []
-    for part in response.candidates[0].content.parts:
-        if hasattr(part, 'function_call'):
-            fc = part.function_call
-            function_calls.append(fc)
+# Collect the populated fields. "function_call" in part is a proto-plus
+# presence check: hasattr() is always True on a Part, even for text.
+function_calls = []
+text_chunks = []
+for part in response.candidates[0].content.parts:
+    if "function_call" in part:
+        function_calls.append(part.function_call)
+    elif "text" in part:
+        text_chunks.append(part.text)
 
+if function_calls:
     # Execute functions
     function_responses = []
     for fc in function_calls:
@@ -1156,8 +1280,19 @@ if response.candidates[0].content.parts[0].function_call:
 
     print(response.text)
 else:
-    print(response.text)
+    print("".join(text_chunks))
 ```
+
+A response MAY mix text and tool calls in one turn, and the tool call is not
+always the first part. You MUST scan every part, and you MUST test which field
+is populated rather than whether an attribute exists.
+
+**Why**: On a `Part`, `hasattr(part, "function_call")` is always true. A
+text-only part reports an empty `FunctionCall` whose `name` is `""`, so an
+attribute check appends a phantom tool call, skips the text branch, and then
+fails the dispatcher lookup on the empty name. `"function_call" in part` tests
+which field of the `data` oneof is actually set, so text-only, tool-only, and
+mixed responses all route correctly.
 
 ### Function Call Flow
 
@@ -1296,24 +1431,95 @@ Could you provide a valid city name?
 
 1. **Validate Function Arguments**
 
-```python
-def execute_query(sql: str, database: str) -> dict:
-    # Validate before execution
-    if not sql.strip().upper().startswith("SELECT"):
-        return {
-            "success": False,
-            "error": "Only SELECT queries are allowed"
-        }
+A string prefix test is not a read-only boundary. Enforce the boundary in the
+database, let the model pick an allowlisted query by name, and bind its
+arguments as parameters:
 
-    if database not in ALLOWED_DATABASES:
-        return {
-            "success": False,
-            "error": f"Database '{database}' not accessible"
-        }
-
-    # Proceed with execution
-    ...
+```sql
+-- The role the tool connects as can read the analytics schema, nothing else.
+CREATE ROLE gemini_readonly LOGIN;
+REVOKE ALL ON SCHEMA analytics FROM gemini_readonly;
+GRANT USAGE ON SCHEMA analytics TO gemini_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO gemini_readonly;
+ALTER ROLE gemini_readonly SET default_transaction_read_only = on;
+ALTER ROLE gemini_readonly SET statement_timeout = '10s';
 ```
+
+```python
+# The model never authors SQL. It names a query and supplies parameters.
+ALLOWED_QUERIES = {
+    "orders_by_day": (
+        "SELECT order_date, COUNT(*) AS orders "
+        "FROM analytics.orders "
+        "WHERE order_date BETWEEN %(start)s AND %(end)s "
+        "GROUP BY order_date ORDER BY order_date"
+    ),
+    "top_products": (
+        "SELECT product_id, SUM(quantity) AS units "
+        "FROM analytics.order_items "
+        "WHERE order_date >= %(start)s "
+        "GROUP BY product_id ORDER BY units DESC"
+    ),
+}
+
+REQUIRED_PARAMS = {
+    "orders_by_day": frozenset({"start", "end"}),
+    "top_products": frozenset({"start"}),
+}
+
+MAX_ROWS = 500
+STATEMENT_TIMEOUT_MS = 10_000
+
+
+def run_named_query(name: str, params: dict, *, principal: str) -> dict:
+    """Run one allowlisted, parameterised query on a read-only connection."""
+    sql = ALLOWED_QUERIES.get(name)
+    if sql is None:
+        return {
+            "success": False,
+            "error": "unknown_query",
+            "allowed": sorted(ALLOWED_QUERIES),
+        }
+
+    expected = REQUIRED_PARAMS[name]
+    missing = sorted(expected - params.keys())
+    unexpected = sorted(params.keys() - expected)
+    if missing or unexpected:
+        return {
+            "success": False,
+            "error": "bad_parameters",
+            "missing": missing,
+            "unexpected": unexpected,
+        }
+
+    # Audit every call: who asked, which query, which arguments.
+    audit_log.info(
+        "tool_query", extra={"principal": principal, "query": name, "params": params}
+    )
+
+    with connect_read_only() as conn, conn.cursor() as cur:
+        cur.execute(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
+        cur.execute(sql, {key: params[key] for key in expected})
+        rows = cur.fetchmany(MAX_ROWS + 1)
+
+    return {
+        "success": True,
+        "rows": rows[:MAX_ROWS],
+        "truncated": len(rows) > MAX_ROWS,
+    }
+```
+
+**Why**: `sql.strip().upper().startswith("SELECT")` accepts
+`SELECT 1; DROP TABLE users`, `SELECT * FROM t; UPDATE t SET x = 1`, and
+`SELECT pg_sleep(600)`. Whether those run depends on the driver's handling of
+multiple statements and on the role's privileges, so the check enforces nothing
+it claims to. Privileges, a fixed query text, bound parameters, a statement
+timeout, and a row cap each hold on their own.
+
+If a use case genuinely needs model-authored SQL, you MUST still connect as the
+read-only role and you MUST parse the statement, requiring exactly one
+statement with a `SELECT` root, using a real SQL parser rather than string
+inspection.
 
 1. **Return Structured Data**
 
@@ -1420,7 +1626,7 @@ google_search_tool = Tool.from_google_search_retrieval(
 )
 
 model = GenerativeModel(
-    "gemini-2.0-flash",
+    "gemini-3.8-flash",
     tools=[google_search_tool]
 )
 
@@ -1453,7 +1659,7 @@ google_search_tool = Tool.from_google_search_retrieval(
 )
 
 model = GenerativeModel(
-    "gemini-1.5-pro",
+    "gemini-3.1-pro-preview",
     tools=[google_search_tool]
 )
 
@@ -1469,7 +1675,7 @@ response = model.generate_content(
 Grounding responses include metadata about sources:
 
 ```python
-response = model.generate_content("Latest news about Gemini 2.0")
+response = model.generate_content("Latest news about Gemini 3.8 Flash")
 
 metadata = response.candidates[0].grounding_metadata
 
@@ -1544,16 +1750,22 @@ You SHOULD NOT use grounding when:
 
 ## Large Context Window Usage
 
-Gemini models support massive context windows (1M-2M tokens), enabling analysis
-of entire codebases, long documents, and extensive conversations.
+Gemini models support 1M-token context windows, enabling analysis of entire
+codebases, long documents, and extensive conversations.
 
 ### Context Window Capabilities
 
-| Model             | Input Tokens | Output Tokens | Equivalent                 |
-| ----------------- | ------------ | ------------- | -------------------------- |
-| Gemini 2.0 Flash  | 1,048,576    | 8,192         | ~800K words or ~3500 pages |
-| Gemini 1.5 Pro    | 2,097,152    | 8,192         | ~1.6M words or ~7000 pages |
-| Gemini 1.5 Flash  | 1,048,576    | 8,192         | ~800K words or ~3500 pages |
+Verified 8 September 2026; see [Model Availability](#model-availability) for
+lifecycle dates.
+
+| Model                    | Input Tokens | Output Tokens | Equivalent                 |
+| ------------------------ | ------------ | ------------- | -------------------------- |
+| `gemini-3.8-flash`[^4]   | 1,048,576    | 65,536        | ~800K words or ~3500 pages |
+| `gemini-3.1-pro-preview`[^5] | 1,048,576 | 65,536        | ~800K words or ~3500 pages |
+
+No current Gemini model accepts more than 1M input tokens. Inputs larger than
+that MUST be split, summarised, or retrieved selectively; see
+[Long Context Strategies](#long-context-strategies).
 
 **Token Estimation**:
 
@@ -1566,43 +1778,154 @@ of entire codebases, long documents, and extensive conversations.
 
 #### Loading Multiple Files
 
+Sending a repository to a third-party API is a disclosure event, so the loader
+MUST decide what leaves the machine, not the caller's `rglob` pattern.
+
+The loader below is manifest-first: it sends the paths you list, or, with no
+manifest, only allowlisted file types under the repository root. It refuses
+symlinks and paths outside the root, skips files whose contents match secret
+patterns, enforces per-file and total budgets, and returns a report naming
+every skipped path with its reason.
+
 ```python
-import os
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
-def load_codebase(root_dir: str, extensions: list[str]) -> str:
-    """Load all files with specified extensions into a single context"""
-    context_parts = []
-
-    for ext in extensions:
-        for file_path in Path(root_dir).rglob(f"*.{ext}"):
-            relative_path = file_path.relative_to(root_dir)
-            try:
-                content = file_path.read_text()
-                context_parts.append(
-                    f"### File: {relative_path}\n\n```{ext}\n{content}\n```\n"
-                )
-            except Exception as e:
-                print(f"Error loading {file_path}: {e}")
-
-    return "\n".join(context_parts)
-
-# Load entire Python codebase
-codebase_context = load_codebase(
-    root_dir="./src",
-    extensions=["py", "yaml", "md"]
+ALLOWED_SUFFIXES = {".py", ".md", ".yaml", ".yml", ".toml"}
+EXCLUDED_DIRS = {
+    ".git", "node_modules", "__pycache__", "venv", ".venv",
+    "dist", "build", ".next", "coverage",
+}
+# Files that carry credentials by convention, whatever their suffix.
+EXCLUDED_NAMES = {
+    ".env", ".env.local", ".npmrc", ".netrc", "id_rsa",
+    "credentials.json", "service-account.json",
+}
+SECRET_PATTERNS = (
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
+    re.compile(r"\bgh[pousr]_[0-9A-Za-z]{36}\b"),
+    re.compile(
+        r"(?i)\b(api[_-]?key|secret|passwd|password|token)\s*[:=]\s*"
+        r"['\"][^'\"]{8,}['\"]"
+    ),
 )
 
-# Create prompt with full codebase
+MAX_FILE_BYTES = 200_000
+MAX_TOTAL_TOKENS = 400_000
+CHARS_PER_TOKEN = 4  # See Token Estimation above
+
+
+@dataclass
+class LoadReport:
+    included: list[str] = field(default_factory=list)
+    skipped: list[tuple[str, str]] = field(default_factory=list)
+    estimated_tokens: int = 0
+
+
+def _candidates(root: Path, manifest: list[str] | None) -> list[Path]:
+    if manifest is not None:
+        return [root / entry for entry in manifest]
+    return sorted(
+        path
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix in ALLOWED_SUFFIXES
+    )
+
+
+def load_codebase(
+    root_dir: str,
+    manifest: list[str] | None = None,
+) -> tuple[str, LoadReport]:
+    """Load reviewed files into one context, reporting everything skipped."""
+    root = Path(root_dir).resolve(strict=True)
+    report = LoadReport()
+    parts: list[str] = []
+
+    for path in _candidates(root, manifest):
+        label = str(path)
+
+        if path.is_symlink():
+            report.skipped.append((label, "symlink"))
+            continue
+
+        resolved = path.resolve()
+        if root not in resolved.parents:
+            report.skipped.append((label, "outside repository root"))
+            continue
+        if not resolved.is_file():
+            report.skipped.append((label, "not a regular file"))
+            continue
+
+        relative = resolved.relative_to(root)
+        if set(relative.parts) & EXCLUDED_DIRS:
+            report.skipped.append((label, "excluded directory"))
+            continue
+        if resolved.name in EXCLUDED_NAMES:
+            report.skipped.append((label, "credential filename"))
+            continue
+        if resolved.suffix not in ALLOWED_SUFFIXES:
+            report.skipped.append((label, f"suffix not allowlisted: {resolved.suffix}"))
+            continue
+        if resolved.stat().st_size > MAX_FILE_BYTES:
+            report.skipped.append((label, f"larger than {MAX_FILE_BYTES} bytes"))
+            continue
+
+        try:
+            content = resolved.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            report.skipped.append((label, f"unreadable: {type(exc).__name__}"))
+            continue
+
+        if any(pattern.search(content) for pattern in SECRET_PATTERNS):
+            report.skipped.append((label, "matched a secret pattern"))
+            continue
+
+        tokens = len(content) // CHARS_PER_TOKEN
+        if report.estimated_tokens + tokens > MAX_TOTAL_TOKENS:
+            report.skipped.append((label, "token budget exhausted"))
+            continue
+
+        report.estimated_tokens += tokens
+        report.included.append(str(relative))
+        suffix = resolved.suffix.lstrip(".")
+        parts.append(f"### File: {relative}\n\n```{suffix}\n{content}\n```\n")
+
+    return "\n".join(parts), report
+
+
+context, report = load_codebase("./src")
+
+# Review the exclusions before sending anything.
+for path, reason in report.skipped:
+    print(f"skipped {path}: {reason}")
+print(f"{len(report.included)} files, ~{report.estimated_tokens} tokens")
+
 prompt = f"""Analyze this codebase for security vulnerabilities.
 
-{codebase_context}
+{context}
 
 Provide a comprehensive security audit report."""
 
-model = genai.GenerativeModel("gemini-1.5-pro")
+model = genai.GenerativeModel("gemini-3.1-pro-preview")
 response = model.generate_content(prompt)
 ```
+
+**Why**: A recursive load by file extension follows symlinks out of the tree,
+picks up `.env` files and key material committed by accident, and grows without
+bound. The failure is silent and one-way: once the content is in a request, you
+cannot recall it.
+
+A secret scan is a backstop, not a control: it catches known shapes only. You
+MUST NOT rely on it in place of keeping credentials out of the repository.
+
+Before the first request you MUST confirm that the platform's data terms match
+the classification of the code. Free-tier Gemini API traffic MAY be used to
+improve Google's products; paid-tier traffic MAY NOT[^7]. Logs are retained for
+up to 55 days by default, and any log you contribute to a shared dataset is
+processed under the unpaid-services terms[^26]. Use Vertex AI for code you
+cannot expose to those terms; see [Data Handling](#data-handling).
 
 #### Structured Context Organization
 
@@ -1648,15 +1971,31 @@ context = create_structured_context(
 
 ### Context Caching
 
-Context caching[^9] allows you to reuse large context prefixes, reducing costs
-by up to 75% and improving latency.
+Context caching[^9] reuses large context prefixes, cutting the price of repeated
+input tokens and improving latency.
 
 **How It Works**:
 
-1. First request: Full context is processed and cached
-2. Subsequent requests: Cached portion is reused (at 75% discount)
-3. Cache TTL: 1 hour (refreshed on each use)
-4. Minimum cacheable size: 32,768 tokens (~24K words)
+1. Implicit caching is enabled by default for Gemini 2.5 and newer models, in
+   both stateful and stateless conversation modes; savings are passed on
+   automatically when a request hits the cache[^9]
+2. Minimum input for a cache hit: 4,096 tokens on Gemini 3.x models and 2,048
+   tokens on Gemini 2.5 models[^9]
+3. Cached input tokens on `gemini-3.8-flash` cost $0.075/1M against $0.75/1M
+   for uncached input, a 90% discount on the cached portion[^7]
+4. Explicit caches add a storage charge of $0.50 per 1M tokens per hour, so a
+   cache you never reuse costs more than no cache at all[^7]
+5. `usage.total_cached_tokens` on the response reports how many tokens hit the
+   cache[^9]
+
+To raise the implicit hit rate you SHOULD place large, stable content at the
+start of the prompt and send similar-prefix requests close together in time[^9].
+
+**Why**: Implicit caching needs no code, and prefix ordering is the only lever
+that affects it. Explicit caches only pay for themselves once reuse exceeds the
+hourly storage charge.
+
+Explicit caching pins a prefix for a chosen TTL:
 
 ```python
 from google.generativeai import caching
@@ -1664,7 +2003,7 @@ import datetime
 
 # Create cached content
 cache = caching.CachedContent.create(
-    model='models/gemini-1.5-pro-001',
+    model='models/gemini-3.8-flash',
     system_instruction="""You are a code review expert familiar with this codebase.""",
     contents=[{
         'role': 'user',
@@ -1697,14 +2036,16 @@ response3 = model.generate_content(
 cache.delete()
 ```
 
-**Cost Example**:
+**Cost Example** (`gemini-3.8-flash`, introductory rates verified
+8 September 2026[^7]):
 
 - Codebase: 500K tokens
-- First request: 500K tokens × $1.25/1M = $0.625
-- Cached requests: 500K tokens × $0.3125/1M = $0.156 (75% savings)
-- 10 queries: $0.625 + (9 × $0.156) = $2.029
-- Without caching: 10 × $0.625 = $6.25
-- **Savings: 67.5%**
+- First request: 500K tokens × $0.75/1M = $0.375
+- Cached requests: 500K tokens × $0.075/1M = $0.0375 (90% off the input price)
+- 10 queries: $0.375 + (9 × $0.0375) = $0.7125
+- Explicit cache storage for one hour: 500K tokens × $0.50/1M/hour = $0.25
+- Without caching: 10 × $0.375 = $3.75
+- **Savings: 81% on tokens, 74% once the hour of cache storage is included**
 
 ### Long Context Strategies
 
@@ -1829,54 +2170,66 @@ Choose the right model based on task complexity:
 
 ```python
 def select_model(task_type: str, context_size: int) -> str:
-    """Select cost-effective model for task"""
+    """Select a cost-effective model for a task.
 
+    Model IDs verified 2026-09-08; re-check the deprecations page before
+    pinning these in production.
+    """
     if context_size > 1_000_000:
-        return "gemini-1.5-pro"  # Only option for 2M context
+        raise ValueError(
+            "No current Gemini model accepts more than 1M input tokens; "
+            "split, summarise, or retrieve selectively"
+        )
 
     if task_type in ["simple_qa", "classification", "extraction"]:
-        return "gemini-2.0-flash"  # Fast and cheap
+        return "gemini-3.8-flash"  # Lowest cost per token
 
     if task_type in ["complex_reasoning", "architecture", "refactoring"]:
         if context_size > 100_000:
-            return "gemini-1.5-pro"  # Better for complex + large context
-        return "gemini-2.0-flash"  # Try flash first
+            return "gemini-3.1-pro-preview"  # Preview: keep a Flash fallback
+        return "gemini-3.8-flash"  # Try Flash first
 
-    return "gemini-2.0-flash"  # Default to flash
+    return "gemini-3.8-flash"  # Default to Flash
 ```
 
 ### Context Caching for Savings
 
-**Rule of Thumb**: Use caching when you'll make 4+ requests with the same large context.
+**Rule of Thumb**: implicit caching already applies to every Gemini 3.x request
+above 4,096 tokens. Create an explicit cache only when the same prefix is
+reused often enough to beat the hourly storage charge.
 
 ```python
-# Break-even analysis
-# Cache creation: 500K tokens × $1.25/1M = $0.625
-# Cache usage: 500K tokens × $0.3125/1M = $0.156
-# Savings per cached request: $0.625 - $0.156 = $0.469
-# Break-even: ~2 requests (pays for itself quickly)
+# Break-even analysis (gemini-3.8-flash, rates verified 2026-09-08)
+# Uncached input:  500K tokens x $0.75/1M  = $0.375
+# Cached input:    500K tokens x $0.075/1M = $0.0375
+# Cache storage:   500K tokens x $0.50/1M/hour = $0.25 per hour held
+# Savings per cached request: $0.375 - $0.0375 = $0.3375
+# Break-even: 1 extra request per hour the cache is held
+
+CACHE_MIN_TOKENS = 4_096  # Gemini 3.x implicit cache minimum
+
 
 def should_use_caching(
     context_size: int,
     expected_queries: int,
-    model: str = "gemini-1.5-pro"
+    cache_hours: float = 1.0,
+    input_cost_per_1m: float = 0.75,
+    cached_cost_per_1m: float = 0.075,
+    storage_cost_per_1m_hour: float = 0.50,
 ) -> bool:
-    """Determine if caching is cost-effective"""
-
-    if context_size < 32_768:
-        return False  # Below minimum cache size
+    """Determine whether an explicit cache is cheaper than repeating input."""
+    if context_size < CACHE_MIN_TOKENS:
+        return False  # Below the documented cache minimum
 
     if expected_queries < 2:
-        return False  # Not enough queries to benefit
+        return False  # Nothing to reuse
 
-    # Calculate costs
-    base_cost_per_token = 1.25 / 1_000_000  # Gemini 1.5 Pro
-    cache_cost_per_token = 0.3125 / 1_000_000
-
-    without_cache = expected_queries * context_size * base_cost_per_token
+    millions = context_size / 1_000_000
+    without_cache = expected_queries * millions * input_cost_per_1m
     with_cache = (
-        context_size * base_cost_per_token +  # First request
-        (expected_queries - 1) * context_size * cache_cost_per_token
+        millions * input_cost_per_1m  # First request populates the cache
+        + (expected_queries - 1) * millions * cached_cost_per_1m
+        + millions * storage_cost_per_1m_hour * cache_hours
     )
 
     return with_cache < without_cache
@@ -1937,7 +2290,7 @@ system_instruction = f"""When refactoring, follow these patterns:
 """
 
 model = genai.GenerativeModel(
-    "gemini-2.0-flash",
+    "gemini-3.8-flash",
     system_instruction=system_instruction
 )
 
@@ -2035,13 +2388,15 @@ response = model.generate_content("Analyze this SQL injection vulnerability")
 # May be blocked as "dangerous content"
 ```
 
-**Solution**: Configure safety settings appropriately
+**Solution**: Configure safety settings appropriately. The `HarmCategory` and
+`HarmBlockThreshold` enums come from the SDK's `types` module; see the safety
+settings guide[^18].
 
 ```python
-from google.generativeai.types import HarmCategory, HarmBlockThreshold[^11]
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 model = genai.GenerativeModel(
-    "gemini-2.0-flash",
+    "gemini-3.8-flash",
     safety_settings={
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -2069,43 +2424,26 @@ model = genai.GenerativeModel(
 context = load_all_files("./")  # Includes node_modules, .git, etc.
 ```
 
-**Solution**: Filter and optimize context
+**Solution**: Load through the audited loader from
+[Effective Context Loading](#effective-context-loading), which allowlists file
+types, rejects symlinks and paths outside the repository root, skips
+credential-shaped files, and caps both file size and total tokens.
 
 ```python
-# GOOD - Selective loading
-def load_source_files(root_dir: str) -> str:
-    exclude_dirs = {
-        'node_modules', '.git', '__pycache__', 'venv',
-        'dist', 'build', '.next', 'coverage'
-    }
+# GOOD - one guarded loader, and the skip report is reviewed before sending
+context, report = load_codebase("./src")
 
-    exclude_extensions = {
-        '.pyc', '.so', '.dylib', '.bin', '.lock',
-        '.jpg', '.png', '.gif', '.mp4'
-    }
+for path, reason in report.skipped:
+    print(f"skipped {path}: {reason}")
 
-    context = []
-    for file_path in Path(root_dir).rglob("*"):
-        # Skip excluded directories
-        if any(excl in file_path.parts for excl in exclude_dirs):
-            continue
+if report.estimated_tokens > MAX_TOTAL_TOKENS:
+    raise RuntimeError("context budget exceeded; narrow the manifest")
 
-        # Skip excluded extensions
-        if file_path.suffix in exclude_extensions:
-            continue
-
-        # Skip large files (> 1MB)
-        if file_path.stat().st_size > 1_000_000:
-            continue
-
-        try:
-            content = file_path.read_text()
-            context.append(f"### {file_path}\n```\n{content}\n```\n")
-        except:
-            pass
-
-    return "\n".join(context)
+response = model.generate_content(f"{context}\n\nReview for bugs.")
 ```
+
+You MUST NOT reimplement the filtering per call site. One loader means one
+place to audit and one place to fix.
 
 ### Function Calling Errors
 
@@ -2222,21 +2560,21 @@ function_calls = []
 text_parts = []
 
 for chunk in response:
-    # Check for function calls
+    # Test the populated field, not attribute existence: every Part exposes
+    # both `function_call` and `text` attributes.
     if chunk.candidates[0].content.parts:
         for part in chunk.candidates[0].content.parts:
-            if hasattr(part, 'function_call'):
+            if "function_call" in part:
                 function_calls.append(part.function_call)
-            elif hasattr(part, 'text'):
+            elif "text" in part:
                 text_parts.append(part.text)
 
-# Process function calls if any
+# Text and tool calls can arrive in the same response; keep both.
+complete_text = ''.join(text_parts)
+
 if function_calls:
     # Execute functions and continue conversation
     ...
-else:
-    # Just text response
-    complete_text = ''.join(text_parts)
 ```
 
 ---
@@ -2361,35 +2699,46 @@ print(response.text)
 
 ### Function Calling
 
-#### DO: Validate Function Arguments
+#### DO: Constrain Database Tools by Privilege, Not by String Check
 
 ```python
-# GOOD
-def execute_database_query(sql: str, database: str) -> dict:
-    # Validate SQL
-    if not sql.strip().upper().startswith('SELECT'):
+# GOOD - allowlisted query text, bound parameters, read-only role
+def execute_database_query(query_name: str, params: dict) -> dict:
+    sql = ALLOWED_QUERIES.get(query_name)
+    if sql is None:
         return {
             "success": False,
-            "error": "Only SELECT queries allowed"
+            "error": "unknown_query",
+            "allowed": sorted(ALLOWED_QUERIES),
         }
 
-    # Validate database
-    allowed_dbs = ['analytics', 'reporting']
-    if database not in allowed_dbs:
-        return {
-            "success": False,
-            "error": f"Database must be one of {allowed_dbs}"
-        }
-
-    # Execute with timeout
     try:
-        result = execute_with_timeout(sql, database, timeout=10)
-        return {"success": True, "data": result}
+        with connect_read_only() as conn, conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 10000")
+            cur.execute(sql, params)
+            rows = cur.fetchmany(MAX_ROWS + 1)
     except TimeoutError:
-        return {
-            "success": False,
-            "error": "Query timeout after 10 seconds"
-        }
+        return {"success": False, "error": "Query timeout after 10 seconds"}
+
+    return {
+        "success": True,
+        "data": rows[:MAX_ROWS],
+        "truncated": len(rows) > MAX_ROWS,
+    }
+```
+
+See [Function Calling Best Practices](#function-calling-best-practices) for the
+full pattern, including the `GRANT`/`REVOKE` statements that make the read-only
+boundary real.
+
+#### DON'T: Treat a SELECT Prefix as a Read-Only Boundary
+
+```python
+# BAD - accepts "SELECT 1; DROP TABLE users"
+def execute_database_query(sql: str, database: str) -> dict:
+    if not sql.strip().upper().startswith('SELECT'):
+        return {"success": False, "error": "Only SELECT queries allowed"}
+    return {"success": True, "data": execute(sql, database)}
 ```
 
 #### DON'T: Execute Unchecked Functions
@@ -2482,7 +2831,7 @@ context = all_files_concatenated
 ```python
 # GOOD - Cache large static context
 cache = caching.CachedContent.create(
-    model='models/gemini-1.5-pro-001',
+    model='models/gemini-3.8-flash',
     contents=[{
         'role': 'user',
         'parts': [{'text': large_codebase_context}]
@@ -2513,27 +2862,44 @@ for query in queries:
 
 ```python
 # GOOD
+import random
 import time
 
+import google.api_core.exceptions
+
+MAX_BACKOFF_SECONDS = 60.0
+
+
 def generate_with_retry(prompt: str, max_retries: int = 3):
+    """Retry only on transient failures, with capped exponential backoff."""
     for attempt in range(max_retries):
         try:
             return model.generate_content(prompt)
-        except google.api_core.exceptions.ResourceExhausted:
-            if attempt < max_retries - 1:
-                wait_time = (2 ** attempt) + (random.random() * 0.1)
-                print(f"Rate limited. Retrying in {wait_time:.1f}s...")
-                time.sleep(wait_time)
-            else:
+        except (
+            google.api_core.exceptions.ResourceExhausted,
+            google.api_core.exceptions.ServiceUnavailable,
+            google.api_core.exceptions.DeadlineExceeded,
+        ) as exc:
+            if attempt == max_retries - 1:
                 raise
-        except google.api_core.exceptions.ServiceUnavailable:
-            if attempt < max_retries - 1:
-                wait_time = 5 * (attempt + 1)
-                print(f"Service unavailable. Retrying in {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                raise
+            # Full jitter, capped: spreads retries instead of synchronising
+            # every client onto the same second.
+            delay = min(MAX_BACKOFF_SECONDS, 2 ** attempt) * random.random()
+            print(f"{type(exc).__name__}. Retrying in {delay:.1f}s...")
+            time.sleep(delay)
+
+    raise RuntimeError("unreachable: loop either returns or raises")
 ```
+
+You MUST import every module a snippet uses, you MUST retry only retryable
+status codes, and you MUST cap the delay.
+
+**Why**: The earlier form of this example called `random.random()` while
+importing only `time`, so the first rate-limit response raised
+`NameError: name 'random' is not defined` — the recovery path failed harder
+than the failure it was handling. Retrying non-transient errors such as
+`InvalidArgument` wastes quota, and uncapped exponential backoff can push a
+delay past any sensible request deadline.
 
 #### DON'T: Retry Immediately Without Backoff
 
@@ -2555,7 +2921,7 @@ for attempt in range(3):
 Maintain conversation state for complex interactions:
 
 ```python
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemini-3.8-flash")
 chat = model.start_chat(history=[])
 
 # Turn 1
@@ -2586,7 +2952,7 @@ from vertexai.preview.generative_models import Tool
 code_execution_tool = Tool.from_code_execution()
 
 model = GenerativeModel(
-    "gemini-1.5-pro",
+    "gemini-3.1-pro-preview",
     tools=[code_execution_tool]
 )
 
@@ -2707,19 +3073,39 @@ You SHOULD:
 
 ### API Key Management
 
+The key you manage MUST be an authorization key bound to a service account, not
+a standard key: the Gemini API rejects standard keys from September 2026[^22].
+See [Authentication](#authentication) for the migration checklist.
+
 ```python
 # DO: Use environment variables
 import os
-api_key = os.getenv("GOOGLE_API_KEY")
+
+import requests
+
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 if not api_key:
-    raise ValueError("GOOGLE_API_KEY environment variable not set")
+    raise ValueError("GEMINI_API_KEY environment variable not set")
 
 # DO: Use secret management services
 from google.cloud import secretmanager
+
 client = secretmanager.SecretManagerServiceClient()
 name = "projects/PROJECT_ID/secrets/gemini-api-key/versions/latest"
 response = client.access_secret_version(request={"name": name})
 api_key = response.payload.data.decode("UTF-8")
+
+# DO: Send the key in a header when calling REST directly
+requests.post(
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "gemini-3.8-flash:generateContent",
+    headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+    json={"contents": [{"parts": [{"text": "Explain recursion"}]}]},
+    timeout=30,
+)
+
+# DON'T: Put the key in the URL; query strings land in proxy and access logs
+url = f"https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key={api_key}"
 
 # DON'T: Hardcode API keys
 api_key = "AIzaSy..."  # Never do this!
@@ -2752,7 +3138,7 @@ security_tool_settings = {
 }
 
 model = genai.GenerativeModel(
-    "gemini-2.0-flash",
+    "gemini-3.8-flash",
     safety_settings=public_safety_settings
 )
 ```
@@ -2899,7 +3285,7 @@ response = model.generate_content(prompt)
 
 # Inspect function calls
 for part in response.candidates[0].content.parts:
-    if hasattr(part, 'function_call'):
+    if "function_call" in part:
         fc = part.function_call
         print(f"Function: {fc.name}")
         print(f"Arguments: {dict(fc.args)}")
@@ -2929,13 +3315,13 @@ test_safety_filter("Analyze this SQL injection vulnerability: {code}")
 
 ## References
 
-[^1]: [Google Gemini Models Overview](https://ai.google.dev/gemini-api/docs/models/gemini) - Official documentation for Gemini model family
+[^1]: [Gemini API Models](https://ai.google.dev/gemini-api/docs/models) - Model list and stable, preview, latest and experimental version naming
 [^2]: [Google AI Studio](https://aistudio.google.com/) - Web-based IDE and API access for Gemini
 [^3]: [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs) - Enterprise platform for Gemini deployment
-[^4]: [Gemini 2.0 Flash Documentation](https://ai.google.dev/gemini-api/docs/models/gemini-v2) - Latest Flash model specifications
-[^5]: [Gemini 1.5 Pro Documentation](https://ai.google.dev/gemini-api/docs/models/gemini-v1.5) - Pro model with 2M token context window
-[^6]: [Gemini 1.5 Flash Documentation](https://ai.google.dev/gemini-api/docs/models/gemini-v1.5) - Balanced Flash model specifications
-[^7]: [Google AI Pricing](https://ai.google.dev/pricing) - Current pricing for Google AI Studio and Vertex AI
+[^4]: [Gemini 3.8 Flash (Latest model)](https://ai.google.dev/gemini-api/docs/latest-model) - Specifications, thinking levels and migration checklist for `gemini-3.8-flash`
+[^5]: [Gemini 3 Developer Guide](https://ai.google.dev/gemini-api/docs/gemini-3) - Context windows, thinking levels and pricing for the Gemini 3 family
+[^6]: [Gemini API Deprecations](https://ai.google.dev/gemini-api/docs/deprecations) - Release dates, shutdown dates and recommended replacements
+[^7]: [Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing) - Per-model token, caching and grounding prices, including introductory rates
 [^8]: [Grounding with Google Search](https://cloud.google.com/vertex-ai/docs/generative-ai/grounding/ground-with-google-search) - Search grounding documentation
 [^9]: [Context Caching](https://ai.google.dev/gemini-api/docs/caching) - Prompt caching guide for cost optimization
 [^10]: [Code Execution](https://cloud.google.com/vertex-ai/docs/generative-ai/code/code-execution-overview) - Python code execution feature
@@ -2947,6 +3333,12 @@ test_safety_filter("Analyze this SQL injection vulnerability: {code}")
 [^19]: [Streaming Responses](https://ai.google.dev/gemini-api/docs/streaming) -
     Guide to streaming API responses
 [^20]: [JSON Mode](https://ai.google.dev/gemini-api/docs/json-mode) - Controlled generation with JSON schema
+[^21]: [Gemini Enterprise Agent Platform model versions](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions) - Release and retirement dates for Gemini models on Vertex AI
+[^22]: [Gemini API keys](https://ai.google.dev/gemini-api/docs/api-key) - Standard versus authorization keys, the September 2026 cut-off and key restrictions
+[^23]: [Provide credentials to Application Default Credentials](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc) - Setting up ADC per environment
+[^24]: [Best practices for managing service account keys](https://docs.cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys) - Threats from downloaded keys and safer alternatives
+[^25]: [Choose an authentication method](https://docs.cloud.google.com/docs/authentication) - Decision tree covering attached service accounts and workload identity federation
+[^26]: [Gemini API logs policy](https://ai.google.dev/gemini-api/docs/logs-policy) - Log retention, dataset sharing and data-use terms
 
 ### Additional Resources
 

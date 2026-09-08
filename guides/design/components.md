@@ -219,6 +219,48 @@ Buttons performing async actions MUST show loading state:
 }
 ```
 
+### Focus Indicators
+
+Focus styling MUST be valid CSS, not merely intended CSS:
+
+- An outline MUST be declared before any decorative ring, so the indicator
+  still exists if the ring is dropped
+- Translucent rings MUST use `color-mix()` or a dedicated ring token; alpha
+  MUST NOT be appended inside `var()`
+- The focus indicator MUST reach 3:1 contrast against both the adjacent
+  component colour and the background it sits on
+
+```css
+/* ✗ DON'T: invalid var() grammar. The declaration is discarded, so the
+   input is left with `outline: none` and no focus indicator at all. */
+.form-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--interactive-default / 0.15);
+}
+
+/* ✓ DO: a valid translucent ring on top of a self-sufficient outline */
+.form-input:focus-visible {
+  outline: 2px solid var(--interactive-default);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-default) 25%, transparent);
+}
+```
+
+**Why**: `var()` accepts a custom property name followed only by an optional
+comma and fallback, so `var(--interactive-default / 0.15)` is a syntax error
+and Chromium reports `CSS.supports()` as `false` for it. The whole declaration
+is dropped while the sibling `outline: none` survives, which removes the focus
+indicator entirely — and for an invalid input the error border already matches
+the focus border, so nothing at all changes on focus.
+[`color-mix()`](https://drafts.csswg.org/css-color-5/#color-mix) has been
+[Baseline widely available since 9 May 2023](https://api.webstatus.dev/v1/features/color-mix)
+and produces the alpha the token cannot carry. A solid 2px outline is also the
+simplest way to satisfy the minimum-area part of
+[WCAG 2.2 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html),
+and these tokens clear its 3:1 contrast requirement in both themes:
+`#6366f1` on white measures 4.47:1, `#818cf8` on the dark card `#0a0a0a`
+measures 6.64:1.
+
 ### Form Validation
 
 - Validation errors MUST be associated via `aria-describedby`
@@ -300,14 +342,11 @@ Clickable cards MUST:
 ### Modal Structure
 
 ```html
-<div class="modal-backdrop" aria-hidden="true"></div>
-
 <dialog
   class="modal"
   role="dialog"
   aria-modal="true"
   aria-labelledby="modal-title"
-  aria-describedby="modal-desc"
 >
   <header class="modal-header">
     <h2 id="modal-title" class="modal-title">Modal Title</h2>
@@ -315,7 +354,7 @@ Clickable cards MUST:
       <svg aria-hidden="true"><!-- X icon --></svg>
     </button>
   </header>
-  <div id="modal-desc" class="modal-body">
+  <div class="modal-body">
     <!-- Modal content -->
   </div>
   <footer class="modal-footer">
@@ -325,60 +364,118 @@ Clickable cards MUST:
 </dialog>
 ```
 
+A modal dialog MUST NOT ship its own backdrop element. `showModal()` renders
+the dialog in the top layer with a `::backdrop` pseudo-element, which a
+separate `<div>` can only compete with:
+
+```css
+.modal::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+```
+
 ### Modal Requirements
 
 Modals MUST:
 
-1. Trap focus within the modal
-2. Return focus to trigger element on close
-3. Close on Escape key
-4. Have accessible title (`aria-labelledby`)
-5. Prevent background scroll
-6. Use `<dialog>` element when possible
+1. Use `<dialog>` opened with `showModal()`
+2. Keep focus inside the dialog while it is open
+3. Return focus to the invoking element on close
+4. Close on Escape key
+5. Have accessible title (`aria-labelledby`)
+6. Prevent background scroll, and restore whatever scroll state the page had
+
+**Why**: `showModal()` puts the dialog in the top layer, marks everything else
+in the document
+[inert](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal),
+and handles Escape as a close request. Chromium confirms it: with a modal
+dialog open, repeated Tab presses cycle only through the dialog's own controls,
+and Escape fires `cancel` then `close`. A hand-written focus trap and keydown
+listener therefore add nothing, and both are common sources of the lifecycle
+bugs below.
 
 ### Focus Management
 
+State that `open()` changes MUST be restored by the `close` event, not by the
+`close()` method, because Escape and a `<form method="dialog">` submit close
+the dialog without going through it:
+
 ```javascript
 class Modal {
-  open(triggerElement) {
-    this.triggerElement = triggerElement;
-    this.element.showModal();
-    this.trapFocus();
+  constructor(dialog, { fallbackFocus = null } = {}) {
+    this.dialog = dialog;
+    this.fallbackFocus = fallbackFocus;
+    this.invoker = null;
+    this.previousOverflow = null;
+
+    // Bound once. Reopening MUST NOT accumulate listeners, and every close
+    // path — Escape, close(), method="dialog" — ends in this event.
+    this.dialog.addEventListener('close', () => this.restore());
+  }
+
+  open(invoker = document.activeElement) {
+    if (this.dialog.open) return;
+    this.invoker = invoker;
+    // `close` is dispatched asynchronously, so a reopen in the same task can
+    // land before the previous restore. Only the first lock records state.
+    if (this.previousOverflow === null) {
+      this.previousOverflow = document.body.style.overflow;
+    }
     document.body.style.overflow = 'hidden';
+    this.dialog.showModal();
+    this.initialFocus().focus();
   }
 
-  close() {
-    this.element.close();
-    document.body.style.overflow = '';
-    this.triggerElement?.focus();
+  close(returnValue) {
+    this.dialog.close(returnValue);
   }
 
-  trapFocus() {
-    const focusable = this.element.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  restore() {
+    if (this.dialog.open) return; // reopened before this close was delivered
+
+    // Put back the page's own value, which may not have been the default.
+    document.body.style.overflow = this.previousOverflow ?? '';
+    this.previousOverflow = null;
+
+    // The invoker may have been removed by the action the dialog performed.
+    const target = this.invoker?.isConnected ? this.invoker : this.fallbackFocus;
+    this.invoker = null;
+    target?.focus();
+  }
+
+  initialFocus() {
+    return (
+      this.dialog.querySelector('[autofocus]') ??
+      this.dialog.querySelector('.modal-body :is(a[href], button, input, select, textarea)') ??
+      this.dialog
     );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    this.element.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        this.close();
-      }
-      if (e.key === 'Tab') {
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    });
-
-    first?.focus();
   }
 }
 ```
+
+Confirming a destructive action before it happens belongs in `cancel`, which
+is cancellable, rather than in a keydown handler:
+
+```javascript
+dialog.addEventListener('cancel', (event) => {
+  if (form.hasUnsavedChanges) event.preventDefault();
+});
+```
+
+The `fallbackFocus` element MUST itself be focusable — usually the heading of
+the region the dialog acted on, given `tabindex="-1"` — or focus silently
+falls back to `<body>`.
+
+**Why**: each of these rules fixes a failure that headless Chromium reproduces
+in the naive version. Adding the keydown listener inside `open()` leaves two
+listeners after a second open, so one Escape runs `close()` twice. Setting
+`document.body.style.overflow = ''` on close discards a page that was already
+`clip`. Cleaning up in `close()` rather than on the `close` event leaves the
+body stuck at `hidden` when the dialog closes natively. Initial focus follows
+the [APG dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/):
+an explicit `autofocus` target, otherwise the first control in the body,
+otherwise the dialog itself, which `showModal()` makes focusable without a
+`tabindex`.
 
 ---
 
@@ -418,24 +515,93 @@ class Modal {
 
 - Tables MUST have `<caption>` (visible or `sr-only`)
 - Header cells MUST use `<th>` with `scope="col"` or `scope="row"`
-- Sortable columns MUST indicate current sort state (`aria-sort`)
+- Sortable columns MUST expose sort state with `aria-sort` on the `<th>`, never
+  on the button inside it
+- No more than one header per table MUST carry `aria-sort` at a time
 - Action columns MUST have accessible labels
 - Responsive tables SHOULD scroll horizontally on small screens
 
 ### Sortable Columns
 
+The sort button is the control; the header cell holds the state:
+
 ```html
+<thead>
+  <!-- ✓ DO: aria-sort on the sorted column header -->
+  <tr>
+    <th scope="col" aria-sort="ascending">
+      <button type="button" class="table-sort">
+        Hostname
+        <span aria-hidden="true" class="sort-icon">▲</span>
+      </button>
+    </th>
+    <th scope="col">
+      <button type="button" class="table-sort">
+        Type
+        <span aria-hidden="true" class="sort-icon"></span>
+      </button>
+    </th>
+    <th scope="col">Address</th>
+  </tr>
+</thead>
+```
+
+```html
+<!-- ✗ DON'T: aria-sort is not defined for the button role, so the header's
+     sort state is never exposed -->
 <th scope="col">
-  <button
-    class="table-sort"
-    aria-sort="ascending"
-    aria-label="Sort by hostname, currently ascending"
-  >
-    Hostname
-    <svg aria-hidden="true" class="sort-icon"><!-- sort icon --></svg>
-  </button>
+  <button class="table-sort" aria-sort="ascending">Hostname</button>
 </th>
 ```
+
+Sorting moves the attribute rather than adding a second one:
+
+```javascript
+function setSortState(header, direction) {
+  for (const th of header.closest('tr').querySelectorAll('th[aria-sort]')) {
+    if (th === header) continue;
+    th.removeAttribute('aria-sort');
+    th.querySelector('.sort-icon').textContent = '';
+  }
+  header.setAttribute('aria-sort', direction);
+  header.querySelector('.sort-icon').textContent =
+    direction === 'ascending' ? '▲' : '▼';
+}
+
+function initSortableTable(table, sortRows) {
+  for (const button of table.querySelectorAll('th .table-sort')) {
+    button.addEventListener('click', () => {
+      const header = button.closest('th');
+      // An unsorted column starts ascending; the sorted column toggles.
+      const direction =
+        header.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+      sortRows(header.cellIndex, direction);
+      setSortState(header, direction);
+    });
+  }
+}
+```
+
+The sort buttons' purpose SHOULD be described once in the caption rather than
+repeated in every button label:
+
+```html
+<caption>
+  Device inventory
+  <span class="sr-only">Column headers with buttons sort the table.</span>
+</caption>
+```
+
+**Why**: `aria-sort` is defined only for the `columnheader` and `rowheader`
+roles, which a nested `<button>` does not have, so on the button it says
+nothing about the column. [MDN's `aria-sort`
+reference](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-sort)
+and the [APG sortable-table
+example](https://www.w3.org/WAI/ARIA/apg/patterns/table/examples/sortable-table/)
+both set the attribute on the currently sorted header, keep it on exactly one
+header at a time, and move it when another column is sorted. MDN also puts the
+sorting instructions in the caption rather than repeating them in every column
+label.
 
 ---
 
