@@ -232,6 +232,10 @@ jobs:
 
 ## Rust
 
+Rust-specific lanes — MSRV, feature matrix, cross-target checks and fuzzing —
+are in the [Rust Style Guide](../languages/rust.md). Actions are pinned to full
+commit SHAs; see [Pinning Actions](../languages/rust.md#pinning-actions).
+
 ```yaml
 name: CI
 
@@ -247,36 +251,44 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
+          toolchain: stable
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt -- --check
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
     runs-on: ubuntu-latest
     needs: lint
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all-features
-      - run: cargo install cargo-tarpaulin
-      - run: cargo tarpaulin --out xml  # writes cobertura.xml
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo test --locked --all-features
+      - run: cargo install --locked cargo-llvm-cov@0.9.1
+      - run: cargo llvm-cov --locked --all-features --workspace
+             --lcov --output-path lcov.info
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: cobertura.xml
+          files: lcov.info
           disable_search: true
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
   security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: stable
       - run: cargo install --locked cargo-audit@0.22.2
       - run: cargo audit --file Cargo.lock
 ```
@@ -293,6 +305,10 @@ from forks, where the workflow token is read-only. It exits non-zero when the
 advisory database matches a locked crate, which fails the job without extra
 wiring. Add `--deny warnings` to fail on unmaintained, unsound, or yanked
 crates as well.
+
+Because no token is needed, the job also needs no `checks: write` or
+`issues: write`; `contents: read` is sufficient, and every action above is
+pinned to a full commit SHA so the workflow cannot change under a moving tag.
 
 ### Don't
 
