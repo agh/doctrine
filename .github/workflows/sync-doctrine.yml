@@ -95,22 +95,19 @@ jobs:
 
           echo "changes=$changes" >> $GITHUB_OUTPUT
 
-          # Cleanup
-          rm -rf .doctrine-upstream
-
-      - name: Get Doctrine version
-        if: steps.sync.outputs.changes == 'true'
-        id: version
-        run: |
+          # Capture upstream version before cleanup removes the checkout
           version=$(cat .doctrine-upstream/VERSION 2>/dev/null || echo "unknown")
           echo "version=$version" >> $GITHUB_OUTPUT
+
+          # Cleanup
+          rm -rf .doctrine-upstream
 
       - name: Create Pull Request
         if: steps.sync.outputs.changes == 'true' && inputs.dry_run != 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: sync Claude configs from Doctrine ${{ steps.version.outputs.version }}"
+          commit-message: "chore: sync Claude configs from Doctrine ${{ steps.sync.outputs.version }}"
           title: "chore: sync Claude configs from Doctrine"
           body: |
             ## Doctrine Config Sync
@@ -119,7 +116,7 @@ jobs:
 
             ### Changes
 
-            - Synced from Doctrine version: `${{ steps.version.outputs.version }}`
+            - Synced from Doctrine version: `${{ steps.sync.outputs.version }}`
             - Source: `${{ env.DOCTRINE_REPO }}@${{ env.DOCTRINE_BRANCH }}`
 
             ### Review Checklist
