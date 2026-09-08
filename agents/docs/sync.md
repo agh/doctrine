@@ -208,17 +208,192 @@ Works with:
 
 ## CI Integration
 
-Designed to work with GitHub Actions:
+Designed to work with GitHub Actions through the non-interactive Claude Code
+CLI. Detection and repair **MUST** run as separate jobs with separate
+permissions.
+
+### Invocation Rules
+
+- `--pr`, `--fix`, `--versions` and any path argument are agent arguments,
+  not CLI options, so they **MUST** sit inside the quoted prompt.
+- The job **MUST** install a pinned release. Claude Code 2.1.263 is the
+  current published version.
+- The job **MUST NOT** pass `--bare`. Bare mode skips discovery of
+  `.claude/commands/` and `.claude/agents/`, so `/doc-sync` never resolves.
+- The job **MUST** supply `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`
+  from a repository secret.
+- The detection job **MUST** run read-only, under `--permission-mode dontAsk`
+  and `--permission-prompts none`, so nothing waits for an approval that no
+  one is present to give.
+- The gate **MUST** decide on the parsed result, not on the exit status alone.
+
+#### Why
+
+Claude Code parses its own options before it reads the prompt, so a flag
+outside the quotes ends the process with `error: unknown option '--pr'` and
+exit 1 before any analysis starts. Bare mode buys reproducible startup by
+skipping repository discovery, which is the wrong trade when the workflow
+depends on a repository command. And an unresolved slash command is not an
+error condition: the run exits 0 with `"is_error": false` and
+`"result": "Unknown command: /doc-sync"`, so a gate that reads only the exit
+status reports success on a run that analysed nothing. Requiring a
+schema-conforming `structured_output` is what proves the agent ran.
+
+**Don't:**
 
 ```yaml
 - name: Check documentation sync
   run: |
-    claude /doc-sync --pr
-    # Fails if critical staleness detected
-
-- name: Auto-fix documentation (optional)
-  if: failure()
-  run: |
-    claude /doc-sync --fix
-    # Creates PR with fixes
+    claude /doc-sync --pr    # error: unknown option '--pr' - exit 1
+    claude /doc-sync --fix   # error: unknown option '--fix' - exit 1
 ```
+
+**Do:**
+
+```yaml
+name: Documentation Sync
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect documentation drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.263
+
+      # No --bare: bare mode skips .claude/commands and .claude/agents,
+      # so /doc-sync would never resolve.
+      - name: Run /doc-sync --pr
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "/doc-sync --pr" \
+            --allowedTools "Read,Grep,Glob" \
+            --disallowedTools "Edit,Write,Bash,WebFetch,WebSearch" \
+            --permission-mode dontAsk \
+            --permission-prompts none \
+            --max-turns 30 \
+            --output-format json \
+            --json-schema "$(cat .github/doc-sync.schema.json)" > sync.json
+
+      - name: Gate on the result
+        run: |
+          if [ "$(jq -r '.is_error' sync.json)" = "true" ]; then
+            echo "::error::doc-sync failed: $(jq -r '.result' sync.json)"
+            exit 1
+          fi
+          if [ "$(jq 'has("structured_output")' sync.json)" != "true" ]; then
+            echo "::error::/doc-sync did not run: $(jq -r '.result' sync.json)"
+            exit 1
+          fi
+          jq -r '.structured_output.findings[]
+                 | "::warning file=\(.doc)::\(.detail)"' sync.json
+          high=$(jq -r '.structured_output.high' sync.json)
+          if [ "$high" -ne 0 ]; then
+            echo "::error::$high high-confidence stale document(s)"
+            exit 1
+          fi
+
+  repair:
+    name: Repair documentation drift
+    needs: detect
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: docs-autofix
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - run: npm install -g @anthropic-ai/claude-code@2.1.263
+
+      - name: Run /doc-sync --fix
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "/doc-sync --fix" \
+            --allowedTools "Read,Grep,Glob,Edit,Write" \
+            --disallowedTools "Bash,WebFetch,WebSearch" \
+            --permission-mode dontAsk \
+            --permission-prompts none \
+            --max-turns 60 \
+            --output-format json > fix.json
+          if [ "$(jq -r '.is_error' fix.json)" = "true" ]; then
+            echo "::error::doc-sync --fix failed: $(jq -r '.result' fix.json)"
+            exit 1
+          fi
+
+      - name: Open a pull request with the edits
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: docs/auto-sync
+          title: 'docs: sync stale documentation'
+          body: 'Automated documentation sync. Review every hunk before merging.'
+```
+
+The repair job holds the only write permissions, runs behind the
+`docs-autofix` environment so a reviewer has to release it, and is denied
+`Bash`, so the pull request is opened by `peter-evans/create-pull-request@v8`
+rather than by the agent itself.
+
+### Result Contract
+
+`--json-schema` constrains the machine-readable half of the report; the
+Markdown in [Analysis Output Format](#analysis-output-format) remains the
+human half. Store this schema at `.github/doc-sync.schema.json`:
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["high", "medium", "low", "findings"],
+  "properties": {
+    "high": { "type": "integer", "minimum": 0 },
+    "medium": { "type": "integer", "minimum": 0 },
+    "low": { "type": "integer", "minimum": 0 },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["doc", "source", "confidence", "detail"],
+        "properties": {
+          "doc": { "type": "string" },
+          "source": { "type": "string" },
+          "confidence": { "enum": ["high", "medium", "low"] },
+          "detail": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+```
+
+The gate maps that result onto a CI status:
+
+| Result | CI status |
+| ------ | --------- |
+| `is_error` is `true` | Fail: the run itself broke, for example on authentication |
+| `structured_output` absent | Fail: `/doc-sync` never resolved, so nothing was analysed |
+| `high` greater than 0 | Fail: high-confidence staleness |
+| `high` is 0 | Pass: `medium` and `low` are emitted as workflow warnings |
