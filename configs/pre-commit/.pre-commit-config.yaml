@@ -121,6 +121,12 @@ repos:
   #       args: [--dialect, postgres]
   #     - id: sqlfluff-fix
   #       args: [--dialect, postgres]
+  #
+  # - repo: https://github.com/sbdchd/squawk
+  #   rev: v2.64.0
+  #   hooks:
+  #     - id: squawk
+  #       files: ^migrations/.*\.sql$
 
   # =============================================================================
   # Security
