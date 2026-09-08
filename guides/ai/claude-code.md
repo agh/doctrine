@@ -752,7 +752,7 @@ Then in conversation:
 Take a screenshot of http://localhost:3000/login
 ```
 
-#### Why
+#### Why the browser package is pinned
 
 **Prerequisite.** `@playwright/mcp` 0.0.80 requires Node.js 18 or newer.[^8]
 
