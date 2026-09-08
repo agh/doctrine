@@ -53,13 +53,17 @@ CapabilityBoundingSet=
 ReadWritePaths=/var/lib/app
 ```
 
-**Security Score**: Run `systemd-analyze security <service>` — target 7.0+
+**Exposure Level**: Run `systemd-analyze security <service>` — the score is an
+exposure level from 0.0 to 10.0 where **lower is better**. Target 4.0 or lower
+(`--threshold=40`, which takes the internal 0-100 scale) for network-facing
+production services. It scores only systemd's own sandboxing, not the
+application's code.
 
 **Severity**:
 
 - 🔴 **Critical**: Running as root without necessity, no security directives
 - 🟡 **Warning**: Missing ProtectSystem/ProtectHome, no resource limits
-- 🔵 **Suggestion**: Add socket activation, improve security score
+- 🔵 **Suggestion**: Add socket activation, lower the exposure level
 
 ---
 
@@ -545,7 +549,7 @@ and logging. Run `systemd-analyze security nginx.service` and harden.
 - [ ] Non-root user
 - [ ] Security directives (ProtectSystem, etc.)
 - [ ] Restart policy configured
-- [ ] Security score 7.0+
+- [ ] Exposure level 4.0 or lower (lower is better)
 
 ### Firewall
 
