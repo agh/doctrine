@@ -2,32 +2,30 @@
   "name": "Doctrine Security References",
   "description": "Vendored security reference data for offline agent operation",
   "version": "3.1.0",
-  "last_updated": "2026-01-02",
+  "last_updated": "2026-09-08",
   "update_schedule": "quarterly",
-  "next_review": "2026-12-01",
+  "next_review": "2026-12-08",
   "sources": {
     "mitre_attack": {
-      "version": "18.1",
-      "updated": "2025-10-28",
-      "source": "https://github.com/mitre/cti",
-      "license": "MITRE ATT&CK Terms of Use",
+      "version": "19.2",
+      "updated": "2026-08-05",
+      "source": "https://github.com/mitre-attack/attack-stix-data",
+      "license": "CC-BY-4.0",
       "files": [
         "mitre/attack/enterprise-attack.json",
         "mitre/attack/techniques-summary.json"
       ],
-      "changelog": "v18: Detection Strategies (DETxxxx), v17: ESXi platform",
-      "license_url": "https://attack.mitre.org/resources/legal-and-branding/terms-of-use/"
+      "changelog": "v19: TA0005 renamed Stealth, new TA0112 Defense Impairment, T1562 revoked for T1685/T1686; v18: Detection Strategies (DETxxxx); v17: ESXi platform"
     },
     "mitre_atlas": {
-      "version": "5.0.0",
-      "updated": "2025-10-22",
+      "version": "2026.08",
+      "updated": "2026-05-27",
       "source": "https://github.com/mitre-atlas/atlas-data",
       "license": "Apache-2.0",
       "files": [
         "mitre/atlas/atlas-summary.json"
       ],
-      "changelog": "v5: 14 agentic AI techniques, Technique Maturity field",
-      "license_url": "https://github.com/mitre-atlas/atlas-data/blob/main/LICENSE"
+      "changelog": "2026.08: 16 tactics, 197 techniques; AML.TA0001 is AI Attack Adaptation"
     },
     "mitre_d3fend": {
       "version": "1.0",
@@ -60,8 +58,7 @@
         "cwe/cwe-top-25-2025.json",
         "cwe/cwe-common.json"
       ],
-      "changelog": "v4.19: AI-related CWEs, D3FEND alignment, hardware weaknesses",
-      "license_url": "https://cwe.mitre.org/about/termsofuse.html"
+      "changelog": "2025 Top 25 led by CWE-79, CWE-89, CWE-352, CWE-862; CWE list v4.19"
     },
     "owasp_top10": {
       "versions": {
@@ -78,30 +75,27 @@
         "owasp/top10-llm-2025.json",
         "owasp/top10-mobile-2024.json"
       ],
-      "changelog": "Web 2025: Supply Chain Failures (A03), Mishandling Exceptions (A10)",
-      "license_url": "https://github.com/OWASP/Top10/blob/master/LICENSE"
+      "changelog": "Web 2025: A02 Security Misconfiguration, A03 Software Supply Chain Failures (NEW), A04 Cryptographic Failures, A05 Injection, A10 Mishandling of Exceptional Conditions (NEW)"
     },
     "owasp_asvs": {
       "version": "5.0.0",
-      "updated": "2025-05-01",
-      "source": "https://owasp.org/ASVS/",
+      "updated": "2025-05-30",
+      "source": "https://owasp.org/www-project-application-security-verification-standard/",
       "license": "CC-BY-SA-4.0",
       "files": [
         "owasp/asvs-5.0.json"
       ],
-      "description": "350 security requirements across 3 verification levels",
-      "license_url": "https://github.com/OWASP/ASVS/blob/master/LICENSE.md"
+      "description": "345 security requirements across 17 chapters and 3 verification levels"
     },
     "ja4_signatures": {
-      "version": "2025.01",
-      "updated": "2025-01-01",
+      "version": "2026.09",
+      "updated": "2026-09-08",
       "source": "https://github.com/FoxIO-LLC/ja4",
       "license": "BSD-3-Clause (JA4 only) AND FoxIO-1.1 (all other JA4+ variants)",
       "files": [
         "fingerprints/ja4/malware-signatures.json"
       ],
-      "license_url": "https://github.com/FoxIO-LLC/ja4/blob/main/LICENSE",
-      "license_note": "JA4 (TLS client fingerprinting) is BSD-3-Clause: https://github.com/FoxIO-LLC/ja4/blob/main/LICENSE-JA4 . Every other JA4+ variant (JA4S, JA4H, JA4L, JA4LS, JA4X, JA4T, JA4TS, JA4TScan, JA4D, JA4D6, JA4SScan, JA4E, JA4SSH) is FoxIO License 1.1, which permits non-commercial use only."
+      "provenance": "ja4plus-mapping.csv @ f1fea2e2313b5fd57de313fd5882eeacb3bd22ef (2025-09-05)"
     },
     "sigma_rules": {
       "version": "r2024-12-15",
@@ -180,26 +174,26 @@
       "license_url": "https://www.nist.gov/copyrights-disclaimers"
     },
     "cisa_kev": {
-      "version": "live",
-      "updated": "2025-01-02",
+      "version": "retrieval-contract",
+      "updated": "2026-09-08",
       "source": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
       "license": "Public Domain (US Government work, 17 U.S.C. 105)",
       "update_frequency": "daily",
       "files": [
         "kev/known-exploited-vulnerabilities.json"
       ],
-      "license_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+      "note": "No vendored records; the file documents the feed schema and membership semantics"
     },
     "epss": {
-      "version": "3.0",
-      "updated": "2025-01-02",
+      "version": "v5",
+      "updated": "2026-09-08",
       "source": "https://www.first.org/epss/",
       "license": "Free to use; attribution requested by FIRST",
       "update_frequency": "daily",
       "files": [
         "epss/exploit-prediction.json"
       ],
-      "license_url": "https://www.first.org/epss/faq"
+      "note": "No vendored scores; the file documents the API schema and lookup semantics"
     },
     "exploit_availability": {
       "version": "2025.01",
