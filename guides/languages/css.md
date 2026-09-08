@@ -16,7 +16,7 @@ Extends [Google HTML/CSS Style Guide](google/htmlcss.html).
 | Format | Prettier[^2] | `npx prettier --write "**/*.css"` |
 | Type check | - | - |
 | Semantic | - | - |
-| Dead code | PurgeCSS[^3] | `npx purgecss --css *.css --content *.html` |
+| Dead code | PurgeCSS[^3] (optional) | `npx purgecss --config purgecss.config.js` |
 | Coverage | - | - |
 | Complexity | - | - |
 | Fuzz | - | - |
@@ -46,10 +46,73 @@ Tailwind CSS offers significant advantages over traditional CSS frameworks:
 - **Community**: Highest retention rate (75.5%) indicates strong satisfaction
   and extensive ecosystem support
 
+### Installing Tailwind CSS 4
+
+Tailwind CSS 4[^4] splits the framework across packages: `tailwindcss` holds
+the engine and exposes no executable, and the command-line binary ships
+separately as `@tailwindcss/cli`. There is no `init` command, because
+configuration now lives in CSS rather than in a generated JavaScript file.
+
+You **MUST** install both packages, pinned, for command-line builds:
+
 ```bash
+npm install --save-dev tailwindcss@4.3.3 @tailwindcss/cli@4.3.3
+```
+
+You **MUST** pull the framework in with a CSS `@import`:
+
+```css
+/* src/input.css */
+@import "tailwindcss";
+```
+
+Tailwind scans your project for class names automatically. Add `@source` only
+for template directories automatic detection skips, such as anything excluded
+by `.gitignore`. Its path is resolved relative to the stylesheet, not the
+project root:
+
+```css
+/* src/input.css — templates/ is listed in .gitignore */
+@import "tailwindcss";
+@source "../templates/**/*.html";
+```
+
+Build the stylesheet:
+
+```bash
+npx @tailwindcss/cli -i src/input.css -o dist/output.css --minify
+```
+
+For Vite[^13] projects you **SHOULD** use the Vite plugin instead of the CLI,
+so Tailwind runs inside the existing build and hot-reload pipeline:
+
+```bash
+npm install --save-dev tailwindcss@4.3.3 @tailwindcss/vite@4.3.3
+```
+
+```javascript
+// vite.config.js
+import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+  plugins: [tailwindcss()],
+});
+```
+
+You **MUST NOT** use the Tailwind 3 setup. Installing `tailwindcss` alone
+creates no `node_modules/.bin/tailwindcss`, so `npx tailwindcss init` fails
+with `could not determine executable to run`, and the CLI that does exist
+rejects the subcommand with `Invalid command: init`:
+
+```bash
+# Don't: installs no binary, and `init` was removed in Tailwind 4
 npm install -D tailwindcss
 npx tailwindcss init
 ```
+
+See the [Tailwind CSS guide](../frameworks/tailwind.md) for theme tokens,
+utilities, and component patterns.
 
 For projects requiring traditional CSS or component libraries, consider:
 
@@ -195,22 +258,119 @@ You **SHOULD** use BEM[^14] (Block Element Modifier) or utility classes.
 
 ## Dead Code: PurgeCSS
 
-You **SHOULD** use PurgeCSS[^3] to remove unused CSS in production builds.
+PurgeCSS[^3] is **OPTIONAL**. You **SHOULD** rely on your build's own dead
+code elimination first and reach for PurgeCSS only where none exists.
+Tailwind[^4] already emits nothing but the utilities it finds in your sources,
+so layering PurgeCSS over a Tailwind build gains nothing and adds the risks
+below. Bundlers are weaker here: Vite 8[^13] keeps a stylesheet in the bundle
+even when the JavaScript module that imported it is tree-shaken away, because
+a CSS import counts as a side effect. Hand-written stylesheets and whole
+component libraries are where PurgeCSS earns its place.
+
+You **MUST** measure the unused bytes in a production bundle before adopting
+PurgeCSS, and **MUST NOT** adopt it on the assumption that a stylesheet is
+wasteful.
+
+### Why measurement comes first
+
+PurgeCSS's default extractor treats every word in a content file as a
+selector. It cannot see a class name a program assembles at run time, so it
+deletes rules that are live in production. Given this component:
+
+```javascript
+// src/app.js
+const state = "success";
+document.getElementById("a").className = "alert-" + state;
+```
+
+the extractor records `alert-` and `state`, never `alert-success`, and both
+`.alert-success` and `.alert-error` are stripped from the stylesheet. Nothing
+in the build fails; the page simply renders unstyled in production.
+
+The extractor's limitations are documented, and the framework-specific
+extractors that address them carry an upstream warning that they are a work in
+progress and not encouraged for production use. You **SHOULD NOT** rely on a
+`purgecss-from-*` extractor to make a purge safe. Prefer static, greppable
+class names in your markup, and safelist whatever remains dynamic.
+
+### Auditing before purging
+
+You **MUST** run PurgeCSS in report mode before you let it write any files.
+`--rejected` lists what it would remove and writes nothing:
 
 ```bash
-npm install --save-dev purgecss
+npx purgecss --css src/app.css --content 'src/**/*.html' 'src/**/*.js' --rejected
+```
+
+```json
+[{"css":".static-used { color: blue; }\n","file":"src/app.css",
+  "rejected":[".alert-success",".alert-error",".never-used"]}]
+```
+
+Review every rejected selector. Without `--output`, PurgeCSS prints this JSON
+to stdout; with it, PurgeCSS writes purged stylesheets to the given directory.
+
+### Configuration
+
+You **MUST** pin PurgeCSS, **MUST** cover every source of markup in `content`
+— server templates and generated pages included, not just `.html` and `.js`
+under `src/` — and **MUST** safelist every dynamically constructed selector:
+
+```bash
+npm install --save-dev purgecss@8.0.0
 ```
 
 ```javascript
 // purgecss.config.js
 module.exports = {
-  content: ['./src/**/*.html', './src/**/*.js'],
-  css: ['./src/**/*.css'],
-  output: './dist/',
+  content: [
+    './src/**/*.{html,js,ts,jsx,tsx}',
+    './templates/**/*.{html,jinja,erb}',
+  ],
+  css: ['./build/css/*.css'],
+  output: './dist/css/',
+  safelist: {
+    standard: ['is-active', 'has-error'],
+    greedy: [/^alert-/, /^col-\d+$/],
+  },
 };
 ```
 
-Note: Tailwind[^4] includes PurgeCSS[^3] automatically.
+Read `css` and write `output` in separate directories: PurgeCSS writes each
+purged file under its base name, so a flat output directory collapses
+same-named stylesheets drawn from different source directories.
+
+Where a rule is easier to protect at its definition than in a central list,
+safelist it in the stylesheet itself:
+
+```css
+/* purgecss ignore */
+.alert-success { color: green; }
+```
+
+Do:
+
+```javascript
+// Class names are literal, so the extractor can find them
+const CLASSES = { success: 'alert-success', error: 'alert-error' };
+element.className = CLASSES[state];
+```
+
+Don't:
+
+```javascript
+// Assembled at run time; invisible to the extractor and silently purged
+element.className = 'alert-' + state;
+```
+
+### Regression testing
+
+A purge is a change to production styling that no unit test observes. You
+**MUST** run visual and interaction regression tests against the purged
+bundle, not against the development build, and **MUST** exercise every state
+that reveals a dynamic class — errors, empty states, modals, and any markup
+rendered only after user input. See the
+[Testing Guide](../process/testing.md) for visual regression strategies.
 
 ## Best Practices
 
