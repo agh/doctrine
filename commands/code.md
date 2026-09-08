@@ -110,7 +110,7 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
 
 ## See Also
 
-- [Code Agent Family](../../guides/ai/code-agents.md) — Architecture overview
+- [Code Agent Family](../guides/ai/code-agents.md) — Architecture overview
 - [Code Architect](../agents/code/architect.md) — Coordinator specification
 - [Code Reviewer](../agents/code/reviewer.md) — Standard review
 - [Performance Reviewer](../agents/code/performance.md) — Performance specialist
