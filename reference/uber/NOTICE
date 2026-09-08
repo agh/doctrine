@@ -1,0 +1,27 @@
+NOTICE — Uber Go Style Guide vendored in Doctrine
+
+Upstream:      Uber Go Style Guide
+Upstream URL:  https://github.com/uber-go/guide
+Copyright:     Copyright (c) Uber Technologies, Inc.
+Licence:       Apache License, Version 2.0
+Licence URL:   https://www.apache.org/licenses/LICENSE-2.0
+Licence text:  ./LICENSE (verbatim copy of the upstream LICENSE)
+
+Modifications by Doctrine
+-------------------------
+reference/uber/go.md is NOT byte-identical to upstream style.md: prose has
+been reflowed to the repository's 100-column limit, an extra markdownlint
+directive (MD013) added, and bare URLs wrapped in angle brackets. The upstream
+revision was not recorded at vendoring time.
+
+This file is the "prominent notice stating that You changed the files"
+required by Apache License 2.0 section 4(b).
+
+Upstream ships no NOTICE file (verified: GitHub contents API returns 404 for
+uber-go/guide/NOTICE), so Apache-2.0 section 4(d) imposes no further
+obligation.
+
+Required attribution
+--------------------
+"Uber Go Style Guide, Copyright (c) Uber Technologies, Inc., licensed under
+the Apache License, Version 2.0. Modified by Doctrine."

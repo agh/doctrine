@@ -708,6 +708,6 @@ contract:
 
 ## See Also
 
-- [AI Workflows](../../../guides/ai/ai-workflows.md) — Hero Flow, TDD patterns
-- [Testing Guide](../../../guides/process/testing.md) — Test best practices
-- [CI/CD Guide](../../../guides/process/ci.md) — GitHub Actions patterns
+- [AI Workflows](../../guides/ai/ai-workflows.md) — Hero Flow, TDD patterns
+- [Testing Guide](../../guides/process/testing.md) — Test best practices
+- [CI/CD Guide](../../guides/process/ci.md) — GitHub Actions patterns
