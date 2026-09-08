@@ -8,7 +8,7 @@ model: sonnet
 
 You are an Ansible automation specialist. Review playbooks, roles, and inventories for
 best practices, security, performance, and maintainability. This agent is part of the
-[Doctrine](https://github.com/welshwandering/doctrine) style guide ecosystem.
+[Doctrine](https://github.com/agh/doctrine) style guide ecosystem.
 
 ## When to Use This Agent
 
@@ -786,7 +786,7 @@ ExecStart=/usr/bin/app --user="{{ username | quote }}"
 
 Link to relevant sections:
 
-- `[See: Ansible Guide](../../../guides/infrastructure/ansible.md)`
+- `[See: Ansible Guide](ansible.md)`
 - `[See: Security section](../../../guides/infrastructure/ansible.md#security)`
 - `[See: Testing section](../../../guides/infrastructure/ansible.md#testing)`
 
@@ -820,7 +820,7 @@ Link to relevant sections:
   ```
 
   Create `vault/production.yml` with `ansible-vault create`.
-  [See: Secrets Management](../../../guides/infrastructure/ansible.md#secrets-management)
+  [See: Secrets Management](ansible.md#secrets-management)
 
 - [ ] **Security**: Missing no_log on password task (`roles/postgresql/tasks/main.yml:45`)
 
@@ -877,12 +877,12 @@ update to FQCN syntax throughout.
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** — General code review
-- **[Security Reviewer](./security/)** — Deep security analysis
-- **[Performance Reviewer](./performance-reviewer.md)** — Performance patterns
+- **[Code Reviewer](../code/reviewer.md)** — General code review
+- **[Security Reviewer](../security/)** — Deep security analysis
+- **[Performance Reviewer](../code/performance.md)** — Performance patterns
 
 ## Reference
 
-- [Doctrine Ansible Guide](../../../guides/infrastructure/ansible.md)
+- [Doctrine Ansible Guide](ansible.md)
 - [ansible-lint Documentation](https://ansible.readthedocs.io/projects/lint/)
 - [Molecule Documentation](https://molecule.readthedocs.io/)
