@@ -394,29 +394,61 @@ def track_order_completion(sender, order, user, **kwargs):
 
 ### Request/Response Signals
 
+Projects **MUST NOT** time requests with `request_started` and
+`request_finished`. Projects **MUST** measure request duration in middleware.
+
 ```python
-# apps/core/signals.py
-from django.core.signals import request_started, request_finished
+# DON'T: apps/core/signals.py — fails under ASGI and shares state
+from django.core.signals import request_started
 from django.dispatch import receiver
-import time
 import threading
+import time
 
 _request_times = threading.local()
 
 @receiver(request_started)
 def log_request_start(sender, environ, **kwargs):
-    """Track request start time."""
+    # ASGI sends scope=..., so this raises TypeError before the body runs.
     _request_times.start = time.time()
-
-@receiver(request_finished)
-def log_request_end(sender, **kwargs):
-    """Log request duration."""
-    if hasattr(_request_times, "start"):
-        duration = time.time() - _request_times.start
-        if duration > 1.0:  # Log slow requests
-            import logging
-            logging.warning(f"Slow request: {duration:.2f}s")
 ```
+
+```python
+# DO: apps/core/middleware.py — one start time per request, sync or async
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
+SLOW_REQUEST_SECONDS = 1.0
+
+class SlowRequestMiddleware:
+    """Log requests that exceed the slow-request budget."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start = time.monotonic()
+        try:
+            return self.get_response(request)
+        finally:
+            duration = time.monotonic() - start
+            if duration > SLOW_REQUEST_SECONDS:
+                logger.warning(
+                    "Slow request",
+                    extra={"path": request.path, "duration_seconds": duration},
+                )
+```
+
+**Why**: `WSGIHandler` sends `request_started(sender, environ=environ)` but
+`ASGIHandler` sends `request_started(sender, scope=scope)`, so a receiver that
+declares `environ` raises `TypeError` on every ASGI request. A
+`threading.local()` is also the wrong scope for per-request state: under ASGI
+many coroutines share one worker thread, so concurrent requests overwrite each
+other's start time. Middleware receives the request object directly, runs on
+both handlers, and keeps the start time in a local variable that no other
+request can reach. Use `time.monotonic()` rather than `time.time()` so clock
+adjustments cannot produce negative durations.
 
 ### Signal Best Practices
 
@@ -541,7 +573,8 @@ class RequestLoggingMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Generate or extract correlation ID
+        # Correlation IDs do not depend on authentication, so they are safe
+        # to assign before AuthenticationMiddleware runs.
         request.correlation_id = request.headers.get(
             "X-Correlation-ID",
             str(uuid.uuid4())
@@ -554,7 +587,6 @@ class RequestLoggingMiddleware:
                 "correlation_id": request.correlation_id,
                 "method": request.method,
                 "path": request.path,
-                "user_id": getattr(request.user, "id", None),
             }
         )
 
@@ -563,17 +595,31 @@ class RequestLoggingMiddleware:
         # Add correlation ID to response
         response["X-Correlation-ID"] = request.correlation_id
 
+        # request.user only exists after AuthenticationMiddleware has run,
+        # which is on the way back out of the stack.
+        user = getattr(request, "user", None)
+
         # Log response
         logger.info(
             "Request completed",
             extra={
                 "correlation_id": request.correlation_id,
                 "status_code": response.status_code,
+                "user_id": user.pk if user and user.is_authenticated else None,
             }
         )
 
         return response
 ```
+
+**Why**: `HttpRequest` has no `user` attribute of its own;
+`AuthenticationMiddleware` adds it as it processes the request. Middleware
+listed above `django.contrib.auth.middleware.AuthenticationMiddleware` that
+reads `request.user` on the way in raises
+`AttributeError: 'WSGIRequest' object has no attribute 'user'` on every
+request. Middleware that needs both early placement and the authenticated user
+**MUST** split the work: set request-scoped identifiers before
+`get_response()`, and read `request.user` after it returns.
 
 ### JSON Exception Middleware
 
@@ -629,13 +675,15 @@ class JSONExceptionMiddleware:
 
 ```python
 # apps/core/middleware.py
+from inspect import iscoroutinefunction, markcoroutinefunction
+
 from django.utils.decorators import sync_and_async_middleware
 
 @sync_and_async_middleware
 def hybrid_middleware(get_response):
     """Middleware that works in both sync and async contexts."""
 
-    if asyncio.iscoroutinefunction(get_response):
+    if iscoroutinefunction(get_response):
         async def middleware(request):
             # Async-specific setup
             response = await get_response(request)
@@ -647,7 +695,30 @@ def hybrid_middleware(get_response):
             return response
 
     return middleware
+
+# Async-only class-based middleware must mark itself as a coroutine function
+class AsyncOnlyMiddleware:
+    async_capable = True
+    sync_capable = False
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        if iscoroutinefunction(self.get_response):
+            markcoroutinefunction(self)
+
+    async def __call__(self, request):
+        return await self.get_response(request)
 ```
+
+**Why**: Django documents `inspect.iscoroutinefunction` as the detector for
+hybrid middleware, and it **MUST** be imported explicitly — an unimported
+`asyncio` raises `NameError: name 'asyncio' is not defined` the first time the
+factory runs. `asyncio.iscoroutinefunction` is not a substitute: on Python
+3.14, which Django 6.1 supports, it raises
+`DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for
+removal in Python 3.16`. Class-based async middleware **MUST** call
+`markcoroutinefunction(self)`, because Django inspects the instance, not
+`__call__`, when deciding whether to adapt the middleware.
 
 ### Registering Middleware
 
@@ -655,7 +726,8 @@ def hybrid_middleware(get_response):
 # config/settings/base.py
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    # Custom middleware early for timing/logging
+    # Timing and correlation IDs need no authenticated user on the way in
+    "apps.core.middleware.SlowRequestMiddleware",
     "apps.core.middleware.RequestLoggingMiddleware",
     "apps.core.middleware.TimingMiddleware",
     # Standard Django middleware
@@ -663,12 +735,18 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    # Custom exception handling after auth
+    # Anything that reads request.user on the way in belongs below this line
     "apps.core.middleware.JSONExceptionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ```
+
+**Why**: `MIDDLEWARE` order is a dependency order, not a preference. Each entry
+runs top-down on the request and bottom-up on the response, so an entry only
+sees attributes that entries above it have already added. Placing
+user-dependent middleware above `AuthenticationMiddleware` is a hard failure,
+not a degradation.
 
 ### Middleware Best Practices
 
@@ -738,12 +816,37 @@ def test_timing_middleware_adds_header(request_factory):
     assert float(response["X-Request-Duration"]) >= 0
 
 @pytest.mark.django_db
-def test_json_exception_middleware_handles_404(client):
-    response = client.get("/api/nonexistent/")
+def test_json_exception_middleware_handles_view_http404(client):
+    """/api/orders/404/ is a resolved view that raises Http404."""
+    response = client.get("/api/orders/404/")
 
     assert response.status_code == 404
     assert response.json()["error"] == "Not found"
+
+@pytest.mark.django_db
+def test_json_exception_middleware_handles_permission_denied(client):
+    """/api/orders/forbidden/ is a resolved view that raises PermissionDenied."""
+    response = client.get("/api/orders/forbidden/")
+
+    assert response.status_code == 403
+    assert response.json()["error"] == "Permission denied"
+
+@pytest.mark.django_db
+def test_unresolved_url_is_not_handled_by_process_exception(client):
+    """URL-resolution failures never reach process_exception()."""
+    response = client.get("/api/nonexistent/")
+
+    assert response.status_code == 404
+    assert response["Content-Type"].startswith("text/html")
 ```
+
+**Why**: `process_exception()` only runs for exceptions raised by a *resolved*
+view. Django raises `Http404` from URL resolution before any view is chosen, so
+that path bypasses the hook entirely and returns the standard HTML 404 —
+calling `response.json()` on it raises
+`ValueError: Content-Type header is "text/html; charset=utf-8", not
+"application/json"`. Projects that need JSON for unrouted paths **MUST** set a
+custom `handler404` in the root URLconf; middleware alone cannot deliver it.
 
 ## Content Security Policy (Django 6.0+)
 
@@ -767,6 +870,20 @@ SECURE_CSP = {
     "connect-src": [CSP.SELF],
 }
 
+# The csp context processor is REQUIRED for {{ csp_nonce }} and
+# {% csp_nonce_attr %} to resolve.
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "OPTIONS": {
+            "context_processors": [
+                # ...
+                "django.template.context_processors.csp",
+            ],
+        },
+    },
+]
+
 # Report-only mode for testing
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
@@ -775,15 +892,52 @@ SECURE_CSP_REPORT_ONLY = {
 ```
 
 ```html
-<!-- templates/base.html - use nonce for inline scripts -->
-{% load csp %}
+<!-- templates/base.html -->
+<!-- DO: inline elements take the nonce from the context variable -->
 <script nonce="{{ csp_nonce }}">
     // Inline script allowed by nonce
 </script>
+<style nonce="{{ csp_nonce }}">
+    /* Inline style allowed by nonce */
+</style>
+
+<!-- DO (Django 6.1+): external assets use the built-in csp_nonce_attr tag -->
+<script src="{% static 'js/app.js' %}" {% csp_nonce_attr %}></script>
+<link rel="stylesheet" href="{% static 'css/app.css' %}" {% csp_nonce_attr %}>
+{% csp_nonce_attr form.media %}
 ```
 
+```html
+<!-- DON'T: there is no csp template library to load -->
+{% load csp %}
+<script nonce="{{ csp_nonce }}"></script>
+```
+
+Nonce-bearing responses **MUST NOT** be served from a full-response cache.
+
+```python
+# config/urls.py — exempt nonce-bearing pages from cache middleware
+from django.views.decorators.cache import never_cache
+from django.urls import path
+
+urlpatterns = [
+    path("dashboard/", never_cache(dashboard_view), name="dashboard"),
+]
+```
+
+Projects **SHOULD** collect violation reports before enforcing a policy: run
+`SECURE_CSP_REPORT_ONLY` with a `report-uri` endpoint that persists the posted
+JSON, review the reports, then promote the policy to `SECURE_CSP`.
+
 **Why**: Django 6.0's built-in CSP support eliminates the need for third-party
-packages and provides first-class integration with Django's security middleware.
+packages and provides first-class integration with Django's security
+middleware. `csp` is not a template library — `{% load csp %}` raises
+`TemplateSyntaxError: 'csp' is not a registered tag library`. Both `csp_nonce`
+and `csp_nonce_attr` come from `django.template.context_processors.csp`, which
+**MUST** be listed in `TEMPLATES`; `csp_nonce_attr` is a built-in tag added in
+Django 6.1 and needs no `{% load %}`. Nonce generation is lazy and per
+response, so caching a whole rendered page replays one nonce to every
+subsequent visitor, which defeats the nonce entirely.
 
 ## Authentication with django-allauth
 
@@ -823,10 +977,8 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 # MFA settings
 MFA_ADAPTER = "allauth.mfa.adapter.DefaultMFAAdapter"
-MFA_FORMS = {
-    "authenticate": "allauth.mfa.forms.AuthenticateForm",
-    "reauthenticate": "allauth.mfa.forms.ReauthenticateForm",
-}
+# MFA_FORMS is intentionally unset: allauth resolves its own defaults from
+# allauth.mfa.base.forms. There is no allauth.mfa.forms module.
 ```
 
 ```python
@@ -855,6 +1007,7 @@ uv add djangorestframework-simplejwt
 
 ```python
 # config/settings/base.py
+import os
 from datetime import timedelta
 
 INSTALLED_APPS = [
@@ -870,18 +1023,60 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Loaded from the secret manager, never derived from SECRET_KEY.
+JWT_SIGNING_KEY = os.environ["JWT_SIGNING_KEY"]
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": True,
+    "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,  # Use a dedicated key in production
+    "SIGNING_KEY": JWT_SIGNING_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "LEEWAY": timedelta(seconds=10),  # Absorb small clock skew only
 }
 ```
+
+Deployments where more than one service verifies the same tokens **MUST** pin
+the issuer and audience, and **SHOULD** move to asymmetric signing so verifiers
+never hold the signing key:
+
+```python
+# config/settings/production.py — multi-service deployments
+SIMPLE_JWT |= {
+    "ALGORITHM": "RS256",
+    "SIGNING_KEY": os.environ["JWT_PRIVATE_KEY"],   # Issuer only
+    "VERIFYING_KEY": os.environ["JWT_PUBLIC_KEY"],  # Distributed to verifiers
+    "ISSUER": "https://auth.example.com",
+    "AUDIENCE": "https://api.example.com",
+}
+```
+
+Projects **MUST** define a revocation and rotation policy:
+
+- Keep `ROTATE_REFRESH_TOKENS` and `BLACKLIST_AFTER_ROTATION` enabled so a
+  replayed refresh token is rejected, and run
+  `manage.py flushexpiredtokens` on a schedule to bound blacklist growth.
+- Rotate `JWT_SIGNING_KEY` on a fixed schedule and on any suspected exposure.
+  Because access tokens live 15 minutes, a rotation drains within one lifetime.
+- Revoking a user's access **MUST NOT** rely on the access token alone: set
+  `CHECK_USER_IS_ACTIVE` (the default) and deactivate the user, because an
+  already-issued access token stays valid until it expires.
+
+**Why**: `UPDATE_LAST_LOGIN` writes to `auth_user` on every token request. The
+vendor documents this as a way to "dramatically increase the number of database
+transactions", warns that abusing the view "could slow the server and this
+could be a security vulnerability", and requires DRF throttling if it is
+enabled at all — so it stays off unless a measured requirement and a throttle
+exist. `SIGNING_KEY` defaults to `SECRET_KEY`, which the vendor recommends
+changing "to a value that is independent from the django project secret key" so
+that a compromised token key can be rotated without invalidating sessions,
+password-reset links and signed cookies. An independent key is what the
+original comment asked for; naming `SECRET_KEY` in the example did the
+opposite.
 
 ```python
 # config/urls.py
@@ -939,8 +1134,9 @@ class Project(models.Model):
     owner = models.ForeignKey("users.User", on_delete=models.CASCADE)
 
     class Meta:
+        # view_project, add_project, change_project and delete_project are
+        # created by Django. Redeclaring view_project raises auth.E005.
         permissions = [
-            ("view_project", "Can view project"),
             ("edit_project", "Can edit project"),
             ("manage_members", "Can manage project members"),
         ]
@@ -954,6 +1150,18 @@ class Project(models.Model):
             assign_perm("edit_project", self.owner, self)
             assign_perm("manage_members", self.owner, self)
 ```
+
+**Why**: Django creates `add`, `change`, `delete` and `view` permissions for
+every model unless `Meta.default_permissions` is narrowed. Declaring
+`("view_project", "Can view project")` alongside them makes
+`manage.py check` fail with
+`(auth.E005) The permission codenamed 'view_project' clashes with a builtin
+permission for model 'projects.Project'`, which blocks `makemigrations`,
+`migrate` and `runserver`. Removing the duplicate changes nothing else:
+`assign_perm("view_project", ...)` and
+`permission_required = "projects.view_project"` resolve to the built-in
+permission. Projects **MUST** run `manage.py check` before generating
+migrations for a model with custom permissions.
 
 ```python
 # apps/projects/views.py
@@ -993,7 +1201,15 @@ class HasObjectPermission(permissions.BasePermission):
 
 ## Background Tasks (Django 6.0+)
 
-Projects **MAY** use Django's built-in task framework for simple background jobs:
+Projects **MAY** use Django's built-in task framework for simple background
+jobs. Django defines, validates, queues and stores results for tasks, but it
+ships **no worker and no durable backend**: the built-in `ImmediateBackend` and
+`DummyBackend` are for development and testing only. Production **MUST**
+install a third-party backend and run its worker process.
+
+```bash
+uv add "django-tasks-db==0.13.0"
+```
 
 ```python
 # apps/orders/tasks.py
@@ -1017,22 +1233,56 @@ from apps.orders.tasks import send_order_confirmation
 
 def create_order(request):
     order = order_create(user=request.user, items=request.data["items"])
-    send_order_confirmation.enqueue(order_id=order.id)  # Non-blocking
+    # Persists the task; a worker executes it outside this request.
+    send_order_confirmation.enqueue(order_id=order.id)
     return Response(OrderSerializer(order).data)
 ```
 
 ```python
-# config/settings/production.py
+# config/settings/development.py
+# Runs enqueued tasks synchronously in-process. Development and tests only.
 TASKS = {
     "default": {
-        "BACKEND": "django.tasks.backends.database.DatabaseBackend",
+        "BACKEND": "django.tasks.backends.immediate.ImmediateBackend",
     }
 }
 ```
 
-**Why**: For simple task queuing, Django's built-in framework reduces
-dependencies. For complex workflows (retries, scheduling, priorities),
-Celery remains the better choice.
+```python
+# config/settings/production.py
+INSTALLED_APPS = [
+    # ...
+    "django_tasks_db",
+]
+
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks_db.DatabaseBackend",
+        "QUEUES": ["default"],
+    }
+}
+```
+
+```shell
+# Run at least one worker per deployment; it is a long-lived process,
+# supervised like any other service.
+python manage.py db_worker
+
+# Bound table growth with a scheduled prune of completed results
+python manage.py prune_db_task_results
+```
+
+**Why**: `django.tasks.backends.database.DatabaseBackend` does not exist —
+Django 6.1 ships only `immediate` and `dummy`, and configuring the database
+path raises
+`ModuleNotFoundError: No module named 'django.tasks.backends.database'`.
+`ImmediateBackend` runs the task in the calling thread, so `enqueue()` under it
+is blocking, not fire-and-forget. django-tasks-db[^30] stores each task as a
+row in the project's own database, so enqueue and the surrounding
+`transaction.atomic()` commit together and a queued task survives a process
+restart. It requires a separate `db_worker` process: no worker means enqueued
+tasks are persisted and never run. For complex workflows (retries, scheduling,
+priorities), Celery remains the better choice.
 
 | Use Case | Recommended |
 | -------- | ----------- |
@@ -1072,10 +1322,17 @@ app.conf.update(
     task_time_limit=30 * 60,  # 30 minutes hard limit
     task_soft_time_limit=25 * 60,  # 25 minutes soft limit
     worker_prefetch_multiplier=1,  # Disable prefetching for long tasks
-    task_acks_late=True,  # Acknowledge after completion
-    task_reject_on_worker_lost=True,
+    # task_acks_late and task_reject_on_worker_lost stay at their defaults
+    # (False). They are opted into per task, on tasks proven idempotent.
 )
 ```
+
+**Why**: `task_acks_late=True` acknowledges the message only after the task
+returns, so a worker lost mid-execution causes the broker to redeliver and the
+task to run again; `task_reject_on_worker_lost=True` extends redelivery to
+tasks killed by a signal or the OOM killer. Celery documents both as safe only
+for idempotent tasks. Enabling them globally applies at-least-once delivery to
+every task in the project, including the ones that charge cards and send email.
 
 ```python
 # config/settings/base.py
@@ -1096,9 +1353,13 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # apps/orders/tasks.py
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from django.db import transaction
+
+from apps.payments.models import PaymentAttempt
 
 @shared_task(
     bind=True,
+    acks_late=True,  # Safe: the idempotency key makes re-execution a no-op
     autoretry_for=(ConnectionError, TimeoutError),
     retry_backoff=True,
     retry_backoff_max=600,
@@ -1106,17 +1367,72 @@ from celery.exceptions import SoftTimeLimitExceeded
     max_retries=5,
 )
 def process_payment(self, order_id: int) -> dict:
-    """Process payment with automatic retry on transient failures."""
+    """Charge an order at most once, however often this task is delivered."""
+    # The key is derived from the order, not from the delivery, so every
+    # retry and redelivery presents the same key to the gateway.
+    idempotency_key = f"order-charge-{order_id}"
+
     try:
-        order = Order.objects.get(id=order_id)
-        result = payment_gateway.charge(order)
-        order.mark_paid(transaction_id=result.id)
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            if order.paid_at is not None:
+                return {"status": "already_paid",
+                        "transaction_id": order.transaction_id}
+            # Record the intent before the external call, so a crash between
+            # the charge and the response leaves a row to reconcile against.
+            attempt, _ = PaymentAttempt.objects.get_or_create(
+                idempotency_key=idempotency_key,
+                defaults={"order": order, "amount": order.total},
+            )
+
+        result = payment_gateway.charge(
+            order, idempotency_key=idempotency_key
+        )
+
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            if order.paid_at is None:
+                order.mark_paid(transaction_id=result.id)
+            attempt.mark_succeeded(transaction_id=result.id)
+
         return {"status": "success", "transaction_id": result.id}
     except SoftTimeLimitExceeded:
-        # Clean up and re-raise
-        order.mark_payment_timeout()
+        # Outcome is unknown: mark for reconciliation, never silently retry.
+        PaymentAttempt.objects.filter(
+            idempotency_key=idempotency_key
+        ).update(status=PaymentAttempt.Status.UNRESOLVED)
         raise
+```
 
+```python
+# apps/payments/models.py
+class PaymentAttempt(models.Model):
+    """One row per logical charge, keyed so retries collapse onto it."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending"
+        SUCCEEDED = "succeeded"
+        UNRESOLVED = "unresolved"
+
+    idempotency_key = models.CharField(max_length=128, unique=True)
+    order = models.ForeignKey("orders.Order", on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(
+        max_length=16, choices=Status, default=Status.PENDING
+    )
+    transaction_id = models.CharField(max_length=128, blank=True)
+```
+
+**Why**: `autoretry_for` re-runs the task body after a `ConnectionError` or
+`TimeoutError`, and both can be raised *after* the gateway received the charge.
+Without a key the gateway sees a second, unrelated charge request. A unique
+`idempotency_key` persisted before the call gives two independent guarantees:
+the gateway collapses repeat requests onto one charge, and the unique
+constraint makes a concurrent duplicate fail at the database. `acks_late`
+belongs on this task only because the key makes re-execution harmless.
+
+```python
+# apps/orders/tasks.py
 @shared_task(bind=True)
 def send_bulk_emails(self, user_ids: list[int]) -> dict:
     """Send emails with progress tracking."""
@@ -1135,25 +1451,30 @@ def send_bulk_emails(self, user_ids: list[int]) -> dict:
 Projects **MUST** follow these Celery patterns:
 
 ```python
-# GOOD: Idempotent tasks with unique task IDs
+# GOOD: Idempotence enforced by the database row, not by the cache lock
 from celery import shared_task
 from django.core.cache import cache
+from django.db import transaction
 
 @shared_task(bind=True)
 def process_order(self, order_id: int) -> dict:
     lock_key = f"process_order_{order_id}"
 
-    # Prevent duplicate processing
+    # Advisory only: trims duplicate work, never relied on for correctness.
     if not cache.add(lock_key, self.request.id, timeout=3600):
         return {"status": "already_processing"}
 
     try:
-        order = Order.objects.select_for_update().get(id=order_id)
-        if order.processed:
-            return {"status": "already_processed"}
-        # Process order...
-        order.processed = True
-        order.save()
+        with transaction.atomic():
+            # select_for_update() MUST run inside atomic(): outside one it
+            # raises TransactionManagementError on PostgreSQL, and the lock
+            # is held only until the statement's implicit commit anyway.
+            order = Order.objects.select_for_update().get(id=order_id)
+            if order.processed:
+                return {"status": "already_processed"}
+            # Process order...
+            order.processed = True
+            order.save()
         return {"status": "success"}
     finally:
         cache.delete(lock_key)
@@ -1168,7 +1489,25 @@ def notify_user(user_id: int, message: str) -> None:
 @shared_task
 def bad_notify_user(user: User, message: str) -> None:  # Will fail!
     send_notification(user, message)
+
+# BAD: the row lock never takes effect
+@shared_task
+def bad_process_order(order_id: int) -> dict:
+    # TransactionManagementError on PostgreSQL; a silent no-op on SQLite
+    order = Order.objects.select_for_update().get(id=order_id)
+    order.processed = True
+    order.save()
+    return {"status": "success"}
 ```
+
+**Why**: A cache lock is not a correctness mechanism — it expires, it is lost
+when Redis restarts, and `cache.delete()` in `finally` releases it before the
+transaction that did the work has necessarily committed. The authoritative
+check is the `order.processed` read taken under `select_for_update()` inside
+`transaction.atomic()`, which holds the row lock until commit. Outside
+`atomic()` Django raises
+`TransactionManagementError: select_for_update cannot be used outside of a
+transaction` on any backend with row locking.
 
 ### Periodic Tasks with django-celery-beat
 
@@ -1220,14 +1559,37 @@ Projects **SHOULD** use template partials for reusable fragments:
 ```
 
 ```html
-<!-- templates/orders/list.html -->
+<!-- DO: templates/orders/list.html — another template's partial uses include -->
 {% for order in orders %}
-    {% partial "components/card.html#card" with title=order.name content=order.description %}
+    {% include "components/card.html#card" with title=order.name content=order.description %}
 {% endfor %}
 ```
 
+```html
+<!-- DO: templates/orders/summary.html — same-template reuse uses partial -->
+{% partialdef order_row %}
+<tr><td>{{ order.name }}</td><td>{{ order.total }}</td></tr>
+{% endpartialdef %}
+
+<table>
+    {% for order in orders %}{% partial order_row %}{% endfor %}
+</table>
+```
+
+```html
+<!-- DON'T: partial takes one name, not a path, and accepts no with clause -->
+{% partial "components/card.html#card" with title=order.name %}
+```
+
 **Why**: Template partials enable component-style reuse without separate files,
-reducing template sprawl while maintaining clear boundaries.
+reducing template sprawl while maintaining clear boundaries. `{% partial %}`
+resolves a name defined by `{% partialdef %}` in the template being rendered
+and takes exactly one argument — anything else raises
+`TemplateSyntaxError: 'partial' tag requires a single argument`. Reaching
+another template goes through `{% include %}`, whose `template.html#partial`
+address is resolved by the template loaders and which supports `with` and
+`only` as usual. Add `inline` to `{% partialdef name inline %}` only when the
+partial should also render where it is defined.
 
 ## Composite Primary Keys (Django 5.2+)
 
@@ -1269,33 +1631,59 @@ async def login_view(request):
 
 # Async permission checking
 async def protected_view(request):
-    if not await request.user.ahas_perm("orders.view_order"):
+    # request.user is a lazy sync object; auser() resolves it without
+    # blocking the event loop.
+    user = await request.auser()
+    if not await user.ahas_perm("orders.view_order"):
         return HttpResponseForbidden()
-    orders = [o async for o in Order.objects.filter(user=request.user)]
+    orders = [
+        serialize_order(order)
+        async for order in Order.objects.filter(user=user)
+    ]
     return JsonResponse({"orders": orders})
 ```
 
 **Why**: Mixing sync auth calls in async views causes performance issues.
 Django 5.2+ provides native async variants for all authentication operations.
+`request.user` resolves the session user synchronously, so touching it inside a
+coroutine either blocks the loop or raises `SynchronousOnlyOperation`;
+`await request.auser()` returns the same user without either. `JsonResponse`
+serialises with `DjangoJSONEncoder`, which handles dates, `Decimal` and `UUID`
+but not model instances — passing a `QuerySet` result straight through raises
+`TypeError: Object of type Order is not JSON serializable`. Every model
+**MUST** be converted to a dict or serializer output before it reaches the
+response.
 
 ### Async Best Practices
 
 Projects **MUST** follow these async patterns:
 
 ```python
+# GOOD: one place that decides the wire shape of an Order
+def serialize_order(order: Order) -> dict:
+    return {
+        "id": order.id,
+        "total": str(order.total),
+        "status": order.status,
+        "created_at": order.created_at.isoformat(),
+    }
+
 # GOOD: Fully async view with async ORM operations
 async def order_list(request):
+    user = await request.auser()
     orders = [
-        order async for order in
-        Order.objects.filter(user=request.user).select_related("user")
+        serialize_order(order)
+        async for order in
+        Order.objects.filter(user=user).select_related("user")
     ]
-    return JsonResponse({"orders": [serialize_order(o) for o in orders]})
+    return JsonResponse({"orders": orders})
 
 # GOOD: Async pagination (Django 6.0+)
 from django.core.paginator import AsyncPaginator
 
 async def paginated_orders(request):
-    queryset = Order.objects.filter(user=request.user)
+    user = await request.auser()
+    queryset = Order.objects.filter(user=user)
     paginator = AsyncPaginator(queryset, per_page=25)
     page = await paginator.aget_page(request.GET.get("page", 1))
     return JsonResponse({
@@ -1307,7 +1695,7 @@ async def paginated_orders(request):
 # BAD: Mixing sync ORM in async view (causes thread pool exhaustion)
 async def bad_order_list(request):
     orders = list(Order.objects.filter(user=request.user))  # Blocks!
-    return JsonResponse({"orders": orders})
+    return JsonResponse({"orders": orders})  # And is not serialisable
 ```
 
 ### When to Use Async
@@ -1357,6 +1745,7 @@ import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+from channels.security.websocket import AllowedHostsOriginValidator
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
@@ -1366,8 +1755,12 @@ from apps.chat.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AuthMiddlewareStack(
-        URLRouter(websocket_urlpatterns)
+    # AllowedHostsOriginValidator MUST wrap the stack: without it any site on
+    # the internet can open an authenticated socket with the user's cookies.
+    "websocket": AllowedHostsOriginValidator(
+        AuthMiddlewareStack(
+            URLRouter(websocket_urlpatterns)
+        )
     ),
 })
 ```
@@ -1385,29 +1778,63 @@ websocket_urlpatterns = [
 ```python
 # apps/chat/consumers.py
 import json
+
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+
+from apps.chat.models import Room
+
+MAX_MESSAGE_BYTES = 4096
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
-        self.room_group_name = f"chat_{self.room_name}"
+        user = self.scope["user"]
+        if not user.is_authenticated:
+            # 4401: application-defined "unauthenticated"
+            await self.close(code=4401)
+            return
 
-        # Join room group
+        self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
+        if not await self.user_may_join(user, self.room_name):
+            # 4403: application-defined "not a member of this room"
+            await self.close(code=4403)
+            return
+
+        self.room_group_name = f"chat_{self.room_name}"
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
         await self.accept()
 
+    @database_sync_to_async
+    def user_may_join(self, user, room_name: str) -> bool:
+        """Authentication says who you are; this says what you may join."""
+        return Room.objects.filter(
+            name=room_name, members=user
+        ).exists()
+
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        # connect() may have closed before a group was joined.
+        if getattr(self, "room_group_name", None):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data["message"]
+        if len(text_data.encode()) > MAX_MESSAGE_BYTES:
+            await self.close(code=4413)  # Payload too large
+            return
+        try:
+            data = json.loads(text_data)
+            message = data["message"]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            await self.send(text_data=json.dumps({"error": "invalid payload"}))
+            return
+        if not isinstance(message, str) or not message.strip():
+            await self.send(text_data=json.dumps({"error": "invalid payload"}))
+            return
 
         # Broadcast to room group
         await self.channel_layer.group_send(
@@ -1425,6 +1852,61 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "user": event["user"],
         }))
 ```
+
+Every WebSocket route **MUST** have negative tests:
+
+```python
+# tests/test_consumers.py
+import pytest
+from channels.testing import WebsocketCommunicator
+
+from config.asgi import application
+
+@pytest.mark.asyncio
+@pytest.mark.django_db(transaction=True)
+async def test_anonymous_connection_is_rejected():
+    communicator = WebsocketCommunicator(application, "/ws/chat/general/")
+    connected, code = await communicator.connect()
+
+    assert connected is False
+    assert code == 4401
+
+@pytest.mark.asyncio
+@pytest.mark.django_db(transaction=True)
+async def test_non_member_cannot_join_room(authenticated_scope):
+    communicator = WebsocketCommunicator(application, "/ws/chat/private/")
+    communicator.scope.update(authenticated_scope)
+    connected, code = await communicator.connect()
+
+    assert connected is False
+    assert code == 4403
+
+@pytest.mark.asyncio
+@pytest.mark.django_db(transaction=True)
+async def test_foreign_origin_is_rejected(authenticated_scope):
+    communicator = WebsocketCommunicator(
+        application,
+        "/ws/chat/general/",
+        headers=[(b"origin", b"https://evil.example")],
+    )
+    communicator.scope.update(authenticated_scope)
+    connected, _ = await communicator.connect()
+
+    assert connected is False
+```
+
+**Why**: WebSocket handshakes start life as HTTP requests and carry the user's
+cookies, but they are not covered by CSRF protection, so any page on the
+internet can open one against your domain. `AllowedHostsOriginValidator`
+rejects handshakes whose `Origin` is outside `ALLOWED_HOSTS`; use
+`OriginValidator` with an explicit list when the socket origins differ from the
+site's hosts. `AuthMiddlewareStack` only populates `scope["user"]` — it never
+rejects anyone, so an unguarded `self.accept()` admits `AnonymousUser` and any
+`\w+` room name the URL pattern matches. Authentication and authorisation are
+separate decisions and both **MUST** be made before `group_add()`: once a
+channel is in a group it receives everything broadcast to that room. Public
+anonymous rooms are a legitimate policy, but they **MUST** be written as an
+explicit check rather than left implied by an unconditional accept.
 
 ### ASGI Server Selection
 
@@ -1733,6 +2215,12 @@ def cache_with_stale(key: str, timeout: int, stale_timeout: int = 60):
 
 ## Rate Limiting
 
+Application throttles are **business-policy and overuse controls**. They
+**MUST NOT** be relied on as denial-of-service protection: abuse mitigation
+belongs at the edge (CDN, WAF, load balancer or reverse proxy), which sees
+traffic before it reaches a Python worker and before a database connection is
+taken.
+
 ### View-Level Rate Limiting with django-ratelimit
 
 Projects **SHOULD** use django-ratelimit[^24] for view-level throttling:
@@ -1743,6 +2231,8 @@ uv add django-ratelimit
 
 ```python
 # apps/api/views.py
+import hashlib
+
 from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
 
@@ -1756,9 +2246,12 @@ def expensive_report(request):
     # Limited to 10 requests per minute per IP
     return generate_report(...)
 
-# Custom key function
+# Custom key function: hash the credential so it never becomes a cache key
 def get_api_key(group, request):
-    return request.headers.get("X-API-Key", request.META.get("REMOTE_ADDR"))
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        return request.META["REMOTE_ADDR"]
+    return hashlib.sha256(api_key.encode()).hexdigest()
 
 @ratelimit(key=get_api_key, rate="1000/d", block=True)
 def api_endpoint(request):
@@ -1766,10 +2259,36 @@ def api_endpoint(request):
 ```
 
 ```python
+# apps/core/middleware.py
+# REMOTE_ADDR is the proxy's address behind a load balancer. Set it from the
+# hop your own proxy appends, and only for requests that came through it.
+def trusted_proxy_client_ip(get_response):
+    def middleware(request):
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded:
+            # Rightmost entry is added by the trusted proxy; entries to its
+            # left are client-supplied and MUST NOT be trusted.
+            request.META["REMOTE_ADDR"] = forwarded.rsplit(",", 1)[-1].strip()
+        return get_response(request)
+    return middleware
+```
+
+```python
 # config/settings/base.py
+MIDDLEWARE = [
+    "apps.core.middleware.trusted_proxy_client_ip",  # Before anything keyed on IP
+    # ...
+    "django_ratelimit.middleware.RatelimitMiddleware",  # Required by RATELIMIT_VIEW
+]
+
 RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = "default"  # Use Redis cache
+# MUST be a cache with atomic increments that is shared across processes:
+# Redis or Memcached. The vendor documents that the database backend does not
+# support atomic increment, and the local-memory cache is per process.
+RATELIMIT_USE_CACHE = "default"
 RATELIMIT_VIEW = "apps.core.views.rate_limited"  # Custom 429 handler
+RATELIMIT_IPV4_MASK = 32
+RATELIMIT_IPV6_MASK = 64  # A single subscriber gets one /64, not one address
 ```
 
 ### DRF Throttling for APIs
@@ -1795,7 +2314,9 @@ REST_FRAMEWORK = {
 
 ```python
 # apps/api/views.py
-from rest_framework.throttling import ScopedRateThrottle
+import hashlib
+
+from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 class UploadView(APIView):
@@ -1811,18 +2332,45 @@ class APIKeyThrottle(UserRateThrottle):
     scope = "api_key"
 
     def get_cache_key(self, request, view):
+        api_key = request.headers.get("Authorization", "").removeprefix("Bearer ")
+        if not api_key:
+            return None
+        digest = hashlib.sha256(api_key.encode()).hexdigest()
+        return f"throttle_{self.scope}_{digest}"
+
+# DON'T: the bearer token becomes a cache key, and lands in Redis dumps,
+# slow-log entries and cache-inspection tooling in cleartext
+class BadAPIKeyThrottle(UserRateThrottle):
+    scope = "api_key"
+
+    def get_cache_key(self, request, view):
         api_key = request.headers.get("Authorization", "").replace("Bearer ", "")
-        if api_key:
-            return f"throttle_{self.scope}_{api_key}"
-        return None
+        return f"throttle_{self.scope}_{api_key}" if api_key else None
 ```
 
 ### Why Rate Limiting
 
-- Prevents abuse and denial-of-service attacks
+- Enforces business tiers and quotas, which is what application throttles are
+  designed for
 - Ensures fair resource distribution among users
-- Protects expensive endpoints from overuse
+- Protects expensive endpoints from accidental overuse and runaway clients
 - Required for public APIs and SaaS applications
+
+**Why not DoS protection**: DRF states plainly that its throttling "should not
+be considered a security measure or protection against brute forcing or
+denial-of-service attacks", because attackers spoof IP origins and the
+implementation uses non-atomic cache operations that make counts fuzzy under
+concurrency. django-ratelimit likewise refuses to interpret proxy headers,
+citing the same reason Django removed `SetRemoteAddrFromForwardedFor`: no such
+mechanism is reliable enough for general use, and getting it wrong hands
+attackers a spoofing vector that bypasses IP limits entirely. Deriving client
+identity **MUST** therefore be done once, in project middleware that knows the
+deployment's proxy topology. `RATELIMIT_VIEW` has no effect on its own: the
+vendor documents it as used "in conjunction with `RatelimitMiddleware`", so
+without that middleware a blocked request raises `Ratelimited` and returns a
+plain 403 instead of the custom handler. Credential-derived cache keys **MUST**
+be hashed: an unhashed bearer token in a cache key is a secret stored in
+plaintext in a system that is routinely dumped, logged and inspected.
 
 ## Circuit Breakers with pybreaker
 
@@ -2006,6 +2554,10 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          # The job runs directly on the runner, so the service port MUST be
+          # published to the Docker host for localhost to reach it.
+          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -2015,7 +2567,7 @@ jobs:
       - run: uv run mypy .
       - run: uv run pytest --cov --cov-fail-under=80
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost/test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
 ```
 
 ## E2E & Acceptance Testing
@@ -2132,15 +2684,40 @@ def test_connection_pool_exhaustion():
 from apps.orders.tasks import send_order_confirmation
 
 @pytest.mark.django_db
-def test_order_confirmation_idempotent(order):
-    # Multiple executions should have same result
+def test_order_confirmation_idempotent(order, mailoutbox):
+    """Reusing a task_id does not deduplicate: assert the side effect."""
     task_id = "unique-task-id"
     send_order_confirmation.apply(args=[order.id], task_id=task_id)
     send_order_confirmation.apply(args=[order.id], task_id=task_id)
 
-    from django_celery_results.models import TaskResult
-    assert TaskResult.objects.filter(task_id=task_id).count() == 1
+    # Two deliveries, one confirmation email
+    assert len(mailoutbox) == 1
+    order.refresh_from_db()
+    assert order.confirmation_sent_at is not None
 
+@pytest.mark.django_db(transaction=True)
+def test_payment_charges_once_across_redelivery(order, payment_gateway_spy):
+    """acks_late redelivers after a worker loss; the charge must not repeat."""
+    from apps.orders.tasks import process_payment
+    from apps.payments.models import PaymentAttempt
+
+    process_payment.apply(args=[order.id])
+    process_payment.apply(args=[order.id])  # Simulated redelivery
+
+    assert payment_gateway_spy.charge_calls == 1
+    assert PaymentAttempt.objects.filter(order=order).count() == 1
+    assert payment_gateway_spy.idempotency_keys == {f"order-charge-{order.id}"}
+```
+
+**Why**: `TaskResult.objects.filter(task_id=...).count() == 1` passes whether
+the task ran once or twice: `django-celery-results` stores one result row per
+task ID and the second run overwrites the first. Executing an eager Celery
+task twice with the same `task_id` runs the body twice — Celery does not
+deduplicate by task ID at all. An idempotence test **MUST** assert the side
+effect the task exists to produce (an email, a charge, a state change), not
+bookkeeping about the task.
+
+```python
 # API idempotency keys
 @pytest.mark.django_db
 def test_api_idempotency(authenticated_client):
@@ -2255,18 +2832,75 @@ def test_order_status_translated():
         assert str(order.get_status_display()) == "Pending"
 
 # Translation string coverage
-def test_all_strings_have_translations():
+# Assert real catalogue entries. A valid translation may be identical to its
+# source (Spanish "Total", German "Status"), so "translated != source" is a
+# broken test, not a strict one.
+TRANSLATIONS = {
+    "es": {"Order created": "Pedido creado",
+           "Order cancelled": "Pedido cancelado"},
+    "fr": {"Order created": "Commande créée",
+           "Order cancelled": "Commande annulée"},
+}
+
+@pytest.mark.parametrize("lang_code", sorted(TRANSLATIONS))
+def test_catalogue_entries_are_present(lang_code):
+    from django.utils.translation import gettext
+
+    with translation.override(lang_code):
+        for source, expected in TRANSLATIONS[lang_code].items():
+            assert gettext(source) == expected
+
+def test_every_configured_language_has_a_catalogue():
+    """The loop variable is language_name, never _: _ is the callable."""
     from django.conf import settings
-    from django.utils.translation import gettext as _
+    from django.utils.translation import gettext
 
-    strings = ["Order created", "Order cancelled"]
-
-    for lang_code, _ in settings.LANGUAGES:
+    for lang_code, language_name in settings.LANGUAGES:
+        if lang_code == settings.LANGUAGE_CODE:
+            continue
         with translation.override(lang_code):
-            for string in strings:
-                translated = _(string)
-                assert translated != string or lang_code == "en"
+            assert gettext("Order created") == \
+                TRANSLATIONS[lang_code]["Order created"], (
+                    f"missing catalogue entry for {language_name}"
+                )
 
+# Pluralisation, interpolation and lazy translation
+def test_plural_forms():
+    from django.utils.translation import ngettext
+
+    with translation.override("es"):
+        assert ngettext("%(count)d order", "%(count)d orders", 1) % \
+            {"count": 1} == "1 pedido"
+        assert ngettext("%(count)d order", "%(count)d orders", 3) % \
+            {"count": 3} == "3 pedidos"
+
+def test_lazy_translation_resolves_at_render_time():
+    from django.utils.translation import gettext_lazy
+
+    label = gettext_lazy("Order created")  # Evaluated on str(), not here
+
+    with translation.override("es"):
+        assert str(label) == "Pedido creado"
+    with translation.override("fr"):
+        assert str(label) == "Commande créée"
+
+def test_missing_translation_falls_back_to_source():
+    from django.utils.translation import gettext
+
+    with translation.override("cy"):  # No Welsh catalogue in this project
+        assert gettext("Order created") == "Order created"
+```
+
+**Why**: `from django.utils.translation import gettext as _` followed by
+`for lang_code, _ in settings.LANGUAGES` rebinds `_` to a language *name*, so
+the next `_("Order created")` raises
+`TypeError: 'str' object is not callable`. Loop variables **MUST NOT** be named
+`_` in a module that imports `gettext` under that alias. Asserting expected
+catalogue values instead of "translation differs from source" also removes the
+second fault: identical translations are legitimate, and the original test
+would have failed on them.
+
+```python
 # Timezone testing with freezegun[^16]
 from freezegun import freeze_time
 from django.utils import timezone
@@ -2498,3 +3132,4 @@ def test_feature_flag_percentage_rollout():
 [^27]: [Daphne](https://github.com/django/daphne) - HTTP, HTTP2, and WebSocket protocol server for ASGI
 [^28]: [Uvicorn](https://www.uvicorn.org/) - Lightning-fast ASGI server
 [^29]: [django-celery-beat](https://django-celery-beat.readthedocs.io/) - Database-backed periodic task scheduler for Celery
+[^30]: [django-tasks-db](https://github.com/RealOrangeOne/django-tasks-db) - Database-backed backend and worker for Django's Tasks framework
