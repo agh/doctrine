@@ -1,6 +1,6 @@
 # TypeScript Style Guide
 
-> [Doctrine](../../README.md) > [Languages](../README.md) > TypeScript
+> [Doctrine](../../README.md) > [Languages](README.md) > TypeScript
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
