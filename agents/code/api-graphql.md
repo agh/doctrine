@@ -421,18 +421,66 @@ input CreateUserInput {
   password: String!
 }
 
+# ❌ Composition rule: banned, and the 8-character floor is single-factor
+input CreateUserInput {
+  "Minimum 8 characters, at least one number"
+  password: String! @constraint(minLength: 8, pattern: ".*\\d.*")
+}
+
 # ✅ Descriptions with validation rules
 input CreateUserInput {
   "Valid email address"
   email: String! @constraint(format: "email")
 
-  "Minimum 8 characters, at least one number"
-  password: String! @constraint(minLength: 8, pattern: ".*\\d.*")
+  """
+  Password used as a single authentication factor: 15-64 characters.
+  Every printable character and the space are accepted; no character
+  classes are required. The service layer screens the whole value
+  against a breach blocklist before the account is created.
+  """
+  password: String! @constraint(minLength: 15, maxLength: 64)
 
   "User's display name (2-50 characters)"
   name: String! @constraint(minLength: 2, maxLength: 50)
 }
 ```
+
+Password inputs **MUST** match [NIST SP 800-63B-4][nist-passwords] §3.1.1:
+
+| Rule | Value | NIST keyword |
+| ---- | ----- | ------------ |
+| Minimum length, single factor | 15 characters | SHALL |
+| Minimum length, password only used within MFA | 8 characters | SHALL |
+| Maximum length accepted | at least 64 characters | SHOULD |
+| Composition rules (digits, symbols, mixed case) | none | SHALL NOT |
+| Periodic forced rotation | none | SHALL NOT |
+| Blocklist check of the whole submitted value | required | SHALL |
+| Verification of the full value, never truncated | required | SHALL |
+| Password managers and autofill | allowed | SHALL |
+| Paste into the password field | permitted | SHOULD |
+
+The reviewer **MUST** report a `@constraint(pattern: ...)` on a password field
+as a schema violation, and **MUST** ask which authentication context a
+`minLength` below 15 assumes. A schema **MUST NOT** be treated as the whole
+policy: `@constraint` cannot express blocklist screening, so a resolver or
+service that omits it **MUST** be flagged even when the input type is correct.
+
+**Why**: NIST SP 800-63B-4, published in July 2025, forbids composition
+rules because they steer users towards predictable substitutions (`P@ssw0rd1`)
+that raise the guessing cost far less than length does. It replaces them with
+a length floor and a blocklist of breached, dictionary, and service-specific
+values, which is the control that actually removes guessable passwords. The
+15-character floor applies to passwords carrying authentication on their own;
+8 characters is permitted only when the password is one factor of an MFA
+process, so a schema **MUST** say which case it encodes.
+
+A maximum below 64 characters rejects password-manager output and blocks
+passphrases. If a legacy bcrypt verifier is still in the path, the byte limit
+is 72 and applies to UTF-8 bytes, not characters, so a 64-character maximum
+alone does not guarantee the input fits; see
+[Resolver Organization](#resolver-organization).
+
+[nist-passwords]: https://pages.nist.gov/800-63-4/sp800-63b/authenticators/#password
 
 ---
 
@@ -483,7 +531,7 @@ const resolvers = {
         throw new Error('Email exists');
       }
       // Hash password
-      const hashedPassword = await bcrypt.hash(input.password, 10);
+      const hashedPassword = await hashPassword(input.password);
       // Create user
       const user = await db.users.create({
         ...input,
@@ -507,17 +555,118 @@ const resolvers = {
 // Business logic in service layer
 class UserService {
   async create(input) {
-    await this.validate(input);
+    await this.validate(input);            // length only, no composition rules
+    await this.rejectBreachedPassword(input.password);
     await this.checkDuplicates(input.email);
     const user = await this.repository.create({
       ...input,
-      password: await this.hashPassword(input.password)
+      password: await hashPassword(input.password)
     });
     await this.emailService.sendWelcome(user);
     return { user, errors: [], success: true };
   }
 }
 ```
+
+Password hashing belongs in one module that the service calls. New hashes
+**MUST** use Argon2id; bcrypt **MUST NOT** be used for new hashes and is
+verified only to upgrade rows written before the migration.
+
+```javascript
+// services/password.js - argon2@0.45.1 (new hashes), bcrypt@6.0.0 (legacy reads)
+import argon2 from 'argon2';
+import bcrypt from 'bcrypt';
+
+// OWASP Password Storage Cheat Sheet: m=19456 (19 MiB), t=2, p=1.
+const ARGON2ID = Object.freeze({
+  type: argon2.argon2id,
+  memoryCost: 19456,
+  timeCost: 2,
+  parallelism: 1
+});
+
+const BCRYPT_HASH = /^\$2[ab]\$/;
+const ARGON2_HASH = /^\$argon2(id|i|d)\$/;
+const ARGON2ID_HASH = /^\$argon2id\$/;
+
+// argon2 generates a fresh 16-byte salt per call and encodes the algorithm,
+// version, and cost factors in the returned PHC string.
+export function hashPassword(password) {
+  return argon2.hash(password, ARGON2ID);
+}
+
+// Returns { ok, upgraded }; persist `upgraded` when it is not null.
+export async function verifyPassword(stored, password) {
+  if (BCRYPT_HASH.test(stored)) {
+    const ok = await bcrypt.compare(password, stored);
+    return { ok, upgraded: ok ? await hashPassword(password) : null };
+  }
+
+  // Both libraries answer "false" for a format they cannot read, which would
+  // turn a bad migration into silent lockout. Fail loudly instead.
+  if (!ARGON2_HASH.test(stored)) {
+    throw new Error('Unrecognised password hash format');
+  }
+
+  const ok = await argon2.verify(stored, password);
+  if (!ok) {
+    return { ok, upgraded: null };
+  }
+
+  // needsRehash compares cost factors only: it reports "false" for an
+  // argon2i or argon2d hash, so the variant is checked separately.
+  const stale = !ARGON2ID_HASH.test(stored) || argon2.needsRehash(stored, ARGON2ID);
+  return { ok, upgraded: stale ? await hashPassword(password) : null };
+}
+```
+
+Blocklist screening is a service call, not a schema constraint. Query the
+[Pwned Passwords range API][pwned] so only a five-character SHA-1 prefix
+leaves the process:
+
+```javascript
+// services/breached-passwords.js
+import { createHash } from 'node:crypto';
+
+export async function isBreached(password) {
+  const digest = createHash('sha1').update(password, 'utf8').digest('hex').toUpperCase();
+  const [prefix, suffix] = [digest.slice(0, 5), digest.slice(5)];
+
+  const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+    headers: { 'Add-Padding': 'true' }
+  });
+  if (!response.ok) {
+    throw new Error(`Pwned Passwords range query failed: ${response.status}`);
+  }
+
+  return (await response.text())
+    .split('\n')
+    .some((line) => line.split(':')[0].trim() === suffix);
+}
+```
+
+**Why**: [OWASP's Password Storage Cheat Sheet][owasp-storage] ranks Argon2id
+first because it is memory-hard, so GPU and ASIC cracking rigs gain far less
+against it than against bcrypt. `m=19456, t=2, p=1` is OWASP's stated minimum
+configuration. bcrypt is listed only "for password storage in legacy systems
+where Argon2 and scrypt are not available", with a work factor of at least 10
+and a 72-byte input limit.
+
+That limit is a silent truncation, not an error: bcrypt 6.0.0 hashes an
+80-byte password without complaint, and `bcrypt.compare` then returns `true`
+for the first 72 bytes of that password. A single work factor is also the only
+tuning knob bcrypt exposes, so raising it costs CPU without buying the memory
+hardness Argon2id provides. Verifying legacy hashes and replacing them on the
+next successful login keeps existing accounts working while the bcrypt rows
+drain away; storing new bcrypt hashes just extends the migration indefinitely.
+
+Keeping this in `services/password.js` also means the cost factors are raised
+in one place. NIST requires the cost factor to be "as high as practical" and
+increased over time, which is only auditable when a single frozen constant
+drives both hashing and the `needsRehash` check.
+
+[owasp-storage]: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+[pwned]: https://haveibeenpwned.com/API/v3#PwnedPasswords
 
 ### Error Handling
 
