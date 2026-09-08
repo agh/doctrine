@@ -75,12 +75,17 @@
 
 ## Reference Material
 
+- [UPSTREAM.json](reference/UPSTREAM.json)
 - airbnb/
+  - [LICENSE](reference/airbnb/LICENSE)
+  - [NOTICE](reference/airbnb/NOTICE)
   - [Airbnb CSS-in-JavaScript](reference/airbnb/css-in-javascript.md)
   - [Airbnb JavaScript Style Guide() {](reference/airbnb/javascript.md)
   - [Airbnb React/JSX](reference/airbnb/react.md)
   - [Ruby](reference/airbnb/ruby.md)
 - google/
+  - [LICENSE](reference/google/LICENSE)
+  - [NOTICE](reference/google/NOTICE)
   - [C# at Google](reference/google/csharp.md)
   - [Go Style Best Practices](reference/google/go-best-practices.md)
   - [Go Style Decisions](reference/google/go-decisions.md)
@@ -93,14 +98,22 @@
   - [Shell](reference/google/shell.md)
   - [typescript.html](reference/google/typescript.html)
 - holywell/
+  - [LICENCE](reference/holywell/LICENCE)
+  - [NOTICE](reference/holywell/NOTICE)
   - [SQL style guide](reference/holywell/sql.md)
 - ietf/
+  - [NOTICE](reference/ietf/NOTICE)
   - [IETF Reference Documents](reference/ietf/README.md)
   - [rfc2119.txt](reference/ietf/rfc2119.txt)
 - rubocop/
+  - [LICENSE](reference/rubocop/LICENSE)
+  - [NOTICE](reference/rubocop/NOTICE)
   - [rails.adoc](reference/rubocop/rails.adoc)
   - [ruby.adoc](reference/rubocop/ruby.adoc)
 - rust/
+  - [LICENSE-APACHE](reference/rust/LICENSE-APACHE)
+  - [LICENSE-MIT](reference/rust/LICENSE-MIT)
+  - [NOTICE](reference/rust/NOTICE)
   - [Rust API Guidelines](reference/rust/about.md)
   - [Summary](reference/rust/api-guidelines-summary.md)
   - [Rust API Guidelines Checklist](reference/rust/checklist.md)
@@ -117,9 +130,23 @@
   - [Type safety](reference/rust/type-safety.md)
 - security/
   - [Security Reference Agent Integration](reference/security/AGENT_GUIDE.md)
+  - [NOTICE](reference/security/NOTICE)
   - [Security Reference Loading Protocol](reference/security/REFERENCE_PROTOCOL.md)
   - [manifest.json](reference/security/manifest.json)
+  - LICENSES/
+    - [Apache-2.0.txt](reference/security/LICENSES/Apache-2.0.txt)
+    - [BSD-3-Clause-JA4.txt](reference/security/LICENSES/BSD-3-Clause-JA4.txt)
+    - [CC-BY-NC-ND-4.0.txt](reference/security/LICENSES/CC-BY-NC-ND-4.0.txt)
+    - [CC-BY-SA-4.0.txt](reference/security/LICENSES/CC-BY-SA-4.0.txt)
+    - [Community Specification License 1.0](reference/security/LICENSES/Community-Specification-1.0.md)
+    - [Detection Rule License (DRL) 1.1](reference/security/LICENSES/DRL-1.1.md)
+    - [FoxIO-License-1.1.txt](reference/security/LICENSES/FoxIO-License-1.1.txt)
+    - [MIT-D3FEND.md](reference/security/LICENSES/MIT-D3FEND.md)
+    - [MITRE-ATTACK-Terms-of-Use.txt](reference/security/LICENSES/MITRE-ATTACK-Terms-of-Use.txt)
+    - [MITRE-CAPEC-Terms-of-Use.txt](reference/security/LICENSES/MITRE-CAPEC-Terms-of-Use.txt)
+    - [MITRE-CWE-Terms-of-Use.txt](reference/security/LICENSES/MITRE-CWE-Terms-of-Use.txt)
   - cis/
+    - [NOTICE](reference/security/cis/NOTICE)
     - [controls-v8.json](reference/security/cis/controls-v8.json)
   - compliance/
     - [control-mappings.json](reference/security/compliance/control-mappings.json)
@@ -163,8 +190,12 @@
   - slsa/
     - [slsa-levels.json](reference/security/slsa/slsa-levels.json)
 - shopify/
+  - [LICENSE](reference/shopify/LICENSE)
+  - [NOTICE](reference/shopify/NOTICE)
   - [Ruby](reference/shopify/ruby.md)
 - uber/
+  - [LICENSE](reference/uber/LICENSE)
+  - [NOTICE](reference/uber/NOTICE)
   - [Uber Go](reference/uber/go.md)
 
 ## Configuration
@@ -199,10 +230,16 @@
     - [Prometheus / VictoriaMetrics Skill](configs/claude/skills/monitoring/prometheus.md)
     - [VictoriaLogs Skill](configs/claude/skills/monitoring/victorialogs.md)
 - cursor/
-  - [.cursorrules.template](configs/cursor/.cursorrules.template)
+  - rules/
+    - [project-rules.mdc.template](configs/cursor/rules/project-rules.mdc.template)
 - editorconfig/
   - [.editorconfig](configs/editorconfig/.editorconfig)
   - [EditorConfig](configs/editorconfig/README.md)
+- github/
+  - [GitHub Workflow Templates](configs/github/README.md)
+  - workflows/
+    - [doc-sync.yml](configs/github/workflows/doc-sync.yml)
+    - [sync-doctrine.yml](configs/github/workflows/sync-doctrine.yml)
 - pre-commit/
   - [.pre-commit-config.yaml](configs/pre-commit/.pre-commit-config.yaml)
 - prettier/

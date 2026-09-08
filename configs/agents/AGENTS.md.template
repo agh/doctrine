@@ -91,22 +91,13 @@ This project follows [Doctrine](https://github.com/agh/doctrine) for all coding 
 
 ## Tool Compatibility
 
-Codex and GitHub Copilot read `AGENTS.md` natively. Claude Code and Gemini CLI
-read their own filenames, so give each a two-line file that imports this one —
-imports survive ZIP downloads and Windows clones made without symlink support.
+Codex, GitHub Copilot and Cursor read this file directly. Tools with a
+different default filename need a link or an import:
 
-`CLAUDE.md`:
-
-```markdown
-# Claude Code instructions — see AGENTS.md
-
-@AGENTS.md
+```bash
+ln -s AGENTS.md CLAUDE.md   # Claude Code; or a CLAUDE.md holding @AGENTS.md
+ln -s AGENTS.md GEMINI.md   # Gemini CLI; or add AGENTS.md to context.fileName
 ```
 
-`GEMINI.md`:
-
-```markdown
-# Gemini CLI instructions — see AGENTS.md
-
-@./AGENTS.md
-```
+Aider discovers no file. Load this one with `aider --read AGENTS.md`, or set
+`read: AGENTS.md` in `.aider.conf.yml`.

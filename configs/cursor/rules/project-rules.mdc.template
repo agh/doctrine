@@ -1,0 +1,73 @@
+---
+description: "{When Agent should pull this rule in, e.g. conventions for {language} files}"
+globs: "{glob_pattern}"
+alwaysApply: false
+---
+
+<!--
+Copy to .cursor/rules/{rule-name}.mdc in your project.
+
+The extension MUST be .mdc: Cursor ignores plain .md files in .cursor/rules
+because they carry no frontmatter.
+
+Frontmatter selects when the rule loads:
+  alwaysApply: true             -> every conversation; globs and description ignored
+  globs: src/**/*.ts            -> attached when a matching file is in context
+  description: <text>           -> Agent pulls it in when the description is relevant
+  neither globs nor description -> only when @-mentioned in chat
+
+Project-wide context (stack, commands, architecture) belongs in AGENTS.md,
+which Cursor reads from the project root and from subdirectories. Keep this
+file for rules that need scoping, and keep it under 500 lines.
+-->
+
+Project-wide conventions are in [AGENTS.md](../../AGENTS.md). The rules below
+apply only to files matching the `globs` pattern above.
+
+## Code Style
+
+- Use {indent_style} indentation ({indent_size} spaces)
+- Maximum line length: {max_line_length} characters
+- Prefer {preference_1} over {alternative_1}
+- {Language-specific rule}
+
+## Imports
+
+- Group imports: {import_grouping_order}
+- Sort imports alphabetically within groups
+
+## Types
+
+- {Type annotation requirements}
+- {Null handling approach}
+
+## Error Handling
+
+- {Error handling approach}
+- {Exception types to use}
+- {Logging requirements}
+
+## Testing
+
+- Test file naming: `{test_file_pattern}`
+- Use {testing_framework} for {test_type}
+- Prefer {mock_approach} for external dependencies
+- Minimum coverage: {coverage_threshold}%
+
+## Documentation
+
+- Add docstrings to all public functions
+- Use {docstring_format} format
+
+## Do Not
+
+- Do not use {anti_pattern_1}
+- Never log sensitive data (passwords, tokens, PII)
+- Never build database queries by string concatenation
+- {absolute_prohibition}
+
+## Reference Files
+
+Point at canonical examples instead of pasting code into this rule:
+
+@{path/to/template_file}
