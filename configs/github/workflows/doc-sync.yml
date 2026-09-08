@@ -1,0 +1,145 @@
+# Documentation Sync — downstream template
+#
+# TEMPLATE. This file does not run in Doctrine itself: Doctrine has no src/,
+# lib/ or app/ tree, and it lives outside .github/workflows/ so GitHub cannot
+# schedule it here. Copy it into a project that keeps prose documentation
+# alongside code.
+#
+# What it does: when a pull request touches source files, it lists the
+# documents that most likely need updating and leaves (or updates) a single
+# comment. It is a prompt for the author, not a gate — it never fails the
+# build and it never asserts that documentation is wrong.
+#
+# Install:
+#   1. Copy to .github/workflows/doc-sync.yml in your project.
+#   2. Adjust SOURCE_GLOBS and DOC_ROOT below.
+#
+# See configs/github/README.md for the full adoption notes.
+
+name: Documentation Sync
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'app/**'
+      - '!**/*.test.*'
+      - '!**/*.spec.*'
+
+permissions:
+  contents: read
+
+env:
+  DOC_ROOT: docs
+
+jobs:
+  doc-check:
+    name: Check documentation freshness
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Collect changed source files
+        id: changed
+        # Pinned to a commit SHA rather than a tag: this action's tags were
+        # retargeted during the March 2025 supply-chain incident, and a SHA
+        # cannot be moved under you.
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            src/**
+            lib/**
+            app/**
+          files_ignore: |
+            **/*.test.*
+            **/*.spec.*
+
+      - name: Map sources to documentation
+        if: steps.changed.outputs.any_changed == 'true'
+        id: map
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.all_changed_files }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo 'body<<DOC_SYNC_EOF'
+            echo '## Documentation check'
+            echo
+            echo 'These source files changed in this pull request:'
+            echo
+          } > body.md
+
+          for file in ${CHANGED_FILES}; do
+            # Strip any extension rather than assuming TypeScript; the previous
+            # version produced docs/lib/example.py.md for a Python file.
+            stem="${file%.*}"
+            doc="${DOC_ROOT}/${stem}.md"
+
+            if [ -f "${doc}" ]; then
+              echo "- \`${file}\` — see \`${doc}\` (may need updating)" >> body.md
+            else
+              echo "- \`${file}\` — no document at \`${doc}\`" >> body.md
+            fi
+          done
+
+          {
+            echo
+            echo 'Before merging, please confirm:'
+            echo
+            echo '- Related documentation reflects the change.'
+            echo '- Code examples in the documentation still run.'
+            echo '- Documented signatures match the implementation.'
+            echo
+            echo '<!-- doc-sync-comment -->'
+            echo 'DOC_SYNC_EOF'
+          } >> body.md
+
+          cat body.md >> "${GITHUB_OUTPUT}"
+          sed '1d;$d' body.md >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Comment on the pull request
+        if: steps.changed.outputs.any_changed == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          COMMENT_BODY: ${{ steps.map.outputs.body }}
+        with:
+          script: |
+            const marker = '<!-- doc-sync-comment -->';
+            const body = process.env.COMMENT_BODY;
+
+            // Update the existing comment instead of adding one per push.
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.type === 'Bot' && (comment.body ?? '').includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

@@ -1,14 +1,14 @@
 # Go Style Guide
 
-> [Doctrine](../../README.md) > [Languages](../README.md) > Go
+> [Doctrine](../../README.md) > [Languages](README.md) > Go
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
 interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [Google Go Style Guide](google/go.md). See also
-[Google Go Decisions](google/go-decisions.md) and
-[Google Go Best Practices](google/go-best-practices.md).
+Extends [Google Go Style Guide](../../reference/google/go.md). See also
+[Google Go Decisions](../../reference/google/go-decisions.md) and
+[Google Go Best Practices](../../reference/google/go-best-practices.md).
 
 ## Quick Reference
 
@@ -2133,5 +2133,5 @@ func TestFeatureBehavior(t *testing.T) {
 
 ## See Also
 
-- [Testing Guide](../testing.md) - General testing principles and practices
-- [CI Guide](../ci.md) - Continuous Integration setup and best practices
+- [Testing Guide](../process/testing.md) - General testing principles and practices
+- [CI Guide](../process/ci.md) - Continuous Integration setup and best practices
