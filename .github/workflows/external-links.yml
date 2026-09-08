@@ -90,6 +90,6 @@ jobs:
               grep -E '^(FAILED: |ERROR:|[[:space:]]+\[)' "${report}" || true
               echo '```'
             fi
-          } >> "${GITHUB_STEP_SUMMARY}"
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
 
           exit "${failed}"
