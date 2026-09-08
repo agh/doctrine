@@ -516,8 +516,9 @@ services:
     - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
   ```
 
-  **Why**: Environment variables visible in `docker inspect`. Use Docker secrets.
-  [See: Doctrine Docker Guide - Secrets](../../../guides/infrastructure/docker.md#docker-secrets-vs-environment-variables)
+  **Why**: Environment variables visible in `docker inspect`. Use a secret file
+  and protect the host file it is mounted from.
+  [See: Doctrine Docker Guide - Secrets](../../../guides/infrastructure/docker.md#secrets-vs-environment-variables)
 
 - [ ] **Security**: Running as root (`Dockerfile:15`)
 
