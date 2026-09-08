@@ -213,36 +213,81 @@ Flag packages with:
 
 #### Build Provenance Verification
 
-```yaml
-# SLSA Provenance Attestation (in-toto format)
-_type: https://in-toto.io/Statement/v0.1
-subject:
-  - name: "pkg:npm/my-package@1.0.0"
-    digest:
-      sha256: "abc123..."
+GitHub build provenance is an [in-toto Statement v1][in-toto-statement] wrapping a
+[SLSA v1 provenance][slsa-provenance] predicate. Audits **MUST** read `_type`,
+`predicateType`, every `subject[].digest`, and `runDetails.builder.id`, and
+**MUST NOT** base a trust decision on the remaining `predicate` fields.
 
-predicateType: https://slsa.dev/provenance/v1
-predicate:
-  buildDefinition:
-    buildType: "https://github.com/actions/runner"
-    externalParameters:
-      workflow:
-        ref: "refs/heads/main"
-        repository: "https://github.com/org/repo"
-        path: ".github/workflows/release.yml"
+**Why**: only the signing certificate and the verified timestamps sit outside the
+producing workflow's control. Anything that can influence that workflow's execution
+context can write arbitrary values into `predicate`, so the builder identity on the
+certificate is the field that carries the guarantee.
 
-  runDetails:
-    builder:
-      id: "https://github.com/actions/runner"
-      builderDependencies:
-        - uri: "pkg:github/actions/checkout@v4"
-        - uri: "pkg:github/actions/setup-node@v4"
+The statement below is a real `cli/cli` release attestation with one of its 21
+subjects retained:
 
-    metadata:
-      invocationId: "https://github.com/org/repo/actions/runs/12345"
-      startedOn: "2024-01-15T10:00:00Z"
-      finishedOn: "2024-01-15T10:15:00Z"
+```json
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "gh_2.100.0_linux_arm64.tar.gz",
+      "digest": {
+        "sha256": "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/provenance/v1",
+  "predicate": {
+    "buildDefinition": {
+      "buildType": "https://actions.github.io/buildtypes/workflow/v1",
+      "externalParameters": {
+        "workflow": {
+          "path": ".github/workflows/deployment.yml",
+          "ref": "refs/heads/trunk",
+          "repository": "https://github.com/cli/cli"
+        }
+      },
+      "internalParameters": {
+        "github": {
+          "event_name": "workflow_dispatch",
+          "repository_id": "212613049",
+          "repository_owner_id": "59704711",
+          "runner_environment": "github-hosted"
+        }
+      },
+      "resolvedDependencies": [
+        {
+          "digest": {
+            "gitCommit": "45437bc7eeeb3359bbfddd1742f79de7652fd3e2"
+          },
+          "uri": "git+https://github.com/cli/cli@refs/heads/trunk"
+        }
+      ]
+    },
+    "runDetails": {
+      "builder": {
+        "id": "https://github.com/cli/cli/.github/workflows/deployment.yml@refs/heads/trunk"
+      },
+      "metadata": {
+        "invocationId": "https://github.com/cli/cli/actions/runs/33772753457/attempts/1"
+      }
+    }
+  }
+}
 ```
+
+Reproduce it from the published artifact:
+
+```bash
+gh release download v2.100.0 --repo cli/cli \
+  --pattern 'gh_2.100.0_linux_arm64.tar.gz'
+gh attestation verify gh_2.100.0_linux_arm64.tar.gz --repo cli/cli \
+  --format json --jq '.[0].verificationResult.statement'
+```
+
+[in-toto-statement]: https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md
+[slsa-provenance]: https://slsa.dev/spec/v1.0/provenance
 
 #### SLSA Assessment Checklist
 
@@ -311,35 +356,89 @@ When auditing dependencies, check their SLSA compliance:
 
 #### SLSA in CI/CD
 
+Artifact attestations on their own reach SLSA v1.0 Build Level 2. Build Level 3
+additionally requires the build and the signing step to run inside a reusable
+workflow that the calling workflow cannot influence. Release workflows **MUST**
+pin every action to a full commit SHA and **MUST** confine `id-token: write` and
+`attestations: write` to the job that attests.
+
+**Why**: `id-token: write` mints the OIDC token Sigstore signs against, so any job
+holding it can produce provenance in the repository's name. A moving tag such as
+`@v1` lets the action author replace the code that runs with those permissions.
+
 ```yaml
-# GitHub Actions with SLSA L3 provenance
-name: Release with SLSA
+# GOOD: .github/workflows/release.yml - builds an npm tarball and attests it
+name: Release with build provenance
 
 on:
   push:
     tags: ['v*']
 
+permissions: {}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      id-token: write  # For signing
+      contents: read # check out the tagged source
+      id-token: write # mint the OIDC token Sigstore signs against
+      attestations: write # persist the attestation on this repository
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Build
-        run: npm run build
-
-      - name: Generate SLSA provenance
-        uses: slsa-framework/slsa-github-generator@v1
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          artifact-path: dist/
+          persist-credentials: false
 
-      - name: Verify provenance
-        uses: slsa-framework/slsa-verifier@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Build the release tarball
+        run: |
+          npm ci
+          npm run build
+          npm pack --pack-destination dist
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.tgz
 ```
+
+Consumers verify with the GitHub CLI; the producing workflow gets no verification
+step:
+
+```bash
+# Fails unless the tarball digest matches an attestation signed by org/repo.
+gh attestation verify my-package-1.0.0.tgz --repo org/repo
+
+# Build Level 3: also require the reusable workflow that signed the attestation.
+gh attestation verify my-package-1.0.0.tgz --repo org/repo \
+  --signer-workflow org/build-workflows/.github/workflows/release.yml
+```
+
+```yaml
+# BAD: neither of these steps runs
+steps:
+  - name: Generate SLSA provenance
+    uses: slsa-framework/slsa-github-generator@v1 # no such ref
+    with:
+      artifact-path: dist/
+
+  - name: Verify provenance
+    uses: slsa-framework/slsa-verifier@v2 # no such ref
+```
+
+Both repositories tag releases as `vX.Y.Z` only, so `@v1` and `@v2` resolve to
+nothing. `slsa-github-generator` ships reusable workflows invoked from a job-level
+`uses:`, never from a step, and is no longer actively maintained; it directs new
+projects to GitHub artifact attestations. `slsa-verifier` is a command-line tool
+rather than an action, and it remains the verifier for provenance a SLSA builder
+produced - migrating to artifact attestations changes how consumers verify, so
+`gh attestation verify` **MUST NOT** be presented as a drop-in replacement.
 
 ## Output Format
 
