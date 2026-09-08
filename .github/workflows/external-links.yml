@@ -56,7 +56,9 @@ jobs:
 
       - name: Check external URLs
         run: |
-          # shellcheck disable=SC2016  # the $1 is for the child sh, on purpose
+          # The $1 inside the single-quoted sh -c script is expanded by the
+          # child shell, on purpose.
+          # shellcheck disable=SC2016
           set -uo pipefail
 
           # Four files at a time. .markdown-link-check.json keeps the
