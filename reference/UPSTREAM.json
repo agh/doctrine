@@ -1,5 +1,5 @@
 {
-  "description": "Provenance manifest for vendored third-party reference material. Every listed file is an unmodified upstream copy; verify with scripts/check_vendored.py.",
+  "description": "Provenance manifest for vendored third-party reference material. Every listed file is an unmodified upstream copy unless it declares a transform, which names the deterministic rewrite applied at import; verify with scripts/check_vendored.py.",
   "schema_version": "1.0.0",
   "files": [
     {
@@ -71,6 +71,307 @@
       "license": "CC-BY-3.0",
       "license_url": "https://github.com/google/styleguide/blob/gh-pages/LICENSE",
       "copyright": "Copyright Google LLC"
+    },
+    {
+      "path": "reference/rust/LICENSE-APACHE",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/LICENSE-APACHE",
+      "upstream_path": "LICENSE-APACHE",
+      "upstream_ref": "master",
+      "upstream_commit": "63249b2164f51f6b869bf6dc0e3e0561030cea1c",
+      "upstream_commit_date": "2017-05-05",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers"
+    },
+    {
+      "path": "reference/rust/LICENSE-MIT",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/LICENSE-MIT",
+      "upstream_path": "LICENSE-MIT",
+      "upstream_ref": "master",
+      "upstream_commit": "63249b2164f51f6b869bf6dc0e3e0561030cea1c",
+      "upstream_commit_date": "2017-05-05",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "29662666b44dff84977b46e05642cdef910bc3a93a17b5fd86e632bafa59cf21",
+      "sha256": "29662666b44dff84977b46e05642cdef910bc3a93a17b5fd86e632bafa59cf21",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers"
+    },
+    {
+      "path": "reference/rust/SUMMARY.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/SUMMARY.md",
+      "upstream_path": "src/SUMMARY.md",
+      "upstream_ref": "master",
+      "upstream_commit": "40253465120726e9a1925a891c8102b952efd05b",
+      "upstream_commit_date": "2017-10-23",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "b3ad877e7824208a8c1c3b45762d75b8c89953ee34c224ba5c8ae5c2b0d43648",
+      "sha256": "b3ad877e7824208a8c1c3b45762d75b8c89953ee34c224ba5c8ae5c2b0d43648",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/about.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/about.md",
+      "upstream_path": "src/about.md",
+      "upstream_ref": "master",
+      "upstream_commit": "b95ffe5c0259e01181ae50db289c2d18146efcef",
+      "upstream_commit_date": "2019-12-17",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "e46227c4909b81d97a992d5c5a26d0591a84b780e71c9bff523bd24c8b0c4ddf",
+      "sha256": "31149692936f047a934473392f8f2580a1366ac2ffb172ec6f55f528bd8010ac",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/checklist.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/checklist.md",
+      "upstream_path": "src/checklist.md",
+      "upstream_ref": "master",
+      "upstream_commit": "b2f62d68c15a3bb55c601677ac11eb0e067ff6be",
+      "upstream_commit_date": "2021-08-23",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "6e8afb1f55d7f079b9c48f48925ca80d52de78ea27beb8d0e5fadf91123f23b2",
+      "sha256": "6f4149e48216763e94939b8b71e2b340321be68596d60977403c5f6fa590eb63",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/debuggability.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/debuggability.md",
+      "upstream_path": "src/debuggability.md",
+      "upstream_ref": "master",
+      "upstream_commit": "94ee4a20fa0b56fd46119f62aed3dc4011df08a0",
+      "upstream_commit_date": "2017-07-25",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "f6eb09d8246fe6aafc3c0e7b0003c5876455e78d7806d9b43905f1b4080d52fc",
+      "sha256": "f6eb09d8246fe6aafc3c0e7b0003c5876455e78d7806d9b43905f1b4080d52fc",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/dependability.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/dependability.md",
+      "upstream_path": "src/dependability.md",
+      "upstream_ref": "master",
+      "upstream_commit": "c8bb675c49771c4d38bac875e83f03f13a9683fb",
+      "upstream_commit_date": "2022-06-12",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "e0e1c29e6b31ef0e13a2da17b7afa41f0f3fbf5aadae7ad51d39b9ae3caaddea",
+      "sha256": "731297e5987f78634249ac4968b5e0907d8d1236ec80f3401299bdcec6d2ee27",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/documentation.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/documentation.md",
+      "upstream_path": "src/documentation.md",
+      "upstream_ref": "master",
+      "upstream_commit": "b2f62d68c15a3bb55c601677ac11eb0e067ff6be",
+      "upstream_commit_date": "2021-08-23",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "6ba5c33eef97d07710abd09098d02a6a6d200ee3173b96dad27bf47139742105",
+      "sha256": "6ba5c33eef97d07710abd09098d02a6a6d200ee3173b96dad27bf47139742105",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/external-links.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/external-links.md",
+      "upstream_path": "src/external-links.md",
+      "upstream_ref": "master",
+      "upstream_commit": "4a21ebc6f926dc0dffb4c08c5ccb4d3119b11be0",
+      "upstream_commit_date": "2021-09-28",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "5abb45809a28cb61ac91ddf92fd2fec72b6d2aa31a7f3155fd7c773cb36abe7d",
+      "sha256": "5abb45809a28cb61ac91ddf92fd2fec72b6d2aa31a7f3155fd7c773cb36abe7d",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/flexibility.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/flexibility.md",
+      "upstream_path": "src/flexibility.md",
+      "upstream_ref": "master",
+      "upstream_commit": "39fa497f43b4440f65697c1f9f58262db114efcd",
+      "upstream_commit_date": "2021-05-22",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "5565a393442c9dcaf73161584233060f4cb52f8de1b2c1abad5ccc95f61aed7d",
+      "sha256": "5565a393442c9dcaf73161584233060f4cb52f8de1b2c1abad5ccc95f61aed7d",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/future-proofing.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/future-proofing.md",
+      "upstream_path": "src/future-proofing.md",
+      "upstream_ref": "master",
+      "upstream_commit": "ba11e91e8a2cf9f4a1b7e4822265be4803993b94",
+      "upstream_commit_date": "2021-08-23",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "467184d9e5f3e0f949db6ca6a5f4232574e342ec76648e46424f39c8c23f3ad7",
+      "sha256": "467184d9e5f3e0f949db6ca6a5f4232574e342ec76648e46424f39c8c23f3ad7",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/interoperability.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/interoperability.md",
+      "upstream_path": "src/interoperability.md",
+      "upstream_ref": "master",
+      "upstream_commit": "164430b2ea2da9f04c3ebfe29b45b90961c83544",
+      "upstream_commit_date": "2021-08-23",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "e795059bf83624252ee979c1e9672eb42600e0b7ea40a80026a975a2c0fb5d0d",
+      "sha256": "e795059bf83624252ee979c1e9672eb42600e0b7ea40a80026a975a2c0fb5d0d",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/macros.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/macros.md",
+      "upstream_path": "src/macros.md",
+      "upstream_ref": "master",
+      "upstream_commit": "94ee4a20fa0b56fd46119f62aed3dc4011df08a0",
+      "upstream_commit_date": "2017-07-25",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "02b743de7c7a714b04096fcbe214145ea81edf9261367063ecb618146e79df4c",
+      "sha256": "02b743de7c7a714b04096fcbe214145ea81edf9261367063ecb618146e79df4c",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/naming.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/naming.md",
+      "upstream_path": "src/naming.md",
+      "upstream_ref": "master",
+      "upstream_commit": "19f0f62ecd0f56a0b7adaa332c352bc2476506ea",
+      "upstream_commit_date": "2025-07-08",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "36b3fcb3705867fc96cb6346a86d0ad3ef9ad97fe5a2741d1afc68063001c63a",
+      "sha256": "5c410b45d64a2057898d69cb851afacd32d6d5e2614cbdd5fe693dd0d04c1ca6",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links",
+        "rustdoc-std-relocations"
+      ]
+    },
+    {
+      "path": "reference/rust/necessities.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/necessities.md",
+      "upstream_path": "src/necessities.md",
+      "upstream_ref": "master",
+      "upstream_commit": "a66952f781f5ce836283bc6d0a75993932b3524f",
+      "upstream_commit_date": "2025-05-26",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "b471e4dcfb48fd9cee26075e97dfcb61ccfb1c2c4b89d21531a03d0da6760fe8",
+      "sha256": "b471e4dcfb48fd9cee26075e97dfcb61ccfb1c2c4b89d21531a03d0da6760fe8",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/predictability.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/predictability.md",
+      "upstream_path": "src/predictability.md",
+      "upstream_ref": "master",
+      "upstream_commit": "ea3634564ced80dd8acb21579ab29e384b7fadae",
+      "upstream_commit_date": "2020-01-13",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "11e74c2710f3e9a62670e7e48d339404cbad3340e6cc10f7631ea57362ba61bf",
+      "sha256": "0c813edde5c012231cd8a45393d1d6ec65188c984371f2ca2140db7ea0061d1a",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
+    },
+    {
+      "path": "reference/rust/type-safety.md",
+      "upstream_repo": "https://github.com/rust-lang/api-guidelines",
+      "upstream_url": "https://raw.githubusercontent.com/rust-lang/api-guidelines/master/src/type-safety.md",
+      "upstream_path": "src/type-safety.md",
+      "upstream_ref": "master",
+      "upstream_commit": "ab0110d52b65e82671810d8c1a4a407a00c4d5a5",
+      "upstream_commit_date": "2023-09-03",
+      "retrieved": "2026-09-08",
+      "upstream_sha256": "d2bfa67228eb1252e1f1e515e036766f3996c2e874dd7ba5ad1b4d8a566f51f5",
+      "sha256": "d2bfa67228eb1252e1f1e515e036766f3996c2e874dd7ba5ad1b4d8a566f51f5",
+      "license": "MIT OR Apache-2.0",
+      "license_url": "https://github.com/rust-lang/api-guidelines/blob/master/LICENSE-MIT",
+      "copyright": "Copyright (c) 2017 The Rust Project Developers",
+      "transform": [
+        "mdbook-chapter-links"
+      ]
     }
   ]
 }

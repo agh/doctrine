@@ -170,9 +170,18 @@ and any JA4+ variant material, or obtain permission from the rights holders.
   <https://opensource.org/license/mit>
 - **Licence text**: `reference/rust/LICENSE-APACHE`,
   `reference/rust/LICENSE-MIT` (verbatim copies of the upstream files)
-- **Doctrine's modifications**: upstream `src/` files flattened into one
-  directory and reflowed. Upstream ships no `NOTICE` file (verified: contents
-  API returns 404), so Apache-2.0 section 4(d) adds nothing.
+- **Doctrine's modifications**: the upstream `src/` book sources are vendored
+  under their upstream file names, taken from branch `master` on 2026-09-08
+  when its HEAD was `97a0969` (2025-07-08). Two deterministic,
+  machine-applied transforms are declared per file in
+  `reference/UPSTREAM.json` and implemented in `scripts/check_vendored.py`:
+  `mdbook-chapter-links` rewrites the 59 cross-chapter links mdBook generates
+  as `naming.html#c-case` into `naming.md#c-case`, and
+  `rustdoc-std-relocations` repoints two dead `struct.AtomicBool.html` links
+  in `naming.md` at `struct.Atomic.html`. The digest of the untouched
+  download is recorded alongside each file as `upstream_sha256`. No prose was
+  changed. Upstream ships no `NOTICE` file (verified: contents API returns
+  404), so Apache-2.0 section 4(d) adds nothing.
 - **Required attribution**: retain the MIT copyright and permission notice.
 
 ### Shopify Ruby Style Guide

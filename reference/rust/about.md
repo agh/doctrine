@@ -20,6 +20,6 @@ chapters containing explanations of the guidelines in detail.
 If you are interested in contributing to the API guidelines, check out
 [contributing.md] and join our [Gitter channel].
 
-[checklist]: checklist.html
+[checklist]: checklist.md
 [contributing.md]: https://github.com/rust-lang/api-guidelines/blob/master/CONTRIBUTING.md
 [Gitter channel]: https://gitter.im/rust-impl-period/WG-libs-guidelines
