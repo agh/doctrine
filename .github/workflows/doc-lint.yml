@@ -111,23 +111,25 @@ jobs:
 
           exit "${missing}"
 
-      - name: Verify agent instruction symlinks
+      - name: Verify agent instruction files import AGENTS.md
         run: |
           set -euo pipefail
           status=0
 
+          # CLAUDE.md and GEMINI.md are real files (not symlinks, which
+          # source archives and default Windows clones do not preserve)
+          # whose body imports AGENTS.md, the canonical instruction file.
           for name in CLAUDE.md GEMINI.md; do
-            if [ ! -L "${name}" ]; then
-              echo "::error file=${name}::expected a symlink to AGENTS.md (ln -sf AGENTS.md ${name})"
+            if [ -L "${name}" ]; then
+              echo "::error file=${name}::must be a regular file that imports AGENTS.md, not a symlink"
               status=1
               continue
             fi
-            target="$(readlink "${name}")"
-            if [ "${target}" != "AGENTS.md" ]; then
-              echo "::error file=${name}::symlink points at '${target}', expected 'AGENTS.md'"
+            if ! grep -qE '^@(\./)?AGENTS\.md$' "${name}"; then
+              echo "::error file=${name}::must contain a line importing AGENTS.md (@AGENTS.md)"
               status=1
             else
-              echo "ok: ${name} -> ${target}"
+              echo "ok: ${name} imports AGENTS.md"
             fi
           done
 
@@ -196,7 +198,14 @@ jobs:
         run: gitleaks dir . --config .gitleaks.toml --no-banner --redact --verbose
 
       - name: Scan history
-        run: gitleaks git . --config .gitleaks.toml --no-banner --redact
+        run: # On pull requests scan only the commits this PR adds; a full fetch also
+          # brings in every other branch, whose commits are not under review here.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gitleaks git . --config .gitleaks.toml --no-banner --redact \
+              --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            gitleaks git . --config .gitleaks.toml --no-banner --redact
+          fi
 
   versions:
     name: Tool version drift
