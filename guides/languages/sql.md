@@ -274,33 +274,164 @@ YYYYMMDDHHMMSS_descriptive_name.sql
 
 ### Safe Patterns
 
-You **SHOULD** use these safe migration patterns in production:
+No migration is safe on its own. Every migration **MUST** set a short
+`lock_timeout` before any statement that takes an `ACCESS EXCLUSIVE` lock, and
+the migration runner **MUST** retry a migration that the lock timeout cancels.
+Migrations **SHOULD** also set a `statement_timeout` sized for the table being
+changed. Every statement **MUST** be re-runnable, either inside an explicit
+transaction or guarded by `IF NOT EXISTS`.[^9]
 
 ```sql
--- Add column (safe)
+-- Do: bound the lock wait, bound the work, keep the statements re-runnable.
+SET lock_timeout = '3s';
+SET statement_timeout = '30s';
+
+BEGIN;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT;
+-- A constant default is a catalogue change; existing rows are not rewritten.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+COMMIT;
+```
+
+```sql
+-- Don't: unbounded lock wait, and a partial failure cannot be rerun.
 ALTER TABLE users ADD COLUMN phone_number TEXT;
+```
 
--- Add NOT NULL column (safe with default)
-ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
+### Why Bounded Migrations
 
--- Add index concurrently (safe, no lock) - MUST use CONCURRENTLY in production
-CREATE INDEX CONCURRENTLY idx_users_phone ON users(phone_number);
+`ALTER TABLE` waits for its `ACCESS EXCLUSIVE` lock behind any transaction
+that already holds a conflicting lock, and every read and write that arrives
+while it waits queues behind it. An unbounded wait therefore stops all traffic
+to the table, not only the migration. A short `lock_timeout` turns that outage
+into `ERROR: canceling statement due to lock timeout`, which the runner
+retries.[^9] `statement_timeout` bounds the work once the lock is held, so a
+statement that turns out to rewrite a large table cannot hold the lock for
+minutes.
 
--- Rename column (breaks app if not coordinated) - MUST coordinate with app deployment
+The distinction that matters for column additions is the default value.
+A constant default is recorded in the catalogue and applied on read, so the
+statement is fast on any table size. A volatile default, such as
+`clock_timestamp()`, updates every row while holding the lock.[^10]
+
+### Adding a Required Column
+
+When the value cannot come from a constant default, you **MUST** split the
+change so that no table scan runs under an `ACCESS EXCLUSIVE` lock: add the
+column nullable, backfill in batches, then add the constraint `NOT VALID` and
+validate it separately.
+
+```sql
+-- Step 1: add the column nullable, so no row is rewritten.
+SET lock_timeout = '3s';
+SET statement_timeout = '30s';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_source TEXT;
+
+-- Step 2: backfill in bounded batches, committing each batch, and repeat
+-- until the statement reports zero rows.
+UPDATE users SET signup_source = 'import'
+WHERE id IN (
+    SELECT id FROM users WHERE signup_source IS NULL ORDER BY id LIMIT 1000
+);
+
+-- Step 3: record the constraint without scanning the table.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_source_not_null;
+ALTER TABLE users ADD CONSTRAINT users_signup_source_not_null
+    CHECK (signup_source IS NOT NULL) NOT VALID;
+
+-- Step 4: validate under SHARE UPDATE EXCLUSIVE, which does not block writes.
+SET statement_timeout = '10min';
+ALTER TABLE users VALIDATE CONSTRAINT users_signup_source_not_null;
+
+BEGIN;
+ALTER TABLE users ALTER COLUMN signup_source SET NOT NULL;
+COMMIT;
+```
+
+### Why Staged Constraints
+
+`ALTER COLUMN ... SET NOT NULL` on its own checks every row while holding the
+`ACCESS EXCLUSIVE` lock. Splitting the change moves the scan out of that lock:
+adding the constraint `NOT VALID` is a catalogue change, and validating it
+takes only a `SHARE UPDATE EXCLUSIVE` lock, which permits reads and writes.
+PostgreSQL then uses the validated constraint to skip the scan `SET NOT NULL`
+would otherwise perform. Measured on PostgreSQL 18.6 with 3,000,000 rows:
+direct `SET NOT NULL` took 295 ms, while the staged sequence took 0.4 ms to
+add the constraint, 152 ms to validate it, and 0.5 ms to set `NOT NULL`.
+
+### Creating Indexes on Live Tables
+
+Indexes on tables that carry production traffic **MUST** be created with
+`CREATE INDEX CONCURRENTLY`, and that statement **MUST NOT** run inside a
+transaction block. A concurrent build is not lock-free: it takes a
+`SHARE UPDATE EXCLUSIVE` lock, scans the table twice, waits for existing
+transactions to finish, and takes significantly longer than an ordinary
+build.[^11] It permits reads and writes, but blocks schema changes and any
+other concurrent build on the same table.
+
+```sql
+-- Do: outside any transaction, with a bounded lock wait and an unbounded
+-- build, because cancelling a concurrent build leaves an invalid index.
+SET lock_timeout = '3s';
+SET statement_timeout = 0;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_phone_number
+    ON users (phone_number);
+```
+
+A failed concurrent build leaves an `INVALID` index that keeps its name,
+is ignored by queries, and still costs write overhead.[^11] `IF NOT EXISTS`
+matches that name, so a rerun reports success while the index remains
+unusable. After any failed build you **MUST** check the catalogue and drop
+the invalid index before rebuilding.
+
+```sql
+SELECT c.relname AS index_name
+FROM pg_index AS i
+JOIN pg_class AS c ON c.oid = i.indexrelid
+WHERE NOT i.indisvalid;
+
+-- Recovery: drop the invalid index, then rerun the concurrent build.
+SET lock_timeout = '3s';
+SET statement_timeout = '30s';
+DROP INDEX CONCURRENTLY IF EXISTS idx_users_phone_number;
+```
+
+An ordinary `CREATE INDEX` **SHOULD** be used where no production traffic can
+reach the table yet, such as a table created in the same migration: it is
+faster and runs inside the transaction. Concurrent builds are not supported on
+partitioned parents; build the index on each partition concurrently, then
+create the parent index non-concurrently as a metadata-only operation.[^11]
+
+### Renaming Columns
+
+Renaming a column is not a safe pattern. The rename takes effect for every
+session at commit, so any deployed code still using the old name fails
+immediately. You **MUST** expand and contract instead: add the new column,
+write both columns, backfill, move reads across, and drop the old column in a
+later migration once no deployed code refers to it.
+
+```sql
+-- Don't: every client using the old name breaks the moment this commits.
 ALTER TABLE users RENAME COLUMN phone_number TO phone;
 ```
 
 ### Squawk (PostgreSQL Migration Linter)
 
+Squawk's PyPI distribution is `squawk-cli`; the distribution named `squawk` is
+an unrelated project. You **MUST** install `squawk-cli` and **MUST** pin the
+version so local runs and CI apply the same rules.
+
 ```bash
-# Install
-pip install squawk
+# Install (the distribution is squawk-cli, the command is squawk)
+pip install squawk-cli==2.64.0
 
 # Lint migrations
 squawk migrations/*.sql
 ```
 
-Squawk[^8] catches unsafe migration patterns specific to PostgreSQL.
+Squawk[^8] catches unsafe migration patterns specific to PostgreSQL. It exits
+non-zero when a migration is unsafe, so it **MUST** run in CI as well as
+locally.
 
 ### Why Squawk
 
@@ -338,6 +469,12 @@ repos:
         args: [--dialect, postgres]
       - id: sqlfluff-fix
         args: [--dialect, postgres]
+  - repo: https://github.com/sbdchd/squawk
+    rev: v2.64.0
+    hooks:
+      - id: squawk
+        files: ^migrations/.*\.sql$
+        additional_dependencies: ["squawk-cli@2.64.0"]
 ```
 
 ## CI Pipeline
@@ -351,6 +488,8 @@ jobs:
       - uses: actions/setup-python@v5
       - run: pip install sqlfluff
       - run: sqlfluff lint --dialect postgres .
+      - run: pip install squawk-cli==2.64.0
+      - run: squawk migrations/*.sql
 ```
 
 ## Schema Anti-Patterns
@@ -463,6 +602,11 @@ CREATE TABLE shipments (
 [^6]: Jinja - Template Engine for Python - <https://jinja.palletsprojects.com/>
 [^7]: dbt - Data Build Tool - <https://www.getdbt.com/>
 [^8]: Squawk - PostgreSQL Migration Linter - <https://github.com/sbdchd/squawk>
+[^9]: Squawk - Safe Migrations - <https://squawkhq.com/docs/safe_migrations>
+[^10]: PostgreSQL - Modifying Tables -
+    <https://www.postgresql.org/docs/current/ddl-alter.html>
+[^11]: PostgreSQL - CREATE INDEX -
+    <https://www.postgresql.org/docs/current/sql-createindex.html>
 
 ## See Also
 
