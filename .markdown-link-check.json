@@ -1,6 +1,9 @@
 {
   "_comment": [
-    "Policy for the blocking link check in .github/workflows/doc-lint.yml.",
+    "Policy for the weekly external URL check (.github/workflows/external-links.yml,",
+    "also `make links-external`). Internal links use .markdown-link-check-internal.json.",
+    "The timeout and retry budget are deliberately small: with four files checked in",
+    "parallel, a throttling host must cost seconds, not minutes.",
     "ignorePatterns cover URLs that are placeholders or unreachable by design.",
     "aliveStatusCodes treats 403 and 429 as alive: they prove the host answered,",
     "and several sites Doctrine cites (HHS, OpenAI, Stack Overflow, MySQL docs,",
@@ -30,9 +33,9 @@
       }
     }
   ],
-  "timeout": "30s",
+  "timeout": "10s",
   "retryOn429": true,
-  "retryCount": 3,
-  "fallbackRetryDelay": "30s",
+  "retryCount": 1,
+  "fallbackRetryDelay": "5s",
   "aliveStatusCodes": [200, 206, 401, 403, 429, 999]
 }

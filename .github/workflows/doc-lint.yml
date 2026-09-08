@@ -2,6 +2,8 @@
 #
 # Doctrine's own CI. Every check here is blocking except the snippet syntax
 # check, which is advisory until the guides' fenced examples are corrected.
+# External URLs are not checked here: that is slow, network-bound and
+# advisory, so it runs weekly in external-links.yml instead.
 #
 # Runtimes: Node.js 24 (Active LTS until 2026-10-20, EOL 2028-04-30) and
 # Python 3.14 (the baseline the guides document).
@@ -20,7 +22,6 @@ on:
       - 'configs/**'
       - '.markdownlint.json'
       - '.markdownlintignore'
-      - '.markdown-link-check.json'
       - '.markdown-link-check-internal.json'
       - '.markdownlint-cli2.jsonc'
       - '.gitleaks.toml'
@@ -36,7 +37,6 @@ on:
       - 'configs/**'
       - '.markdownlint.json'
       - '.markdownlintignore'
-      - '.markdown-link-check.json'
       - '.markdown-link-check-internal.json'
       - '.markdownlint-cli2.jsonc'
       - '.gitleaks.toml'
@@ -232,66 +232,23 @@ jobs:
       - name: Validate versions against the canonical pre-commit config
         run: python3 scripts/validate_versions.py
 
-  external-links:
-    name: External URLs (advisory)
+  vendored:
+    name: Vendored files
     runs-on: ubuntu-latest
-    # Advisory by design. Reproduced on 2026-09-08: docs.ansible.com and
-    # molecule.readthedocs.io answer this checker with 429 and then drop the
-    # connection under retry, and openai.com, hhs.gov, stackoverflow.com,
-    # dev.mysql.com and lib.rs return 403 to CI user agents. Gating merges on
-    # third-party availability would produce a workflow that fails for reasons
-    # unrelated to the change — the exact defect this repair is undoing.
-    # Genuine 404s are reported to the job summary for follow-up.
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Verify vendored files match recorded checksums
-
+        # Previously a step inside the advisory external-URL job, where a
+        # mismatch could never fail the run. Blocking now, as make check has
+        # always treated it.
         run: python3 scripts/check_vendored.py
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install documentation tools
-        run: npm ci
-
-      - name: Check external URLs
-        run: |
-          set -uo pipefail
-
-          # One file at a time: batching raises request concurrency enough that
-          # healthy hosts start refusing connections.
-          report="$(mktemp)"
-          failed=0
-          while IFS= read -r -d '' file; do
-            if ! npx --no-install markdown-link-check \
-                  --config .markdown-link-check.json --quiet --retry "${file}" \
-                  >> "${report}" 2>&1; then
-              failed=$((failed + 1))
-            fi
-          done < <(git ls-files -z '*.md' ':!:reference/**')
-
-          {
-            echo '## External link check'
-            echo
-            if [ "${failed}" -eq 0 ]; then
-              echo 'Every external URL resolved.'
-            else
-              echo "${failed} file(s) contain unreachable external URLs."
-              echo
-              echo '```'
-              grep -E '^(ERROR:|\s+\[)' "${report}" || true
-              echo '```'
-            fi
-          } >> "${GITHUB_STEP_SUMMARY}"
-
-          exit "${failed}"
 
   snippets:
     name: Snippet syntax (advisory)

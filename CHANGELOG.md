@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI: the external URL check moved out of `doc-lint.yml` into a weekly
+  `external-links.yml` workflow (also on demand), with a 10 s timeout, one
+  retry and four files checked in parallel; pull requests and pushes now run
+  only the deterministic internal link check. The vendored-checksum step,
+  previously inside that advisory job where it could never fail the run, is a
+  blocking job of its own.
 - `guides/languages/rust.md` retargeted to Rust 1.98.1 and Edition 2024 with
   the MSRV (1.94.0) declared and CI-verified; async-std replaced by smol, unic
   by unicode-normalization and ICU4X, syn 2 by syn 3, SQLx 0.7 by 0.9,

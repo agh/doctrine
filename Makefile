@@ -83,14 +83,17 @@ links: install ## Check internal links in all first-party Markdown (blocking)
 	  | xargs -0 $(NODE_BIN)/markdown-link-check \
 	      --config .markdown-link-check-internal.json --quiet
 
-links-external: install ## Check external URLs (advisory; slow, network-bound)
+links-external: install ## Check external URLs (what CI runs weekly; network-bound)
 	@set -uo pipefail; \
-	failed=0; \
-	while IFS= read -r -d '' file; do \
-	  $(NODE_BIN)/markdown-link-check --config .markdown-link-check.json \
-	    --quiet --retry "$$file" || failed=$$((failed + 1)); \
-	done < <(git ls-files -z '*.md' ':!:reference/**'); \
-	echo "$$failed file(s) contain unreachable external URLs (advisory)"
+	report=$$(mktemp); \
+	git ls-files -z '*.md' ':!:reference/**' \
+	  | xargs -0 -P 4 -I{} sh -c '$(NODE_BIN)/markdown-link-check \
+	      --config .markdown-link-check.json --quiet "$$1" 2>&1 \
+	      || echo "FAILED: $$1"' _ {} >> "$$report" 2>&1 || true; \
+	grep -E '^(FAILED: |ERROR:|[[:space:]]+\[)' "$$report" || true; \
+	failed=$$(grep -c '^FAILED: ' "$$report" || true); \
+	rm -f "$$report"; \
+	echo "$$failed file(s) contain unreachable external URLs"
 
 secrets: $(GITLEAKS) ## Scan for secrets, and prove the allowlist still bites
 	@rm -rf $(TMP)/gitleaks-fixture

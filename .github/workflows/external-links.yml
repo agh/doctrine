@@ -1,0 +1,90 @@
+# External URL Check
+#
+# Doctrine cites about 1,200 distinct external URLs across its first-party
+# Markdown. Checking them is slow and network-bound (about twenty minutes per
+# run while it lived in doc-lint.yml, and cancelled by the next push more often
+# than not) and the result is advisory: several hosts Doctrine cites throttle
+# or refuse CI clients by design, so a failure is a report to read, not a gate.
+# It therefore runs weekly and on demand, never on pull requests or pushes.
+# Internal links and heading anchors are still checked on every change by
+# doc-lint.yml, deterministically and without the network.
+#
+# A failing scheduled run notifies the repository owner; the job summary lists
+# the dead links per file. Every action is pinned to a full commit SHA.
+
+name: External URL Check
+
+on:
+  schedule:
+    # Mondays at 06:23 UTC. An off-peak minute reduces the chance of a
+    # scheduling backlog silently dropping the run.
+    - cron: '23 6 * * 1'
+  pull_request:
+    paths:
+      - '.github/workflows/external-links.yml'
+      - '.markdown-link-check.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancel a running check; a scheduled run is the only one that matters.
+concurrency:
+  group: external-links
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  external-links:
+    name: External URLs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install documentation tools
+        run: npm ci
+
+      - name: Check external URLs
+        run: |
+          # shellcheck disable=SC2016  # the $1 is for the child sh, on purpose
+          set -uo pipefail
+
+          # Four files at a time. .markdown-link-check.json keeps the
+          # per-request timeout and retry budget small, so a throttling host
+          # costs seconds rather than minutes, and 403/429 already count as
+          # alive there. Each failing file is tagged so the summary can count
+          # them after the parallel output is merged.
+          report="$(mktemp)"
+          git ls-files -z '*.md' ':!:reference/**' \
+            | xargs -0 -P 4 -I{} sh -c '
+                npx --no-install markdown-link-check \
+                  --config .markdown-link-check.json --quiet "$1" 2>&1 \
+                  || echo "FAILED: $1"' _ {} \
+            >> "${report}" 2>&1 || true
+
+          failed=$(grep -c '^FAILED: ' "${report}" || true)
+          {
+            echo '## External URL check'
+            echo
+            if [ "${failed}" -eq 0 ]; then
+              echo 'Every external URL resolved.'
+            else
+              echo "${failed} file(s) contain unreachable external URLs."
+              echo
+              echo '```'
+              grep -E '^(FAILED: |ERROR:|[[:space:]]+\[)' "${report}" || true
+              echo '```'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          exit "${failed}"
