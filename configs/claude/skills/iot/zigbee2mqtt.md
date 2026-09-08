@@ -9,6 +9,7 @@ management, monitoring, and debugging beyond what Home Assistant exposes.
 | --------- | ----- |
 | **Category** | IoT / Zigbee |
 | **Protocol** | MQTT (via Zigbee2MQTT bridge) |
+| **Version** | Zigbee2MQTT 2.14.1 |
 | **Default Access** | subscribe (readonly) |
 | **Risk Level** | Medium (can affect device pairings) |
 
@@ -83,37 +84,33 @@ mosquitto_pub -h emqx.local -t "zigbee2mqtt/kitchen_light/set" \
 
 ### MQTT ACL for Agents
 
-```yaml
-# EMQX ACL
-acl:
-  - username: claude-agent
-    permission: allow
-    action: subscribe
-    topics:
-      - "zigbee2mqtt/+"
-      - "zigbee2mqtt/+/availability"
-      - "zigbee2mqtt/bridge/state"
-      - "zigbee2mqtt/bridge/info"
-      - "zigbee2mqtt/bridge/devices"
-      - "zigbee2mqtt/bridge/groups"
-      - "zigbee2mqtt/bridge/logging"
+EMQX's file authoriser takes Erlang terms; see
+[MQTT / EMQX](mqtt.md#topic-based-acl) for the file format, how to register it
+as an authorization source, and why denied publishes are silent.
 
-  - username: claude-agent
-    permission: allow
-    action: publish
-    topics:
-      - "zigbee2mqtt/+/get"
-      - "zigbee2mqtt/bridge/request/health_check"
-
-  # Deny control by default
-  - username: claude-agent
-    permission: deny
-    action: publish
-    topics:
-      - "zigbee2mqtt/+/set"
-      - "zigbee2mqtt/bridge/request/permit_join"
-      - "zigbee2mqtt/bridge/request/device/remove"
+```erlang
+%% acl.conf — Zigbee2MQTT agent rules
+{deny,  {username, "claude-agent"}, publish,
+        ["zigbee2mqtt/+/set",
+         "zigbee2mqtt/bridge/request/permit_join",
+         "zigbee2mqtt/bridge/request/device/remove"]}.
+{allow, {username, "claude-agent"}, subscribe,
+        ["zigbee2mqtt/+",
+         "zigbee2mqtt/+/availability",
+         "zigbee2mqtt/bridge/state",
+         "zigbee2mqtt/bridge/info",
+         "zigbee2mqtt/bridge/devices",
+         "zigbee2mqtt/bridge/health",
+         "zigbee2mqtt/bridge/groups",
+         "zigbee2mqtt/bridge/logging"]}.
+{allow, {username, "claude-agent"}, publish,
+        ["zigbee2mqtt/+/get",
+         "zigbee2mqtt/bridge/request/health_check"]}.
+{deny, all}.
 ```
+
+The deny rule comes first because EMQX applies the first matching rule.
+`zigbee2mqtt/+/set` would otherwise never be reached.
 
 ## Topic Reference
 
@@ -144,12 +141,17 @@ zigbee2mqtt/{friendly_name}:
   linkquality: 89
 
 # Device availability
+# Zigbee2MQTT 2.x publishes an object, retained. Version 1.x published the
+# bare strings "online"/"offline"; a v1-era consumer sees a JSON object and
+# never matches.
 zigbee2mqtt/{friendly_name}/availability:
-  "online" | "offline"
+  {"state": "online"} | {"state": "offline"}
 
-# Request state update
+# Request state update. Only properties the device actually supports can be
+# read; Zigbee2MQTT logs "No converter available for '<property>'" and skips
+# anything else. Battery sensors such as WSDCGQ11LM support no /get at all.
 zigbee2mqtt/{friendly_name}/get:
-  {"state": "", "brightness": ""}  # Empty values = request
+  {"brightness": ""}  # Empty values = request
 
 # Set device state
 zigbee2mqtt/{friendly_name}/set:
@@ -159,36 +161,52 @@ zigbee2mqtt/{friendly_name}/set:
 ### Bridge Topics
 
 ```yaml
-# Bridge state
+# Bridge state (object payload, retained)
 zigbee2mqtt/bridge/state:
-  "online" | "offline"
+  {"state": "online"} | {"state": "offline"}
 
-# Bridge info
+# Bridge info. permit_join is top-level, NOT under config.
 zigbee2mqtt/bridge/info:
   coordinator:
     ieee_address: "0x00124b001cd..."
     type: "zStack3x0"
-  version: "1.33.0"
+  version: "2.14.1"
+  permit_join: false
+  permit_join_end: null
   config:
-    homeassistant: true
-    permit_join: false
+    homeassistant:
+      enabled: true
   network:
     channel: 15
     pan_id: 6754
     extended_pan_id: [221, 221, ...]
 
-# All devices
+# All devices — INVENTORY ONLY. There is no battery or linkquality here.
 zigbee2mqtt/bridge/devices:
   - ieee_address: "0x00158d000..."
     friendly_name: "living_room_sensor"
     type: "EndDevice"
+    supported: true
+    disabled: false
+    manufacturer: "LUMI"
     definition:
-      vendor: "Xiaomi"
+      vendor: "Aqara"
       model: "WSDCGQ11LM"
-      description: "Aqara temperature sensor"
+      description: "Temperature and humidity sensor"
     power_source: "Battery"
-    battery: 85
-    linkquality: 120
+
+# Bridge health — counters, published every `health.interval` minutes
+zigbee2mqtt/bridge/health:
+  response_time: 1749991304357
+  mqtt:
+    connected: true
+    published: 9
+  devices:
+    "0x00158d000...":
+      leave_count: 1
+      network_address_changes: 1
+      messages: 4
+      messages_per_sec: 0.0033
 
 # Groups
 zigbee2mqtt/bridge/groups:
@@ -202,7 +220,13 @@ zigbee2mqtt/bridge/groups:
 zigbee2mqtt/bridge/logging:
   level: "info"
   message: "Device 'kitchen_motion' joined"
+  namespace: "z2m"
 ```
+
+Current measured values — `battery`, `linkquality`, `temperature` and the rest
+— arrive only on each device's own state topic,
+`zigbee2mqtt/{friendly_name}`, when the device reports. They are not in
+`bridge/devices`.
 
 ### Bridge Requests
 
@@ -215,10 +239,11 @@ zigbee2mqtt/bridge/request/networkmap:
   type: "raw"  # or "graphviz"
   routes: true
 
-# Permit join (admin only)
+# Permit join (admin only). `time` is REQUIRED and is the only field that
+# opens the network; a payload without it is rejected as "Invalid payload".
 zigbee2mqtt/bridge/request/permit_join:
-  value: true
-  time: 120  # seconds
+  time: 120  # seconds; 0 closes the network
+  device: "living_room_router"  # optional: join via one router only
 
 # Device interview
 zigbee2mqtt/bridge/request/device/interview:
@@ -235,32 +260,130 @@ zigbee2mqtt/bridge/request/device/remove:
   force: false
 ```
 
+A `value: true` field is accepted but ignored. Older recipes pairing
+`value: true` with `time: 120` appear to work only because `time` is valid on
+its own; `value: true` alone does nothing.
+
 ## Query Patterns for Agents
 
 ### Device Inventory
 
+`bridge/devices` is the inventory. It carries identity and capability, not
+measurements:
+
 ```bash
 # Get all devices
-mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/devices" -C 1 | \
-  jq '.[] | {name: .friendly_name, vendor: .definition.vendor, model: .definition.model, battery: .battery}'
+mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/devices" -C 1 | jq -r '
+  .[] | select(.type != "Coordinator")
+      | {name: .friendly_name,
+         vendor: .definition.vendor,
+         model: .definition.model,
+         power: .power_source}'
 ```
 
 ### Network Health
 
+Battery and link quality arrive on each device's own state topic. Collect
+inventory and live state separately, then join them by friendly name:
+
 ```bash
-# Check link quality across network
-mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/devices" -C 1 | \
-  jq '.[] | {name: .friendly_name, lqi: .linkquality, battery: .battery}' | \
-  jq -s 'sort_by(.lqi)'
+# 1. Inventory (retained, returns immediately)
+mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/devices" -C 1 \
+  > devices.json
+
+# 2. Live state, one line per message, topic preserved
+timeout 300 mosquitto_sub -h emqx.local -v -t "zigbee2mqtt/+" \
+  > states.txt
+
+# 3. Join. Devices that reported nothing, or that expose no battery or
+#    linkquality, come back null rather than being dropped.
+jq -Rs '
+  [ split("\n")[]
+    | select(length > 0)
+    | (index(" ")) as $i
+    | {name: (.[0:$i] | split("/")[1]),
+       payload: (.[$i+1:] | fromjson? // {})}
+  ] | group_by(.name)
+    | map({name: .[0].name,
+           battery: (map(.payload.battery) | map(select(. != null)) | last),
+           lqi: (map(.payload.linkquality) | map(select(. != null)) | last)})
+' states.txt > live.json
+
+jq -s '
+  (.[0] | map(select(.type != "Coordinator"))) as $inv
+  | (.[1] | INDEX(.name)) as $live
+  | $inv | map({name: .friendly_name,
+                model: .definition.model,
+                battery: ($live[.friendly_name].battery),
+                lqi: ($live[.friendly_name].lqi)})
+  | sort_by(.lqi // 9999)
+' devices.json live.json
+```
+
+`mosquitto_sub -v` prints `topic payload` on one line, so the pipeline splits
+at the first space and parses only the remainder as JSON. Feeding the whole
+line to `jq` yields a parse error, and dropping `-v` loses the device identity.
+
+**Why**: the previous form read `.battery` and `.linkquality` from
+`bridge/devices`, where neither field exists. Every device reported `null`, and
+a report built on it silently claimed no device had a low battery.
+
+Mains-powered devices expose no `battery`, and some devices report no
+`linkquality`, so `null` is a normal result that **MUST NOT** be rendered as
+zero.
+
+### Bridge Counters
+
+`bridge/health` carries per-device counters — messages seen, network-address
+changes, how often a device left the network — published every
+`health.interval` minutes:
+
+```bash
+mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/health" -C 1 | jq -r '
+  .devices | to_entries[]
+  | select(.value.leave_count > 0 or .value.network_address_changes > 0)
+  | {ieee: .key, leaves: .value.leave_count,
+     addr_changes: .value.network_address_changes}'
+```
+
+### Topology and LQI
+
+Per-neighbour link quality and routes come from the network map, not from any
+state topic:
+
+```bash
+mosquitto_pub -h emqx.local -t "zigbee2mqtt/bridge/request/networkmap" \
+  -m '{"type":"raw","routes":true}'
+mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/response/networkmap" -C 1 \
+  | jq '.data.value.links | sort_by(.linkquality) | .[0:10]'
 ```
 
 ### Device Status
 
+Only properties a device actually supports can be polled. `living_room_sensor`
+in the inventory above is a WSDCGQ11LM, which defines no writable converters at
+all, so every `/get` on it is skipped with
+`No converter available for '<property>'`:
+
 ```bash
-# Get specific device state
-mosquitto_pub -h emqx.local -t "zigbee2mqtt/kitchen_sensor/get" -m '{"state": ""}'
-mosquitto_sub -h emqx.local -t "zigbee2mqtt/kitchen_sensor" -C 1
+# Don't: this device supports no /get, and has no `state` property
+mosquitto_pub -h emqx.local -t "zigbee2mqtt/living_room_sensor/get" \
+  -m '{"state": ""}'
 ```
+
+```bash
+# Do: wait for the sensor's own report
+mosquitto_sub -h emqx.local -t "zigbee2mqtt/living_room_sensor" -C 1 | jq
+
+# Do: poll a device that documents a readable property, e.g. a bulb
+mosquitto_pub -h emqx.local -t "zigbee2mqtt/kitchen_light/get" \
+  -m '{"state": ""}'
+mosquitto_sub -h emqx.local -t "zigbee2mqtt/kitchen_light" -C 1 | jq
+```
+
+Battery sensors sleep between reports, so a `/get` would not reach them even if
+the property were readable. Check the device page on zigbee2mqtt.io: each
+expose states whether `/get` and `/set` are possible.
 
 ## Example Usage
 
@@ -445,14 +568,31 @@ alerts:
 
   - name: permit_join_enabled
     topic: zigbee2mqtt/bridge/info
-    condition: config.permit_join == true
+    # permit_join is top-level in bridge/info, not under config.
+    # `config.permit_join` is always undefined and never fires.
+    condition: permit_join == true
     action: alert_if_unexpected
 
   - name: coordinator_offline
     topic: zigbee2mqtt/bridge/state
-    condition: state == "offline"
+    # v2 publishes {"state":"offline"}, not the bare string "offline".
+    condition: state.state == "offline"
     action: alert_critical
 ```
+
+### Migrating from Zigbee2MQTT 1.x
+
+| Concern | 1.x | 2.x |
+| ------- | --- | --- |
+| Device availability | `"online"` / `"offline"` | `{"state":"online"}` |
+| Bridge state | `"online"` / `"offline"` | `{"state":"online"}` |
+| Home Assistant discovery | `homeassistant: true` | `homeassistant.enabled: true` |
+| Permit join in `bridge/info` | under `config` | top-level `permit_join` |
+| Permit join request | `{"value":true,"time":120}` | `{"time":120}` |
+
+A consumer written for 1.x does not error on 2.x payloads; it compares a JSON
+object against a string, never matches, and reports every device as healthy.
+Availability and bridge-state checks **MUST** be re-tested after upgrading.
 
 ## Device Database
 

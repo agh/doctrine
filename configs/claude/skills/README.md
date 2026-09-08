@@ -58,10 +58,15 @@ Skills are configured via MCP server settings:
 {
   "mcpServers": {
     "postgres": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "DATABASE_URI",
+        "crystaldba/postgres-mcp:0.3.0",
+        "--access-mode=restricted"
+      ],
       "env": {
-        "POSTGRES_CONNECTION": "postgres://readonly@localhost/mydb"
+        "DATABASE_URI": "postgres://readonly@localhost/mydb"
       }
     }
   }
@@ -74,15 +79,19 @@ Skills are configured via MCP server settings:
 {
   "mcpServers": {
     "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_TOKEN": "ghp_xxxx"
-      }
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
     }
   }
 }
 ```
+
+Both examples are explained in full, with their access controls, in
+[PostgreSQL](databases/postgres.md) and [GitHub](communication/github.md).
+The archived `@modelcontextprotocol/server-postgres` and
+`@modelcontextprotocol/server-github` packages **MUST NOT** be used; npm marks
+both deprecated and neither reads the environment variables commonly shown for
+them.
 
 ## Agent Integration
 

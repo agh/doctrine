@@ -8,43 +8,63 @@ communication through Discord webhooks and bot integration.
 | Attribute | Value |
 | --------- | ----- |
 | **Category** | Communication |
-| **MCP Server** | `mcp-discord` (community) or custom |
+| **MCP Server** | None; direct webhook HTTP (or `mcp-discord@1.3.4` for bot access) |
 | **Default Access** | post (send-only) |
 | **Risk Level** | Low |
 
 ## MCP Configuration
 
+The packages `mcp-discord-webhook` and `mcp-discord-bot` do not exist. Both
+resolve to HTTP 404 on the npm registry, so every `npx -y` invocation naming
+them fails before any Discord call is made.
+
 ### Webhook-Based (Simplest)
 
-For send-only notifications, webhooks are simplest and most secure:
+For send-only notifications, post to the webhook URL directly. This needs no
+package, so there is no third-party code in the credential's path:
 
-```json
-{
-  "mcpServers": {
-    "discord": {
-      "command": "npx",
-      "args": ["-y", "mcp-discord-webhook"],
-      "env": {
-        "DISCORD_WEBHOOK_URL": "${DISCORD_WEBHOOK_URL}"
-      }
-    }
-  }
-}
+```bash
+curl -sS --fail-with-body -X POST "$DISCORD_WEBHOOK_URL" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "content": "Release v1.2.0 published",
+    "allowed_mentions": {"parse": []}
+  }'
+```
+
+**Why**: a webhook URL is a bearer credential for one channel. Handing it to an
+unaudited npm package that runs on every `npx -y` resolution widens the blast
+radius for no capability gain.
+
+No MCP wrapper is recommended for the webhook path. The most visible candidate,
+`@lmquang/mcp-discord-webhook@1.3.1`, contains no reference to any `DISCORD_*`
+environment variable; its `webhookUrl` is a **required per-call tool
+parameter**, so the credential has to be supplied to the model on every call
+rather than held in the environment. That defeats the point of treating the URL
+as a secret.
+
+Agents **MUST** verify that a candidate package reads the variable a
+configuration sets before relying on it:
+
+```bash
+npm pack @lmquang/mcp-discord-webhook@1.3.1
+tar -xzf lmquang-mcp-discord-webhook-1.3.1.tgz
+grep -rc 'DISCORD' package/   # 0 matches
 ```
 
 ### Bot-Based (Full Features)
 
-For reading messages and richer interaction:
+Reading message history requires a bot application. `mcp-discord@1.3.4` exists
+and is not deprecated; the same review-and-pin requirement applies.
 
 ```json
 {
   "mcpServers": {
     "discord": {
       "command": "npx",
-      "args": ["-y", "mcp-discord-bot"],
+      "args": ["-y", "mcp-discord@1.3.4"],
       "env": {
-        "DISCORD_BOT_TOKEN": "${DISCORD_BOT_TOKEN}",
-        "DISCORD_GUILD_ID": "${DISCORD_GUILD_ID}"
+        "DISCORD_TOKEN": "${DISCORD_BOT_TOKEN}"
       }
     }
   }
@@ -53,25 +73,17 @@ For reading messages and richer interaction:
 
 ### Multiple Channels
 
-```json
-{
-  "mcpServers": {
-    "discord-releases": {
-      "command": "npx",
-      "args": ["-y", "mcp-discord-webhook"],
-      "env": {
-        "DISCORD_WEBHOOK_URL": "${DISCORD_RELEASES_WEBHOOK}"
-      }
-    },
-    "discord-alerts": {
-      "command": "npx",
-      "args": ["-y", "mcp-discord-webhook"],
-      "env": {
-        "DISCORD_WEBHOOK_URL": "${DISCORD_ALERTS_WEBHOOK}"
-      }
-    }
-  }
+One webhook per channel, each in its own variable:
+
+```bash
+post_discord() {
+  curl -sS --fail-with-body -X POST "$1" \
+    -H 'Content-Type: application/json' \
+    -d "$2"
 }
+
+post_discord "$DISCORD_RELEASES_WEBHOOK" "$release_payload"
+post_discord "$DISCORD_ALERTS_WEBHOOK" "$alert_payload"
 ```
 
 ## Access Levels
@@ -91,16 +103,48 @@ For reading messages and richer interaction:
 4. Select target channel
 5. Copy webhook URL
 
-### Creating Bot Token
+### Creating a Bot Application
 
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create New Application
-3. Go to Bot -> Add Bot
-4. Copy token
-5. Under OAuth2 -> URL Generator:
-   - Scopes: `bot`
-   - Permissions: Select required permissions
-6. Use generated URL to add bot to server
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+   and create a New Application.
+2. Under **Bot**, copy the token. Treat it as a secret; regenerating it
+   invalidates the old one.
+3. Under **Bot -> Privileged Gateway Intents**, enable **Message Content** if
+   the agent must read message text. This is off by default.
+4. Under **Installation**, set the install context, add the `bot` scope and the
+   permissions from the table below, then use the generated install link.
+
+The `bot` scope already carries application commands; `applications.commands`
+is only needed for an app that installs commands without a bot user.
+
+### Permissions and Intents
+
+Discord gates capability twice, and both gates **MUST** be satisfied:
+
+| Capability | Permission | Intent |
+| ---------- | ---------- | ------ |
+| Send message to channel | Send Messages | — |
+| Send message in thread | Send Messages in Threads | — |
+| Read channel history (REST) | View Channel + Read Message History | — |
+| Read message **text** | as above | `MESSAGE_CONTENT` (privileged) |
+| Receive live messages (Gateway) | View Channel | `GUILD_MESSAGES` |
+| Add reaction | Add Reactions | — |
+| Create thread | Create Public Threads | — |
+| Pin message | Manage Messages | — |
+
+Permissions decide which endpoints succeed. Intents decide which data the
+payload contains. Without `MESSAGE_CONTENT` an app receives empty `content`,
+`embeds`, `attachments` and `components`, so `read_messages` returns messages
+with no text and the failure is silent — no error, just blank fields.
+
+Four documented exceptions deliver content without the intent: the app's own
+messages, DMs with the app, messages that mention the app, and the target of a
+message context-menu command.
+
+**Why**: `MESSAGE_CONTENT` is a privileged intent. It must be enabled in the
+portal, and for apps in 100 or more guilds it must also be approved after
+verification. Connecting with an unconfigured privileged intent closes the
+Gateway connection with close code `4014`.
 
 ## Capabilities
 
@@ -108,7 +152,7 @@ For reading messages and richer interaction:
 | ---------- | ------ | ----------- |
 | `send_message` | post | Send message to channel |
 | `send_embed` | post | Send rich embed message |
-| `read_messages` | readonly | Read channel history |
+| `read_messages` | readonly | Read channel history (needs `MESSAGE_CONTENT`) |
 | `add_reaction` | read-write | React to messages |
 | `create_thread` | read-write | Create thread from message |
 | `pin_message` | manage | Pin/unpin messages |
@@ -134,6 +178,10 @@ Send to #releases:
 
 ### Embed Format
 
+Every payload **MUST** carry an explicit `allowed_mentions`. Webhook and
+interaction payloads default to `{"parse": ["users"]}`, so a user mention
+pasted into untrusted content still pings by default.
+
 ```json
 {
   "embeds": [{
@@ -155,28 +203,81 @@ Send to #releases:
       "text": "Released by ops/release-manager"
     },
     "timestamp": "2025-01-02T10:30:00.000Z"
-  }]
+  }],
+  "allowed_mentions": {"parse": []}
 }
+```
+
+### Payload Limits
+
+Exceeding any of these returns `400 Bad Request`, so agents **MUST** validate
+before sending rather than discovering the limit from a failed alert:
+
+| Field | Limit |
+| ----- | ----- |
+| `content` | 2,000 characters |
+| `embeds` | 10 per message |
+| All embeds combined | 6,000 characters |
+| `embed.title`, `field.name`, `author.name` | 256 characters |
+| `embed.description` | 4,096 characters |
+| `embed.fields` | 25 per embed |
+| `field.value` | 1,024 characters |
+| `footer.text` | 2,048 characters |
+| Attachments | 25 MiB per message |
+| `allowed_mentions.roles` / `.users` | 100 ids each |
+
+The 6,000-character total counts `title`, `description`, `field.name`,
+`field.value`, `footer.text` and `author.name` across every embed in the
+message.
+
+Agents **MUST** truncate to the limit with a visible marker and **SHOULD**
+attach the full text as a file rather than dropping it. Discord counts
+**characters**, not bytes, so truncate with a character-aware tool. `head -c`
+counts bytes: it splits multi-byte characters, producing invalid UTF-8 that
+Discord rejects with `400`, and a byte-vs-character length test skips the
+marker entirely on non-ASCII content.
+
+```bash
+body=$(printf '%s' "$long_text" | python3 -c '
+import sys
+t = sys.stdin.read()
+limit = 1900
+sys.stdout.write(t if len(t) <= limit
+                 else t[:limit] + "\n... truncated, full log attached")')
 ```
 
 ### Alert Notification
 
-```markdown
-Send to #alerts:
-
-**Deployment Alert**
-
-Environment: **production**
-Status: **Elevated error rate**
-
-| Metric | Before | After | Delta |
-|--------|--------|-------|-------|
-| Error Rate | 0.12% | 0.45% | +275% |
-
-**Action Required:** Investigate or consider rollback.
-
-CC: @oncall
+```json
+{
+  "content": "<@&123456789012345678> Deployment alert",
+  "embeds": [{
+    "title": "Elevated error rate",
+    "color": 15548997,
+    "fields": [
+      {"name": "Environment", "value": "production", "inline": true},
+      {"name": "Error rate", "value": "0.12% -> 0.45%", "inline": true}
+    ],
+    "footer": {"text": "ops/deploy-validator"}
+  }],
+  "allowed_mentions": {
+    "parse": [],
+    "roles": ["123456789012345678"]
+  }
+}
 ```
+
+`@oncall` typed as literal text is not a mention. It renders as plain text and
+pages nobody. A role mention is `<@&ROLE_ID>`, and it only notifies when that
+role id is listed in `allowed_mentions.roles`.
+
+`parse` is mutually exclusive with `roles` and `users`: listing `"roles"` in
+`parse` makes every role mention in the content live, whereas the empty `parse`
+above plus an explicit id allowlists exactly one role.
+
+Two further conditions apply: the role's `mentionable` field must be `true`, or
+the app needs the `MENTION_EVERYONE` permission; and `@everyone`/`@here`
+require `MENTION_EVERYONE` regardless.
 
 ### Incident Thread
 
@@ -266,6 +367,10 @@ When Discord is unavailable, agents should:
 {mention}
 ```
 
+`{mention}` **MUST** be substituted with a role id in `<@&ID>` form and the same
+id **MUST** be added to `allowed_mentions.roles`. A display name such as
+`@oncall` renders as inert text.
+
 ## Security Considerations
 
 ### Webhook Security
@@ -286,9 +391,29 @@ When Discord is unavailable, agents should:
 ### Content Guidelines
 
 - **MUST NOT** post sensitive data (secrets, PII, credentials)
-- **SHOULD** sanitize any user-provided content
-- **SHOULD** use embeds for structured data (prevents injection)
+- **MUST** set `allowed_mentions` explicitly on every payload
+- **MUST** sanitise any user-provided content before embedding it
 - **MUST** include agent identifier in messages
+
+Embeds do **not** prevent injection. They constrain layout, not content: an
+embed field renders Markdown, renders links, and will happily carry text
+supplied by whoever filed the issue being summarised. The controls that do work
+are mention suppression, length validation, and not turning untrusted strings
+into links.
+
+```json
+{
+  "content": "Issue title: @everyone click http://attacker.example",
+  "allowed_mentions": {"parse": []}
+}
+```
+
+With `{"parse": []}` the `@everyone` above renders as text and notifies nobody.
+Without it, a webhook still parses user mentions by default.
+
+Agents **SHOULD** strip or defang URLs taken from untrusted input, and
+**MUST NOT** place untrusted text into `embed.url`, `author.url` or
+`footer.icon_url`, which are rendered as live links or fetched by Discord.
 
 ### Rate Limits
 
@@ -328,19 +453,34 @@ AUTOMATION
 
 ### Release Pipeline
 
+The Discord step is a fragment of the release workflow in the
+[GitHub skill](github.md#release-workflow). It posts the notes that an earlier
+step created, and fails the job if Discord rejects the payload:
+
 ```yaml
-# In release workflow
-- name: Announce Release
-  run: |
-    claude /release --announce discord
-  env:
-    DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+      - name: Announce release
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          payload=$(jq -n \
+            --arg title "Release ${GITHUB_REF_NAME}" \
+            --rawfile notes RELEASE_NOTES.md \
+            '{embeds: [{title: $title,
+                        description: ($notes | .[0:4096])}],
+              allowed_mentions: {parse: []}}')
+          curl -sS --fail-with-body -X POST "$DISCORD_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "$payload"
 ```
+
+`jq -n --rawfile` builds the JSON, so a backtick or quote in the release notes
+cannot break out of the payload. `--fail-with-body` makes a `400` a job
+failure and prints Discord's reason.
 
 ### Alert Integration
 
 ```yaml
-# In monitoring/alerting
 alerts:
   - name: HighErrorRate
     condition: error_rate > 1%
@@ -348,5 +488,7 @@ alerts:
       discord:
         webhook: ${DISCORD_ALERTS_WEBHOOK}
         template: alert
-        mention: "@oncall"
+        # Role id, not a display name. Must also appear in
+        # allowed_mentions.roles for the ping to fire.
+        mention: "<@&123456789012345678>"
 ```
