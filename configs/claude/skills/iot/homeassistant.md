@@ -15,25 +15,67 @@ Provides access to Home Assistant for smart home monitoring, automation debuggin
 
 ### MCP Server
 
+Home Assistant ships its own MCP server. Enable the
+[Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/)
+integration (Settings -> Devices & services -> Add Integration) and connect to
+`/api/mcp` over Streamable HTTP. Verified against Home Assistant 2026.9.1.
+
+```bash
+claude mcp add-json "HA" '{
+  "type": "http",
+  "url": "https://<your_home_assistant_url>/api/mcp",
+  "oauth": {
+    "clientId": "http://localhost:12345",
+    "callbackPort": 12345
+  }
+}' --client-secret
+```
+
+`clientId` is the CLI's own local callback URL, not the Home Assistant URL.
+Home Assistant uses IndieAuth, so no client ID is pre-registered.
+
+Where the client cannot reach a public URL, or does not speak Streamable HTTP,
+bridge with `mcp-proxy` 0.12.0 and a long-lived access token:
+
 ```json
 {
   "mcpServers": {
     "homeassistant": {
-      "command": "mcp-homeassistant",
+      "command": "mcp-proxy",
+      "args": [
+        "--transport=streamablehttp",
+        "--stateless",
+        "http://homeassistant.local:8123/api/mcp"
+      ],
       "env": {
-        "HASS_URL": "${HASS_URL}",
-        "HASS_TOKEN": "${HASS_TOKEN}"
+        "API_ACCESS_TOKEN": "${HASS_TOKEN}"
       }
     }
   }
 }
 ```
 
+**Why**: the native server is the only path with a supported access-control
+surface — the exposed-entities list and the integration's "Control Home
+Assistant" switch. Community servers such as PyPI `mcp-homeassistant` 0.1.0 wrap
+the raw REST API, so they inherit the token's full authority with no filtering.
+
+The MCP server serves the Assist API, which covers entity state and control.
+It does **not** cover history, logbook, template rendering or configuration
+inspection. Use the REST endpoints below for those, and keep the two paths
+distinct so the access model of each stays clear.
+
 ### Long-Lived Access Token
 
-1. Go to Home Assistant → Profile → Long-Lived Access Tokens
-2. Create token with descriptive name: "Claude Agent - Read Only"
-3. Store token securely (SOPS, Vault, etc.)
+1. Go to Home Assistant -> Profile -> Security -> Long-Lived Access Tokens
+2. Create the token **while signed in as the restricted agent user**, not as an
+   owner or administrator
+3. Store the token in secret management (SOPS, Vault, etc.)
+
+The token's name is a label with no effect on authority. A token called
+"Claude Agent - Read Only" created by an administrator can call every service
+that administrator can call. Authority comes from the **user**, so the
+restriction **MUST** be applied to the user account.
 
 ### CLI Access
 
@@ -59,27 +101,78 @@ curl -X POST -H "Authorization: Bearer ${HASS_TOKEN}" \
 
 ## Access Levels
 
-| Level | Permissions | Use Case |
-| ----- | ----------- | -------- |
-| `readonly` | Read states, history, config | Monitoring, debugging |
-| `automation` | Read + trigger automations | Automation testing |
-| `control` | Read + control devices | Full management |
-| `admin` | Full access + configuration | Setup, maintenance |
+Home Assistant enforces access through **users and groups**, not through token
+names. There are three built-in groups, defined in
+`homeassistant/auth/permissions/system_policies.py`:
 
-### Scoped Access (Recommended)
+| Group ID | Name | Policy |
+| -------- | ---- | ------ |
+| `system-admin` | Administrators | `{"entities": true}` plus admin-only APIs |
+| `system-users` | Users | `{"entities": true}` |
+| `system-read-only` | Read Only | `{"entities": {"all": {"read": true}}}` |
 
-Create dedicated users with limited access:
+| Level | How it is enforced | Use Case |
+| ----- | ------------------ | -------- |
+| `readonly` | Non-admin user in the **Read Only** group | Monitoring, debugging |
+| `control` | Non-admin user in the **Users** group | Device management |
+| `scoped` | Custom group policy, or MCP exposed entities | Restricted control |
+| `admin` | Administrator user | Setup, maintenance |
 
-```yaml
-# Home Assistant configuration.yaml
-homeassistant:
-  auth_providers:
-    - type: homeassistant
+There is no built-in tier that grants "read plus trigger automations" and
+nothing else. Building one requires a custom group policy or a filtering proxy.
 
-# Create user with limited entity access
-# Settings → People → Users → Add User
-# Then use entity permissions or areas
+### Creating a Restricted Agent User
+
+```text
+Settings -> People -> Users -> Add User
+  Name:                  Claude Agent
+  Can only log in from the local network:  optional
+  Advanced mode:         off
+  Administrator:         OFF          <- required
 ```
+
+Then assign the group. The UI exposes Administrator as a toggle; assigning
+**Read Only** is done through the user's group membership.
+
+Verify the result rather than trusting the label:
+
+```bash
+# Must fail with 401 Unauthorized for a Read Only user
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  -H "Authorization: Bearer ${HASS_AGENT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_id": "light.kitchen"}' \
+  "${HASS_URL}/api/services/light/turn_on"
+```
+
+**Why**: a long-lived access token inherits the authority of the user who
+created it, for as long as it exists. Naming it "Read Only" changes nothing,
+and neither does declaring `auth_providers` in `configuration.yaml` — that
+setting selects *how* users log in, not *what* they may do.
+
+Two limitations **MUST** be stated to whoever relies on this:
+
+- Permissions never apply to the **owner** account. An owner always has full
+  access, whatever the group policy says.
+- Per-entity policies are applied by Home Assistant's API layer. Some APIs
+  remain reachable to all users with a reduced scope, so a restricted user is
+  not equivalent to a network-level block.
+
+### Scoping the MCP Server
+
+For MCP clients, the exposed-entities list is the enforcement point:
+
+```text
+Settings -> Voice assistants -> Expose
+  - Expose only the entities the agent needs
+  - Clear everything else
+Settings -> Devices & services -> Model Context Protocol Server -> Configure
+  - "Control Home Assistant": off for a monitoring agent
+```
+
+Non-administrator users may use the Assist API at `/api/mcp` and
+`/api/mcp/assist`. Connecting to any other LLM API at `/api/mcp/<api_id>`
+requires an administrator.
 
 ## Capabilities
 
@@ -313,6 +406,9 @@ denied_domains:
 
 ### Action Safety
 
+Approval **MUST** be decided by the resolved target and its physical effect,
+never by the service name alone.
+
 ```yaml
 # Require approval for actions
 action_approval:
@@ -326,15 +422,39 @@ action_approval:
     - switch.*
     - climate.*
 
-  auto_approve:
-    - automation.trigger  # Safe to test automations
-    - script.*           # Pre-approved scripts
+  # No blanket auto-approval. automation.trigger and script.turn_on are
+  # indirections: resolve the automation or script first, and apply the
+  # rules above to every action it performs.
+  resolve_before_approval:
+    - automation.trigger
+    - script.*
+    - scene.apply
+    - scene.turn_on
 ```
+
+`automation.trigger` runs the automation's action block, and a script runs
+whatever it contains. Either can call `lock.unlock` or
+`alarm_control_panel.disarm`, so auto-approving them re-authorises exactly the
+actions the list above restricts.
+
+**Why**: the guard has to sit on the effect, not on the entry point. A rule
+keyed to `lock.*` is bypassed by any script that calls `lock.unlock` if scripts
+are pre-approved as a class.
+
+Where the resolved actions cannot be enumerated in advance, the call **MUST**
+be treated as requiring approval.
 
 ### Rate Limiting
 
+Home Assistant has no per-token API rate-limit setting. Limits **MUST** be
+implemented in the agent client or in a reverse proxy in front of Home
+Assistant; the block below is client-side policy, not Home Assistant
+configuration.
+
 ```yaml
-rate_limits:
+# Client-side policy, enforced by the agent or an intermediary proxy.
+# Home Assistant does not read this.
+client_rate_limits:
   api_calls: 100/minute
   service_calls: 10/minute
   history_queries: 5/minute
@@ -389,19 +509,41 @@ addons:
 
 ### Supervisor API (Advanced)
 
+These calls only work **from inside a Home Assistant app (add-on) container**.
+`SUPERVISOR_TOKEN` is injected into the app's environment by the Supervisor; it
+does not exist in an ordinary shell, and `http://supervisor/` does not resolve
+outside the Supervisor network. An agent running on a workstation **MUST** use
+the Core REST API on port 8123 instead.
+
+Declare the grants the app needs in its `config.yaml`:
+
+```yaml
+# Add-on config.yaml
+homeassistant_api: true   # unlocks http://supervisor/core/api/
+hassio_api: true          # unlocks the rest of http://supervisor/
+hassio_role: default      # raise only if a specific endpoint requires it
+```
+
 ```bash
-# Query Supervisor for system status
+# Inside the app container. SUPERVISOR_TOKEN is provided by the Supervisor.
 curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
   "http://supervisor/core/api/states" | jq
 
-# Get add-on status
 curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
   "http://supervisor/addons" | jq
 
-# Get system info
 curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
   "http://supervisor/info" | jq
 ```
+
+A documented subset is reachable without `hassio_api: true`: `/core/api`,
+`/core/api/stream`, `/core/websocket`, `/addons/self/*`, `/services*`,
+`/discovery*` and `/info`. `/addons` is not in that subset, so the middle call
+above needs the grant.
+
+**Why**: naming the grants makes the app's authority auditable. `hassio_api`
+opens the Supervisor control plane, which can start, stop and reconfigure every
+app on the system — a much larger surface than reading entity states.
 
 ## Template Examples
 
@@ -422,18 +564,47 @@ Unavailable entities ({{ unavailable | length }}):
 {% endfor %}
 
 {# Battery levels below threshold #}
-{% set low_battery = states.sensor
-   | selectattr('attributes.device_class', 'eq', 'battery')
-   | selectattr('state', 'lt', '20') | list %}
-Low battery ({{ low_battery | length }}):
-{% for sensor in low_battery %}
+{# states() returns strings, so '9' < '20' is false and '100' < '20' is
+   true under a string comparison. Convert to a number and reject
+   non-numeric states explicitly. #}
+{% set ns = namespace(low=[], bad=[]) %}
+{% for s in states.sensor
+     | selectattr('attributes.device_class', 'eq', 'battery') %}
+  {% if s.state not in ['unknown', 'unavailable', ''] and
+        s.state | float(-1) >= 0 %}
+    {% if s.state | float < 20 %}
+      {% set ns.low = ns.low + [s] %}
+    {% endif %}
+  {% else %}
+    {% set ns.bad = ns.bad + [s] %}
+  {% endif %}
+{% endfor %}
+Low battery ({{ ns.low | length }}):
+{% for sensor in ns.low %}
 - {{ sensor.name }}: {{ sensor.state }}%
 {% endfor %}
+Unreadable ({{ ns.bad | length }}):
+{% for sensor in ns.bad %}
+- {{ sensor.name }}: {{ sensor.state }}
+{% endfor %}
 
-{# Lights on with power usage #}
+{# Lights on with brightness #}
+{# The brightness attribute is 0-255, not a percentage. #}
 {% set lights_on = states.light | selectattr('state', 'eq', 'on') | list %}
 Lights on: {{ lights_on | length }}
 {% for light in lights_on %}
-- {{ light.name }}: {{ light.attributes.brightness | default(100) }}%
+{% set b = light.attributes.brightness | default(none) %}
+{% if b is none %}
+- {{ light.name }}: on (not dimmable)
+{% else %}
+- {{ light.name }}: {{ (b | float(0) / 255 * 100) | round(0) | int }}%
+{% endif %}
 {% endfor %}
 ```
+
+Both templates above were rendered against fixtures covering `9`, `15`, `100`,
+`unknown`, `unavailable` and an empty state. The original string comparison
+selected `100` and `15` as low while excluding `9`; the corrected version
+selects `9` and `15` and reports the three unreadable sensors separately.
+The original brightness line printed `128%` and `255%`; the corrected version
+prints `50%` and `100%`.

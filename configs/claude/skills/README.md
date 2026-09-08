@@ -85,14 +85,15 @@ The command writes `.mcp.json` at the project root:
 {
   "mcpServers": {
     "postgres": {
-      "type": "stdio",
-      "command": "npx",
+      "command": "docker",
       "args": [
-        "-y",
-        "@bytebase/dbhub@1.2.3"
+        "run", "-i", "--rm",
+        "-e", "DATABASE_URI",
+        "crystaldba/postgres-mcp:0.3.0",
+        "--access-mode=restricted"
       ],
       "env": {
-        "DSN": "${DATABASE_URL}"
+        "DATABASE_URI": "postgres://readonly@localhost/mydb"
       }
     }
   }
@@ -148,13 +149,19 @@ status when the token is wrong.
 {
   "mcpServers": {
     "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_TOKEN": "ghp_xxxx" }
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
     }
   }
 }
 ```
+
+Both examples are explained in full, with their access controls, in
+[PostgreSQL](databases/postgres.md) and [GitHub](communication/github.md).
+The archived `@modelcontextprotocol/server-postgres` and
+`@modelcontextprotocol/server-github` packages **MUST NOT** be used; npm marks
+both deprecated and neither reads the environment variables commonly shown for
+them.
 
 ## Agent Integration
 
