@@ -66,8 +66,8 @@ project/
 │       └── ...
 ├── .mcp.json              # MCP server configuration
 ├── AGENTS.md              # Project context (see agents-md.md)
-├── CLAUDE.md              # Symlink → AGENTS.md
-└── GEMINI.md              # Symlink → AGENTS.md
+├── CLAUDE.md              # `@AGENTS.md` import
+└── GEMINI.md              # `@./AGENTS.md` import
 ```
 
 ### settings.json Structure
@@ -120,7 +120,7 @@ be configured for professional workflows.
         "hooks": [
           {
             "type": "command",
-            "command": "npm run format -- --write \"$CLAUDE_FILE\" || true"
+            "command": "jq -r '.tool_input.file_path' | { read -r f; npm run format -- --write \"$f\" || true; }"
           }
         ]
       }
@@ -142,7 +142,7 @@ be configured for professional workflows.
         "hooks": [
           {
             "type": "command",
-            "command": "npm run lint:file -- \"$CLAUDE_FILE\" || true"
+            "command": "jq -r '.tool_input.file_path' | { read -r f; npm run lint:file -- \"$f\" || true; }"
           }
         ]
       }
@@ -175,12 +175,17 @@ be configured for professional workflows.
 
 If the Stop hook command fails, Claude is prompted to continue and fix issues.
 
-### Environment Variables in Hooks
+### Hook Input
 
-| Variable | Value |
-|----------|-------|
-| `$CLAUDE_FILE` | Path to file being written/edited |
-| `$CLAUDE_TOOL` | Name of tool being used |
+Hook commands receive a JSON payload on **stdin** (there are no
+`$CLAUDE_*` environment variables for tool data). Extract fields with `jq`:
+
+| JSON field | Value |
+|------------|-------|
+| `.tool_input.file_path` | Path to file being written/edited |
+| `.tool_name` | Name of tool being used |
+
+Example: `jq -r '.tool_input.file_path' | { read -r f; <formatter> "$f"; }`
 
 ---
 
@@ -197,7 +202,9 @@ ToolName(pattern)
 Examples:
 
 - `Bash(npm run *)` — Allow any npm run command
-- `Write(src/**)` — Allow writing to src/ and subdirectories
+- `Edit(src/**)` — Allow file writes/edits in src/ and subdirectories
+  (file-tool path rules are matched as `Edit(path)`; `Write(path)` rules
+  are not matched and are dead)
 - `Read(*)` — Allow reading any file
 
 ### Doctrine's Standard Allowlist
@@ -227,10 +234,6 @@ Examples:
       "Read(*)",
       "Glob(*)",
       "Grep(*)",
-      "Write(src/**)",
-      "Write(tests/**)",
-      "Write(test/**)",
-      "Write(docs/**)",
       "Edit(src/**)",
       "Edit(tests/**)",
       "Edit(test/**)",
@@ -252,12 +255,16 @@ Examples:
       "Bash(wget * | bash)",
       "Bash(chmod 777 *)",
       "Bash(> /dev/sd*)",
-      "Write(.env*)",
-      "Write(**/secrets*)",
-      "Write(**/*secret*)",
-      "Write(**/*password*)",
-      "Write(**/*credential*)",
-      "Edit(.env*)"
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(**/secrets/**)",
+      "Edit(**/*secret*)",
+      "Edit(**/*password*)",
+      "Edit(**/*credential*)",
+      "Edit(**/*token*)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)",
+      "Edit(**/id_rsa*)"
     ]
   }
 }
@@ -401,7 +408,7 @@ Based on subcommand, route to appropriate agent:
 | `/explain` | Explain code | `--deep` |
 | `/plan` | Create implementation plan | Feature description |
 
-See [configs/claude/commands/](../../configs/claude/commands/) for full definitions.
+See [commands/](../../commands/) for full definitions.
 
 ---
 
@@ -515,59 +522,95 @@ claude plugins install ralph-wiggum
 
 ## Syncing from Doctrine
 
-Doctrine provides standard Claude Code configurations.
+Doctrine provides standard Claude Code configurations. Agents and commands live
+at the repository root in `agents/` and `commands/`; `configs/claude/` holds
+`settings.json`, skills, and infrastructure context. A sync **MUST** copy from
+those four source paths directly.
+
+### Source-to-Destination Map
+
+| Doctrine source | Project destination | Managed by Doctrine |
+| --------------- | ------------------- | ------------------- |
+| `agents/` | `.claude/agents/` | Yes — do not add project-local files |
+| `commands/` | `.claude/commands/` | Yes — do not add project-local files |
+| `configs/claude/skills/` | `.claude/skills/` | No — merged, project skills preserved |
+| `configs/claude/settings.json` | `.claude/settings.json` | Yes — overwritten |
 
 ### Manual Sync
 
 ```bash
-# Clone Doctrine
-git clone https://github.com/welshwandering/doctrine.git ~/.doctrine
+# Clone Doctrine once
+git clone https://github.com/agh/doctrine.git ~/.doctrine
 
-# Copy configs
-cp -r ~/.doctrine/configs/claude/ ./.claude/
+# Install into the current project
+mkdir -p .claude
+rsync -aL --delete ~/.doctrine/agents/   .claude/agents/
+rsync -aL --delete ~/.doctrine/commands/ .claude/commands/
+rsync -aL ~/.doctrine/configs/claude/skills/ .claude/skills/
+cp ~/.doctrine/configs/claude/settings.json .claude/settings.json
+
+# Verify the install materialised real files, not links
+find .claude -type l -print   # MUST print nothing
+test -f .claude/agents/code/reviewer.md && test -f .claude/commands/code.md
 ```
+
+The trailing slash on each source path is significant: it copies the directory
+**contents** rather than nesting a second directory inside the destination.
+`-L` dereferences any symlink so the installed tree contains regular files on
+every platform, including Windows checkouts made without `core.symlinks=true`.
+`--delete` removes agents and commands withdrawn upstream, so those two
+destinations **MUST NOT** hold project-local files.
 
 ### GitHub Action for Auto-Sync
 
+Use the maintained template at
+[`.github/workflows/sync-doctrine.yml`](../../configs/github/workflows/sync-doctrine.yml)
+rather than hand-rolling a workflow. Copy it into your project's
+`.github/workflows/`, then customise `SYNC_PATHS`:
+
 ```yaml
-# .github/workflows/sync-doctrine.yml
-name: Sync Doctrine Configs
-
-on:
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly
-  workflow_dispatch:
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Fetch Doctrine configs
-        run: |
-          curl -sL https://github.com/welshwandering/doctrine/archive/main.tar.gz | tar xz
-          cp -r doctrine-main/configs/claude/ ./.claude/
-          rm -rf doctrine-main
-
-      - name: Create PR if changes
-        uses: peter-evans/create-pull-request@v5
-        with:
-          title: "chore: sync Claude configs from Doctrine"
-          commit-message: "chore: sync Claude configs from Doctrine"
-          branch: sync-doctrine-configs
-          body: |
-            Automated sync of Claude Code configs from [Doctrine](https://github.com/welshwandering/doctrine).
+env:
+  DOCTRINE_REPO: agh/doctrine
+  DOCTRINE_BRANCH: main
+  SYNC_PATHS: |
+    configs/claude/settings.json:.claude/settings.json
+    agents:.claude/agents
+    commands:.claude/commands
 ```
 
 ### Version Pinning
 
+Pin to a release tag so config changes arrive on your schedule rather than
+upstream's. **The source paths differ by release**: `agents/` and `commands/`
+sit at the repository root only in releases *after* v2.11.0; in v2.11.0 and
+earlier they live under `configs/claude/`. Match `SYNC_PATHS` to the release
+you pin, or the sync step reports `Source not found` and copies nothing:
+
 ```yaml
-- name: Fetch Doctrine configs (pinned to v2.11.0)
-  run: |
-    curl -sL https://github.com/welshwandering/doctrine/archive/refs/tags/v2.11.0.tar.gz | tar xz
-    cp -r doctrine-2.11.0/configs/claude/ ./.claude/
+env:
+  DOCTRINE_REPO: agh/doctrine
+  DOCTRINE_BRANCH: v2.11.0
+  SYNC_PATHS: |
+    configs/claude/settings.json:.claude/settings.json
+    configs/claude/agents:.claude/agents
+    configs/claude/commands:.claude/commands
 ```
+
+For a manual install from a pinned tarball (paths shown for v2.11.0):
+
+```bash
+DOCTRINE_VERSION=2.11.0
+curl -sL "https://github.com/agh/doctrine/archive/refs/tags/v${DOCTRINE_VERSION}.tar.gz" | tar xz
+mkdir -p .claude
+rsync -aL --delete "doctrine-${DOCTRINE_VERSION}/configs/claude/agents/"   .claude/agents/
+rsync -aL --delete "doctrine-${DOCTRINE_VERSION}/configs/claude/commands/" .claude/commands/
+rsync -aL "doctrine-${DOCTRINE_VERSION}/configs/claude/skills/" .claude/skills/
+cp "doctrine-${DOCTRINE_VERSION}/configs/claude/settings.json" .claude/settings.json
+rm -rf "doctrine-${DOCTRINE_VERSION}"
+```
+
+GitHub's tag archives preserve symlinks, so `-L` matters here: it turns any
+link in the archive into a regular file at the destination.
 
 ---
 

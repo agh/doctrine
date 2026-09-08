@@ -786,11 +786,11 @@ For language-specific guidance, see:
 
 | Language | Module |
 | -------- | ------ |
-| Python | [test-writer/python.md](test-writer/python.md) |
-| JavaScript/TypeScript | [test-writer/javascript.md](test-writer/javascript.md) |
-| Go | [test-writer/go.md](test-writer/go.md) |
-| Java | [test-writer/java.md](test-writer/java.md) |
-| Rust | [test-writer/rust.md](test-writer/rust.md) |
+| Python | [test-writer/python.md](../test-writer/python.md) |
+| JavaScript/TypeScript | [test-writer/javascript.md](../test-writer/javascript.md) |
+| Go | [test-writer/go.md](../test-writer/go.md) |
+| Java | [test-writer/java.md](../test-writer/java.md) |
+| Rust | [test-writer/rust.md](../test-writer/rust.md) |
 
 ## Agent Composition
 
@@ -805,6 +805,6 @@ test-writer → verify-build → code-reviewer → code-simplifier
 
 ## See Also
 
-- [Testing Guide](../../../guides/process/testing.md)
-- [Verify Build Agent](verify-build.md)
-- [Code Reviewer Agent](code-reviewer.md)
+- [Testing Guide](../../guides/process/testing.md)
+- [Verify Build Agent](../system/verify.md)
+- [Code Reviewer Agent](reviewer.md)

@@ -1,6 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "_comment": "Doctrine standard Claude Code configuration - https://github.com/welshwandering/doctrine",
+  "_comment": "Doctrine standard Claude Code configuration - https://github.com/agh/doctrine",
+
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
 
   "permissions": {
     "allow": [
@@ -48,18 +53,6 @@
       "Read",
       "Glob",
       "Grep",
-      "Write(src/**)",
-      "Write(lib/**)",
-      "Write(app/**)",
-      "Write(tests/**)",
-      "Write(test/**)",
-      "Write(spec/**)",
-      "Write(docs/**)",
-      "Write(*.md)",
-      "Write(*.json)",
-      "Write(*.yaml)",
-      "Write(*.yml)",
-      "Write(*.toml)",
       "Edit(src/**)",
       "Edit(lib/**)",
       "Edit(app/**)",
@@ -85,33 +78,31 @@
       "Bash(fdisk:*)",
       "Bash(git push --force:*)",
       "Bash(git reset --hard:*)",
-      "Write(.env)",
-      "Write(.env.*)",
-      "Write(**/secrets/**)",
-      "Write(**/*secret*)",
-      "Write(**/*password*)",
-      "Write(**/*credential*)",
-      "Write(**/*token*)",
-      "Write(**/*.pem)",
-      "Write(**/*.key)",
-      "Write(**/id_rsa*)",
       "Edit(.env)",
       "Edit(.env.*)",
-      "Edit(**/secrets/**)"
-    ]
+      "Edit(**/secrets/**)",
+      "Edit(**/*secret*)",
+      "Edit(**/*password*)",
+      "Edit(**/*credential*)",
+      "Edit(**/*token*)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)",
+      "Edit(**/id_rsa*)"
+    ],
+    "defaultMode": "auto"
   },
 
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if command -v npm &> /dev/null && [ -f package.json ]; then npm run format --if-present -- \"$CLAUDE_FILE\" 2>/dev/null || true; fi"
-          }
-        ]
-      }
-    ]
+  "fallbackModel": [
+    "claude-opus-4-8"
+  ],
+
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "network": {
+      "allowUnixSockets": [
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+      ]
+    }
   }
 }

@@ -6,7 +6,7 @@ model: sonnet
 
 # Test Writer: Java Module
 
-> [Test Writer Agent](../test-writer.md) > Java
+> [Test Writer Agent](../code/test-writer.md) > Java
 
 Java-specific guidance for test generation.
 
@@ -412,5 +412,5 @@ Parse JaCoCo XML (`jacoco.xml`):
 
 ## See Also
 
-- [Java Style Guide](../../../../guides/languages/java.md)
-- [Testing Guide](../../../../guides/process/testing.md)
+- [Java Style Guide](java.md)
+- [Testing Guide](../../guides/process/testing.md)

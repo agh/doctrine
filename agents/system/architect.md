@@ -12,7 +12,7 @@ infrastructure analysis.
 
 **Model**: Opus 4.5
 **Command**: `/system`
-**Reference**: [Doctrine System Agent Family](../../../guides/ai/system-agents.md)
+**Reference**: [Doctrine System Agent Family](../../guides/ai/system-agents.md)
 
 ---
 
