@@ -26,23 +26,50 @@ You are a storage infrastructure specialist. Review S3-compatible object storage
 - RPC secret configured
 - Admin/metrics tokens
 
+RPC, storage paths, compression and replication are **top-level** keys in
+`garage.toml`; only `[consul_discovery]`, `[kubernetes_discovery]`, `[s3_api]`,
+`[s3_web]` and `[admin]` are sections. Garage rejects the file outright when
+those keys are nested, so a config with `[rpc]`, `[metadata]`, `[data]` or
+`[replication]` sections never starts.
+
 ```toml
-# ❌ Minimal Garage configuration
-[rpc]
-# secret: not set - will fail in cluster mode
+# ❌ Minimal Garage configuration (/etc/garage.toml)
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"  # Metadata and data share one disk
+replication_factor = 1
+rpc_bind_addr = "[::]:3901"
+# rpc_secret / rpc_secret_file not set - garage exits at startup with
+# "rpc_secret value is missing, not present in config file or in environment"
 
 [s3_api]
 s3_region = "garage"
 api_bind_addr = "0.0.0.0:3900"  # Exposed on all interfaces
 
 [admin]
-# api_bind_addr: not set - no metrics
+# api_bind_addr: not set - no admin API, no metrics
 
-# ✅ Production Garage configuration
-[rpc]
-bind_addr = "[::]:3901"
-secret = "${RPC_SECRET}"  # From environment/secrets
-bootstrap_peers = []  # Or peer addresses for cluster
+# ✅ Production Garage configuration (garage v2.4.0, /etc/garage.toml)
+replication_factor = 3  # 1 only for single-node test deployments
+consistency_mode = "consistent"
+db_engine = "lmdb"
+
+metadata_dir = "/fast/garage/meta"  # NVMe for metadata
+data_dir = "/tank/garage/data"  # HDD array for data
+# For multi-path:
+# data_dir = [
+#   { path = "/disk1/garage", capacity = "2T" },
+#   { path = "/disk2/garage", capacity = "2T" },
+# ]
+
+compression_level = 3  # zstd level 1-19; "none" disables compression
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "[fc00:1::1]:3901"  # Address peers use to reach this node
+rpc_secret_file = "/etc/garage/rpc_secret"  # openssl rand -hex 32, mode 0600
+bootstrap_peers = [
+  # Node identifiers from `garage node id` on each peer; [] for a single node
+  "563e1ac825ee3323aa441e72c26d1030d6d4414aeb3dd25287c531e7fc2bc95d@[fc00:1::2]:3901",
+]
 
 [s3_api]
 s3_region = "garage"
@@ -55,30 +82,24 @@ root_domain = ".web.example.com"
 
 [admin]
 api_bind_addr = "127.0.0.1:3903"  # Localhost only
-admin_token = "${ADMIN_TOKEN}"
-metrics_token = "${METRICS_TOKEN}"
-
-[metadata]
-data_dir = "/fast/garage/meta"  # NVMe for metadata
-
-[data]
-data_dir = "/tank/garage/data"  # HDD array for data
-# For multi-path:
-# data_dir = [
-#   { path = "/disk1/garage", capacity = "2T" },
-#   { path = "/disk2/garage", capacity = "2T" },
-# ]
-
-compression_level = 3  # LZ4 default, 1-19 for zstd
-
-[replication]
-replication_factor = 1  # Single node
-# replication_factor = 3  # Production cluster
+admin_token_file = "/etc/garage/admin_token"
+metrics_token_file = "/etc/garage/metrics_token"
+metrics_require_token = true
 ```
+
+**Secrets**: `garage.toml` is plain TOML and **MUST NOT** contain `${VAR}`
+placeholders — Garage does not expand them and exits with
+`Invalid RPC secret key (bad hex)`. Pass secrets through the `*_file` options
+above or through the `GARAGE_RPC_SECRET`, `GARAGE_ADMIN_TOKEN` and
+`GARAGE_METRICS_TOKEN` environment variables (a systemd `EnvironmentFile=`).
+Secret files **MUST** be mode `0600`: Garage refuses to start on a
+world-readable file unless `GARAGE_ALLOW_WORLD_READABLE_SECRETS=true`.
 
 **Severity**:
 
-- 🔴 **Critical**: No RPC secret in multi-node setup
+- 🔴 **Critical**: No RPC secret, or a `${VAR}` placeholder left in the file
+- 🔴 **Critical**: Options nested under `[rpc]`, `[metadata]`, `[data]` or
+  `[replication]` — the node cannot load the file
 - 🟡 **Warning**: Admin API on 0.0.0.0, no compression
 - 🔵 **Suggestion**: Separate NVMe for metadata
 

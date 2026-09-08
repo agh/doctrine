@@ -99,8 +99,9 @@ http_request_duration_seconds_bucket{service="api", le="0.1"}
 
 ```yaml
 metric_relabel_configs:
-  # Drop specific high-cardinality labels
-  - source_labels: [request_id]
+  # Drop a label by name: labeldrop matches label names with regex and
+  # rejects source_labels
+  - regex: 'request_id'
     action: labeldrop
   # Drop metrics matching pattern
   - source_labels: [__name__]
@@ -108,9 +109,17 @@ metric_relabel_configs:
     action: drop
 ```
 
+Combining `source_labels` with `labeldrop` fails validation with
+`labeldrop action requires only 'regex', and no other fields`: Prometheus
+exits at startup, and on reload it keeps the previous configuration, so the
+label carries on being ingested. Check every change with
+`promtool check config prometheus.yml` before reloading.
+
 **Severity**:
 
 - 🔴 **Critical**: User IDs, request IDs, or paths as labels
+- 🔴 **Critical**: `labeldrop` or `labelkeep` combined with `source_labels` -
+  the configuration is rejected
 - 🟡 **Warning**: > 8 labels per metric, no cardinality limits
 - 🔵 **Suggestion**: Add recording rules for expensive queries
 

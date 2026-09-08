@@ -201,13 +201,29 @@ FROM pg_stat_replication;
 pg_dump mydb > /backup/mydb.sql
 # Problems: Slow, blocks writes, no PITR
 
-# ✅ pgBackRest configuration
+# ✅ pgBackRest configuration - /etc/pgbackrest/pgbackrest.conf
+# Comments go on their own line: pgBackRest reads the rest of the line as
+# part of the value and rejects "4  # Keep 4 full backups" as invalid.
 [global]
 repo1-path=/var/lib/pgbackrest
-repo1-retention-full=4            # Keep 4 full backups
-repo1-retention-diff=14           # Keep 14 differential
+# Keep 4 full backups
+repo1-retention-full=4
+# Keep 14 differential backups
+repo1-retention-diff=14
 repo1-cipher-type=aes-256-cbc
 repo1-cipher-pass=<from-vault>
+
+# Offsite repository - repo2-* options belong in [global]; there is no
+# [global:repo2] section and settings placed there are silently ignored
+repo2-type=s3
+repo2-s3-bucket=mydb-backup
+repo2-s3-endpoint=s3.amazonaws.com
+repo2-s3-region=us-east-1
+repo2-s3-key=<from-vault>
+repo2-s3-key-secret=<from-vault>
+repo2-retention-full=2
+repo2-cipher-type=aes-256-cbc
+repo2-cipher-pass=<from-vault>
 
 # Compression
 compress-type=zst
@@ -220,28 +236,27 @@ process-max=4
 archive-async=y
 archive-push-queue-max=4GiB
 
-# Offsite repository
-[global:repo2]
-repo2-type=s3
-repo2-s3-bucket=mydb-backup
-repo2-s3-endpoint=s3.amazonaws.com
-repo2-s3-region=us-east-1
-repo2-retention-full=2
-repo2-cipher-type=aes-256-cbc
-
 [main]
 pg1-path=/var/lib/postgresql/data
 ```
+
+Verify what pgBackRest actually loaded before trusting a repository:
+`pgbackrest --stanza=main help backup repo2-type` prints a `current:` block
+only when the option is in effect.
 
 **Backup schedule**:
 
 ```bash
 # ✅ Recommended schedule
-# Full backup weekly (Sunday 2am)
-0 2 * * 0 pgbackrest --stanza=main backup --type=full
+# backup writes to repo1 unless --repo is given, so schedule each repository
+# Full backup weekly to the local repository (Sunday 2am)
+0 2 * * 0 pgbackrest --stanza=main --repo=1 backup --type=full
 
-# Differential daily (2am)
-0 2 * * 1-6 pgbackrest --stanza=main backup --type=diff
+# Differential daily to the local repository (2am)
+0 2 * * 1-6 pgbackrest --stanza=main --repo=1 backup --type=diff
+
+# Full backup weekly to the offsite repository (Sunday 4am)
+0 4 * * 0 pgbackrest --stanza=main --repo=2 backup --type=full
 
 # WAL archiving continuous (in postgresql.conf)
 archive_command = 'pgbackrest --stanza=main archive-push %p'
@@ -250,7 +265,10 @@ archive_command = 'pgbackrest --stanza=main archive-push %p'
 **Severity**:
 
 - 🔴 **Critical**: No database backup
+- 🔴 **Critical**: Repository options under `[global:repo2]`, or values with
+  trailing `#` comments - pgBackRest ignores or rejects them
 - 🟡 **Warning**: No WAL archiving (can't do PITR), no encryption
+- 🟡 **Warning**: Second repository configured but never scheduled
 - 🔵 **Suggestion**: Add offsite replication, test restoration
 
 ---
