@@ -737,7 +737,7 @@ SESSION_SECRET=0000000000000000000000000000000000000000000000000000000000000000
 
 ```ini
 # .env.development.local (git-ignored; development only)
-SESSION_SECRET=0f2b4d6e8a0c2e4f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7
+SESSION_SECRET=replace-with-64-hex-chars-from-securerandom-hex-32
 SMTP_USERNAME=mailer@example.com
 SMTP_PASSWORD=replace-me
 ```
