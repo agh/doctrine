@@ -69,6 +69,28 @@ doctrine/
 └── VERSION            # Current version number
 ```
 
+## Vendored Reference Payloads
+
+Everything under `reference/` except `reference/security/` is a verbatim
+third-party document.
+
+- **MUST NOT** run markdownlint, prettier or any other formatter or auto-fixer
+  over `reference/`; the root `.markdownlint-cli2.jsonc` ignores it and CI lints
+  with `#reference/**`
+- **MUST NOT** apply Doctrine house style (breadcrumbs, RFC 2119 boilerplate,
+  `Why` sections) to a payload
+- **MUST** record any deliberate correction to upstream text in
+  [`reference/ERRATA.md`](reference/ERRATA.md), with the command that
+  demonstrates the defect
+- **MUST** regenerate the digest register after any payload change:
+  `python3 scripts/check_vendored_payloads.py --update`
+
+**Why**: a vendored payload is evidence of what upstream says, so it is only
+useful while it is byte-identical to upstream. Commit `b6f870a` auto-fixed the
+tree and stripped the whitespace after 474 list markers in the Google guides,
+turning `1.  Foo` into `1.Foo`; the Markdown style guide then demonstrated
+syntax that renders no list at all.
+
 ## Writing Style
 
 When editing or creating guides:
@@ -164,7 +186,9 @@ pipx run grip==4.6.2
 | `VERSION` | Current version (SemVer) |
 | `agents/`, `commands/` | Agent and slash-command definitions |
 | `configs/` | Copy-paste config files |
-| `reference/` | Vendored third-party guides, unmodified |
+| `reference/google/` | Upstream Google guides |
+| `reference/ERRATA.md` | Register of local corrections to vendored payloads |
+| `scripts/check_vendored_payloads.py` | Vendored payload integrity check |
 
 ## Conventions
 
@@ -205,5 +229,6 @@ unreliable. Always verify time-sensitive claims against current sources.
 - **MUST NOT** use vague language ("consider", "you might want to")
 - **MUST NOT** omit rationale for recommendations
 - **MUST NOT** include tool-specific config without version pinning
+- **MUST NOT** reformat or lint-fix anything under `reference/`
 - **SHOULD NOT** duplicate content across guides (link instead)
 - **SHOULD NOT** recommend deprecated tools without migration path

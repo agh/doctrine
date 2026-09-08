@@ -35,22 +35,47 @@ COPY . /app                           # Before dependencies
 RUN pip install -r requirements.txt   # Cache invalidated every change
 USER root                             # Running as root
 
-# ✅ Correct pattern
+# ❌ Dependencies stay behind in the builder stage
 FROM python:3.12-slim AS builder
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+RUN pip install --no-cache-dir -r requirements.txt  # Builder's environment only
 
 FROM gcr.io/distroless/python3-debian12:nonroot
+COPY --from=builder /app /app  # Source only: ModuleNotFoundError at runtime
+
+# ✅ Correct pattern
+# Build with the interpreter the runtime image ships: distroless
+# python3-debian13 provides CPython 3.13 at /usr/bin/python3.13.
+FROM python:3.13-slim-trixie AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --target=/deps -r requirements.txt
+COPY . .
+
+FROM gcr.io/distroless/python3-debian13:nonroot
+WORKDIR /app
+COPY --from=builder /deps /deps
 COPY --from=builder /app /app
+ENV PYTHONPATH=/deps
 USER nonroot
+ENTRYPOINT ["/usr/bin/python3.13", "-m", "app"]
 ```
+
+A distroless runtime has no shell and no `pip`, so it can only use packages
+copied from the builder. `pip install --target` plus `PYTHONPATH` is the
+smallest form of this; a virtual environment also works, but its `bin/python`
+is a symlink to the builder's interpreter, so the container still has to be
+started through the runtime image's own interpreter. Wheels containing compiled
+extensions **MUST** be built for the same interpreter version, libc and
+architecture as the runtime image, which is why both stages use Debian 13.
 
 **Severity**:
 
 - 🔴 **Critical**: Running as root, unpinned base images, secrets in layers
+- 🔴 **Critical**: Runtime stage missing the installed dependencies
 - 🟡 **Warning**: Missing multi-stage, poor layer ordering, missing .dockerignore
+- 🟡 **Warning**: Builder and runtime interpreter versions differ
 - 🔵 **Suggestion**: Base image optimization, combining RUN commands
 
 ---
@@ -410,21 +435,38 @@ services:
 - Critical/High vulnerability thresholds
 - Hadolint for Dockerfile linting
 
+Third-party Actions run with access to the workflow token and secrets, so they
+**MUST** be pinned to a full-length commit SHA that you have reviewed: tags and
+branches are mutable and can be repointed at new code without warning.
+
 ```yaml
-# CI integration
+# ❌ Mutable reference - the action's code can change under you
 - name: Scan image
   uses: aquasecurity/trivy-action@master
-  with:
-    image-ref: myapp:1.0
-    severity: CRITICAL,HIGH
-    exit-code: 1
 
-- name: Lint Dockerfile
-  run: hadolint Dockerfile
+# ✅ CI integration (.github/workflows/build.yml)
+permissions:
+  contents: read  # Least privilege at workflow level
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Scan image
+        # aquasecurity/trivy-action v0.36.0, released 2026-04-22
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: myapp:1.0
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - name: Lint Dockerfile
+        run: hadolint Dockerfile
 ```
 
 **Severity**:
 
+- 🔴 **Critical**: Third-party Action referenced by branch or tag
 - 🟡 **Warning**: No vulnerability scanning in CI
 - 🔵 **Suggestion**: Add Hadolint for Dockerfile linting
 

@@ -81,7 +81,11 @@ jobs:
       - name: Lint Markdown
         run: npx --no-install markdownlint-cli2 "**/*.md"
 
-      - name: Check internal links in all first-party Markdown
+      - name: Verify vendored payload integrity
+        run: |
+          python3 scripts/check_vendored_payloads.py
+
+      - name: Check links in README
         run: |
           # Relative targets and heading anchors across every tracked Markdown
           # file except the vendored reference/ tree. No network is involved,

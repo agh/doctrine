@@ -26,43 +26,54 @@ event streaming (Kafka), and message queue patterns.
 - Clustering properly set up
 - Resource limits
 
-```yaml
-# ❌ Insecure EMQX configuration
-listeners:
-  tcp:
-    default:
-      bind: "0.0.0.0:1883"
-      # No authentication, no TLS
+EMQX 5 and 6 are configured in HOCON, not YAML. The precedence order is
+`etc/base.hocon < cluster.hocon < emqx.conf < environment variables`, so
+read-only settings belong in `emqx.conf`, and anything the dashboard or API may
+later rewrite belongs in `base.hocon`. Keep the `node { ... }` block that ships
+in `emqx.conf`: the broker refuses to boot without `node.cookie` and
+`node.data_dir`.
 
-# ✅ Secure EMQX configuration
-listeners:
-  ssl:
-    default:
-      bind: "0.0.0.0:8883"
-      ssl_options:
-        keyfile: /etc/emqx/certs/server.key
-        certfile: /etc/emqx/certs/server.crt
-        cacertfile: /etc/emqx/certs/ca.crt
-        verify: verify_peer
-        fail_if_no_peer_cert: false  # true for mTLS
+```hocon
+# ❌ Insecure EMQX configuration - /opt/emqx/etc/emqx.conf
+listeners.tcp.default {
+  bind = "0.0.0.0:1883"
+}
+# Plaintext on every interface, no authentication, no ACL
 
-  # Internal TCP for trusted network only
-  tcp:
-    internal:
-      bind: "10.0.0.0:1883"
-      max_connections: 1000
+# ✅ Secure EMQX configuration - /opt/emqx/etc/emqx.conf
+listeners.ssl.default {
+  bind = "0.0.0.0:8883"
+  ssl_options {
+    keyfile = "/etc/emqx/certs/server.key"
+    certfile = "/etc/emqx/certs/server.crt"
+    cacertfile = "/etc/emqx/certs/ca.crt"
+    verify = verify_peer
+    fail_if_no_peer_cert = false  # true for mTLS
+  }
+}
 
-  # WebSocket over TLS
-  wss:
-    default:
-      bind: "0.0.0.0:8084"
-      ssl_options:
-        keyfile: /etc/emqx/certs/server.key
-        certfile: /etc/emqx/certs/server.crt
+# Internal TCP for trusted network only
+listeners.tcp.internal {
+  bind = "10.0.0.10:1883"
+  max_connections = 1000
+}
+
+# WebSocket over TLS
+listeners.wss.default {
+  bind = "0.0.0.0:8084"
+  ssl_options {
+    keyfile = "/etc/emqx/certs/server.key"
+    certfile = "/etc/emqx/certs/server.crt"
+  }
+}
+
+# The plaintext listeners ship enabled - disable them explicitly
+listeners.tcp.default.enable = false
+listeners.ws.default.enable = false
 ```
 
 ```hocon
-# emqx.conf - Authentication
+# /opt/emqx/etc/emqx.conf - Authentication
 authentication = [
   {
     mechanism = password_based
@@ -91,6 +102,7 @@ authorization {
 **Severity**:
 
 - 🔴 **Critical**: No authentication, unencrypted public listener
+- 🔴 **Critical**: `listeners.tcp.default` / `listeners.ws.default` left enabled
 - 🟡 **Warning**: No ACL, plain text passwords
 - 🔵 **Suggestion**: Enable mTLS for device authentication
 
@@ -106,41 +118,52 @@ authorization {
 - Username-based access
 - Publish vs subscribe separation
 
-```bash
-# ❌ Overly permissive ACL
-# /etc/emqx/acl.conf
-{allow, all, all, ["#"]}.  # Everyone can do everything!
+`acl.conf` holds Erlang terms: comments start with `%%`, each rule is a tuple
+ended by `.` — normally `{permission, who, action, topics}`, with `{deny, all}.`
+as the catch-all — and the **first** matching rule decides. Put specific
+denials above the grants they must override.
 
-# ✅ Restrictive ACL with least privilege
-# /etc/emqx/acl.conf
+```erlang
+%% ❌ Overly permissive ACL - /etc/emqx/acl.conf
+{allow, all, all, ["#"]}.  %% Everyone can do everything
 
-# Deny all by default (also set in config)
-{deny, all, all, ["#"]}.
+%% ✅ Restrictive ACL with least privilege - /etc/emqx/acl.conf
 
-# Admin users - full access
-{allow, {user, "admin"}, all, ["#"]}.
+%% Retained messages are never allowed on command topics
+{deny, all, {publish, [{retain, true}]}, ["devices/+/command"]}.
 
-# Devices - only their own topics
-{allow, {client, "device-*"}, subscribe, ["devices/${clientid}/command"]}.
-{allow, {client, "device-*"}, publish, ["devices/${clientid}/telemetry"]}.
-{allow, {client, "device-*"}, publish, ["devices/${clientid}/status"]}.
+%% Admin users - full access
+{allow, {username, "admin"}, all, ["#"]}.
 
-# Home Assistant - IoT integration
-{allow, {user, "homeassistant"}, subscribe, ["homeassistant/#"]}.
-{allow, {user, "homeassistant"}, publish, ["homeassistant/#"]}.
-{allow, {user, "homeassistant"}, subscribe, ["devices/+/telemetry"]}.
+%% Devices - only their own topics; a plain string matches the client ID
+%% exactly, so prefixes need a regular expression
+{allow, {clientid, {re, "^device-"}}, subscribe, ["devices/${clientid}/command"]}.
+{allow, {clientid, {re, "^device-"}}, publish, ["devices/${clientid}/telemetry"]}.
+{allow, {clientid, {re, "^device-"}}, publish, ["devices/${clientid}/status"]}.
 
-# Monitoring - read-only access to metrics
-{allow, {user, "monitor"}, subscribe, ["$SYS/#"]}.
+%% Home Assistant - IoT integration
+{allow, {username, "homeassistant"}, all, ["homeassistant/#"]}.
+{allow, {username, "homeassistant"}, subscribe, ["devices/+/telemetry"]}.
 
-# Deny retained messages on sensitive topics
-{deny, all, publish, ["devices/+/command"], [{retain, true}]}.
+%% Monitoring - read-only access to metrics
+{allow, {username, "monitor"}, subscribe, ["$SYS/#"]}.
+
+%% Deny everything not matched above (mirrors authorization.no_match = deny)
+{deny, all}.
 ```
+
+Retain and QoS conditions belong **inside** the action element as
+`{publish, [{retain, true}]}`; a fifth tuple element is rejected with
+`invalid_authorization_rule`.
 
 **Severity**:
 
 - 🔴 **Critical**: Allow all to `#`, no default deny
+- 🔴 **Critical**: `{deny, all, all, ["#"]}.` placed first, which makes every
+  rule below it unreachable
 - 🟡 **Warning**: No per-device topic restrictions
+- 🟡 **Warning**: Client ID or username prefixes written as `"device-*"`
+  instead of `{re, "^device-"}`
 - 🔵 **Suggestion**: Use client ID in topic patterns
 
 ---
@@ -253,11 +276,24 @@ unclean.leader.election.enable=false  # Don't lose data
 log.retention.hours=168  # 7 days
 log.retention.bytes=107374182400  # 100GB per partition
 log.segment.bytes=1073741824  # 1GB segments
+
+# Authorization - KRaft brokers, controllers and combined nodes
+authorizer.class.name=org.apache.kafka.metadata.authorizer.StandardAuthorizer
+allow.everyone.if.no.acl.found=false  # Deny unless an ACL allows
+super.users=User:kafka-admin  # Semicolon-separated; TLS principals are DNs
 ```
+
+`kafka.security.authorizer.AclAuthorizer` was removed together with ZooKeeper
+support in Kafka 4.0 and **MUST NOT** be used on a KRaft cluster: the class no
+longer exists in the distribution. `StandardAuthorizer` **MUST** be set on
+every node, including controller-only nodes, and at least one `super.users`
+principal is needed to administer the cluster once
+`allow.everyone.if.no.acl.found=false` is in effect.
 
 **Severity**:
 
 - 🔴 **Critical**: No authentication, plaintext listeners, replication factor 1
+- 🔴 **Critical**: ZooKeeper-era `AclAuthorizer` configured on a KRaft node
 - 🟡 **Warning**: Unclean leader election enabled, short retention
 - 🔵 **Suggestion**: Use SCRAM-SHA-512 over PLAIN
 
@@ -624,10 +660,14 @@ kafka-acls.sh --bootstrap-server kafka1:9092 \
   --operation Describe --topic '*' \
   --operation Describe --group '*'
 
-# Deny by default (after configuring allows)
-# authorizer.class.name=kafka.security.authorizer.AclAuthorizer
+# Enable authorisation on every broker and controller, then restart:
+# authorizer.class.name=org.apache.kafka.metadata.authorizer.StandardAuthorizer
 # allow.everyone.if.no.acl.found=false
+# super.users=User:kafka-admin
 ```
+
+Add the allow rules before switching `allow.everyone.if.no.acl.found` to
+`false`, otherwise every client is denied on restart.
 
 **Severity**:
 

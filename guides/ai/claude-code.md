@@ -22,6 +22,7 @@ Visual Iteration), see [AI Workflows](ai-workflows.md).
 | Permissions | `/permissions` |
 | Clear context | `/clear` |
 | Config file | `.claude/settings.json` |
+| Hook scripts | `.claude/hooks/*.sh` |
 | Subagents | `.claude/agents/*.md` |
 | Commands | `.claude/commands/*.md` |
 | MCP servers | `.mcp.json` |
@@ -49,6 +50,9 @@ Claude Code uses several configuration files:
 project/
 ├── .claude/
 │   ├── settings.json      # Permissions, hooks, preferences
+│   ├── hooks/             # Hook scripts invoked from settings.json
+│   │   ├── check-file.sh
+│   │   └── verify-complete.sh
 │   ├── agents/            # Reusable subagent definitions
 │   │   ├── code/          # Code quality agents
 │   │   │   ├── architect.md
@@ -107,9 +111,41 @@ be configured for professional workflows.
 | `PreToolUse` | Before Claude uses a tool | Validation, logging |
 | `Stop` | When Claude stops | Verify completion, auto-resume |
 
+### Hook Exit Codes
+
+Exit codes decide whether a hook is a gate or a comment. Claude Code treats
+exit 2 as the blocking status; every other non-zero code is a **non-blocking
+error** that lets the action proceed[^3].
+
+| Exit code | Effect on `PostToolUse` | Effect on `Stop` |
+|-----------|-------------------------|------------------|
+| `0` | Success. stderr goes to the debug log only; Claude never sees it | Claude stops |
+| `1` (or any other non-zero) | Non-blocking error, stderr not shown to Claude | Claude stops anyway |
+| `2` | Tool already ran, but Claude sees stderr | Blocks the stop; stderr becomes the reason to continue |
+
+Hooks **MUST NOT** end a check with `|| true` and **MUST NOT** rely on exit
+code 1 to gate anything.
+
+#### Why
+
+`|| true` replaces the check's status with 0, and exit 1 is non-blocking, so
+both turn a failed check into a silent success:
+
+```bash
+# Don't: both of these report success to Claude Code
+sh -c 'npm run lint || true'        # exits 0 even when lint fails
+sh -c 'npm test && npm run lint'    # exits 1, which does not block Stop
+
+# Do: report the reason on stderr and exit 2
+printf 'lint failed on src/auth.ts\n' >&2
+exit 2
+```
+
 ### PostToolUse: Auto-Format
 
-**MUST** auto-format after file changes. This catches the "last 10%" of style issues:
+**MUST** auto-format after file changes. This catches the "last 10%" of style
+issues, and **MUST** surface a formatter failure to Claude instead of
+discarding it:
 
 ```json
 {
@@ -120,7 +156,8 @@ be configured for professional workflows.
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path' | { read -r f; npm run format -- --write \"$f\" || true; }"
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-file.sh",
+            "args": ["npm", "run", "format", "--", "--write"]
           }
         ]
       }
@@ -128,10 +165,41 @@ be configured for professional workflows.
   }
 }
 ```
+
+`check-file.sh` runs the command it is given against the file Claude just
+wrote, and reports a failure the only way `PostToolUse` can — stderr plus
+exit 2:
+
+```bash
+#!/usr/bin/env bash
+# .claude/hooks/check-file.sh - run "<argv> <edited file>" after Write or Edit.
+set -uo pipefail
+
+file=$(jq -r '.tool_input.file_path // empty')
+[ -n "$file" ] || exit 0
+
+if ! output=$("$@" "$file" 2>&1); then
+  printf '%s failed on %s:\n%s\n' "$*" "$file" "$(tail -n 20 <<<"$output")" >&2
+  exit 2
+fi
+
+exit 0
+```
+
+Make it executable with `chmod +x .claude/hooks/check-file.sh`.
+
+#### Why
+
+`args` selects Claude Code's exec form, so the script path and each argument
+are passed verbatim with no shell tokenisation — the correct form whenever a
+command references a path placeholder such as `${CLAUDE_PROJECT_DIR}`[^3].
+Reading `.tool_input.file_path` into a quoted variable keeps paths containing
+spaces intact. Truncating to the last 20 lines keeps the feedback short enough
+to be actionable.
 
 ### PostToolUse: Auto-Lint
 
-**SHOULD** lint after file changes:
+**SHOULD** lint after file changes, using the same script:
 
 ```json
 {
@@ -142,7 +210,8 @@ be configured for professional workflows.
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path' | { read -r f; npm run lint:file -- \"$f\" || true; }"
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-file.sh",
+            "args": ["npm", "run", "lint:file", "--"]
           }
         ]
       }
@@ -151,10 +220,15 @@ be configured for professional workflows.
 }
 ```
 
+A per-file lint hook is a fast signal, not proof that the change is clean.
+The whole-change gate below **MUST** still run.
+
 ### Stop: Verify Completion
 
-**MUST** verify before accepting completion on important tasks, and the hook
-**MUST** report failure with exit code 2:
+**MUST** verify before accepting completion on important tasks. A `Stop` hook
+that runs the gate commands directly does not work: the shell reports exit 1
+on failure, which Claude Code treats as non-blocking. Call a script that exits
+2 instead:
 
 ```json
 {
@@ -174,116 +248,81 @@ be configured for professional workflows.
 }
 ```
 
-#### Why
-
-A Stop hook keeps Claude working only when it exits 2 or returns a
-`decision: "block"` JSON object. Every other non-zero status is a non-blocking
-error: Claude Code shows the first stderr line in the transcript and lets the
-turn end.[^3] Test runners exit 1, so an inline `npm test && npm run lint`
-command ends the session with the build still broken — the opposite of the
-gate it appears to be.
-
-Loop control is the second requirement. Stop input carries `stop_hook_active`,
-which is `true` when Claude Code is already continuing because of a Stop hook,
-and Claude Code overrides the hook and ends the turn after eight consecutive
-blocks.[^3] `stop_hook_active` is not evidence that verification passed, so a
-hook **MUST NOT** exit 0 merely because it is `true`. Count attempts instead,
-block a bounded number of times, and then surface the unresolved failure with
-exit 1 so it is visible rather than silent.
-
-`Stop` has no matcher support; a `matcher` field on it is ignored.[^3] Use
-`args: []` so Claude Code spawns the script directly and substitutes
-`${CLAUDE_PROJECT_DIR}` without a shell.[^3]
-
-### The Verification Script
-
-Save this as `.claude/hooks/verify-complete.sh`, make it executable with
-`chmod +x .claude/hooks/verify-complete.sh`, and put `jq` on `PATH`:
-
 ```bash
 #!/usr/bin/env bash
-# .claude/hooks/verify-complete.sh
-# Stop hook: keep Claude working until verification passes, then report an
-# unresolved failure instead of looping forever.
+# .claude/hooks/verify-complete.sh - Stop hook completion gate.
 set -uo pipefail
 
-max_attempts=3
-state_dir=${TMPDIR:-/tmp}/claude-verify
-
 hook_input=$(cat)
-session=$(printf '%s' "$hook_input" | jq -r '.session_id // "unknown"' | tr -cd 'A-Za-z0-9_-')
-resumed=$(printf '%s' "$hook_input" | jq -r '.stop_hook_active // false')
-mkdir -p "$state_dir"
-attempts_file=$state_dir/${session:-unknown}
 
-log=$(mktemp "$state_dir/log.XXXXXX")
-trap 'rm -f "$log"' EXIT
-
-# Replace these with your project's verification commands.
-if npm test >"$log" 2>&1 &&
-  npm run lint >>"$log" 2>&1 &&
-  npm run typecheck >>"$log" 2>&1; then
-  rm -f "$attempts_file"
+# Claude Code overrides the hook after 8 consecutive blocks; stop asking
+# once a previous block already resumed the turn.
+if [ "$(jq -r '.stop_hook_active // false' <<<"$hook_input")" = "true" ]; then
   exit 0
 fi
 
-attempts=0
-if [ "$resumed" = "true" ] && [ -r "$attempts_file" ]; then
-  attempts=$(cat "$attempts_file")
-fi
-attempts=$((attempts + 1))
-printf '%s\n' "$attempts" >"$attempts_file"
+failures=""
 
-if [ "$attempts" -ge "$max_attempts" ]; then
-  rm -f "$attempts_file"
-  printf 'Verification still failing after %d attempts; stopping for review.\n' "$attempts" >&2
-  tail -n 20 "$log" >&2
-  exit 1
+run_gate() {
+  local label=$1
+  shift
+  local output
+  if ! output=$("$@" 2>&1); then
+    failures+="${label} failed:"$'\n'"$(tail -n 20 <<<"$output")"$'\n\n'
+  fi
+}
+
+run_gate "npm test" npm test
+run_gate "npm run lint" npm run lint
+run_gate "npm run typecheck" npm run typecheck
+
+if [ -n "$failures" ]; then
+  printf '%s' "$failures" >&2
+  exit 2
 fi
 
-printf 'Verification failed (attempt %d of %d). Fix this before finishing:\n' \
-  "$attempts" "$max_attempts" >&2
-tail -n 20 "$log" >&2
-exit 2
+exit 0
 ```
 
-Exit codes the script produces:
+#### Why
 
-| Situation | Exit | Effect |
-|-----------|------|--------|
-| Verification passed | 0 | Claude stops; attempt counter cleared |
-| Verification failed, attempts 1–2 | 2 | Claude keeps working; stderr is the reason |
-| Verification failed, attempt 3 | 1 | Turn ends; failure shown in the transcript |
+Every gate runs, so one failing suite does not hide the next; the stderr text
+becomes the reason Claude is shown for continuing. The `stop_hook_active`
+check prevents a gate that can never pass from looping, and Claude Code caps
+continuations at eight consecutive blocks regardless[^3]. A Stop hook is
+therefore a strong gate, **not** a guarantee that Claude never stops early.
 
-**Don't** — an inline command that exits 1 does not block:
-
-```json
-{ "type": "command", "command": "npm test && npm run lint" }
-```
-
-**Do** — a script that converts failure into exit 2 and bounds its own retries:
+Hooks **MAY** instead exit 0 and print blocking JSON on stdout; Claude
+receives the `reason` exactly as it receives exit-2 stderr[^3]:
 
 ```json
 {
-  "type": "command",
-  "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-complete.sh",
-  "args": []
+  "decision": "block",
+  "reason": "npm test failed: 2 failing in src/auth.test.ts"
 }
 ```
+
+Make the script executable with `chmod +x .claude/hooks/verify-complete.sh`.
+A gate whose script is missing or not executable exits 127, which Claude Code
+reports as a non-blocking error — the session stops with the gate silently
+disabled[^3].
+
+For a completion condition that applies to one session rather than every
+session in the project, **SHOULD** use `/goal`[^4] instead of editing
+`settings.json`.
 
 ### Hook Input
 
 Hook commands receive a JSON payload on **stdin** (there are no
 `$CLAUDE_*` environment variables for tool data). Extract fields with `jq`:
 
-| JSON field | Value |
-|------------|-------|
-| `.tool_input.file_path` | Path to file being written/edited |
-| `.tool_name` | Name of tool being used |
-| `.session_id` | Current session identifier |
-| `.stop_hook_active` | `true` on `Stop` when a Stop hook is already resuming |
+| JSON field | Value | Event |
+|------------|-------|-------|
+| `.tool_input.file_path` | Path to file being written/edited | `PostToolUse` |
+| `.tool_name` | Name of tool being used | `PreToolUse`, `PostToolUse` |
+| `.stop_hook_active` | `true` when a stop hook already resumed the turn | `Stop` |
 
-Example: `jq -r '.tool_input.file_path' | { read -r f; <formatter> "$f"; }`
+Example: `file=$(jq -r '.tool_input.file_path // empty')`
 
 ---
 
@@ -604,7 +643,7 @@ Model Context Protocol (MCP)[^2] connects Claude to external tools.
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.80", "--headless", "--isolated"]
+      "args": ["-y", "@playwright/mcp@0.0.80"]
     }
   }
 }
@@ -657,11 +696,25 @@ and shows each server's connection state.[^6]
 
 ### MCP for Visual Iteration
 
-Browser automation **MUST** use Microsoft's maintained `@playwright/mcp`,
-pinned to an exact version. `@anthropic/mcp-puppeteer` does not exist — the
-registry returns 404 for it — and the older
-`@modelcontextprotocol/server-puppeteer` is marked deprecated on npm, with no
-release since `2025.5.12`:
+**SHOULD** use Claude Code's built-in Chrome integration[^5] for screenshots
+and browser checks, because it needs no MCP server and drives the browser you
+are already signed into:
+
+```bash
+claude --chrome
+```
+
+Prerequisites **MUST** be met before relying on it[^5]:
+
+- Chrome, Edge, or another Chromium browser, plus the Claude in Chrome
+  extension 1.0.36 or later
+- Sign-in with `/login` on a direct Anthropic plan (Pro, Max, Team, or
+  Enterprise) — API-key and `claude setup-token` sessions keep the
+  integration off
+- Not available under Windows Subsystem for Linux
+
+Where those prerequisites do not hold, **SHOULD** use Microsoft's
+`@playwright/mcp`, pinned to an exact version[^6]:
 
 ```json
 {
@@ -669,17 +722,29 @@ release since `2025.5.12`:
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.80", "--headless", "--isolated"]
+      "args": ["-y", "@playwright/mcp@0.0.80", "--isolated", "--headless"]
     }
   }
 }
 ```
 
-Or add it from the CLI:
+#### Why
 
-```bash
-claude mcp add playwright -- npx -y @playwright/mcp@0.0.80 --headless --isolated
-```
+`@anthropic/mcp-puppeteer` does not exist on the public registry, and
+`@modelcontextprotocol/server-puppeteer` is marked deprecated ("Package no
+longer supported")[^7], so both fail before browser automation starts.
+`@playwright/mcp` 0.0.80 is the current release[^6] and requires Node.js 18 or
+newer.
+
+Pin the version: `@latest` re-resolves on every launch, so an unpinned `npx`
+line runs whatever was published since the config was reviewed. `--isolated`
+keeps the browser profile in memory, so a session cannot inherit or persist
+cookies from a previous run, and lets several clients share one workspace
+without fighting over the persistent profile[^6].
+
+The server drives a real browser with network access. Treat any page it visits
+as untrusted input: point it at your own development server, and **MUST NOT**
+give it credentials that matter more than the task.
 
 Then in conversation:
 
@@ -687,7 +752,7 @@ Then in conversation:
 Take a screenshot of http://localhost:3000/login
 ```
 
-#### Why
+#### Why the browser package is pinned
 
 **Prerequisite.** `@playwright/mcp` 0.0.80 requires Node.js 18 or newer.[^8]
 
@@ -720,9 +785,10 @@ Claude Code can run for hours or days with proper configuration.
 
 ### Stop Hooks for Auto-Resume
 
-Long sessions **MUST** use the same checked Stop hook as
-[Stop: Verify Completion](#stop-verify-completion) — one script, one exit-code
-contract, one attempt budget:
+Stop hooks verify completion and auto-resume when criteria are not met. Use
+the same enforcing gate as [Stop: Verify Completion](#stop-verify-completion)
+— a plain `npm test && npm run lint` command exits 1 on failure, which Claude
+Code treats as non-blocking:
 
 ```json
 {
@@ -742,11 +808,9 @@ contract, one attempt budget:
 }
 ```
 
-Auto-resume is bounded from both ends: the script stops blocking after its
-own attempt budget, and Claude Code ends the turn after eight consecutive
-blocks whatever the hook returns.[^3] A hook that blocks on a failure it
-cannot resolve wastes those eight turns and then stops anyway, so keep the
-script's budget well below the cap.
+Auto-resume is bounded: Claude Code ends the turn after eight consecutive
+blocks[^3]. A long-running session **MUST NOT** be planned on the assumption
+that the hook resumes indefinitely.
 
 ### The ralph-wiggum Plugin
 
@@ -778,8 +842,34 @@ guide tests.
 # Clone Doctrine once
 git clone https://github.com/agh/doctrine.git ~/.doctrine
 
-# Install into the current project
-~/.doctrine/scripts/sync-claude-config.sh .
+# Copy the contents of configs/claude into .claude, following the
+# agents and commands symlinks
+mkdir -p ./.claude
+cp -rL ~/.doctrine/configs/claude/. ./.claude/
+```
+
+#### Why
+
+Two details make this recipe work on GNU coreutils, which is what
+`ubuntu-latest` runners use:
+
+- **`configs/claude/.` rather than `configs/claude/`** — with GNU `cp -r`, a
+  source directory copied into an existing destination is nested inside it, so
+  `cp -r configs/claude/ ./.claude/` puts `settings.json` at
+  `.claude/claude/settings.json` on the second run. The `/.` form copies the
+  directory's *contents* and behaves identically whether `.claude` already
+  exists or not.
+- **`-L`** — `configs/claude/agents` and `configs/claude/commands` are
+  relative symlinks into the Doctrine repository root. GNU `cp -r` copies them
+  as symlinks, and they dangle at the destination, so no agent or command file
+  is installed. `-L` dereferences them and materialises the real trees.
+
+Verify a sync with the files the links are supposed to provide:
+
+```bash
+test -f .claude/settings.json
+test -f .claude/agents/code/architect.md
+test -f .claude/commands/code.md
 ```
 
 The script replaces `.claude/agents`, `.claude/commands`, `.claude/skills`,
@@ -795,7 +885,7 @@ loads project subagents from `.claude/agents/` and personal ones from
 user directory, contribute them to Doctrine, or install them from your own
 source directory in a step that runs after the sync.
 
-#### Why
+#### Why a plain copy fails
 
 **`cp -r configs/claude/ ./.claude/` does not install a usable configuration.**
 In the Doctrine checkout, `configs/claude/agents` and
@@ -844,7 +934,11 @@ jobs:
       - name: Fetch Doctrine configs
         run: |
           curl -sL https://github.com/agh/doctrine/archive/main.tar.gz | tar xz
-          doctrine-main/scripts/sync-claude-config.sh .
+          mkdir -p ./.claude
+          cp -rL doctrine-main/configs/claude/. ./.claude/
+          test -f .claude/settings.json
+          test -f .claude/agents/code/architect.md
+          test -f .claude/commands/code.md
           rm -rf doctrine-main
 
       - name: Create PR if changes
@@ -869,7 +963,8 @@ you pin, or the sync step reports `Source not found` and copies nothing:
 - name: Fetch Doctrine configs (pinned to v2.11.0)
   run: |
     curl -sL https://github.com/agh/doctrine/archive/refs/tags/v2.11.0.tar.gz | tar xz
-    doctrine-2.11.0/scripts/sync-claude-config.sh .
+    mkdir -p ./.claude
+    cp -rL doctrine-2.11.0/configs/claude/. ./.claude/
 ```
 
 For a manual install from a pinned tarball (paths shown for v2.11.0):
@@ -905,10 +1000,8 @@ link in the archive into a regular file at the destination.
 
 [^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) — Official CLI documentation
 [^2]: [MCP Documentation](https://modelcontextprotocol.io/) — Model Context Protocol specification
-[^3]: [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks) — Hook events, exit codes, and `Stop` input fields
-[^4]: [Claude Code Permissions](https://code.claude.com/docs/en/permissions) — Rule syntax, evaluation order, and tool-specific matching
-[^5]: [Claude Code Sandboxing](https://code.claude.com/docs/en/sandboxing) — OS-level filesystem and network isolation for Bash
-[^6]: [Claude Code MCP Guide](https://code.claude.com/docs/en/mcp) — Server transports, configuration, and OAuth authentication
-[^7]: [Slack MCP Server](https://docs.slack.dev/ai/slack-mcp-server/) — Endpoint, app registration, OAuth, and scopes
-[^8]: [Playwright MCP](https://github.com/microsoft/playwright-mcp) — Configuration flags, Node.js requirement, and the CLI/Skills trade-off
-[^9]: [Claude Code Subagents](https://code.claude.com/docs/en/sub-agents) — Where Claude Code loads project and personal subagent files
+[^3]: [Hooks reference](https://code.claude.com/docs/en/hooks) — Exit codes, `stop_hook_active`, the eight-block continuation cap, exec form vs shell form
+[^4]: [Keep Claude working toward a goal](https://code.claude.com/docs/en/goal) — Session-scoped completion conditions with `/goal`
+[^5]: [Use Claude Code with Chrome](https://code.claude.com/docs/en/chrome) — Built-in browser integration and its prerequisites
+[^6]: [`@playwright/mcp` registry metadata](https://registry.npmjs.org/@playwright/mcp/latest) — Version 0.0.80, published 2026-09-01; Node.js 18+
+[^7]: [`@modelcontextprotocol/server-puppeteer` registry metadata](https://registry.npmjs.org/@modelcontextprotocol/server-puppeteer/latest) — `deprecated: "Package no longer supported"`
