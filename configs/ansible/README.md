@@ -42,8 +42,21 @@ Optimized configuration with:
 
 - **Performance**: 20 forks, SSH pipelining, fact caching
 - **Security**: Host key checking enabled, strict SSH settings
-- **Output**: YAML output with task profiling
+- **Output**: Built-in default callback with YAML result format and task
+  profiling
 - **Plugins**: SOPS vars plugin enabled for secrets
+
+Comments are kept on their own lines throughout. Ansible's INI parser treats
+an inline `# ...` as part of the value: on an integer it aborts startup, and
+on a boolean such as `host_key_checking` it evaluates to `False`, quietly
+disabling the setting the comment claims to document.
+
+The stdout callback is `ansible.builtin.default` with
+`callback_result_format = yaml`, not the `yaml` callback. The
+`community.general.yaml` callback has been removed, so a clean install that
+resolves a current `community.general` cannot start a playbook configured to
+use it. Aggregate callbacks are named by FQCN
+(`ansible.posix.profile_tasks`, `ansible.posix.timer`).
 
 ### .ansible-lint
 
@@ -76,10 +89,11 @@ Multi-cloud secrets management:
 
 ### requirements.yml
 
-Essential collections:
+Essential collections, pinned to the current Galaxy releases:
 
 - Core: ansible.posix, ansible.utils
-- Community: general, docker, postgresql, mysql
+- Community: general, docker, postgresql, crypto
+- Database: ansible.mysql (community.mysql is deprecated)
 - Security: community.sops
 - Cloud: AWS, Azure, GCP
 - Observability: `prometheus.prometheus`, `community.grafana`

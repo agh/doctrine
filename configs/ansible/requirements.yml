@@ -2,44 +2,55 @@
 # Ansible Galaxy Collections Requirements
 # Install with: ansible-galaxy collection install -r requirements.yml
 # See: https://docs.ansible.com/ansible/latest/collections_guide/index.html
+#
+# Versions are the current Galaxy releases as of 2026-09-08.
 
 collections:
   # Core collections
   - name: ansible.posix
-    version: ">=1.6.0"
+    version: ">=2.2.2"
 
   - name: ansible.utils
-    version: ">=5.0.0"
+    version: ">=6.1.0"
 
   # Community collections
   - name: community.general
-    version: ">=9.0.0"
+    version: ">=13.4.0"
 
   - name: community.crypto
-    version: ">=2.20.0"
-
-  - name: community.docker
-    version: ">=3.10.0"
-
-  - name: community.postgresql
     version: ">=3.4.0"
 
-  - name: community.mysql
-    version: ">=3.9.0"
+  - name: community.docker
+    version: ">=5.3.0"
+
+  - name: community.postgresql
+    version: ">=4.2.0"
+
+  # community.mysql was deprecated in favour of ansible.mysql
+  - name: ansible.mysql
+    version: ">=5.2.0"
 
   # SOPS for secrets management
   - name: community.sops
-    version: ">=1.8.0"
+    version: ">=2.4.0"
 
-  # Cloud providers
+  # Cloud providers - each dynamic inventory plugin needs its collection
   - name: amazon.aws
-    version: ">=8.0.0"
+    version: ">=11.4.0"
 
   - name: azure.azcollection
-    version: ">=3.0.0"
+    version: ">=4.0.0"
 
   - name: google.cloud
-    version: ">=1.3.0"
+    version: ">=1.14.0"
+
+  # Required by the openstack.cloud.openstack inventory plugin
+  - name: openstack.cloud
+    version: ">=2.6.0"
+
+  # Required by the community.vmware.vmware_vm_inventory plugin
+  - name: community.vmware
+    version: ">=6.3.0"
 
   # Monitoring & observability
   # The Prometheus collection is published under the `prometheus` namespace;
@@ -48,12 +59,12 @@ collections:
     version: "0.30.1"
 
   - name: community.grafana
-    version: ">=2.0.0"
+    version: ">=2.3.0"
 
 # Optional: Install roles from Galaxy
 # roles:
 #   - name: geerlingguy.nginx
-#     version: "3.1.6"
+#     version: "3.3.1"
 #
 #   - name: geerlingguy.docker
-#     version: "7.4.1"
+#     version: "8.0.0"
