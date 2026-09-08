@@ -118,8 +118,9 @@ async fn main() {
 }
 ```
 
-cucumber 0.23.0 requires Rust 1.88 or later, which sets the floor for the
-`msrv` and `rust-toolchain.toml` values used elsewhere in this guide.[^12]
+cucumber 0.23.0 requires Rust 1.88 or later, below the MSRV of 1.94.0 that the
+[Rust Style Guide](../rust.md#toolchain-edition-and-msrv) declares, so it adds
+no constraint of its own.[^12]
 
 ### API Testing Patterns
 

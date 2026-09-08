@@ -325,7 +325,7 @@ trace to the browser console instead of "unreachable executed".
 
 ## WASM Size Optimisation
 
-The release profile in [Project Structure](macros.md#project-structure) is the size
+The release profile in [Project Structure](#project-structure) is the size
 configuration; the settings **MUST** be at the workspace root when the crate is
 a workspace member, because Cargo ignores `[profile]` in a non-root manifest
 and says so: "profiles for the non root package will be ignored".

@@ -331,9 +331,10 @@ frozen_string_literal: true      # Memory optimization
 
 When applicable, link to Doctrine guides:
 
-- `[See: Python Guide](../test-writer/python.md)`
+- `[See: Python Guide](../../guides/languages/python.md)`
+- `[See: Rust Testing Tools](../../guides/languages/rust/testing.md)`
 - `[See: Testing Guide](../../guides/process/testing.md)`
-- `[See: REST API Guide](../../../guides/api/rest.md)`
+- `[See: REST API Guide](../../guides/api/rest.md)`
 
 ---
 
