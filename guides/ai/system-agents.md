@@ -25,6 +25,11 @@ interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc
 | `/system storage` | Storage Reviewer | Sonnet | Garage/ZFS config |
 | `/system messaging` | Messaging Reviewer | Sonnet | EMQX/Kafka config |
 
+Commands are listed under the family's own name. Claude Code 2.1.263 already claims
+`/system`, so the installed entrypoint is `/doctrine-system`: see
+[Installation](#installation) for the copy steps, the name probe, and the discovery check.
+Nothing works until the definitions are copied into a discovery path.
+
 ## Overview
 
 The Doctrine System Agent Family is a coordinated set of specialized AI agents
@@ -570,28 +575,167 @@ sequenceDiagram
     SA-->>Dev: ✅ Approved
 ```
 
-## Configuration
+## Installation
 
-### Enable System Agents
+Claude Code discovers subagents and commands by file location alone. Definitions that stay
+under `configs/` are never loaded, and no settings key switches them on. Installations
+**MUST** copy the definitions into a documented discovery path.
 
-Add to your project's `.claude/settings.json`:
+**Why**: verified against Claude Code 2.1.263. From an empty project with the definitions
+left under `configs/`:
+
+```console
+$ claude --settings '{"agents":{"system":{"enabled":true}}}' \
+    --agent system-architect -p 'Return OK.'
+--agent 'system-architect' not found. Available agents: claude, Explore,
+general-purpose, Plan, statusline-setup
+```
+
+Copying the same 14 files into `.claude/agents/system/` made all 14 discoverable with no
+other change. The [settings reference](https://code.claude.com/docs/en/settings-reference)
+has no `agents` registry: its only related key is `agent`, a string naming the subagent the
+main thread runs as. Earlier revisions of this guide showed `agents.system.enabled`,
+`agents.system.productionStrict` and `agents.system.defaultMode`; none of the three is a
+documented key. The failure above is identical when all three are passed and identical when
+the settings object is omitted, so the keys install nothing.
+
+### Choose an installation scope
+
+| Scope | Subagent path | Command path | Applies to |
+|-------|---------------|--------------|------------|
+| Project | `.claude/agents/` | `.claude/skills/` | one repository, checked into version control |
+| User | `~/.claude/agents/` | `~/.claude/skills/` | every project on one machine |
+| Plugin | `<plugin>/agents/` | `<plugin>/skills/` | every project where the plugin is enabled |
+
+Teams **MUST** use project scope so the review contract is versioned with the infrastructure
+it reviews. Individuals working across unrelated repositories **SHOULD** use user scope.
+Plugin scope **SHOULD** be used when the family is distributed to other organisations,
+because plugin subagents load under a `<plugin>:<name>` namespace and cannot collide with a
+project's own definitions.
+
+**Why**: project subagents are read by walking up from the working directory, and a project
+definition overrides a user definition of the same name, so a repository can pin a reviewer
+without touching a contributor's machine. Scope precedence is documented in the
+[subagents reference](https://code.claude.com/docs/en/sub-agents).
+
+### Install the 14 subagents
+
+```bash
+mkdir -p .claude/agents/system
+cp configs/claude/agents/system/*.md .claude/agents/system/
+```
+
+Claude Code scans `.claude/agents/` recursively, so the `system/` subfolder is loaded and
+keeps the family together. Identity comes only from the `name` frontmatter field, never from
+the path, so the names below are what `--agent` and explicit delegation accept:
+
+| Source file | Agent `name` | Model | Command |
+|-------------|--------------|-------|---------|
+| `architect.md` | `system-architect` | opus | `/doctrine-system` |
+| `docker.md` | `docker-reviewer` | sonnet | `/doctrine-system docker` |
+| `ansible.md` | `ansible-reviewer` | sonnet | `/doctrine-system ansible` |
+| `linux.md` | `linux-reviewer` | sonnet | `/doctrine-system linux` |
+| `verify.md` | `build-verification` | sonnet | `/doctrine-system verify` |
+| `secrets.md` | `secrets-reviewer` | sonnet | `/doctrine-system secrets` |
+| `backup.md` | `backup-reviewer` | sonnet | `/doctrine-system backup` |
+| `networking.md` | `networking-reviewer` | sonnet | `/doctrine-system networking` |
+| `monitoring.md` | `monitoring-reviewer` | sonnet | `/doctrine-system monitoring` |
+| `database.md` | `database-reviewer` | sonnet | `/doctrine-system database` |
+| `traefik.md` | `traefik-reviewer` | sonnet | `/doctrine-system traefik` |
+| `identity.md` | `identity-reviewer` | sonnet | `/doctrine-system identity` |
+| `storage.md` | `storage-reviewer` | sonnet | `/doctrine-system storage` |
+| `messaging.md` | `messaging-reviewer` | sonnet | `/doctrine-system messaging` |
+
+Names **MUST** stay unique across the whole `.claude/agents/` tree. Two files declaring the
+same `name` in one directory leave only one loaded, chosen by filesystem read order.
+
+A session that started before `.claude/agents/` existed does not see the new directory.
+Restart Claude Code after the first install; later edits are picked up within seconds.
+
+### Install the entrypoint command
+
+Install the entrypoint as a skill, which is the current form of a custom command:
+
+```bash
+mkdir -p .claude/skills/doctrine-system
+cp configs/claude/commands/system.md .claude/skills/doctrine-system/SKILL.md
+```
+
+Add YAML frontmatter with a `description` to the top of the copied `SKILL.md` so Claude can
+load it on its own rather than only on an explicit invocation:
+
+```yaml
+---
+description: Route an infrastructure review to the Doctrine system agent family.
+---
+```
+
+Installations that still use the legacy layout **MAY** copy the file to
+`.claude/commands/doctrine-system.md` instead; a skill and a command of the same name resolve
+to the skill. New installations **SHOULD** use the skill form, because only skills carry a
+directory for supporting files and frontmatter that controls who may invoke them.
+
+### Do not name the entrypoint `system`
+
+Claude Code 2.1.263 claims `/system` for itself, so a project skill of that name cannot be
+relied on to run:
+
+```console
+$ HOME="$(mktemp -d)" claude --safe-mode -p '/doctrine-system probe'
+Unknown command: /doctrine-system
+
+$ HOME="$(mktemp -d)" claude --safe-mode -p '/system probe'
+Not logged in · Please run /login
+```
+
+`--safe-mode` disables every custom and bundled skill, and `/system` still resolves past
+command lookup while `/systemx`, `/syste` and `/systems` do not. The
+[skills reference](https://code.claude.com/docs/en/skills) documents precedence for a custom
+skill against a bundled skill and against `.claude/commands/`, but not against a built-in
+command, so the outcome of the collision is undefined.
+
+Installations therefore **MUST** install the entrypoint under a name Claude Code does not
+claim, and **MUST** check the chosen name first with the probe above: `Unknown command`
+means the name is free, any other output means it is taken. This guide uses
+`doctrine-system`. Read every `/system <mode>` in this guide as `/doctrine-system <mode>`.
+
+**Why**: the throwaway `HOME` keeps the probe out of your own configuration, so a claimed
+name stops at the login check instead of running whatever Claude Code has bound to it.
+
+### Smoke-check discovery
+
+Confirm the subagents are discoverable before relying on them. Asking for a name that does
+not exist makes Claude Code print every registered agent and exit non-zero without
+contacting a model:
+
+```bash
+claude --agent doctrine-discovery-probe -p 'noop' 2>&1 |
+  grep -q system-architect && echo 'system agents discovered'
+```
+
+CI **SHOULD** run this check. A missing install raises no error of its own: the run in the
+**Why** above named the family in `--settings` and Claude Code reported nothing about the
+absent definitions until an explicit `--agent` lookup forced the question.
+
+### Pin the session agent (optional)
+
+To run a whole session as one reviewer rather than delegating to it, set the documented
+`agent` key in `.claude/settings.json`:
 
 ```json
 {
-  "agents": {
-    "system": {
-      "enabled": true,
-      "productionStrict": true,
-      "defaultMode": "full"
-    }
-  }
+  "agent": "system-architect"
 }
 ```
+
+`--agent` overrides this key for a single session.
 
 ## Best Practices
 
 ### DO
 
+- **MUST** copy the definitions into a discovery path and pass the discovery smoke check
+  before relying on any finding
 - **MUST** run `/system` before production deployments
 - **MUST** run `/system docker` when modifying Docker stacks
 - **MUST** run `/system ansible` when modifying playbooks/roles
@@ -602,6 +746,8 @@ Add to your project's `.claude/settings.json`:
 ### DON'T
 
 - **MUST NOT** ignore Critical findings
+- **MUST NOT** enable the family through `.claude/settings.json` keys; the settings reference
+  has no `agents` registry and such keys install nothing
 - **MUST NOT** deploy to production without system review
 - **SHOULD NOT** skip review for "small" infrastructure changes
 - **SHOULD NOT** rely solely on automated checks without human review
