@@ -1,0 +1,30 @@
+NOTICE — SQL style guide vendored in Doctrine
+
+Upstream:      SQL style guide (sqlstyle.guide)
+Upstream URL:  https://www.sqlstyle.guide/
+               https://github.com/treffynnon/sqlstyle.guide
+Copyright:     SQL style guide (c) by Simon Holywell
+               https://www.simonholywell.com/
+Licence:       Creative Commons Attribution-ShareAlike 4.0 International
+               (CC BY-SA 4.0)
+Licence URL:   https://creativecommons.org/licenses/by-sa/4.0/legalcode
+Licence text:  ./LICENCE (verbatim copy of the upstream LICENCE file)
+
+Modifications by Doctrine
+-------------------------
+reference/holywell/sql.md is NOT byte-identical to upstream: prose and lists
+have been reflowed to the repository's 100-column limit and some headings
+altered. The upstream revision was not recorded at vendoring time.
+
+Because it has been modified, this file is Adapted Material under CC BY-SA 4.0
+section 1(a). Under section 3(b) it is offered under CC BY-SA 4.0 — the same
+licence as the original — and NOT under Doctrine's MIT licence. Anyone
+redistributing it must keep it under CC BY-SA 4.0 or a BY-SA compatible
+licence, indicate that it was modified, and retain the attribution below.
+
+Required attribution
+--------------------
+"SQL style guide by Simon Holywell (https://www.simonholywell.com/) is
+licensed under a Creative Commons Attribution-ShareAlike 4.0 International
+License (https://creativecommons.org/licenses/by-sa/4.0/). Based on a work at
+https://www.sqlstyle.guide/. Modified by Doctrine."

@@ -1,0 +1,32 @@
+NOTICE — Rust API Guidelines vendored in Doctrine
+
+Upstream:      Rust API Guidelines
+Upstream URL:  https://github.com/rust-lang/api-guidelines
+               https://rust-lang.github.io/api-guidelines/
+Copyright:     Copyright (c) 2017 The Rust Project Developers
+Licence:       Dual licensed, at your option, under either
+               Apache License 2.0 — ./LICENSE-APACHE
+               MIT License      — ./LICENSE-MIT
+Licence URLs:  https://www.apache.org/licenses/LICENSE-2.0
+               https://opensource.org/license/mit
+Licence text:  ./LICENSE-APACHE and ./LICENSE-MIT (verbatim copies of the
+               upstream files)
+
+Doctrine redistributes this material under the MIT option.
+
+Modifications by Doctrine
+-------------------------
+The copies in this directory are NOT byte-identical to upstream: files taken
+from upstream src/ have been flattened into this directory and reflowed. The
+upstream revision was not recorded at vendoring time. Under Apache-2.0
+section 4(b) a change notice would be required if redistributed under that
+option; this file serves as that notice.
+
+Upstream ships no NOTICE file (verified: GitHub contents API returns 404 for
+rust-lang/api-guidelines/NOTICE), so Apache-2.0 section 4(d) imposes no
+further obligation.
+
+Required attribution
+--------------------
+The MIT copyright and permission notice in ./LICENSE-MIT must be retained in
+all copies or substantial portions of this material.
