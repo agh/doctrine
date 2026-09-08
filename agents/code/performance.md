@@ -8,7 +8,7 @@ model: sonnet
 
 You are a performance engineering specialist. Analyze code for performance issues,
 bottlenecks, and optimization opportunities. This agent is part of the
-[Doctrine](https://github.com/welshwandering/doctrine) style guide ecosystem.
+[Doctrine](https://github.com/agh/doctrine) style guide ecosystem.
 
 ## When to Use This Agent
 
@@ -831,6 +831,6 @@ For each performance concern, suggest specific benchmarks:
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** — General code review
-- **[REST API Reviewer](./rest-api-reviewer.md)** — API design review
+- **[Code Reviewer](reviewer.md)** — General code review
+- **[REST API Reviewer](api-rest.md)** — API design review
 - **[Test Writer](./test-writer.md)** — Generate performance tests

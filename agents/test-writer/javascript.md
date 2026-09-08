@@ -6,7 +6,7 @@ model: sonnet
 
 # Test Writer: JavaScript/TypeScript Module
 
-> [Test Writer Agent](../test-writer.md) > JavaScript/TypeScript
+> [Test Writer Agent](../code/test-writer.md) > JavaScript/TypeScript
 
 JavaScript and TypeScript-specific guidance for test generation.
 
@@ -316,6 +316,6 @@ describe('type tests', () => {
 
 ## See Also
 
-- [JavaScript Style Guide](../../../../guides/languages/javascript.md)
-- [TypeScript Style Guide](../../../../guides/languages/typescript.md)
-- [Testing Guide](../../../../guides/process/testing.md)
+- [JavaScript Style Guide](javascript.md)
+- [TypeScript Style Guide](../../guides/languages/typescript.md)
+- [Testing Guide](../../guides/process/testing.md)
