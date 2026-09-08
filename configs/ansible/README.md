@@ -49,10 +49,12 @@ Optimized configuration with:
 
 Production-profile linting with:
 
-- Minimum Ansible Core 2.18
 - Opt-in security rules (no-log-password, etc.)
-- Task name prefix enforcement
+- Task name prefix enforcement via `name[prefix]` and `task_name_prefix`
 - FQCN requirements
+
+ansible-lint has no minimum-ansible-core setting, so pin the supported range
+in your Python requirements (for example `ansible-core>=2.18,<2.22`).
 
 ### .yamllint
 
@@ -70,7 +72,7 @@ Multi-cloud secrets management:
 - Production: AWS KMS
 - Staging: PGP
 - Development: age (modern PGP alternative)
-- Encrypted regex patterns for sensitive keys
+- Every value encrypted by default; no `encrypted_regex` allowlist to outgrow
 
 ### requirements.yml
 
@@ -80,7 +82,7 @@ Essential collections:
 - Community: general, docker, postgresql, mysql
 - Security: community.sops
 - Cloud: AWS, Azure, GCP
-- Observability: Prometheus, Grafana
+- Observability: `prometheus.prometheus`, `community.grafana`
 
 ## Customization
 
