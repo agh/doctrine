@@ -885,7 +885,7 @@ loads project subagents from `.claude/agents/` and personal ones from
 user directory, contribute them to Doctrine, or install them from your own
 source directory in a step that runs after the sync.
 
-#### Why
+#### Why a plain copy fails
 
 **`cp -r configs/claude/ ./.claude/` does not install a usable configuration.**
 In the Doctrine checkout, `configs/claude/agents` and
