@@ -248,5 +248,5 @@ Running verification with self-healing...
 
 ## See Also
 
-- [verify-build agent](../agents/verify-build.md) — Full agent specification
-- [AI Workflows](../../guides/ai/ai-workflows.md) — Hero Flow patterns
+- [verify-build agent](../agents/system/verify.md) — Full agent specification
+- [AI Workflows](../guides/ai/ai-workflows.md) — Hero Flow patterns
