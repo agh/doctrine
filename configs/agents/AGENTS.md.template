@@ -91,7 +91,13 @@ This project follows [Doctrine](https://github.com/welshwandering/doctrine) for 
 
 ## Tool Compatibility
 
+Codex, GitHub Copilot and Cursor read this file directly. Tools with a
+different default filename need a link or an import:
+
 ```bash
-ln -s AGENTS.md CLAUDE.md   # Claude Code, Aider
-ln -s AGENTS.md GEMINI.md   # Google Gemini tools
+ln -s AGENTS.md CLAUDE.md   # Claude Code; or a CLAUDE.md holding @AGENTS.md
+ln -s AGENTS.md GEMINI.md   # Gemini CLI; or add AGENTS.md to context.fileName
 ```
+
+Aider discovers no file. Load this one with `aider --read AGENTS.md`, or set
+`read: AGENTS.md` in `.aider.conf.yml`.

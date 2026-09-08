@@ -27,7 +27,7 @@ document are to be interpreted as described in
 ### Definition
 
 AGENTS.md is a markdown file that serves as a structured briefing document
-for AI assistants working with a codebase[^1]. It provides essential context
+for AI assistants working with a codebase[^9]. It provides essential context
 that AI assistants cannot easily infer from code alone.
 
 ### Core Principles
@@ -63,18 +63,28 @@ consistency, prevents mistakes, and preserves tribal knowledge.
 
 ## Tool Compatibility via Symlinks
 
-Different AI coding tools look for different filenames. To support multiple
-tools with a single source of truth, **MUST** use symlinks:
+AI coding tools disagree about filenames. Codex, GitHub Copilot, and Cursor
+read `AGENTS.md` natively[^4][^5][^2]; Claude Code reads `CLAUDE.md`[^1],
+Gemini CLI reads `GEMINI.md`[^6], and Aider reads nothing it has not been
+told to read[^3]. To support multiple tools with a single source of truth,
+**MUST** use symlinks:
 
 ### Recommended Setup
 
 ```bash
 # AGENTS.md is the canonical file
-# Create symlinks for tool-specific discovery
+# Codex, GitHub Copilot and Cursor already discover it - no symlink needed
+# Symlink only for tools whose default filename differs
 
-ln -s AGENTS.md CLAUDE.md   # Claude Code, Aider
-ln -s AGENTS.md GEMINI.md   # Google Gemini tools
+ln -s AGENTS.md CLAUDE.md   # Claude Code
+ln -s AGENTS.md GEMINI.md   # Gemini CLI
 ```
+
+On Windows a symlink needs Administrator rights or Developer Mode, so a
+`CLAUDE.md` whose only content is the import `@AGENTS.md` **MUST** be used
+there instead[^1]. Aider is not covered by either file: it **MUST** be
+pointed at the file explicitly, as described under
+[Aider](#aider).
 
 ### Repository Structure
 
@@ -101,12 +111,26 @@ identical instructions while requiring only one file to maintain.
 
 ### Tool Discovery
 
-| Tool | Files Checked |
-| ---- | ------------- |
-| Claude Code | `CLAUDE.md`, `AGENTS.md` |
-| Aider | `CLAUDE.md`, `.aider` |
-| Cursor | `.cursorrules` |
-| Gemini | `GEMINI.md`, `AGENTS.md` |
+Each tool has one default filename, its own hierarchy, and its own way of
+being pointed at a different file. The table below was checked against vendor
+documentation on 2026-09-08.
+
+| Tool | Loaded by default | `AGENTS.md` support | Hierarchy and precedence | Imports | How to inspect what loaded |
+| ---- | ----------------- | ------------------- | ------------------------ | ------- | -------------------------- |
+| Codex[^4] | `AGENTS.override.md`, else `AGENTS.md` | Native | `~/.codex` first, then project root down to the working directory; nearer files override; truncated at `project_doc_max_bytes` (32 KiB) | No | `codex --ask-for-approval never "Summarize the current instructions."` |
+| GitHub Copilot[^5] | `.github/copilot-instructions.md` | Native, in any directory | Nearest `AGENTS.md` in the directory tree wins; `.github/instructions/*.instructions.md` add path-scoped rules | No | Expand the references list on a Copilot Chat response |
+| Cursor[^2] | `AGENTS.md`, `.cursor/rules/*.mdc` | Native, project root and subdirectories | Team → Project → User rules; nested `AGENTS.md` files combine, nearer files take precedence | `@file` references | **Customize → Rules** lists every rule and its status |
+| Claude Code[^1] | `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/*.md` | Not read; import or symlink it | Root down to the working directory, concatenated; subdirectory files load when Claude reads those directories | `@AGENTS.md` | `/context`, then read **Memory files** |
+| Gemini CLI[^6] | `GEMINI.md` | Add `AGENTS.md` to `context.fileName` in `settings.json` | `~/.gemini/GEMINI.md`, then workspace directories and their parents, then just-in-time files as tools touch directories | `@file.md` | `/memory show` |
+| Aider[^3] | Nothing | `aider --read AGENTS.md`, or `read:` in `.aider.conf.yml` | Not applicable; every file is loaded explicitly | No | Aider prints `Added AGENTS.md to the chat` on start-up |
+
+#### Why This Matters
+
+A wrong entry in this table fails silently: the file is committed, the team
+believes the tool is reading it, and the tool never loads it. Creating
+`CLAUDE.md` does nothing for Aider, and creating `AGENTS.md` does nothing for
+Claude Code or for an unconfigured Gemini CLI. **MUST** confirm discovery with
+the inspection command in the last column before relying on a file.
 
 ---
 
@@ -946,34 +970,59 @@ NEXTAUTH_URL=http://localhost:3000
 
 ## Integration with Other Tools
 
-### .cursorrules
+### Cursor
 
-AGENTS.md and .cursorrules serve different purposes[^2]:
+Cursor reads `AGENTS.md` from the project root and from subdirectories, and
+combines nested files with parent files, so no Cursor-specific file is needed
+for project context[^2]. Reach for `.cursor/rules/*.mdc` only when a rule must
+be scoped rather than always applied:
 
-- **AGENTS.md:** Comprehensive project context, commands, architecture
-- **.cursorrules:** IDE-specific rules, linting preferences, code generation
+- **AGENTS.md:** project context, commands, architecture; the root file
+  applies broadly, a nested file applies when working in its directory tree
+- **.cursor/rules/*.mdc:** rules attached by glob, selected by description, or
+  invoked manually with `@rule-name`
 
-**Best Practice:** Reference AGENTS.md from .cursorrules:
+A project rule is an `.mdc` file with frontmatter. A plain `.md` file in
+`.cursor/rules/` is ignored because it carries no frontmatter[^2]:
 
-```text
-# .cursorrules
-# Read AGENTS.md for comprehensive context
+```markdown
+---
+globs: src/components/**/*.tsx
+alwaysApply: false
+---
 
-- Follow TypeScript strict mode
-- Use async/await, not callbacks
-- See AGENTS.md for full conventions
+- Use named exports, not default exports
+- See AGENTS.md for project-wide conventions
 ```
+
+**`.cursorrules` is legacy.** Cursor still reads a root `.cursorrules`, but
+documents it as pending deprecation and gives a migration path: copy the
+content into a rule, set the rule type to **Always Apply**, and delete the
+file[^7]. New projects **MUST NOT** create `.cursorrules`. Start from
+[configs/cursor/rules/project-rules.mdc.template](../../configs/cursor/rules/project-rules.mdc.template)
+instead.
 
 ### Aider
 
-Aider automatically reads CLAUDE.md (symlinked to AGENTS.md) in repository
-root[^3]:
+Aider discovers no instruction file by filename. Conventions **MUST** be
+loaded explicitly, either per invocation or once in configuration[^3]:
 
 ```bash
 aider --read AGENTS.md src/users/service.ts
 ```
 
-Keep AGENTS.md concise (< 1000 lines) so Aider can include it in context.
+```yaml
+# .aider.conf.yml
+read: AGENTS.md
+
+# Multiple files
+# read: [AGENTS.md, CONVENTIONS.md]
+```
+
+`--read` and `read:` mark the file read-only and let it be cached when prompt
+caching is enabled[^3]. Aider prints `Added AGENTS.md to the chat` at start-up;
+if that line is missing, nothing was loaded. Keep AGENTS.md concise
+(< 1000 lines) so it fits in context alongside the files being edited.
 
 ### IDE Integration
 
@@ -1027,11 +1076,15 @@ Add to CI/CD:
   run: npx markdownlint-cli2 AGENTS.md
 
 - name: Check for secrets
+  env:
+    GITLEAKS_VERSION: 8.30.1
   run: |
-    if grep -r "password.*=.*[^example]" AGENTS.md; then
-      echo "Possible secret in AGENTS.md"
-      exit 1
-    fi
+    base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+    curl -sSfL -O "${base}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+    curl -sSfL -O "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+    sha256sum --check --ignore-missing "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+    tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+    ./gitleaks dir AGENTS.md --redact --no-banner --exit-code 1
 
 - name: Verify symlinks
   run: |
@@ -1040,6 +1093,40 @@ Add to CI/CD:
       exit 1
     fi
 ```
+
+Locally the same scan runs from the pinned Gitleaks pre-commit hook in
+[configs/pre-commit/.pre-commit-config.yaml](../../configs/pre-commit/.pre-commit-config.yaml)[^8].
+
+#### Why a Scanner, Not grep
+
+A hand-written pattern such as `grep -r "password.*=.*[^example]" AGENTS.md`
+does not do what it appears to do. `[^example]` is a negated *character* class:
+one character that is not `e`, `x`, `a`, `m`, `p` or `l`. It never means "not
+the word example". The pattern is also case-sensitive and knows only the word
+`password`, so it misses every other credential shape.
+
+Measured on the same fixtures, `grep` against Gitleaks v8.30.1[^8]:
+
+| `AGENTS.md` content | `grep` | Gitleaks |
+| ------------------- | ------ | -------- |
+| `PASSWORD=` with a high-entropy value | missed | flagged |
+| `api_token=ghp_...` GitHub token | missed | flagged |
+| Live-shaped AWS key pair | missed | flagged |
+| `-----BEGIN RSA PRIVATE KEY-----` block | missed | flagged |
+| `password="example"` | false positive | clean |
+| `password=example-value` | false positive | clean |
+| `DATABASE_URL=postgresql://user:password@host:5432/db` | clean | clean |
+| AWS documentation keys (`AKIAIOSFODNN7EXAMPLE`) | missed | clean |
+| Token line ending `# gitleaks:allow` | missed | clean |
+
+Two consequences follow. Intentional placeholders **MUST** be marked with a
+trailing `# gitleaks:allow` comment or listed in `.gitleaksignore`, rather than
+worded to dodge a regex. And `--redact` **MUST** stay on: without it a detected
+credential is printed in full into CI logs that are often world-readable.
+
+No scanner is complete. Gitleaks scores generic assignments on entropy, so a
+short weak literal such as `password=hunter2` passes. Scanning is a backstop;
+the rule that credentials never enter AGENTS.md still belongs to review.
 
 ---
 
@@ -1275,10 +1362,23 @@ npm run dev:all
 
 ## References
 
-[^1]: [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) -
-    Official Anthropic documentation for Claude Code CLI and AGENTS.md
-    patterns
-[^2]: [Cursor AI Documentation](https://docs.cursor.com/) - Documentation
-    for .cursorrules and Cursor IDE integration
-[^3]: [Aider Documentation](https://aider.chat/docs/usage.html) - Aider AI
-    pair programming tool documentation
+[^1]: [Claude Code memory](https://code.claude.com/docs/en/memory) - How
+    Claude Code discovers `CLAUDE.md`, `.claude/rules/`, and `@AGENTS.md`
+    imports
+[^2]: [Cursor rules](https://cursor.com/docs/rules) - Project rules,
+    `AGENTS.md` support, and rule precedence
+[^3]: [Aider conventions](https://aider.chat/docs/usage/conventions.html) -
+    Loading a conventions file with `--read` or `read:` in
+    [`.aider.conf.yml`](https://aider.chat/docs/config/aider_conf.html)
+[^4]: [Codex AGENTS.md](https://developers.openai.com/codex/guides/agents-md) -
+    Instruction chain, override files, and discovery precedence
+[^5]: [GitHub Copilot repository instructions](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions) -
+    `copilot-instructions.md`, path-specific instructions, and `AGENTS.md`
+[^6]: [Gemini CLI context files](https://geminicli.com/docs/cli/gemini-md/) -
+    Hierarchical `GEMINI.md` loading and the `context.fileName` setting
+[^7]: [Cursor rules help](https://cursor.com/help/customization/rules) -
+    Migration path from the legacy `.cursorrules` file
+[^8]: [Gitleaks](https://github.com/gitleaks/gitleaks) - Secret scanner used
+    by Doctrine's pre-commit configuration
+[^9]: [AGENTS.md](https://agents.md) - The cross-tool convention this guide
+    documents
