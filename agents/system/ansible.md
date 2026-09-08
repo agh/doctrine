@@ -149,12 +149,25 @@ best practices, security, performance, and maintainability. This agent is part o
 - name: Add log entry
   ansible.builtin.shell: echo "Deployed" >> /var/log/deploy.log
 
-# ✅ Idempotent - only adds if missing
+# ✅ Idempotent - stable content, so the line matches on the second run
 - name: Record deployment marker
   ansible.builtin.lineinfile:
     path: /var/log/deploy.log
-    line: "Deployed {{ ansible_date_time.iso8601 }}"
+    line: "Deployed {{ app_version }}"
     create: true
+    mode: '0644'
+
+# ⚠️ Intentionally changing - a timestamp can never be idempotent. Use
+# regexp so the marker is replaced rather than appended, and expect
+# changed=1 on every run. Read facts via ansible_facts, not the injected
+# top-level ansible_date_time (deprecated, removed in ansible-core 2.24).
+- name: Update deployment timestamp marker
+  ansible.builtin.lineinfile:
+    path: /var/run/myapp/last-deploy
+    regexp: '^Deployed '
+    line: "Deployed {{ ansible_facts.date_time.iso8601 }}"
+    create: true
+    mode: '0644'
 
 # ❌ Not idempotent - runs every time
 - name: Add user to docker group
@@ -483,8 +496,14 @@ galaxy_info:
   min_ansible_version: "2.18"
   platforms:
     - name: Ubuntu
-      versions: [focal, jammy]
+      versions: [jammy, noble, resolute]
+    - name: Debian
+      versions: [bookworm, trixie]
 ```
+
+**Check for**: EOL platforms in `platforms`. Debian 11 (bullseye) left LTS on
+2026-08-31 and Ubuntu 20.04 (focal) left standard support on 2025-05-31; both
+now need paid extended support and **MUST NOT** be advertised as tested.
 
 #### Argument Specs
 

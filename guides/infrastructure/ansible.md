@@ -18,12 +18,12 @@ document are to be interpreted as described in
 | Lint | ansible-lint[^1] | `ansible-lint` |
 | YAML lint | yamllint[^2] | `yamllint .` |
 | Test roles | Molecule[^3] | `molecule test` |
-| Syntax check | ansible-playbook | `ansible-playbook --syntax-check` |
+| Syntax check | ansible-playbook | `ansible-playbook --syntax-check playbook.yml` |
 | Dry run | ansible-playbook | `ansible-playbook --check playbook.yml` |
 | List tasks | ansible-playbook | `ansible-playbook --list-tasks playbook.yml` |
 | Vault encrypt | ansible-vault | `ansible-vault encrypt vars/secrets.yml` |
 | SOPS encrypt | sops[^4] | `sops -e vars/secrets.yml` |
-| Galaxy install | ansible-galaxy | `ansible-galaxy collection install` |
+| Galaxy install | ansible-galaxy | `ansible-galaxy collection install -r requirements.yml` |
 
 ## Why Ansible
 
@@ -73,9 +73,11 @@ ansible-project/
 ├── inventories/
 │   ├── production/
 │   │   ├── hosts.yml           # Production inventory (YAML format)
-│   │   └── group_vars/
-│   │       ├── all.yml
-│   │       └── webservers.yml
+│   │   ├── group_vars/         # Loaded: adjacent to this inventory
+│   │   │   ├── all.yml
+│   │   │   └── webservers.yml
+│   │   └── host_vars/
+│   │       └── web01.yml       # Host-specific variables
 │   └── staging/
 │       ├── hosts.yml
 │       └── group_vars/
@@ -83,7 +85,9 @@ ansible-project/
 ├── playbooks/
 │   ├── site.yml                # Master playbook
 │   ├── webservers.yml          # Server-specific playbooks
-│   └── deploy.yml
+│   ├── deploy.yml
+│   └── group_vars/             # Loaded: adjacent to these playbooks
+│       └── all.yml
 ├── roles/
 │   ├── common/                 # Shared base configuration
 │   │   ├── tasks/
@@ -108,11 +112,6 @@ ansible-project/
 │   └── postgresql/
 ├── collections/
 │   └── requirements.yml        # Collection dependencies
-├── group_vars/
-│   ├── all.yml                 # Global variables
-│   └── production.yml
-├── host_vars/
-│   └── web01.yml               # Host-specific variables
 ├── filter_plugins/             # Custom Jinja2 filters
 ├── vault/
 │   └── secrets.yml             # Encrypted secrets (ansible-vault)
@@ -125,10 +124,35 @@ ansible-project/
 
 - Clear separation between environments (`inventories/`)
 - Reusable roles for common configurations (`roles/`)
-- Centralized variable management (`group_vars/`, `host_vars/`)
+- Variables live beside the inventory that owns them (`inventories/*/group_vars/`)
 - Logical grouping of playbooks by purpose
 - Integrated testing with Molecule
 - CI/CD ready with GitHub Actions
+
+### Where Ansible Loads group_vars and host_vars
+
+`group_vars/` and `host_vars/` directories **MUST** be placed next to the
+selected inventory source or next to the playbook. Ansible loads them from
+exactly those two locations[^16] and nowhere else.
+
+**Why?** A `group_vars/` directory in the project root is loaded only when
+the playbook itself is in the project root. If playbooks live in
+`playbooks/`, a root-level `group_vars/all.yml` is silently ignored — the
+variables are simply undefined at run time, so a task either fails with an
+undefined-variable error or, worse, falls back to a `default()` value.
+
+```text
+# Loaded when running:
+#   ansible-playbook -i inventories/production/hosts.yml playbooks/site.yml
+
+inventories/production/group_vars/all.yml   # inventory-adjacent: loaded
+playbooks/group_vars/all.yml                # playbook-adjacent:  loaded
+group_vars/all.yml                          # project root:       IGNORED
+```
+
+Variables shared by every environment **SHOULD** live in role
+`defaults/main.yml`, or be duplicated deliberately per inventory. Ansible
+provides no project-wide "global" variable directory.
 
 ## Linting & Formatting
 
@@ -156,10 +180,7 @@ ansible-lint --fix
 ```yaml
 ---
 # ansible-lint configuration
-# https://ansible-lint.readthedocs.io/
-
-# Require minimum ansible-core version
-min_ansible_version: "2.18"
+# Schema: https://docs.ansible.com/projects/lint/configuring/
 
 # Enable all rules by default, opt-out problematic ones
 skip_list:
@@ -184,13 +205,32 @@ exclude_paths:
   - molecule/
   - vault/
 
-# Task name prefix rules
-task_name_prefix:
-  add_at_start: true
+# Prefix template for name[prefix]; {stem} is the task file name
+task_name_prefix: "{stem} | "
 
 # Offline mode (don't check Galaxy)
 offline: false
 ```
+
+Every key **MUST** exist in the ansible-lint configuration schema, and every
+value **MUST** use the type that schema declares. ansible-lint 26.8.0
+validates `.ansible-lint` against a closed JSON schema and exits 3 on any
+unknown key or wrong value type, so a typo stops the linter rather than
+loosening a rule.
+
+The minimum ansible-core version **MUST NOT** be set here; there is no
+`min_ansible_version` key. Declare it in `meta/runtime.yml` instead, which is
+what the `meta-runtime` rule checks:
+
+```yaml
+# meta/runtime.yml
+---
+requires_ansible: ">=2.18.0"
+```
+
+**Why?** `.ansible-lint` configures the linter; `meta/runtime.yml` declares
+what the content itself supports. Only the latter travels with the role or
+collection when it is published to Galaxy.
 
 **Why ansible-lint?** It catches common mistakes like missing task names,
 deprecated syntax, security issues (exposed passwords), and non-idempotent
@@ -309,18 +349,31 @@ all:
       hosts:
         db01.example.com:
           ansible_host: 192.168.1.20
+          # Pin the major explicitly; see the platform support matrix below
           postgresql_version: "16"
       vars:
         postgresql_max_connections: 100
 
-    # Group of groups
+    # Group of groups: every child MUST be a mapping key, not a bare scalar
     production:
       children:
-        webservers
-        databases
+        webservers:
+        databases:
       vars:
         environment: production
 ```
+
+Child group names under `children` **MUST** be written as mapping keys with a
+trailing colon. Consecutive bare scalars are folded by the YAML parser into a
+single multi-word string, so `webservers` and `databases` become one child
+group literally named `webservers databases`.
+
+**Why does this matter?** `ansible-inventory` exits successfully either way.
+The damage is silent: `production` ends up with one child group that contains
+no hosts, so `ansible-playbook --limit production` reports zero matched hosts
+and the deployment quietly skips every server it was supposed to reach. Run
+every inventory through `ansible-inventory --graph` and assert the expected
+hosts appear under each group.
 
 **Why YAML over INI?** YAML supports nested structures, lists, and complex
 data types, making it more suitable for modern infrastructure-as-code
@@ -367,13 +420,21 @@ ansible-inventory -i inventories/aws_ec2.yml --list
 ansible-playbook -i inventories/aws_ec2.yml playbooks/webservers.yml
 ```
 
-**Supported dynamic inventory plugins**[^6]:
+**Supported dynamic inventory plugins**[^6]. Each plugin ships in a collection
+that **MUST** be declared in `requirements.yml` before the plugin is used:
 
-- `amazon.aws.aws_ec2` - AWS EC2
-- `azure.azcollection.azure_rm` - Azure
-- `google.cloud.gcp_compute` - Google Cloud
-- `openstack.cloud.openstack` - OpenStack
-- `community.vmware.vmware_vm_inventory` - VMware
+| Plugin | Collection | Pinned version |
+| ------ | ---------- | -------------- |
+| `amazon.aws.aws_ec2` | `amazon.aws` | 11.4.0 |
+| `azure.azcollection.azure_rm` | `azure.azcollection` | 4.0.0 |
+| `google.cloud.gcp_compute` | `google.cloud` | 1.14.0 |
+| `openstack.cloud.openstack` | `openstack.cloud` | 2.6.0 |
+| `community.vmware.vmware_vm_inventory` | `community.vmware` | 6.3.0 |
+
+**Why declare the collection?** `enable_plugins` in `ansible.cfg` names a
+plugin, it does not install one. An inventory plugin whose collection is
+absent makes `ansible-inventory` fall through to the next parser and report an
+empty inventory, so a playbook targets nothing instead of failing loudly.
 
 ### Group Structure Best Practices
 
@@ -391,23 +452,23 @@ all:
     # By environment
     production:
       children:
-        prod_webservers
-        prod_databases
+        prod_webservers:
+        prod_databases:
     staging:
       children:
-        staging_webservers
+        staging_webservers:
 
     # By function
     webservers:
       children:
-        prod_webservers
-        staging_webservers
+        prod_webservers:
+        staging_webservers:
 
     # By location
     us_east:
       children:
-        us_east_webservers
-        us_east_databases
+        us_east_webservers:
+        us_east_databases:
 ```
 
 ## Playbook Best Practices
@@ -624,21 +685,55 @@ Complex error handling **SHOULD** use `block/rescue/always`:
         dest: /opt/myapp/app.jar
         remote_src: true
 
+    # MUST be restarted, not started: the service is already running the
+    # failed version, and `started` is a no-op on a running service
     - name: Restart application with previous version
       ansible.builtin.service:
         name: myapp
-        state: started
+        state: restarted
+
+    - name: Verify the restored version is healthy
+      ansible.builtin.uri:
+        url: http://localhost:8080/health
+        status_code: 200
+      retries: 5
+      delay: 10
 
     - name: Fail deployment
       ansible.builtin.fail:
         msg: "Deployment failed, rolled back to previous version"
 
   always:
+    # ansible.builtin.file does NOT expand shell globs; find the paths first
+    - name: Find temporary deployment directories
+      ansible.builtin.find:
+        paths: /tmp
+        patterns: 'deploy-*'
+        file_type: any
+      register: deploy_scratch
+
     - name: Clean up temporary files
       ansible.builtin.file:
-        path: /tmp/deploy-*
+        path: "{{ item.path }}"
         state: absent
+      loop: "{{ deploy_scratch.files }}"
+      loop_control:
+        label: "{{ item.path }}"
 ```
+
+**Why `restarted` in the rescue block?** `ansible.builtin.service` treats
+`started` as an idempotent action that runs no command when the service is
+already up[^17]. The health check only fails *after* the service has started,
+so at rescue time the failed version is still running. Restoring the previous
+artefact on disk and then asking for `started` reports `changed=0` and leaves
+the broken build serving traffic — the rollback appears to succeed while
+changing nothing. `restarted` always bounces the service, and the follow-up
+health check proves the restored version actually works.
+
+**Why `find` instead of a wildcard path?** `ansible.builtin.file` receives a
+literal pathname and performs no glob expansion. Passing `/tmp/deploy-*`
+makes Ansible look for a file whose name contains an asterisk, find nothing,
+and report `ok` with `changed=0` while every matching directory survives.
 
 **When to use**:
 
@@ -773,16 +868,43 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions:
-        - focal
-        - jammy
+        - jammy    # 22.04 LTS, compatibility target
+        - noble    # 24.04 LTS
+        - resolute # 26.04 LTS, current
     - name: Debian
       versions:
-        - bullseye
-        - bookworm
+        - bookworm # 12, oldstable LTS, compatibility target
+        - trixie   # 13, current stable
   galaxy_tags:
     - web
     - nginx
 ```
+
+### Platform Support Matrix
+
+Role metadata, Molecule platforms, and CI matrices **MUST** agree, and
+**MUST NOT** list a release that is past its free security-support date.
+
+| Platform | Status on 2026-09-08 | Support ends | Include? |
+| -------- | -------------------- | ------------ | -------- |
+| Debian 13 (trixie) | Current stable | 2028-08-09 (LTS 2030-06-30) | Yes, default |
+| Debian 12 (bookworm) | Oldstable, LTS | 2028-06-30 | Yes, compatibility |
+| Debian 11 (bullseye) | LTS ended 2026-08-31 | Expired | No |
+| Ubuntu 26.04 (resolute) | Current LTS | 2031-04 | Yes, default |
+| Ubuntu 24.04 (noble) | LTS | 2029-04 | Yes |
+| Ubuntu 22.04 (jammy) | LTS | 2027-04 | Yes, compatibility |
+| Ubuntu 20.04 (focal) | Standard support ended 2025-05-31 | ESM only | No |
+
+**Why drop Bullseye and Focal?** Debian 11 left LTS on 31 August 2026 and
+Ubuntu 20.04 left standard support on 31 May 2025; both now need a paid
+extended-support subscription for security updates[^18]. Advertising them in
+`platforms` tells Galaxy users the role is tested on a distribution that no
+longer receives free patches.
+
+Database majors follow their own policy. PostgreSQL supports each major for
+five years, so 16 remains supported until 9 November 2028 while 18 is
+current[^19]. Pin a major deliberately and track the **current minor** within
+it; do not treat "not the newest major" as an upgrade defect.
 
 ### Argument Specs and Validation
 
@@ -914,12 +1036,25 @@ changing the result beyond the initial run.
 - name: Add log entry
   ansible.builtin.shell: echo "Deployed at $(date)" >> /var/log/deploy.log
 
-# GOOD: Idempotent version using lineinfile
-- name: Record deployment
+# GOOD: Idempotent - the line content is stable, so lineinfile matches it
+# on the second run and reports no change
+- name: Record the deployed release
   ansible.builtin.lineinfile:
     path: /var/log/deploy.log
-    line: "Deployed {{ ansible_date_time.iso8601 }}"
+    line: "Deployed {{ app_version }}"
     create: true
+    mode: '0644'
+
+# INTENTIONALLY CHANGING: a timestamp differs on every run, so it can never
+# be idempotent. Use regexp so the single marker line is replaced rather
+# than accumulated, and accept that the task always reports changed.
+- name: Update the deployment timestamp marker
+  ansible.builtin.lineinfile:
+    path: /var/run/myapp/last-deploy
+    regexp: '^Deployed '
+    line: "Deployed {{ ansible_facts.date_time.iso8601 }}"
+    create: true
+    mode: '0644'
 
 # BAD: Not idempotent - adds user to group every time
 - name: Add user to docker group
@@ -960,6 +1095,23 @@ Use `changed_when` to control when tasks report changes:
 
 **Why?** Properly using `changed_when` and `failed_when` makes playbook
 output accurate and prevents false positives in CI/CD pipelines.
+
+### Timestamps Are Never Idempotent
+
+A task that writes the current time **MUST NOT** be presented as idempotent.
+`lineinfile` matches on the rendered line, so a fresh timestamp never matches
+the previous one: the file grows by one line per run and the task reports
+`changed` every time.
+
+Record a value that is stable between deployments — a release version, a
+commit SHA — or, when the timestamp itself is the point, add `regexp` so the
+marker line is replaced in place and label the task as intentionally
+changing.
+
+Facts **MUST** be read through `ansible_facts` rather than the injected
+top-level `ansible_date_time` variable. `INJECT_FACTS_AS_VARS` defaulting to
+`True` is deprecated and the top-level names are removed in ansible-core
+2.24.
 
 ## Security
 
@@ -1019,16 +1171,39 @@ For GitOps workflows and multi-cloud environments, **SOPS** (Secrets
 OPerationS)[^4] is **RECOMMENDED** over ansible-vault:
 
 ```bash
-# Install SOPS
-brew install sops  # macOS
-# or
-curl -LO https://github.com/getsops/sops/releases/latest/download/sops-linux-amd64
-sudo mv sops-linux-amd64 /usr/local/bin/sops
-sudo chmod +x /usr/local/bin/sops
+# macOS: Homebrew tracks the current release
+brew install sops
+
+# Linux: pin the version, select the architecture, verify the checksum.
+# -f makes curl exit non-zero on an HTTP error instead of saving the
+# error page as the binary.
+SOPS_VERSION=3.13.3
+SOPS_ARCH=amd64  # or arm64
+SOPS_BASE="https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}"
+
+curl -fsSLO "${SOPS_BASE}/sops-v${SOPS_VERSION}.linux.${SOPS_ARCH}"
+curl -fsSLO "${SOPS_BASE}/sops-v${SOPS_VERSION}.checksums.txt"
+sha256sum --check --ignore-missing "sops-v${SOPS_VERSION}.checksums.txt"
+
+sudo install -m 0755 "sops-v${SOPS_VERSION}.linux.${SOPS_ARCH}" /usr/local/bin/sops
+
+# Optionally verify the Sigstore bundle published with the release
+cosign verify-blob \
+  --bundle "sops-v${SOPS_VERSION}.checksums.sigstore.json" \
+  --certificate-identity-regexp 'https://github\.com/getsops/sops/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  "sops-v${SOPS_VERSION}.checksums.txt"
 
 # Install community.sops collection
-ansible-galaxy collection install community.sops
+ansible-galaxy collection install community.sops:2.4.0
 ```
+
+Release artefacts **MUST** be pinned to a version and verified before
+installation. The unversioned `releases/latest/download/sops-linux-amd64`
+path returns HTTP 404: SOPS renamed its assets to include the version and
+platform, so the old name no longer exists in any current release. Without
+`-f`, `curl` cheerfully writes GitHub's 404 page to disk and `chmod +x` makes
+it executable.
 
 **Why SOPS over ansible-vault?**[^12]
 
@@ -1041,42 +1216,96 @@ ansible-galaxy collection install community.sops
 
 **SOPS Configuration** (`.sops.yaml`):
 
+Creation rules **MUST** encrypt every value except an explicit metadata
+allow-list. Use `unencrypted_regex` to name the handful of keys that stay
+readable, rather than `encrypted_regex` to name the keys that get protected.
+
 ```yaml
 ---
 creation_rules:
   # Production secrets use AWS KMS
-  - path_regex: vault/production\.yml$
+  - path_regex: vault/production\.ya?ml$
     kms: arn:aws:kms:us-east-1:123456789:key/abc-def-123
-    encrypted_regex: "^(password|secret|key|token)$"
+    unencrypted_regex: "^(app_name|environment|sops)$"
 
   # Staging secrets use PGP
-  - path_regex: vault/staging\.yml$
+  - path_regex: vault/staging\.ya?ml$
     pgp: "FBC7B9E2A4F9289AC0C1D4843D16CEE4A27381B4"
+    unencrypted_regex: "^(app_name|environment|sops)$"
 
   # Development secrets use age
-  - path_regex: vault/dev\.yml$
+  - path_regex: vault/dev\.ya?ml$
     age: age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+    unencrypted_regex: "^(app_name|environment|sops)$"
 ```
+
+**Why an allow-list rather than a deny-list?** `encrypted_regex` protects
+only the key names it happens to enumerate, and it anchors on the whole key.
+The obvious pattern `^(password|secret|key|token)$` leaves
+`database_password`, `api_key`, and `ssl_private_key` — the three fields in
+the vault example above — entirely in plaintext, because none of them is
+*exactly* `password`, `secret`, `key`, or `token`. The file looks encrypted,
+`sops` reports success, and the secrets are committed in the clear. An
+allow-list fails the other way: a newly added field is encrypted by default,
+and the worst outcome of a mistake is an unnecessarily encrypted piece of
+metadata.
+
+CI **MUST** assert the outcome rather than the exit status. After encrypting
+a fixture that contains the documented key names, grep the ciphertext for
+each known plaintext value and fail if any is found.
 
 **Using SOPS with Ansible**:
 
-```yaml
-# Encrypt secrets
-sops -e vault/production.yml > vault/production.enc.yml
+The `community.sops.sops` vars plugin loads encrypted files from `group_vars/`
+and `host_vars/` only, and only those whose extension is `.sops.yaml`,
+`.sops.yml`, or `.sops.json`[^20]. It is not a general interception hook for
+`vars_files`.
 
-# Use in playbook with community.sops.sops vars plugin
+```bash
+# Encrypt into a path the vars plugin actually reads
+sops -e vault/production.yml \
+  > inventories/production/group_vars/production/secrets.sops.yml
+```
+
+```yaml
+# Variables from group_vars/production/secrets.sops.yml are decrypted
+# automatically for every host in the production group
 - name: Deploy with SOPS-encrypted secrets
   hosts: production
-  vars_files:
-    - vault/production.enc.yml  # Automatically decrypted by vars plugin
 
   tasks:
     - name: Configure database connection
       ansible.builtin.template:
         src: database.yml.j2
         dest: /etc/app/database.yml
+        owner: root
+        group: app
+        mode: '0640'
       no_log: true
 ```
+
+To decrypt a file at an arbitrary path, load it explicitly:
+
+```yaml
+- name: Load the SOPS-encrypted production secrets
+  community.sops.load_vars:
+    file: vault/production.enc.yml
+    expressions: ignore
+  no_log: true
+```
+
+**Why not `vars_files`?** `vars_files` bypasses the vars plugin entirely and
+parses the file as ordinary YAML. The play still succeeds — but every value
+is loaded as the literal ciphertext string, so `database_password` becomes
+`ENC[AES256_GCM,data:...]` and that string is rendered straight into the
+generated configuration file. The failure is silent at deploy time and only
+surfaces when the application cannot authenticate.
+
+**Why set `owner`, `group`, and `mode` on a rendered secret?** `no_log`
+controls what Ansible prints; it has no effect on the filesystem. Without an
+explicit `mode`, `template` creates the file under the remote user's umask —
+typically `0644` — so a decrypted credential lands world-readable and any
+local account on the host can read it. Log suppression is not access control.
 
 **Enable SOPS vars plugin** (`ansible.cfg`):
 
@@ -1147,13 +1376,29 @@ Use `become` judiciously - only when needed:
 
 ```ini
 # ansible.cfg - Security hardening
+# Comments MUST be on their own line: Ansible's INI parser keeps an inline
+# "# ..." as part of the value, so `host_key_checking = True  # comment`
+# fails to parse as a boolean and silently evaluates to False.
 [defaults]
-host_key_checking = True      # Verify SSH host keys
+# Verify SSH host keys
+host_key_checking = True
 
 [privilege_escalation]
-become = False                # Don't become by default
-become_ask_pass = False       # Use sudoers NOPASSWD
+# Don't become by default
+become = False
+# Use sudoers NOPASSWD
+become_ask_pass = False
 ```
+
+**Why does this matter more than it looks?** An inline hash comment on a
+typed value is not a style problem. On an integer, Ansible raises
+`Invalid value provided for 'integer'` and refuses to start — noisy, but
+safe. On a boolean it is worse: the value `True      # Verify SSH host keys`
+is not truthy, so `ansible-config dump` reports
+`HOST_KEY_CHECKING = False`. The configuration loads, the playbook runs, and
+host-key verification is off — the exact opposite of what the line says it
+does. Assert the effective configuration with
+`ansible-config dump --only-changed`, not merely that the file parses.
 
 ### File Permissions
 
@@ -1248,14 +1493,29 @@ driver:
   name: docker
 
 platforms:
-  - name: ubuntu-22-04
-    image: geerlingguy/docker-ubuntu2204-ansible:latest
+  - name: ubuntu-26-04
+    image: geerlingguy/docker-ubuntu2604-ansible:latest
     pre_build_image: true
     privileged: true
     command: /lib/systemd/systemd
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+
+  - name: ubuntu-24-04
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+
+  - name: debian-13
+    image: geerlingguy/docker-debian13-ansible:latest
+    pre_build_image: true
+    privileged: true
+    command: /lib/systemd/systemd
 
   - name: debian-12
     image: geerlingguy/docker-debian12-ansible:latest
@@ -1267,7 +1527,7 @@ provisioner:
   name: ansible
   config_options:
     defaults:
-      callbacks_enabled: profile_tasks
+      callbacks_enabled: ansible.posix.profile_tasks
   playbooks:
     converge: converge.yml
     verify: verify.yml
@@ -1275,6 +1535,10 @@ provisioner:
 verifier:
   name: ansible
 ```
+
+The Molecule platform list **MUST** match the `platforms` block in
+`meta/main.yml`. A role that advertises Debian 13 but only tests Debian 12
+is making a claim its test suite never checks.
 
 **Converge Playbook** (`molecule/default/converge.yml`):
 
@@ -1391,7 +1655,8 @@ Increase parallelism with forks[^14]:
 ```ini
 # ansible.cfg
 [defaults]
-forks = 20  # Default is 5
+# Default is 5
+forks = 20
 ```
 
 ```bash
@@ -1413,8 +1678,15 @@ Enable fact caching to avoid gathering facts repeatedly:
 gathering = smart
 fact_caching = jsonfile
 fact_caching_connection = .ansible_cache
-fact_caching_timeout = 86400  # 24 hours
+# 24 hours, in seconds
+fact_caching_timeout = 86400
 ```
+
+Typed values **MUST** stand alone on their line. `fact_caching_timeout` is an
+integer, and Ansible's INI parser does not strip a trailing `# 24 hours`, so
+`ansible-config dump` aborts with
+`Invalid value provided for 'integer': '86400  # 24 hours'` and no playbook
+runs until the comment is moved.
 
 **Alternative: Redis fact caching**:
 
@@ -1439,6 +1711,8 @@ Long-running tasks **SHOULD** use async execution:
 
 # Continue with other tasks...
 
+# A launch task with no loop registers a single job record, so poll it
+# through backup_job.ansible_job_id
 - name: Check backup completion
   ansible.builtin.async_status:
     jid: "{{ backup_job.ansible_job_id }}"
@@ -1447,12 +1721,14 @@ Long-running tasks **SHOULD** use async execution:
   retries: 360
   delay: 10
 
-# Parallel async tasks
-- name: Deploy to all servers in parallel
-  ansible.builtin.command: /usr/local/bin/deploy.sh
+# Several jobs per host: the launch task MUST loop, which is what gives the
+# registered result a .results list to poll
+- name: Deploy each component in parallel
+  ansible.builtin.command: "/usr/local/bin/deploy.sh {{ item }}"
   async: 600
   poll: 0
   register: deploy_jobs
+  loop: "{{ deploy_components }}"
 
 - name: Wait for all deployments to complete
   ansible.builtin.async_status:
@@ -1462,7 +1738,17 @@ Long-running tasks **SHOULD** use async execution:
   retries: 60
   delay: 10
   loop: "{{ deploy_jobs.results }}"
+  loop_control:
+    label: "{{ item.item }}"
 ```
+
+**Why does the launch task need the loop?** `register` stores one result per
+host, not one per host in a list. Without a loop on the launch task,
+`deploy_jobs` is a plain dictionary holding a single `ansible_job_id`, and
+referencing `deploy_jobs.results` fails the play with
+`object of type 'dict' has no attribute 'results'`. Ansible already runs the
+launch task across hosts in parallel according to `forks`; the loop is only
+needed when one host launches several jobs.
 
 ### Mitogen (Optional Accelerator)
 
@@ -1637,3 +1923,13 @@ jobs:
 [^14]: [Ansible Forks](https://docs.ansible.com/ansible/latest/reference_appendices/config.html#default-forks) - Number of parallel processes Ansible uses. Higher values enable faster execution
 
 [^15]: [Mitogen for Ansible](https://mitogen.networkgenomics.com/ansible_detailed.html) - Performance optimization that dramatically speeds up playbook execution through connection pooling. [GitHub](https://github.com/mitogen-hq/mitogen)
+
+[^16]: [Organizing host and group variables](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#organizing-host-and-group-variables) - Ansible loads `group_vars/` and `host_vars/` from the directory containing the inventory file or the directory containing the playbook
+
+[^17]: [ansible.builtin.service module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/service_module.html) - `started`/`stopped` are idempotent and run no command unless necessary; `restarted` always bounces the service
+
+[^18]: [Debian releases](https://www.debian.org/releases/) and [Ubuntu release cycle](https://ubuntu.com/about/release-cycle) - Debian 11 (bullseye) LTS ended 2026-08-31; Ubuntu 20.04 standard support ended 2025-05-31 and continues under Ubuntu Pro ESM only
+
+[^19]: [PostgreSQL Versioning Policy](https://www.postgresql.org/support/versioning/) - Each major is supported for five years; 16 is supported until 2028-11-09 and 18 is current. Always run the current minor release of the chosen major
+
+[^20]: [community.sops.sops vars plugin](https://docs.ansible.com/ansible/latest/collections/community/sops/sops_vars.html) - Loads encrypted files from `group_vars/` and `host_vars/`, restricted by default to `.sops.yaml`, `.sops.yml`, and `.sops.json` extensions
