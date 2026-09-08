@@ -12,10 +12,11 @@ when, they appear in all capitals, as shown here.
 This guide covers test patterns for behaviours that unit tests miss: end-to-end
 acceptance, idempotence, reliability under failure, compatibility across
 versions and platforms, internationalisation, and data integrity. The toolchain,
-lint, formatting, dependency and CI rules in the [Rust Style Guide](../rust.md)
-apply and are not repeated here; every version quoted is listed in its [Tested
-Version Matrix](versions.md#tested-version-matrix) and was current on 8 September
-2026.
+lint, formatting and pre-commit rules in the [Rust Style Guide](../rust.md)
+apply and are not repeated here, and so do the [dependency](dependencies.md) and
+[CI](ci.md) rules; every version quoted is listed in the
+[Tested Version Matrix](versions.md#tested-version-matrix) and was current on 8
+September 2026.
 
 ## E2E & Acceptance Testing
 
