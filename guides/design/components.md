@@ -197,10 +197,11 @@ Buttons performing async actions MUST show loading state:
   border-color: var(--border-emphasis);
 }
 
-.form-input:focus {
-  outline: none;
+.form-input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
   border-color: var(--interactive-default);
-  box-shadow: 0 0 0 3px var(--interactive-default / 0.15);
+  box-shadow: 0 0 0 3px var(--focus-ring-halo);
 }
 
 .form-input:disabled {
@@ -213,8 +214,8 @@ Buttons performing async actions MUST show loading state:
   border-color: var(--status-error);
 }
 
-.form-input[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px var(--status-error / 0.15);
+.form-input[aria-invalid="true"]:focus-visible {
+  box-shadow: 0 0 0 3px var(--error-ring-halo);
 }
 ```
 
