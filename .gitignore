@@ -1,0 +1,12 @@
+# Ignore only what Doctrine's own tooling generates.
+# The repository is documentation; there is no build output to exclude.
+
+# npm documentation toolchain (package.json / package-lock.json are tracked).
+node_modules/
+
+# Python bytecode from scripts/.
+__pycache__/
+*.py[cod]
+
+# Local scratch space used by `make check`.
+.tmp-check/
