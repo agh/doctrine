@@ -238,28 +238,33 @@
       {
         "id": "D3-CE",
         "name": "Credential Eviction",
-        "description": "Removing compromised credentials",
+        "description": "Credential Eviction techniques disable or remove compromised credentials from a computer network",
         "subtechniques": [
-          "Account Locking",
-          "Authentication Cache Invalidation"
+          {"id": "D3-AL", "name": "Account Locking"},
+          {"id": "D3-ANCI", "name": "Authentication Cache Invalidation"},
+          {"id": "D3-CR", "name": "Credential Revocation"}
         ],
         "counters_attack": ["T1078", "T1550"]
       },
       {
-        "id": "D3-FE",
+        "id": "D3-FEV",
         "name": "File Eviction",
-        "description": "Removing malicious files",
+        "description": "File eviction techniques delete files from system storage",
         "subtechniques": [
-          "File Removal"
+          {"id": "D3-ER", "name": "Email Removal"}
         ],
-        "counters_attack": ["T1105", "T1204"]
+        "counters_attack": ["T1105", "T1204"],
+        "note": "D3-FE is File Encryption, a Platform Hardening technique. Resolving D3-FE for an eviction action substitutes encryption for malware removal."
       },
       {
         "id": "D3-PE",
         "name": "Process Eviction",
-        "description": "Terminating malicious processes",
+        "description": "Process eviction techniques terminate or remove running process",
         "subtechniques": [
-          "Process Termination"
+          {"id": "D3-HS", "name": "Host Shutdown"},
+          {"id": "D3-PS", "name": "Process Suspension"},
+          {"id": "D3-PT", "name": "Process Termination"},
+          {"id": "D3-ST", "name": "Session Termination"}
         ],
         "counters_attack": ["T1055", "T1059"]
       }

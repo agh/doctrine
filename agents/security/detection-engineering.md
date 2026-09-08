@@ -39,7 +39,7 @@ JA4+ is a modern fingerprinting suite that supersedes JA3/JA3S:
 #### JA4 Format Breakdown
 
 ```text
-JA4 = t13d1516h2_8daaf6152771_e5627efa2ab1
+JA4 = t13d1516h2_8daaf6152771_02713d6af862   (Chromium Browser, per FoxIO mapping)
       │   │    │  │             │
       │   │    │  │             └─ Sorted extension hash
       │   │    │  └─ Cipher suite hash
@@ -57,33 +57,69 @@ h2 = HTTP/2 ALPN
 
 #### Detection with JA4+
 
+Load `reference/security/fingerprints/ja4/malware-signatures.json`. Every entry
+there carries its upstream source and commit date. Fingerprints **MUST NOT** be
+written from memory: the same JA4 is often produced by both a benign client and
+an implant built on the same TLS stack.
+
 ```yaml
-# Known malware JA4 signatures (example)
-malware_ja4_signatures:
+# JA4+ indicators from the FoxIO ja4plus-mapping database, commit f1fea2e,
+# dated 2025-09-05. Regenerate before use; do not hand-edit.
+ja4_indicators:
 
-  cobalt_strike_beacon:
-    ja4: "t13d1517h2_8daaf6152771_02713d6af862"
-    ja4h: "ge11cn20enus_60e909c24ef6_ac95b44401d5"
-    description: "Cobalt Strike 4.x default beacon"
-    confidence: high
-
-  sliver_implant:
-    ja4: "t13d1715h2_5b57614c22b0_3d5424432f57"
-    description: "Sliver C2 implant"
-    confidence: high
-
-  metasploit_meterpreter:
-    ja4: "t12d1312h1_e64e3b5f8a39_d745e00bba42"
-    description: "Metasploit Meterpreter"
+  cobalt_strike_v4_9_1_beacon:
+    ja4: "t12d190800_d83cc789557e_16bbda4055b2"   # wininet, Windows 10
+    ja4s: "t120300_c030_52d195ce1d92"
+    source: FoxIO ja4plus-mapping.csv
+    observed: 2025-09-05
     confidence: medium
+    corroboration_required: [destination_reputation, beacon_timing, endpoint_process]
 
-  # Legitimate but suspicious
-  suspicious_patterns:
-    - pattern: "t13d0*"  # TLS 1.3 with no SNI
-      reason: "Missing SNI often indicates C2"
-    - pattern: "*_*_000000000000"
-      reason: "No extensions suggests custom TLS stack"
+  cobalt_strike_beacon_http:
+    ja4h: "ge11cn060000_4e59edc1297a_4da5efaf0cb"
+    source: FoxIO ja4plus-mapping.csv
+    observed: 2025-09-05
+    confidence: medium
+    corroboration_required: [destination_reputation, beacon_timing]
+
+  sliver_agent:
+    ja4: "t13d190900_9dc949149365_97f8aa674fd9"
+    ja4s: "t130200_1301_a56c5b993250"
+    source: FoxIO ja4plus-mapping.csv
+    observed: 2025-09-05
+    confidence: low
+    ambiguity: "Identical to the generic GoLang crypto/tls JA4; the JA4S is what
+      separates the implant from any other Go client"
+    corroboration_required: [ja4s_match, destination_reputation, endpoint_process]
+
+  icedid:
+    ja4: "t13d201100_2b729b4bf6f3_9e7b989ebec8"
+    ja4s: "t120300_c030_5e2616a54c73"
+    source: FoxIO ja4plus-mapping.csv
+    observed: 2025-09-05
+    confidence: medium
+    corroboration_required: [destination_reputation, endpoint_process]
+
+# Known-benign fingerprints, held to suppress false positives, never to
+# classify. Chromium and Firefox rotate these every few releases.
+ja4_benign:
+  chromium_browser: "t13d1516h2_8daaf6152771_02713d6af862"
+  mozilla_firefox: "t13d1715h2_5b57614c22b0_7121afd63204"
+  safari: "t13d2014h2_a09f3c656075_14788d8d241b"
+
+# Structural heuristics, not indicators: they narrow triage, they do not
+# classify traffic as malicious.
+suspicious_patterns:
+  - pattern: "t13i*"
+    reason: "No SNI; common in implants but also in health checks and scanners"
+  - pattern: "*_000000000000"
+    reason: "No extensions or headers; suggests a custom or minimal stack"
 ```
+
+**MUST NOT** raise a malware verdict from a fingerprint match alone. A JA4 value
+identifies a TLS or HTTP stack, not a program: report the match as one signal
+alongside destination reputation, beacon timing, and endpoint telemetry, and
+state the observation date of the indicator.
 
 #### Legacy Fingerprinting
 

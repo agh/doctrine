@@ -38,10 +38,15 @@ repos:
   # =============================================================================
   # Ruby (uncomment if using Ruby)
   # =============================================================================
-  # - repo: https://github.com/standardrb/standard
-  #   rev: v1.43.0
+  # standardrb ships no .pre-commit-hooks.yaml, so it must run as a local hook
+  # against the project's locked bundle. Pin the version in the Gemfile.
+  # - repo: local
   #   hooks:
   #     - id: standardrb
+  #       name: StandardRB
+  #       entry: bundle exec standardrb
+  #       language: system
+  #       types: [ruby]
 
   # =============================================================================
   # Go (uncomment if using Go)
@@ -73,10 +78,9 @@ repos:
   # TypeScript/JavaScript (uncomment if using)
   # =============================================================================
   # - repo: https://github.com/biomejs/pre-commit
-  #   rev: v0.6.0
+  #   rev: v2.5.12
   #   hooks:
   #     - id: biome-check
-  #       additional_dependencies: ['@biomejs/biome@1.9.4']
 
   # =============================================================================
   # Shell

@@ -152,7 +152,7 @@ use crate::state::AppState;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(users::list).post(users::create))
-        .route("/:id", get(users::get).put(users::update).delete(users::delete))
+        .route("/{id}", get(users::get).put(users::update).delete(users::delete))
 }
 ```
 
@@ -170,6 +170,39 @@ Router::new()
     .route("/users", get(list_users))
     .route("/users", post(create_user))  // Redundant
 ```
+
+### Path Parameter Syntax
+
+Route paths **MUST** use the braced capture syntax: `{name}` for a single
+segment and `{*name}` for a trailing wildcard.
+
+**Do**:
+
+```rust
+Router::new()
+    .route("/users/{id}", get(get_user))
+    .route("/assets/{*path}", get(serve_asset))
+```
+
+**Don't**:
+
+```rust
+Router::new()
+    .route("/users/:id", get(get_user))    // Axum 0.7 syntax
+    .route("/assets/*path", get(serve_asset))
+```
+
+**Why**: Axum 0.8 replaced the `:param` and `*wildcard` spellings from 0.7.
+The old forms are not silently accepted and are not merely deprecated: the
+router rejects them while it is being built, with `Path segments must not
+start with ':'. For capture groups, use '{capture}'.` Because routers are
+usually built during start-up, a missed migration surfaces as a crash on
+deploy rather than a compiler error, so pair the syntax rule with the
+router-construction test in [Testing](#testing).
+
+A path segment that must literally begin with `:` or `*` requires
+`Router::without_v07_checks`, which disables the migration diagnostics for
+the whole router. Prefer rewriting the route.
 
 ## Extractors
 
@@ -385,10 +418,12 @@ Projects **SHOULD** use Tower layers for cross-cutting concerns:
 ```rust
 use axum::{
     Router,
+    extract::Request,
+    http::StatusCode,
     middleware::{self, Next},
-    http::Request,
     response::Response,
 };
+use tower::ServiceBuilder;
 use tower_http::{
     trace::TraceLayer,
     cors::CorsLayer,
@@ -404,20 +439,14 @@ pub fn create_app() -> Router {
                 .layer(TraceLayer::new_for_http())
                 .layer(CompressionLayer::new())
                 .layer(CorsLayer::permissive())
-                .layer(middleware::from_fn(timeout_middleware))
+                .layer(middleware::from_fn(timeout_middleware)),
         )
 }
 
-async fn timeout_middleware<B>(
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode> {
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        next.run(req)
-    )
-    .await
-    .map_err(|_| StatusCode::REQUEST_TIMEOUT)
+async fn timeout_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    tokio::time::timeout(Duration::from_secs(30), next.run(req))
+        .await
+        .map_err(|_| StatusCode::REQUEST_TIMEOUT)
 }
 ```
 
@@ -427,37 +456,63 @@ order (inner to outer).
 
 ### Custom Middleware
 
-Custom middleware **SHOULD** use `middleware::from_fn` for simplicity:
+Custom middleware **SHOULD** use `middleware::from_fn` for simplicity, and
+**MUST** take `axum::extract::Request` (or another `FromRequest` extractor)
+as its second-to-last argument and the non-generic `Next` as its last:
 
 ```rust
 use axum::{
+    extract::{Request, State},
+    http::{StatusCode, header},
     middleware::{self, Next},
-    http::Request,
     response::Response,
 };
 
-async fn auth_middleware<B>(
-    req: Request<B>,
-    next: Next<B>,
+async fn auth_middleware(
+    State(state): State<AppState>,
+    req: Request,
+    next: Next,
 ) -> Result<Response, StatusCode> {
-    let auth_header = req.headers()
-        .get("authorization")
-        .and_then(|h| h.to_str().ok());
+    let token = req
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    match auth_header {
-        Some(token) if verify_token(token) => Ok(next.run(req).await),
-        _ => Err(StatusCode::UNAUTHORIZED),
-    }
+    verify_token(&state.jwt_keys, token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+    Ok(next.run(req).await)
 }
 
-// Apply to specific routes
+// Apply to specific routes. Middleware that extracts `State` must be
+// registered with `from_fn_with_state`, which supplies that argument.
 let protected = Router::new()
     .route("/admin", get(admin_handler))
-    .layer(middleware::from_fn(auth_middleware));
+    .layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
+    .with_state(state);
+```
+
+**Do**:
+
+```rust
+async fn middleware(req: Request, next: Next) -> Result<Response, StatusCode>
+```
+
+**Don't**:
+
+```rust
+// Axum 0.7 signature: `Next` no longer takes a body parameter
+async fn middleware<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode>
 ```
 
 **Why**: `from_fn` provides the simplest way to create middleware
-without implementing `Layer` and `Service` traits manually.
+without implementing `Layer` and `Service` traits manually. Axum 0.8's
+`Next` is not generic and `Next::run` consumes an `axum::extract::Request`,
+which is `http::Request<axum::body::Body>`; a middleware generic over the
+body type therefore no longer compiles. Reading the header rather than
+using a `TypedHeader` extractor keeps the request intact so it can be
+forwarded to `next`.
 
 ## State Management
 
@@ -629,6 +684,44 @@ pub async fn create_test_user(pool: &PgPool, name: &str) -> User {
 }
 ```
 
+### Router Construction Tests
+
+Projects **MUST** build the real router in a test:
+
+```rust
+// tests/router_test.rs
+use axum::{body::Body, http::{Request, StatusCode}};
+use tower::ServiceExt;
+
+mod common;
+
+#[tokio::test]
+async fn router_builds_and_matches_path_parameters() {
+    // Panics here are router-construction failures, not assertion failures.
+    let app = common::create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users/1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_ne!(response.status(), StatusCode::NOT_FOUND);
+}
+```
+
+**Why**: `Router::route` validates path syntax and rejects duplicate
+method routes by panicking as the router is assembled, not by failing to
+compile. Without a test that assembles the whole router — including
+documentation and metrics routes merged in later — a stale `:id` capture
+or a path registered twice reaches production and crashes the process on
+start-up. Asserting the status is not `404` also proves the parameterised
+route matched rather than merely existing.
+
 ## Database Integration
 
 ### SQLx with Compile-Time Verification
@@ -725,6 +818,7 @@ CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
+    credits BIGINT NOT NULL DEFAULT 0 CHECK (credits >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -737,7 +831,9 @@ running database.
 
 ### Transaction Patterns
 
-Database operations **SHOULD** use transactions for consistency:
+Database operations **MUST** use a transaction whenever more than one
+statement has to succeed or fail together, and **MUST** enforce every
+invariant inside that transaction:
 
 ```rust
 pub async fn transfer_credits(
@@ -746,28 +842,93 @@ pub async fn transfer_credits(
     amount: i64,
     pool: &PgPool,
 ) -> Result<(), AppError> {
+    if amount <= 0 {
+        return Err(AppError::Validation("Transfer amount must be positive".into()));
+    }
+    if from_user_id == to_user_id {
+        return Err(AppError::Validation("Cannot transfer to the same account".into()));
+    }
+
     let mut tx = pool.begin().await?;
 
-    sqlx::query!(
-        "UPDATE users SET credits = credits - $1 WHERE id = $2",
+    // The `credits >= $1` predicate makes the balance check and the debit a
+    // single atomic statement: no row is updated when the balance is short.
+    let debited = sqlx::query!(
+        "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1",
         amount,
         from_user_id
     )
     .execute(&mut *tx)
-    .await?;
+    .await?
+    .rows_affected();
 
-    sqlx::query!(
+    if debited != 1 {
+        tx.rollback().await?;
+        return Err(AppError::Validation("Insufficient credits".into()));
+    }
+
+    let credited = sqlx::query!(
         "UPDATE users SET credits = credits + $1 WHERE id = $2",
         amount,
         to_user_id
     )
     .execute(&mut *tx)
-    .await?;
+    .await?
+    .rows_affected();
+
+    if credited != 1 {
+        tx.rollback().await?;
+        return Err(AppError::NotFound);
+    }
 
     tx.commit().await?;
     Ok(())
 }
 ```
+
+**Do**:
+
+```rust
+// Check and mutate in one statement, then verify the row count
+let debited = sqlx::query!(
+    "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1",
+    amount,
+    from_user_id
+)
+.execute(&mut *tx)
+.await?
+.rows_affected();
+```
+
+**Don't**:
+
+```rust
+// Read-then-write: another transaction can spend the balance in between
+let user = sqlx::query!("SELECT credits FROM users WHERE id = $1", from_user_id)
+    .fetch_one(&mut *tx)
+    .await?;
+if user.credits >= amount {
+    sqlx::query!("UPDATE users SET credits = credits - $1 WHERE id = $2", amount, from_user_id)
+        .execute(&mut *tx)
+        .await?;
+}
+```
+
+**Why**: An unconditional `UPDATE ... SET credits = credits - $1` reports
+success whether or not the row exists and whether or not the balance can
+cover the amount. Run against a two-account fixture, the unguarded pair of
+statements drives the sender to `-10`, credits the recipient from an absent
+sender (total credits rise from 10 to 15), destroys credits when the
+recipient is absent, and reverses the transfer for a negative amount —
+committing in every case. Checking `rows_affected()` after each statement
+turns each of those into a rollback.
+
+Under PostgreSQL's default Read Committed isolation, a concurrent transfer
+blocks on the row lock and then re-evaluates the `WHERE` clause against the
+committed row version, so two simultaneous transfers cannot both pass the
+`credits >= $1` test. Weaker guards belong at the schema level as well: the
+`CHECK (credits >= 0)` constraint on the migration above rejects any path
+that bypasses this function.
 
 ## Security
 
@@ -852,17 +1013,34 @@ impl AuthnBackend for Backend {
 
 ```rust
 // src/app.rs - Setting up the auth layer
-use axum_login::tower_sessions::{MemoryStore, SessionManagerLayer};
+use axum_login::tower_sessions::{
+    cookie::SameSite, ExpiredDeletion, Expiry, SessionManagerLayer,
+};
 use axum_login::AuthManagerLayerBuilder;
+use axum::http::StatusCode;
+use time::Duration;
+use tower_sessions_sqlx_store::PostgresStore;
 
 pub async fn create_app(config: Config) -> anyhow::Result<Router> {
     let state = AppState::new(config).await?;
     let backend = Backend { db: state.db.clone() };
 
-    let session_store = MemoryStore::default();
+    // Sessions live in PostgreSQL: they survive a restart and every
+    // instance behind the load balancer reads the same records.
+    let session_store = PostgresStore::new(state.db.clone());
+    session_store.migrate().await?;
+
+    tokio::spawn(
+        session_store
+            .clone()
+            .continuously_delete_expired(tokio::time::Duration::from_secs(60)),
+    );
+
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(true)
-        .with_same_site(tower_sessions::cookie::SameSite::Strict);
+        .with_http_only(true)
+        .with_same_site(SameSite::Strict)
+        .with_expiry(Expiry::OnInactivity(Duration::minutes(30)));
 
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
@@ -882,7 +1060,51 @@ pub async fn profile(auth_session: AuthSession<Backend>) -> Result<Json<User>, A
         .ok_or(AppError::Unauthorized("Not logged in".into()))
         .map(Json)
 }
+
+// Logout deletes the session record, not just the cookie
+pub async fn logout(mut auth_session: AuthSession<Backend>) -> Result<StatusCode, AppError> {
+    auth_session
+        .logout()
+        .await
+        .map_err(|e| AppError::Unauthorized(e.to_string()))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
 ```
+
+```toml
+# Cargo.toml - pinned to the versions this example was checked against
+axum-login = "0.18.0"
+tower-sessions = "0.14.0"
+tower-sessions-sqlx-store = { version = "0.15.0", features = ["postgres"] }
+time = "0.3"
+```
+
+Deployed services **MUST NOT** use `MemoryStore`. It is for tests and local
+demonstrations, where losing every session on restart does not matter:
+
+```rust
+// tests/common/mod.rs - test-only session store
+use axum_login::tower_sessions::{Expiry, MemoryStore, SessionManagerLayer};
+use time::Duration;
+
+pub fn test_session_layer() -> SessionManagerLayer<MemoryStore> {
+    SessionManagerLayer::new(MemoryStore::default())
+        .with_expiry(Expiry::OnInactivity(Duration::minutes(30)))
+}
+```
+
+**Session lifecycle**: `AuthSession::login` calls `Session::cycle_id`, which
+issues a new session identifier on sign-in and closes off session fixation.
+`AuthSession::logout` calls `Session::flush`, which deletes the stored
+record so a copied cookie is worthless afterwards. On every request
+axum-login compares the stored `session_auth_hash` against the current one
+in constant time and flushes the session when they differ; because the
+`AuthUser` implementation above returns the password hash, changing a
+password revokes that user's existing sessions everywhere. A service that
+needs "sign out of all devices" without a password change **SHOULD** back
+`session_auth_hash` with a separate per-user secret that it can rotate on
+its own.
 
 **Why**: axum-login provides a type-safe, Tower-based authentication
 layer with support for arbitrary user types and backends. It integrates
@@ -891,40 +1113,79 @@ authentication and authorization via traits.
 
 ### JWT Authentication with jsonwebtoken
 
-For stateless API authentication, projects **SHOULD** use jsonwebtoken[^11]:
+For stateless API authentication, projects **SHOULD** use jsonwebtoken[^11].
+The signing algorithm **MUST** be chosen explicitly and stored alongside the
+keys, and the verifier **MUST** check issuer, audience, expiry, and
+not-before:
+
+```toml
+# Cargo.toml - `rust_crypto` or `aws_lc_rs` selects the crypto provider;
+# jsonwebtoken 11 panics at runtime when neither is enabled.
+jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
+```
 
 ```rust
 // src/jwt.rs
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// The token profile. Every claim here is required by the verifier.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,        // Subject (user ID)
+    pub iss: String,        // Issuer (the service that minted the token)
+    pub aud: String,        // Audience (the API the token is for)
     pub exp: u64,           // Expiration time
+    pub nbf: u64,           // Not before
     pub iat: u64,           // Issued at
     pub roles: Vec<String>, // User roles
 }
 
 pub struct JwtKeys {
+    algorithm: Algorithm,
     encoding: EncodingKey,
     decoding: DecodingKey,
+    issuer: String,
+    audience: String,
 }
 
 impl JwtKeys {
-    /// Create keys from a secret. For production, use RS256 with RSA keys (4096-bit minimum).
-    pub fn new(secret: &[u8]) -> Self {
-        Self {
-            encoding: EncodingKey::from_secret(secret),
-            decoding: DecodingKey::from_secret(secret),
-        }
+    /// RS256 with an RSA key pair (4096-bit minimum). Preferred in
+    /// production: only the issuing service needs the private key.
+    pub fn rs256(
+        private_key_pem: &[u8],
+        public_key_pem: &[u8],
+        issuer: impl Into<String>,
+        audience: impl Into<String>,
+    ) -> Result<Self, AppError> {
+        Ok(Self {
+            algorithm: Algorithm::RS256,
+            encoding: EncodingKey::from_rsa_pem(private_key_pem)?,
+            decoding: DecodingKey::from_rsa_pem(public_key_pem)?,
+            issuer: issuer.into(),
+            audience: audience.into(),
+        })
     }
 
-    pub fn from_rsa_pem(private_key: &[u8], public_key: &[u8]) -> Result<Self, AppError> {
+    /// HS256 with a shared secret of at least 32 bytes from a CSPRNG. Use
+    /// only where the same service both mints and verifies the token: every
+    /// holder of the secret can forge tokens.
+    pub fn hs256(
+        secret: &[u8],
+        issuer: impl Into<String>,
+        audience: impl Into<String>,
+    ) -> Result<Self, AppError> {
+        if secret.len() < 32 {
+            return Err(AppError::Validation("JWT secret must be >= 32 bytes".into()));
+        }
+
         Ok(Self {
-            encoding: EncodingKey::from_rsa_pem(private_key)?,
-            decoding: DecodingKey::from_rsa_pem(public_key)?,
+            algorithm: Algorithm::HS256,
+            encoding: EncodingKey::from_secret(secret),
+            decoding: DecodingKey::from_secret(secret),
+            issuer: issuer.into(),
+            audience: audience.into(),
         })
     }
 }
@@ -932,26 +1193,62 @@ impl JwtKeys {
 pub fn create_token(keys: &JwtKeys, user_id: &str, roles: Vec<String>) -> Result<String, AppError> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
+        .expect("system clock is before the Unix epoch")
         .as_secs();
 
     let claims = Claims {
         sub: user_id.to_string(),
-        exp: now + 3600, // 1 hour expiration
+        iss: keys.issuer.clone(),
+        aud: keys.audience.clone(),
+        exp: now + 900, // 15 minutes for access tokens
+        nbf: now,
         iat: now,
         roles,
     };
 
-    encode(&Header::default(), &claims, &keys.encoding)
+    encode(&Header::new(keys.algorithm), &claims, &keys.encoding)
         .map_err(|e| AppError::Internal(format!("Token creation failed: {}", e)))
 }
 
 pub fn verify_token(keys: &JwtKeys, token: &str) -> Result<Claims, AppError> {
-    let validation = Validation::default();
+    let mut validation = Validation::new(keys.algorithm);
+    validation.set_issuer(&[keys.issuer.as_str()]);
+    validation.set_audience(&[keys.audience.as_str()]);
+    validation.set_required_spec_claims(&["exp", "nbf", "iss", "aud", "sub"]);
+    validation.validate_nbf = true;
+    validation.leeway = 30;
 
     decode::<Claims>(token, &keys.decoding, &validation)
         .map(|data| data.claims)
         .map_err(|e| AppError::Unauthorized(format!("Invalid token: {}", e)))
+}
+```
+
+Projects **MUST** test that the verifier rejects a token signed with a
+different algorithm:
+
+```rust
+// tests/jwt_test.rs
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+
+const PRIVATE_PEM: &[u8] = include_bytes!("fixtures/jwt-private.pem");
+const PUBLIC_PEM: &[u8] = include_bytes!("fixtures/jwt-public.pem");
+
+#[test]
+fn rsa_verifier_rejects_hs256_tokens() {
+    let keys = JwtKeys::rs256(PRIVATE_PEM, PUBLIC_PEM, "https://auth.example.com", "my-api")
+        .unwrap();
+
+    // Algorithm confusion: sign with HS256 using the public key as the
+    // HMAC secret, which an attacker can read.
+    let forged = encode(
+        &Header::new(Algorithm::HS256),
+        &admin_claims(),
+        &EncodingKey::from_secret(PUBLIC_PEM),
+    )
+    .unwrap();
+
+    assert!(verify_token(&keys, &forged).is_err());
 }
 ```
 
@@ -999,21 +1296,27 @@ where
 **Do**:
 
 ```rust
-// Use asymmetric keys (RS256) in production
-let keys = JwtKeys::from_rsa_pem(&private_key, &public_key)?;
+// Bind the algorithm to the key material and check who the token is for
+let keys = JwtKeys::rs256(&private_key, &public_key, issuer, audience)?;
 
-// Set reasonable expiration times
-let claims = Claims {
-    exp: now + 3600,  // 1 hour for access tokens
-    // ...
-};
+// Inside src/jwt.rs, where the algorithm travels with the key
+encode(&Header::new(keys.algorithm), &claims, &keys.encoding)?;
+
+let mut validation = Validation::new(keys.algorithm);
+validation.set_issuer(&[keys.issuer.as_str()]);
+validation.set_audience(&[keys.audience.as_str()]);
 ```
 
 **Don't**:
 
 ```rust
+// `Header::default()` and `Validation::default()` are both HS256, so this
+// combination fails outright with an RSA key: `InvalidAlgorithm`
+encode(&Header::default(), &claims, &EncodingKey::from_rsa_pem(&private_key)?)?;
+decode::<Claims>(token, &keys.decoding, &Validation::default())?;
+
 // Don't use weak secrets
-let keys = JwtKeys::new(b"secret");  // Too short and predictable
+let keys = JwtKeys::hs256(b"secret", issuer, audience)?;  // Too short
 
 // Don't set very long expiration
 let claims = Claims {
@@ -1022,9 +1325,22 @@ let claims = Claims {
 };
 ```
 
-**Why**: JWT provides stateless authentication suitable for APIs and microservices. The
-jsonwebtoken crate supports all standard algorithms. Use short-lived tokens with refresh token
-rotation for enhanced security.
+**Why**: JWT provides stateless authentication suitable for APIs and
+microservices. Both `Header::default()` and `Validation::default()` select
+HS256, so pairing them with the recommended RSA keys does not produce the
+RS256 flow the comment promises — it produces an `InvalidAlgorithm` error
+at signing time, which invites a rushed revert to symmetric keys.
+`Validation::new(alg)` restricts the accepted algorithms to that one
+algorithm, which is what rejects a token forged with HS256 over the RSA
+public key.
+
+`Validation` on its own only enforces `exp`. Issuer and audience are
+unchecked until `set_issuer` and `set_audience` are called, and `nbf` is
+unchecked until `validate_nbf` is set, so a token minted for a different
+service is otherwise accepted. `set_required_spec_claims` recognises
+`exp`, `nbf`, `aud`, `iss` and `sub` only; any other required claim, such
+as `jti` for replay tracking, has to be checked by the application. Use
+short-lived access tokens with refresh-token rotation.
 
 ### Authorization with Casbin
 
@@ -1130,26 +1446,72 @@ changes.
 
 ### Tower-HTTP Auth Layers
 
-Projects **SHOULD** use tower-http[^13] for common authentication patterns:
+Projects **MAY** use tower-http[^13] layers to authorise requests before they
+reach a handler. Credentials **MUST** come from configuration or application
+state, never from a literal in the source:
 
 ```rust
-use tower_http::validate_request::ValidateRequestHeaderLayer;
-use tower_http::auth::RequireAuthorizationLayer;
+use std::sync::Arc;
 
-// Basic auth for internal endpoints
+use axum::{
+    extract::Request,
+    http::{header, StatusCode},
+    response::IntoResponse,
+};
+use tower_http::auth::AsyncRequireAuthorizationLayer;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
+
+// Machine-to-machine endpoint: a fixed, high-entropy header value read from
+// configuration. `has_header_value` answers 403 when it does not match.
 let admin_routes = Router::new()
     .route("/admin/metrics", get(metrics))
-    .layer(ValidateRequestHeaderLayer::basic("admin", "secret"));
+    .layer(ValidateRequestHeaderLayer::has_header_value(
+        "x-internal-api-key",
+        &config.internal_api_key,
+    )?);
 
-// Bearer token validation
+// Real authorisation: validate the presented token against application state.
+let keys = Arc::clone(&state.jwt_keys);
 let api_routes = Router::new()
     .route("/api/data", get(get_data))
-    .layer(RequireAuthorizationLayer::bearer("expected-token"));
+    .layer(AsyncRequireAuthorizationLayer::new(move |request: Request| {
+        let keys = Arc::clone(&keys);
+        async move {
+            let token = request
+                .headers()
+                .get(header::AUTHORIZATION)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.strip_prefix("Bearer "));
+
+            match token.map(|token| verify_token(&keys, token)) {
+                Some(Ok(_)) => Ok(request),
+                _ => Err(StatusCode::UNAUTHORIZED.into_response()),
+            }
+        }
+    }));
 ```
 
-**Why**: tower-http provides pre-built authentication layers that integrate directly with Tower's
-middleware system. Use these for simple authentication needs; use axum-login or custom extractors
-for more complex requirements.
+**Don't**:
+
+```rust
+// Removed: "error[E0432]: unresolved import `tower_http::auth::
+// RequireAuthorizationLayer` ... no `RequireAuthorizationLayer` in `auth`"
+use tower_http::auth::RequireAuthorizationLayer;
+
+// Still resolves, but deprecated, and bakes a credential into the binary
+ValidateRequestHeaderLayer::basic("admin", "hunter2");
+```
+
+**Why**: `RequireAuthorizationLayer` was removed from `tower_http::auth`.
+The surviving `ValidateRequestHeaderLayer::basic` and `::bearer`
+constructors live in the `auth::require_authorization` module, deprecated
+since tower-http 0.6.7 as "too basic to be useful in real applications".
+Both compare against a compile-time constant, so the credential ends up in
+the binary and in version control and cannot be rotated without a
+redeploy. `AsyncRequireAuthorizationLayer` runs an async closure per
+request, so the check can consult keys, a database, or a token
+introspection endpoint. For session-based authentication, use axum-login
+or a custom extractor instead.
 
 ## WebSocket
 
@@ -1820,45 +2182,56 @@ distributed instances (L2 provides shared state).
 
 Projects **SHOULD** use tower-governor[^27] for rate limiting:
 
+```toml
+# Cargo.toml - the crate name uses an underscore; `governor` types appear
+# in the layer signature, so it is a direct dependency too
+tower_governor = "0.8.0"
+governor = "0.10"
+```
+
 ```rust
 // src/middleware/rate_limit.rs
-use tower_governor::{
-    governor::GovernorConfigBuilder,
-    key_extractor::{SmartIpKeyExtractor, KeyExtractor},
-    GovernorLayer,
-};
 use std::time::Duration;
 
-/// Create a rate limiter: 10 requests per second with burst of 30
-pub fn create_rate_limiter() -> GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware> {
-    let config = GovernorConfigBuilder::default()
-        .per_second(10)
+use axum::body::Body;
+use governor::middleware::NoOpMiddleware;
+use tower_governor::{
+    governor::{GovernorConfig, GovernorConfigBuilder},
+    key_extractor::PeerIpKeyExtractor,
+    GovernorLayer,
+};
+
+/// Sustained 10 requests per second per client, absorbing bursts of 30.
+///
+/// `period` is the time needed to replenish **one** request, so ten requests
+/// per second is a 100 ms period. `per_second(10)` would mean the opposite:
+/// one request every ten seconds.
+pub fn api_quota() -> GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware> {
+    GovernorConfigBuilder::default()
+        .period(Duration::from_millis(100))
         .burst_size(30)
         .finish()
-        .expect("Failed to build governor config");
-
-    GovernorLayer {
-        config: Box::new(config),
-    }
+        .expect("period and burst size are both non-zero")
 }
 
-/// Create a stricter rate limiter for sensitive endpoints
-pub fn create_auth_rate_limiter() -> GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware> {
-    let config = GovernorConfigBuilder::default()
-        .per_second(1)
+/// One request every two seconds for sign-in and registration, burst of 5.
+pub fn auth_quota() -> GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware> {
+    GovernorConfigBuilder::default()
+        .period(Duration::from_secs(2))
         .burst_size(5)
         .finish()
-        .expect("Failed to build governor config");
+        .expect("period and burst size are both non-zero")
+}
 
-    GovernorLayer {
-        config: Box::new(config),
-    }
+pub fn rate_limiter(
+    config: GovernorConfig<PeerIpKeyExtractor, NoOpMiddleware>,
+) -> GovernorLayer<PeerIpKeyExtractor, NoOpMiddleware, Body> {
+    GovernorLayer::new(config)
 }
 ```
 
 ```rust
 // src/app.rs - Apply rate limiting
-use axum::extract::connect_info::ConnectInfo;
 use std::net::SocketAddr;
 
 pub async fn create_app(config: Config) -> anyhow::Result<Router> {
@@ -1866,12 +2239,12 @@ pub async fn create_app(config: Config) -> anyhow::Result<Router> {
 
     let api_routes = Router::new()
         .nest("/users", users::routes())
-        .layer(create_rate_limiter());
+        .layer(rate_limiter(api_quota()));
 
     let auth_routes = Router::new()
         .route("/login", post(login))
         .route("/register", post(register))
-        .layer(create_auth_rate_limiter());
+        .layer(rate_limiter(auth_quota()));
 
     let app = Router::new()
         .nest("/api", api_routes)
@@ -1881,7 +2254,8 @@ pub async fn create_app(config: Config) -> anyhow::Result<Router> {
     Ok(app)
 }
 
-// IMPORTANT: Use into_make_service_with_connect_info for IP extraction
+// REQUIRED for PeerIpKeyExtractor: without connect info there is no peer
+// address to key on, and every request is rejected.
 let listener = tokio::net::TcpListener::bind(&addr).await?;
 axum::serve(
     listener,
@@ -1889,9 +2263,110 @@ axum::serve(
 ).await?;
 ```
 
-**Why**: tower-governor uses the GCRA (Generic Cell Rate Algorithm) for fair, efficient rate
-limiting. The `SmartIpKeyExtractor` handles common proxy headers (X-Forwarded-For, X-Real-IP)
-for accurate client identification.
+**Do**:
+
+```rust
+// 10 requests per second: one replenished every 100 ms
+GovernorConfigBuilder::default()
+    .period(Duration::from_millis(100))
+    .burst_size(30)
+
+// The layer is constructed, not built from a struct literal
+GovernorLayer::new(config)
+```
+
+**Don't**:
+
+```rust
+// One request every 10 seconds - 100x slower than "10 per second"
+GovernorConfigBuilder::default()
+    .per_second(10)
+    .burst_size(30)
+
+// `GovernorLayer`'s fields are private
+GovernorLayer { config: Box::new(config) }
+```
+
+**Why**: tower-governor uses the GCRA (Generic Cell Rate Algorithm) for
+fair, efficient rate limiting. Its quota is expressed as a replenishment
+*period* per request, not as a rate: `finish` passes the period straight to
+`Quota::with_period`, so `per_second(10)` yields one request every ten
+seconds. Reading it as "ten requests per second" overstates the sustained
+allowance a hundredfold, and the mistake only shows up under sustained
+load, after the burst is spent. `GovernorLayer` also holds private fields
+behind three generic parameters — the key extractor, the governor
+middleware, and the response body — so it must be built with
+`GovernorLayer::new` and annotated with the body type the router uses.
+
+Projects **MUST** cover the quota with a test:
+
+```rust
+// tests/rate_limit_test.rs
+use std::net::{IpAddr, Ipv4Addr};
+use std::time::Duration;
+
+#[test]
+fn burst_is_exhausted_then_replenished() {
+    let config = api_quota();
+    let key = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 7));
+
+    for request in 0..30 {
+        assert!(config.limiter().check_key(&key).is_ok(), "burst request {request}");
+    }
+    assert!(config.limiter().check_key(&key).is_err(), "burst not exhausted");
+
+    // One request replenishes every 100 ms.
+    std::thread::sleep(Duration::from_millis(150));
+    assert!(config.limiter().check_key(&key).is_ok(), "nothing replenished");
+}
+```
+
+**Why**: The quota only fails visibly under sustained traffic, which no
+unit test produces by accident. Driving `config.limiter()` directly checks
+the configured numbers without a server or client addresses. Governor
+measures time with a Quanta clock, so `tokio::time::pause` does not move
+it: the test must sleep for real, which argues for short periods in tests.
+
+### Client Identification and Proxy Trust
+
+The key extractor decides *who* is being limited, so it **MUST** match the
+deployment:
+
+| Deployment | Key extractor |
+| ---------- | ------------- |
+| Service exposed directly | `PeerIpKeyExtractor` (builder default) |
+| Behind a proxy that overwrites forwarded headers | `SmartIpKeyExtractor` |
+| Authenticated API | Custom extractor over the account or API key |
+
+```rust
+// Only when a trusted reverse proxy overwrites X-Forwarded-For and
+// X-Real-IP on every inbound request.
+use tower_governor::key_extractor::SmartIpKeyExtractor;
+
+pub fn proxied_quota() -> GovernorConfig<SmartIpKeyExtractor, NoOpMiddleware> {
+    GovernorConfigBuilder::default()
+        .period(Duration::from_millis(100))
+        .burst_size(30)
+        .key_extractor(SmartIpKeyExtractor)
+        .finish()
+        .expect("period and burst size are both non-zero")
+}
+```
+
+**Why**: `SmartIpKeyExtractor` reads `X-Forwarded-For` and `X-Real-IP`,
+which are client-supplied unless something at the edge overwrites them. On
+a directly exposed service the limiter then keys on a value the caller
+chooses: a request carrying `X-Forwarded-For: 198.51.100.1` is limited,
+and the next request with `198.51.100.2` starts a fresh bucket, so a
+single client walks past any per-IP quota by incrementing a header. Use it
+only when the proxy strips inbound copies and writes its own, and pin the
+number of hops it appends so an attacker cannot prepend a spoofed entry.
+
+Note also that tower-governor keeps its state in the process. Each replica
+enforces the quota separately, so a service behind a load balancer allows
+roughly the configured rate multiplied by the number of replicas. Where a
+global quota matters, enforce it at the edge or in a shared store, and
+treat the in-process limiter as a local safety valve.
 
 ### Custom Rate Limiting Key
 
@@ -2397,8 +2872,8 @@ pub struct CreateUserRequest {
     /// Display name
     #[schema(example = "Alice Smith")]
     pub name: String,
-    /// Password (min 8 characters)
-    #[schema(example = "password123", min_length = 8)]
+    /// Password (min 15 characters for single-factor sign-in)
+    #[schema(example = "a wandering albatross", min_length = 15)]
     pub password: String,
 }
 
@@ -2461,6 +2936,33 @@ pub async fn create_user(
     Ok((StatusCode::CREATED, Json(user)))
 }
 ```
+
+#### Documenting Password Rules
+
+A `min_length` annotation documents the contract; it does not enforce it.
+The handler **MUST** apply the same rule at runtime, and the two **MUST**
+agree. The documented minimum **MUST** be at least 15 characters where a
+password is the only authentication factor; 8 characters is acceptable
+only when the password is one factor of multi-factor authentication.
+
+Password handling **MUST** also:
+
+- accept at least 64 characters, and all printable ASCII, the space
+  character, and Unicode, counting each code point as one character;
+- reject passwords found on a blocklist of breached, common, and
+  context-specific values, such as the service or account name;
+- verify the password in full, without truncation;
+- impose no composition rules and no periodic expiry, forcing a change
+  only on evidence of compromise.
+
+**Why**: NIST SP 800-63B requires a 15-character minimum for single-factor
+passwords and permits 8 only within multi-factor authentication[^32]. An
+undifferentiated `min 8` reads as an endorsement of an eight-character
+single-factor password. The 64-character figure is a floor on what
+verifiers should accept, not a cap that must be imposed; capping shorter
+than that breaks password managers and passphrases. Composition rules and
+scheduled rotation are prohibited rather than merely discouraged, because
+both push users towards predictable variants.
 
 ### OpenAPI Specification
 
@@ -2532,20 +3034,25 @@ pub async fn create_app(config: Config) -> anyhow::Result<Router> {
     let app = Router::new()
         .merge(health::routes())
         .nest("/api", api_routes())
-        // Swagger UI at /swagger-ui
+        // Swagger UI at /swagger-ui, serving the document at the URL below
         .merge(SwaggerUi::new("/swagger-ui")
             .url("/api-docs/openapi.json", ApiDoc::openapi()))
         // ReDoc at /redoc
         .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
-        // Raw OpenAPI JSON
-        .route("/api-docs/openapi.json", get(|| async {
-            Json(ApiDoc::openapi())
-        }))
         .with_state(state);
 
     Ok(app)
 }
 ```
+
+**Why**: `SwaggerUi::url` registers a `GET` route that serves the supplied
+document at that path, so adding `.route("/api-docs/openapi.json", get(...))`
+registers a second handler for the same method and path. Axum rejects that
+while the router is assembled: `Overlapping method route. Handler for
+'GET /api-docs/openapi.json' already exists`. Register the document once,
+through Swagger UI or through an explicit route, never both — the
+[router construction test](#router-construction-tests) catches the
+regression before deployment.
 
 ### Error Response Schemas
 
@@ -2671,3 +3178,5 @@ annotations. This keeps documentation in sync with code and catches mismatches a
 [^30]: [unleash-api-client](https://github.com/Unleash/unleash-rust-sdk) - Unleash feature flag client SDK for Rust
 
 [^31]: [utoipa](https://github.com/juhaku/utoipa) - Auto-generate OpenAPI documentation from Rust code with compile-time validation
+
+[^32]: [NIST SP 800-63B, Authenticator and Verifier Requirements](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/#passwordver) - Password length, blocklist, and composition requirements

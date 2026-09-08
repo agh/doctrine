@@ -317,7 +317,7 @@ audit:
 
 ```sql
 CREATE TABLE agent_audit_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID NOT NULL DEFAULT gen_random_uuid(),
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Agent identity
@@ -344,19 +344,42 @@ CREATE TABLE agent_audit_log (
   -- Security
   permission_level VARCHAR(20),
   resources_accessed JSONB,
-  sensitive_data_accessed BOOLEAN DEFAULT FALSE,
+  sensitive_data_accessed BOOLEAN NOT NULL DEFAULT FALSE,
 
-  -- Indexes
-  INDEX idx_agent_id (agent_id),
-  INDEX idx_timestamp (timestamp),
-  INDEX idx_action_type (action_type),
-  INDEX idx_session_id (session_id)
-);
+  -- A unique constraint on a partitioned table MUST contain every
+  -- partition-key column, so the key is (id, timestamp), not id alone
+  PRIMARY KEY (id, timestamp)
+) PARTITION BY RANGE (timestamp);
+
+-- Indexes are separate statements in PostgreSQL. Created on the partitioned
+-- parent, they propagate to every current and future partition.
+CREATE INDEX agent_audit_log_agent_id_idx ON agent_audit_log (agent_id);
+CREATE INDEX agent_audit_log_timestamp_idx ON agent_audit_log (timestamp DESC);
+CREATE INDEX agent_audit_log_action_type_idx ON agent_audit_log (action_type);
+CREATE INDEX agent_audit_log_session_id_idx ON agent_audit_log (session_id);
 
 -- Partition by month for retention
-CREATE TABLE agent_audit_log_2025_01 PARTITION OF agent_audit_log
-  FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE agent_audit_log_2026_09 PARTITION OF agent_audit_log
+  FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+
+-- A default partition keeps an out-of-range insert from being rejected
+CREATE TABLE agent_audit_log_default PARTITION OF agent_audit_log DEFAULT;
 ```
+
+Agents **MUST NOT** apply audit DDL straight to production. Apply it to a
+disposable database first, on the PostgreSQL version you run:
+
+```bash
+docker run -d --name audit-schema-test -e POSTGRES_PASSWORD=test postgres:18
+docker exec -i audit-schema-test psql -U postgres -v ON_ERROR_STOP=1 \
+  < audit-schema.sql
+docker rm -f audit-schema-test
+```
+
+**Why**: MySQL-style inline `INDEX` clauses are not valid PostgreSQL, a
+`PARTITION OF` clause needs a parent declared `PARTITION BY`, and PostgreSQL
+rejects a primary key that omits a partition-key column. All three fail at
+`CREATE TABLE` time, so a migration test catches them before deployment.
 
 ## Querying Audit Logs
 
@@ -441,55 +464,113 @@ ORDER BY success_rate ASC;
 
 ### Hook-Based Logging
 
-Use Claude Code hooks to capture actions:
+Claude Code fires `PostToolUse` after a tool succeeds and `PostToolUseFailure`
+after a tool fails. Both take an array of matcher groups; each group holds an
+array of handlers. Register the same logger on both events:
 
 ```json
 {
   "hooks": {
-    "PostToolCall": {
-      "command": "agent-audit-log",
-      "timeout": 5000
-    }
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-audit-log",
+            "args": [],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-audit-log",
+            "args": [],
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
+**Why**: `PostToolCall` is not a Claude Code event, and an object where an
+array is expected is discarded, so the hook never runs. `timeout` is in
+seconds, not milliseconds. Setting `args` selects exec form, which substitutes
+`${CLAUDE_PROJECT_DIR}` into `command` without shell quoting.
+
+The handler reads one JSON object on stdin. `PostToolUse` supplies
+`tool_response`; `PostToolUseFailure` supplies `error` instead, so the outcome
+**MUST** be derived from `hook_event_name` rather than hard-coded:
+
 ```bash
-#!/bin/bash
-# agent-audit-log - Hook to log tool calls
+#!/usr/bin/env bash
+# agent-audit-log - PostToolUse / PostToolUseFailure hook
+set -euo pipefail
 
-# Receive tool call details from stdin
-TOOL_CALL=$(cat)
+EVENT=$(cat)
 
-# Extract relevant fields
-TOOL_NAME=$(echo "$TOOL_CALL" | jq -r '.tool_name')
-PARAMETERS=$(echo "$TOOL_CALL" | jq -c '.parameters')
-RESULT=$(echo "$TOOL_CALL" | jq -c '.result')
+case "$(jq -r '.hook_event_name' <<<"$EVENT")" in
+  PostToolUse)        STATUS=success ;;
+  PostToolUseFailure) STATUS=failure ;;
+  *)                  exit 0 ;;
+esac
 
-# Log to audit destination
-curl -X POST "${AUDIT_LOG_URL}/log" \
-  -H "Content-Type: application/json" \
-  -d @- <<EOF
-{
-  "timestamp": "$(date -Iseconds)",
-  "agent": {
-    "id": "${AGENT_ID}",
-    "session_id": "${SESSION_ID}"
+# Fields absent from an event serialise as null, not as missing keys
+jq -c --arg status "$STATUS" '{
+  timestamp: (now | todate),
+  agent: {
+    session_id: .session_id,
+    cwd: .cwd,
+    permission_mode: .permission_mode
   },
-  "action": {
-    "type": "tool",
-    "name": "${TOOL_NAME}",
-    "tool": {
-      "name": "${TOOL_NAME}",
-      "parameters": ${PARAMETERS}
-    }
+  action: {
+    type: "tool",
+    name: .tool_name,
+    tool_use_id: .tool_use_id,
+    input: .tool_input
   },
-  "outcome": {
-    "status": "success",
-    "result": ${RESULT}
+  outcome: {
+    status: $status,
+    duration_ms: .duration_ms,
+    result: .tool_response,
+    error: .error
   }
-}
-EOF
+}' <<<"$EVENT" |
+  curl -sS --fail-with-body -X POST "${AUDIT_LOG_URL}/log" \
+    -H "Content-Type: application/json" \
+    --data-binary @-
+```
+
+A failed POST leaves the script with a non-zero status, which Claude Code
+reports as a non-blocking hook error in the transcript instead of silently
+dropping the audit record. Only exit code 2 blocks, and a `PostToolUse` hook
+**MUST NOT** exit 2 for a logging failure: the tool has already run.
+
+### Validating Hook Configuration in CI
+
+`claude doctor` reports rejected settings but still exits 0, so CI **MUST**
+fail on the report text rather than on the exit status:
+
+```bash
+#!/usr/bin/env bash
+# ci-check-claude-settings - fail the build on settings Claude Code rejects
+set -euo pipefail
+
+report=$(claude doctor 2>&1)
+printf '%s\n' "$report"
+
+if printf '%s\n' "$report" | grep -q '^Invalid settings'; then
+  echo "Claude Code rejected part of the settings above" >&2
+  exit 1
+fi
 ```
 
 ### MCP Server for Audit
