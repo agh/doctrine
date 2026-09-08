@@ -38,15 +38,23 @@ repos:
   # =============================================================================
   # Ruby (uncomment if using Ruby)
   # =============================================================================
-  # standardrb ships no .pre-commit-hooks.yaml, so it must run as a local hook
-  # against the project's locked bundle. Pin the version in the Gemfile.
+  # StandardRB ships no .pre-commit-hooks.yaml, so it cannot be used as a
+  # remote hook repository. Run it as a local hook against the version pinned
+  # in your Gemfile and Gemfile.lock:
+  #
+  #   # Gemfile
+  #   group :development, :test do
+  #     gem "standard", "1.56.0"
+  #   end
+  #
   # - repo: local
   #   hooks:
   #     - id: standardrb
-  #       name: StandardRB
-  #       entry: bundle exec standardrb
+  #       name: standardrb
+  #       entry: bundle exec standardrb --fix
   #       language: system
   #       types: [ruby]
+  #       require_serial: true
 
   # =============================================================================
   # Go (uncomment if using Go)

@@ -53,10 +53,10 @@ collections:
     version: ">=6.3.0"
 
   # Monitoring & observability
-  # The Prometheus collection is prometheus.prometheus; there is no
-  # community.prometheus namespace on Galaxy.
+  # The Prometheus collection is published under the `prometheus` namespace;
+  # `community.prometheus` has no releases on Galaxy and cannot be installed.
   - name: prometheus.prometheus
-    version: ">=0.30.1"
+    version: "0.30.1"
 
   - name: community.grafana
     version: ">=2.3.0"
