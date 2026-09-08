@@ -20,7 +20,7 @@ Extends [Google TypeScript Style Guide](google/typescript.html).
 | Coverage | c8[^4] | `c8 vitest` |
 | Complexity | - | via Biome[^1] |
 | Fuzz | - | - |
-| Test perf | Vitest[^5] | `vitest --pool=threads` |
+| Test perf | Vitest[^5] | `vitest doctor` |
 
 ## Linting & Formatting: Biome
 
@@ -36,8 +36,8 @@ plugin ecosystems are required (see ESLint Alternative below).
 - **Native binary**: No JavaScript runtime overhead
 
 ```bash
-# Install
-npm install --save-dev @biomejs/biome
+# Install (exact version)
+npm install --save-dev --save-exact @biomejs/biome@2.5.12
 
 # Initialize config
 npx biome init
@@ -47,20 +47,38 @@ npx biome check --write .
 
 # CI mode
 npx biome ci .
+
+# Update an older configuration after a Biome upgrade
+npx biome migrate --write
 ```
+
+Projects **MUST** pin Biome to an exact version. Biome validates `biome.json`
+against the schema version recorded in `$schema` and rejects unknown keys, so a
+floating install silently pairs a new binary with an old configuration and fails
+the whole run.
 
 ### Configuration (biome.json)
 
+The schema version **MUST** match the installed Biome version. Biome 2 moved
+import sorting out of the linter into the assist actions, so `organizeImports`
+at the top level is now an unknown key and is a fatal configuration error.
+Biome 2.5 also replaced `linter.rules.recommended` with `linter.rules.preset`.
+
 ```json
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": true
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "noExcessiveCognitiveComplexity": {
           "level": "warn",
@@ -93,26 +111,49 @@ npx biome ci .
 
 ### ESLint Alternative
 
-Projects **MAY** use ESLint[^6] for projects requiring extensive plugin ecosystems:
+Projects **MAY** use ESLint[^6] for projects requiring extensive plugin ecosystems.
+
+ESLint 10 removed `.eslintrc.*` support entirely: the only configuration format
+is flat config in `eslint.config.*`. An eslintrc-style object with `parser`,
+`plugins`, `extends`, and `parserOptions` is not read at all, and ESLint exits
+with "couldn't find an eslint.config.* file".
+
+typescript-eslint 8.70.0 declares `peerDependencies.typescript` as
+`>=4.8.4 <6.1.0`, so it **MUST NOT** be installed alongside TypeScript 7.
+Projects that need ESLint **MUST** stay on TypeScript 6.0.3 until
+typescript-eslint publishes a release that accepts TypeScript 7; installing with
+`--force` or `--legacy-peer-deps` produces a parser running against an
+unsupported compiler API.
 
 ```bash
-npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+npm install --save-dev --save-exact \
+  eslint@10.10.0 typescript-eslint@8.70.0 @eslint/js@10.0.1 typescript@6.0.3
 ```
 
-```json
-{
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/strict-type-checked",
-    "plugin:@typescript-eslint/stylistic-type-checked"
-  ],
-  "parserOptions": {
-    "project": true
-  }
-}
+```javascript
+// eslint.config.mjs
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  tseslint.configs.strictTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  { ignores: ['dist/', 'eslint.config.mjs'] },
+);
 ```
+
+`projectService: true` replaces `parserOptions.project`: it lets the parser ask
+the TypeScript project service for each file's program instead of requiring
+every linted file to be listed in a `tsconfig.json` `include`.
 
 ## Type Checking: tsc
 
@@ -170,29 +211,73 @@ decorators natively.
 
 ### Enabling Decorators
 
+TypeScript implements two decorator systems and a project **MUST** choose
+exactly one for the whole program. They are not interoperable.
+
+| Mode | Compiler flags | Decorator signature | Parameter decorators |
+| ---- | -------------- | ------------------- | -------------------- |
+| Standard (TC39, TypeScript 5.0+) | none | `(target, context)` | Not supported |
+| Legacy (experimental) | `experimentalDecorators` | `(target, key, descriptor)` | Supported |
+
+#### Why the modes must be kept apart
+
+`experimentalDecorators` is a program-wide switch, not a per-file opt-in.
+Compiling the standard-decorator examples below under that flag makes the
+compiler reject every one of them with TS1238, TS1240, TS1241, TS1270, and
+TS1271. `emitDecoratorMetadata` **MUST NOT** be enabled outside legacy mode: it
+is only implemented for the experimental system and has no standard equivalent.
+
+Standard decorators (`tsconfig.json`) — no decorator flags at all:
+
 ```json
-// tsconfig.json
 {
   "compilerOptions": {
-    // For TC39 decorators (TypeScript 5.0+)
-    // No flag needed - enabled by default
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true
+  }
+}
+```
 
-    // For legacy/experimental decorators (older frameworks)
+Legacy decorators (`tsconfig.json`) — required by NestJS[^17], TypeORM[^18],
+and Angular[^19]:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   }
 }
 ```
 
+#### Running decorated code under Vitest
+
+Vite[^8] 8's oxc transform implements legacy decorators only, auto-detected from
+`tsconfig.json`. Standard-decorator sources reach Node untransformed and fail
+with `SyntaxError`, so projects on standard decorators **MUST** compile with
+`tsc` before running Vitest[^5]:
+
+```bash
+npx tsc -p tsconfig.json && npx vitest run dist
+```
+
 ### Class Decorators
 
+Standard mode. A class decorator receives the class and a
+`ClassDecoratorContext`, and **MAY** return a replacement class.
+
 ```typescript
-// Modern TC39 decorator (TypeScript 5.0+)
 function Singleton<T extends new (...args: any[]) => object>(
   target: T,
-  context: ClassDecoratorContext
+  _context: ClassDecoratorContext,
 ) {
-  let instance: InstanceType<T>;
+  let instance: InstanceType<T> | undefined;
   return class extends target {
     constructor(...args: any[]) {
       if (instance) return instance;
@@ -204,24 +289,28 @@ function Singleton<T extends new (...args: any[]) => object>(
 
 @Singleton
 class Database {
-  constructor(private url: string) {}
+  constructor(readonly url: string) {}
 }
 
-// Same instance
+// Same instance; the second constructor's arguments are discarded
 const db1 = new Database('postgres://...');
 const db2 = new Database('mysql://...');
 console.log(db1 === db2); // true
+console.log(db2.url); // 'postgres://...'
 ```
 
 ### Method Decorators
 
+Standard mode. Type the wrapper generically so the decorated method keeps its
+signature; `any` erases the return type at every call site.
+
 ```typescript
-function Log(
-  target: any,
-  context: ClassMethodDecoratorContext
+function Log<This, Args extends unknown[], Return>(
+  target: (this: This, ...args: Args) => Return,
+  context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
 ) {
   const methodName = String(context.name);
-  return function (this: any, ...args: any[]) {
+  return function (this: This, ...args: Args): Return {
     console.log(`[${methodName}] called with:`, args);
     const result = target.call(this, ...args);
     console.log(`[${methodName}] returned:`, result);
@@ -237,18 +326,19 @@ class Calculator {
 }
 ```
 
-### Field Decorators
+### Accessor Decorators
+
+Standard mode. Validation **MUST** be applied through an accessor decorator, not
+a field decorator. A field decorator's initialiser runs once, so it cannot see
+any later assignment.
+
+**Don't** — validates only the declared initial value:
 
 ```typescript
 function Validate(min: number, max: number) {
-  return function (
-    target: undefined,
-    context: ClassFieldDecoratorContext
-  ) {
+  return function (_target: undefined, _context: ClassFieldDecoratorContext) {
     return function (initialValue: number): number {
-      if (initialValue < min || initialValue > max) {
-        throw new Error(`Value must be between ${min} and ${max}`);
-      }
+      if (initialValue < min || initialValue > max) throw new Error('out of range');
       return initialValue;
     };
   };
@@ -258,14 +348,56 @@ class Product {
   @Validate(0, 100)
   quantity = 10;
 }
+
+const p = new Product();
+p.quantity = 5000; // accepted: the decorator never runs again
+```
+
+**Do** — `accessor` gives the decorator both `init` and `set`:
+
+```typescript
+function Range(min: number, max: number) {
+  return function <This>(
+    target: ClassAccessorDecoratorTarget<This, number>,
+    context: ClassAccessorDecoratorContext<This, number>,
+  ): ClassAccessorDecoratorResult<This, number> {
+    const name = String(context.name);
+    const check = (value: number): number => {
+      if (!Number.isFinite(value) || value < min || value > max) {
+        throw new RangeError(`${name} must be between ${min} and ${max}`);
+      }
+      return value;
+    };
+    return {
+      get(this: This) {
+        return target.get.call(this);
+      },
+      set(this: This, value: number) {
+        target.set.call(this, check(value));
+      },
+      init: check,
+    };
+  };
+}
+
+class Product {
+  @Range(0, 100) accessor quantity = 10;
+}
+
+const p = new Product();
+p.quantity = 5000; // throws RangeError
 ```
 
 ### Legacy Decorators (NestJS, TypeORM)
 
+These are framework-provided legacy decorators, not standard ones. They **MUST**
+be compiled with the legacy `tsconfig.json` shown above; the standard decorators
+in this guide **MUST NOT** appear in the same program.
+
 ```typescript
-// Legacy experimental decorators for frameworks
+// Requires "experimentalDecorators": true and "emitDecoratorMetadata": true
 import { Controller, Get, Injectable } from '@nestjs/common';
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 // NestJS controller
 @Controller('users')
@@ -280,13 +412,13 @@ class UserController {
 @Entity()
 class User {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  name: string;
+  name!: string;
 }
 
-// Dependency injection
+// Dependency injection: parameter decorators exist only in legacy mode
 @Injectable()
 class UserService {
   constructor(private readonly repo: UserRepository) {}
@@ -295,44 +427,261 @@ class UserService {
 
 ### Decorator Patterns
 
+Standard mode. Cross-cutting decorators change the lifetime and failure
+semantics of every method they wrap, so each one **MUST** state its cache scope,
+key derivation, and error classification explicitly.
+
+#### Memoisation
+
+A memoisation decorator **MUST** scope its cache per instance and **MUST** take
+an explicit key function. A module-level `Map` keyed by `JSON.stringify(args)`
+shares one entry across every instance, so a receiver-dependent method returns
+another object's result; `JSON.stringify` also throws on `BigInt` and cyclic
+arguments and maps `undefined` onto `null`.
+
+A memoised method **MUST NOT** return a single-use value such as a `Response`,
+a `ReadableStream`, or an iterator: the second caller receives an already
+consumed object.
+
 ```typescript
-// Memoization decorator
-function Memoize(
-  target: any,
-  context: ClassMethodDecoratorContext
+function Memoize<This extends object, Args extends unknown[], Return>(
+  keyOf: (...args: Args) => string,
 ) {
-  const cache = new Map<string, any>();
-  return function (this: any, ...args: any[]) {
-    const key = JSON.stringify(args);
-    if (cache.has(key)) return cache.get(key);
-    const result = target.call(this, ...args);
-    cache.set(key, result);
-    return result;
+  return function (
+    target: (this: This, ...args: Args) => Return,
+    _context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
+  ) {
+    const caches = new WeakMap<This, Map<string, Return>>();
+    return function (this: This, ...args: Args): Return {
+      let cache = caches.get(this);
+      if (!cache) {
+        cache = new Map<string, Return>();
+        caches.set(this, cache);
+      }
+      const key = keyOf(...args);
+      if (cache.has(key)) return cache.get(key) as Return;
+      const result = target.call(this, ...args);
+      cache.set(key, result);
+      // A rejected promise must not be cached, or the failure is permanent
+      if (result instanceof Promise) {
+        void result.catch(() => cache.delete(key));
+      }
+      return result;
+    };
   };
 }
+```
 
-// Retry decorator
-function Retry(attempts: number) {
-  return function (target: any, context: ClassMethodDecoratorContext) {
-    return async function (this: any, ...args: any[]) {
-      for (let i = 0; i < attempts; i++) {
+#### Retry
+
+A retry decorator **MUST** retry only classified transient failures on
+idempotent operations, **MUST** back off between attempts, and **MUST** honour
+an `AbortSignal`. Retrying every exception immediately turns a permanent
+`TypeError` into `n` synchronous failures and makes cancellation impossible.
+
+```typescript
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+interface RetryOptions<This> {
+  attempts: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+  isTransient: (error: unknown) => boolean;
+  signal?: (this: This) => AbortSignal | undefined;
+}
+
+function Retry<This, Args extends unknown[], Return>(options: RetryOptions<This>) {
+  return function (
+    target: (this: This, ...args: Args) => Promise<Return>,
+    _context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Promise<Return>>,
+  ) {
+    return async function (this: This, ...args: Args): Promise<Return> {
+      for (let attempt = 1; ; attempt += 1) {
+        const signal = options.signal?.call(this);
+        signal?.throwIfAborted();
         try {
           return await target.call(this, ...args);
-        } catch (e) {
-          if (i === attempts - 1) throw e;
+        } catch (error) {
+          if (attempt >= options.attempts || !options.isTransient(error)) throw error;
+          const backoff = Math.min(options.maxDelayMs, options.baseDelayMs * 2 ** (attempt - 1));
+          await sleep(backoff * (0.5 + Math.random() / 2), signal);
         }
       }
     };
   };
 }
+```
 
-class ApiClient {
-  @Memoize
-  @Retry(3)
-  async fetchUser(id: string) {
-    return await fetch(`/api/users/${id}`);
+#### Composing them
+
+Decorators apply bottom-up, so `@Retry` wraps the method and `@Memoize` caches
+the fully retried result. The method returns parsed data rather than the
+`Response` itself, because a `Response` body can only be read once.
+
+```typescript
+class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
   }
 }
+
+interface User {
+  id: string;
+  name: string;
+}
+
+class ApiClient {
+  readonly #controller = new AbortController();
+
+  @Memoize<ApiClient, [string], Promise<User>>((id) => id)
+  @Retry<ApiClient, [string], User>({
+    attempts: 3,
+    baseDelayMs: 100,
+    maxDelayMs: 2_000,
+    isTransient: (error) => error instanceof HttpError && error.status >= 500,
+    signal() {
+      return this.#controller.signal;
+    },
+  })
+  async fetchUser(id: string): Promise<User> {
+    const response = await fetch(`https://api.example.com/users/${id}`, {
+      signal: this.#controller.signal,
+    });
+    if (!response.ok) throw new HttpError(response.status);
+    return (await response.json()) as User;
+  }
+
+  cancel(): void {
+    this.#controller.abort();
+  }
+}
+```
+
+#### Required tests
+
+These are the cases that distinguish a correct implementation from the
+plausible-looking one it replaces, so a project using these patterns **MUST**
+cover all of them:
+
+```typescript
+import { expect, test } from 'vitest';
+import { Memoize, Product, Retry } from '../patterns.js';
+
+test('accessor decorator validates assignment, not just initialisation', () => {
+  const p = new Product();
+  expect(p.quantity).toBe(10);
+  expect(() => {
+    p.quantity = 500;
+  }).toThrow(RangeError);
+  p.quantity = 50;
+  expect(p.quantity).toBe(50);
+});
+
+class Counter {
+  calls = 0;
+
+  @Memoize<Counter, [string], string>((k) => k)
+  lookup(key: string): string {
+    this.calls += 1;
+    return `${key}:${this.calls}`;
+  }
+}
+
+test('memoisation is per instance', () => {
+  const a = new Counter();
+  const b = new Counter();
+  expect(a.lookup('x')).toBe('x:1');
+  expect(a.lookup('x')).toBe('x:1');
+  expect(a.calls).toBe(1);
+  expect(b.lookup('x')).toBe('x:1');
+  expect(b.calls).toBe(1);
+});
+
+class Flaky {
+  attempts = 0;
+
+  @Memoize<Flaky, [], Promise<string>>(() => 'only')
+  async load(): Promise<string> {
+    this.attempts += 1;
+    if (this.attempts === 1) throw new Error('boom');
+    return 'ok';
+  }
+}
+
+test('a rejected promise is evicted from the cache', async () => {
+  const f = new Flaky();
+  await expect(f.load()).rejects.toThrow('boom');
+  await expect(f.load()).resolves.toBe('ok');
+  expect(f.attempts).toBe(2);
+});
+
+class Transient extends Error {}
+
+class Service {
+  attempts = 0;
+  readonly controller = new AbortController();
+
+  @Retry<Service, [], string>({
+    attempts: 5,
+    baseDelayMs: 1,
+    maxDelayMs: 4,
+    isTransient: (error) => error instanceof Transient,
+    signal() {
+      return this.controller.signal;
+    },
+  })
+  async run(): Promise<string> {
+    this.attempts += 1;
+    if (this.attempts < 3) throw new Transient('retry me');
+    return 'done';
+  }
+
+  @Retry<Service, [], string>({
+    attempts: 5,
+    baseDelayMs: 1,
+    maxDelayMs: 4,
+    isTransient: (error) => error instanceof Transient,
+  })
+  async fatal(): Promise<string> {
+    this.attempts += 1;
+    throw new TypeError('not transient');
+  }
+}
+
+test('retries only classified transient failures', async () => {
+  const s = new Service();
+  await expect(s.run()).resolves.toBe('done');
+  expect(s.attempts).toBe(3);
+});
+
+test('a non-transient error is not retried', async () => {
+  const s = new Service();
+  await expect(s.fatal()).rejects.toThrow(TypeError);
+  expect(s.attempts).toBe(1);
+});
+
+test('an aborted signal stops the retry loop', async () => {
+  const s = new Service();
+  s.controller.abort(new Error('cancelled'));
+  await expect(s.run()).rejects.toThrow('cancelled');
+  expect(s.attempts).toBe(0);
+});
 ```
 
 ## Declaration Files
@@ -363,10 +712,16 @@ Declaration files (`.d.ts`) describe the shape of existing JavaScript code.
 
 ### Writing Declaration Files
 
-```typescript
-// types/mylib.d.ts
+Ambient module declarations and global augmentations **MUST NOT** share a file.
+A `declare global` block is only legal when it is directly nested in an external
+module — a file with a top-level `import` or `export`. Combining it with a
+script-style `declare module 'mylib'` block fails with TS2669, and adding
+`export {}` to fix that would silently turn the `mylib` declaration into an
+augmentation of an existing module instead of a new one.
 
-// Module declaration
+A script-style ambient module declaration, `types/mylib.d.ts`:
+
+```typescript
 declare module 'mylib' {
   export function greet(name: string): string;
   export const VERSION: string;
@@ -385,8 +740,14 @@ declare module 'mylib' {
   // Default export
   export default function init(config: Config): Client;
 }
+```
 
-// Ambient declarations for global variables
+Global augmentation in its own external-module file, `types/globals.d.ts`. The
+`export {}` is what makes the file a module and the `declare global` block legal:
+
+```typescript
+export {};
+
 declare global {
   interface Window {
     myApp: {
@@ -398,8 +759,15 @@ declare global {
   const __DEV__: boolean;
   const __VERSION__: string;
 }
+```
 
-// Module augmentation (extending existing types)
+Module augmentation in its own external-module file, `types/express.d.ts`. The
+`import` both makes the file a module and pins the augmentation to the real
+package:
+
+```typescript
+import 'express';
+
 declare module 'express' {
   interface Request {
     userId?: string;
@@ -410,8 +778,11 @@ declare module 'express' {
 
 ### Package Type Declarations
 
+`package.json` is strict JSON: it **MUST NOT** contain comments, so the filename
+label stays out of the file. The following is the complete contents of
+`package.json`:
+
 ```json
-// package.json
 {
   "name": "my-package",
   "main": "./dist/index.js",
@@ -502,12 +873,17 @@ environment and bundler requirements.
 | -------- | -------- | ---------------- |
 | Node16/NodeNext | Modern Node.js (ESM + CJS) | `"moduleResolution": "NodeNext"` |
 | Bundler | Webpack, Vite, esbuild | `"moduleResolution": "Bundler"` |
-| Node10 (legacy) | Older Node.js CJS only | `"moduleResolution": "Node"` |
+
+TypeScript 7 removed `moduleResolution: "node10"` together with its `"Node"`
+alias, and rejects the option with TS5108. Projects targeting Node **MUST** use
+`NodeNext`; projects whose modules are resolved by a bundler **MUST** use
+`Bundler`.
 
 ### Modern Node.js (Recommended)
 
+`tsconfig.json` for Node.js 16+:
+
 ```json
-// tsconfig.json for Node.js 16+
 {
   "compilerOptions": {
     "module": "NodeNext",
@@ -529,8 +905,9 @@ import { z } from 'zod';
 
 ### Bundler Mode (Vite, Webpack)
 
+`tsconfig.json` for bundler environments:
+
 ```json
-// tsconfig.json for bundler environments
 {
   "compilerOptions": {
     "module": "ESNext",
@@ -553,34 +930,62 @@ import data from './data.json';
 
 ### Path Aliases
 
+`paths` only affects how **TypeScript** resolves a specifier. `tsc` emits the
+specifier unchanged, so an alias **MUST NOT** be used unless something in the
+pipeline implements the identical mapping at run time. Emitting
+`import { formatDate } from '@utils/date.js'` and running it under Node fails
+with `ERR_MODULE_NOT_FOUND`.
+
+TypeScript 7 also removed `baseUrl` (TS5102) and now requires every `paths`
+target to be relative to the config file (TS5090).
+
+**Bundler applications** — declare the alias twice, once for the type checker
+and once for the bundler, and keep the two in step:
+
 ```json
-// tsconfig.json
 {
   "compilerOptions": {
-    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
     "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@utils/*": ["src/utils/*"]
+      "@/*": ["./src/*"],
+      "@utils/*": ["./src/utils/*"]
     }
   }
 }
 ```
 
 ```typescript
-// Use path aliases instead of relative paths
-import { Button } from '@components/Button';
-import { formatDate } from '@utils/date';
-import { config } from '@/config';
+// vite.config.ts
+import { fileURLToPath, URL } from 'node:url';
+import { defineConfig } from 'vite';
 
-// Instead of:
-import { Button } from '../../../components/Button';
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@utils': fileURLToPath(new URL('./src/utils', import.meta.url)),
+    },
+  },
+});
 ```
+
+**Node applications** — use package subpath imports instead. Node implements
+`#`-prefixed specifiers natively, and TypeScript resolves them through the same
+`package.json` field, so no second mapping can drift:
+
+```typescript
+import { formatDate } from '#utils/date';
+```
+
+See [Subpath Imports](#subpath-imports) below for the matching `package.json`.
 
 ### Package.json Exports
 
+The following is the complete contents of `package.json`:
+
 ```json
-// package.json
 {
   "name": "my-lib",
   "type": "module",
@@ -605,24 +1010,60 @@ import { Button } from '../../../components/Button';
 
 ### Subpath Imports
 
+Import targets **MUST** point at the emitted files, not the sources.
+TypeScript maps the emitted path back to its input through `outDir` and
+`rootDir`, so both the compiler and Node resolve the same specifier.
+
+A conditional target **MUST** end in a `"default"` branch. `development` and
+`production` are user conditions: Node only applies them when they are passed
+with `node --conditions`, and setting `NODE_ENV` has no effect on package
+resolution. Without a `default`, `#config` fails with
+`ERR_PACKAGE_IMPORT_NOT_DEFINED`.
+
+The following is the complete contents of `package.json`:
+
 ```json
-// package.json
 {
+  "name": "my-app",
+  "type": "module",
   "imports": {
-    "#utils/*": "./src/utils/*.js",
-    "#components/*": "./src/components/*.js",
+    "#utils/*": "./dist/utils/*.js",
+    "#components/*": "./dist/components/*.js",
     "#config": {
-      "development": "./src/config/dev.js",
-      "production": "./src/config/prod.js"
+      "development": "./dist/config/dev.js",
+      "default": "./dist/config/prod.js"
     }
+  }
+}
+```
+
+Declare the same user condition for the type checker with `customConditions`,
+which requires `moduleResolution: "NodeNext"` or `"Bundler"`:
+
+```json
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "customConditions": ["development"]
   }
 }
 ```
 
 ```typescript
 // Use subpath imports (private to package)
+import config from '#config';
 import { logger } from '#utils/logger';
-import { Button } from '#components/Button';
+```
+
+```bash
+# Production: resolves the "default" branch
+node dist/main.js
+
+# Development: the condition must be requested explicitly
+node --conditions=development dist/main.js
 ```
 
 ### Module Resolution Debugging
@@ -713,19 +1154,28 @@ Projects **MUST** use Vitest[^5] as the test runner for TypeScript projects.
 
 ```bash
 # Install
-npm install --save-dev vitest
+npm install --save-dev --save-exact vitest@5.0.0
 
 # Run
 npx vitest
 
-# Parallel (threads)
-npx vitest --pool=threads
-
 # Watch mode
 npx vitest --watch
+
+# Report the environment and configuration Vitest actually resolved
+npx vitest doctor
 ```
 
 ### Configuration
+
+Vitest 5 removed `poolOptions`. Worker concurrency is now controlled by the
+top-level `maxWorkers` and `fileParallelism` options.
+
+The default pool is `forks`, which isolates each test file in its own child
+process. `threads` is still supported and is faster for CPU-bound suites, but it
+shares one process, so a test that mutates global state or leaks a native handle
+can corrupt unrelated files. Projects **MUST NOT** switch pools without a
+measurement from `vitest doctor` or a timed comparison showing the gain.
 
 ```typescript
 // vitest.config.ts
@@ -734,26 +1184,25 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     globals: true,
-    pool: 'threads',
-    poolOptions: {
-      threads: {
-        minThreads: 1,
-        maxThreads: 4,
-      },
-    },
+    // 'forks' is the default; measure before overriding it
+    pool: 'forks',
+    maxWorkers: 4,
+    fileParallelism: true,
   },
 });
 ```
 
 ## Pre-commit Configuration
 
+The hook repository is tagged in lockstep with the Biome[^1] release, so `rev`
+**MUST** match the pinned `@biomejs/biome` version:
+
 ```yaml
 repos:
   - repo: https://github.com/biomejs/pre-commit
-    rev: v0.6.0
+    rev: v2.5.12
     hooks:
       - id: biome-check
-        additional_dependencies: ['@biomejs/biome@1.9.4']
 ```
 
 ## CI Pipeline
@@ -937,16 +1386,68 @@ test('rollback on conflict', async () => {
 
 ## Reliability & Resilience Testing
 
+Node's `fetch` has no origin, so a relative specifier such as `/api/data`
+rejects with `TypeError: Failed to parse URL` before any request is made. Tests
+in the default Node environment **MUST** use an absolute URL and **MUST**
+install a request mock, otherwise an assertion on cancellation or on a response
+body passes or fails for the wrong reason.
+
+**MSW server lifecycle** (shared by the tests below):
+
+```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    setupFiles: ['./test/setup.ts'],
+  },
+});
+```
+
+```typescript
+// test/server.ts
+import { setupServer } from 'msw/node';
+
+export const server = setupServer();
+```
+
+```typescript
+// test/setup.ts
+import { afterAll, afterEach, beforeAll } from 'vitest';
+import { server } from './server.js';
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+```
+
 **AbortController**:
 
 ```typescript
-test('cancellable fetch', async () => {
+import { delay, http, HttpResponse } from 'msw';
+import { expect, test } from 'vitest';
+import { server } from './server.js';
+
+const BASE_URL = 'https://api.example.test';
+
+test('cancelling an in-flight request rejects with AbortError', async () => {
+  server.use(
+    http.get(`${BASE_URL}/data`, async () => {
+      await delay('infinite');
+      return HttpResponse.json({});
+    }),
+  );
   const controller = new AbortController();
-  const promise = fetch('/api/data', { signal: controller.signal });
+  const promise = fetch(`${BASE_URL}/data`, { signal: controller.signal });
   controller.abort();
-  await expect(promise).rejects.toThrow('aborted');
+  await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
 });
 ```
+
+Assert on `name: 'AbortError'` rather than on message text: the message differs
+between runtimes and between an explicit `abort()` and a timeout.
 
 **Timeout and retry**:
 
@@ -964,14 +1465,13 @@ test('retries on failure', async () => {
 });
 ```
 
-**Network error simulation**:
+**Network error simulation**: MSW[^21] produces a Fetch network error with
+`HttpResponse.error()`. There is no `HttpResponse.networkError()`.
 
 ```typescript
 test('handles network errors', async () => {
-  server.use(
-    http.get('/api/data', () => HttpResponse.networkError())
-  );
-  await expect(fetchData()).rejects.toThrow();
+  server.use(http.get(`${BASE_URL}/data`, () => HttpResponse.error()));
+  await expect(fetch(`${BASE_URL}/data`)).rejects.toThrow(TypeError);
 });
 ```
 
@@ -1018,13 +1518,19 @@ steps:
 
 ## Internationalization Testing
 
-**UTF-8 handling** (native):
+**UTF-8 handling** (native): `String.prototype.length` counts UTF-16 code
+units, so the astral-plane 🌍 counts as two. Iteration yields code points, and
+neither figure matches user-perceived characters — combining marks, emoji
+sequences, and Hangul jamo all span several code points. Use `Intl.Segmenter`
+whenever the answer is meant to be "how many characters would a reader see".
 
 ```typescript
 test('handles unicode correctly', () => {
   const text = '你好世界 🌍';
-  expect(text.length).toBe(6); // Code units
+  expect(text.length).toBe(7); // UTF-16 code units: 🌍 is a surrogate pair
   expect([...text].length).toBe(6); // Code points
+  const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+  expect([...segmenter.segment(text)].length).toBe(6); // Grapheme clusters
 });
 ```
 
@@ -1077,13 +1583,22 @@ test('validates user data', () => {
 });
 ```
 
-**API contract testing**:
+**API contract testing**: the request **MUST** be mocked and the URL absolute,
+or the test fails on URL parsing before the schema is ever exercised.
 
 ```typescript
 test('API response matches schema', async () => {
-  const response = await fetch('/api/users/1');
-  const data = await response.json();
-  expect(() => UserSchema.parse(data)).not.toThrow();
+  server.use(
+    http.get(`${BASE_URL}/users/1`, () =>
+      HttpResponse.json({ email: 'user@example.com', age: 25 }),
+    ),
+  );
+  const response = await fetch(`${BASE_URL}/users/1`);
+  expect(response.ok).toBe(true);
+  expect(UserSchema.parse(await response.json())).toEqual({
+    email: 'user@example.com',
+    age: 25,
+  });
 });
 ```
 
@@ -1139,6 +1654,7 @@ test.each([
 [^18]: [TypeORM](https://typeorm.io/) - ORM for TypeScript and JavaScript
 [^19]: [Angular](https://angular.io/) - Platform for building web applications
 [^20]: [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) - Repository for high-quality TypeScript type definitions
+[^21]: [MSW](https://mswjs.io/) - API mocking library for browser and Node.js
 
 ## See Also
 
