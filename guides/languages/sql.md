@@ -610,4 +610,4 @@ CREATE TABLE shipments (
 
 ## See Also
 
-- [Testing Guide](../testing.md) - Best practices for testing SQL queries and database interactions
+- [Testing Guide](../process/testing.md) - Best practices for testing SQL queries and database interactions

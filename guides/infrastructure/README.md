@@ -15,11 +15,12 @@ Style guides for operating systems, infrastructure-as-code, and container orches
 
 | Service | Guide | Description |
 | ------- | ----- | ----------- |
+| Overview | [services/README.md](services/README.md) | Service index, maturity and roadmap |
 | SSH | [services/ssh.md](services/ssh.md) | SSH server hardening |
-| NTP | [services/ntp.md](services/ntp.md) | Time synchronization with chrony |
-| DNS | [services/dns.md](services/dns.md) | Resolver and local DNS |
-| Firewall | [services/nftables.md](services/nftables.md) | nftables firewall configuration |
-| Logging | [services/logging.md](services/logging.md) | Centralized logging |
+| NTP | [services/ntp.md](services/ntp.md) | Time synchronisation with chrony (draft) |
+| DNS | [services/dns.md](services/dns.md) | Resolver and local DNS (draft) |
+| Firewall | [services/nftables.md](services/nftables.md) | nftables firewall configuration (draft) |
+| Logging | [services/logging.md](services/logging.md) | Centralised logging (draft) |
 
 ## Infrastructure as Code
 
