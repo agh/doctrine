@@ -1,0 +1,59 @@
+# Dependabot configuration for Doctrine
+#
+# Two ecosystems are live here:
+#   github-actions  the action pins in .github/workflows/
+#   npm             the documentation toolchain in package.json
+#
+# Updates are grouped so a routine week produces one pull request per
+# ecosystem rather than one per dependency. Majors stay ungrouped: they need
+# a migration review, which is exactly what a separate pull request affords.
+#
+# Note: Dependabot only scans .github/workflows/. The downstream templates in
+# configs/github/workflows/ are NOT updated automatically — refresh their SHA
+# pins by hand whenever the pins here change.
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'ci'
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    commit-message:
+      prefix: 'chore'
+      prefix-development: 'chore'
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      doc-tools-minor-patch:
+        applies-to: version-updates
+        dependency-type: development
+        update-types:
+          - minor
+          - patch

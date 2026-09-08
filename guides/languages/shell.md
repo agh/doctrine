@@ -7,7 +7,7 @@ The key words "**MUST**", "**MUST NOT**", "**REQUIRED**", "**SHALL**",
 and "**OPTIONAL**" in this document are to be interpreted as described in
 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [Google Shell Style Guide](google/shell.md)[^1].
+Extends [Google Shell Style Guide](../../reference/google/shell.md)[^1].
 
 ## Quick Reference
 
@@ -521,9 +521,9 @@ jobs:
 
 ## See Also
 
-- [CI Guide](../ci.md) - Comprehensive CI/CD pipeline configuration
-- [Google Shell Style Guide](google/shell.md) - Extended style guide
-- [Testing Guide](../testing.md) - Testing practices and patterns
+- [CI Guide](../process/ci.md) - Comprehensive CI/CD pipeline configuration
+- [Google Shell Style Guide](../../reference/google/shell.md) - Extended style guide
+- [Testing Guide](../process/testing.md) - Testing practices and patterns
 
 ## References
 
