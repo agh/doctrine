@@ -8,7 +8,7 @@ interpreted as described in [RFC 2119][rfc2119].
 
 [rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
-Extends [Python style guide](python.md) with Django-specific conventions from
+Extends [Python style guide](../languages/python.md) with Django-specific conventions from
 [Django coding style](https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/coding-style/).
 
 ## Quick Reference
@@ -3105,9 +3105,9 @@ def test_feature_flag_percentage_rollout():
 
 ## See Also
 
-- [Python Guide](../python.md) - Base Python conventions and tooling
-- [Testing Guide](../testing.md) - General testing principles and patterns
-- [CI Guide](../ci.md) - Continuous integration best practices
+- [Python Guide](../languages/python.md) - Base Python conventions and tooling
+- [Testing Guide](../process/testing.md) - General testing principles and patterns
+- [CI Guide](../process/ci.md) - Continuous integration best practices
 
 ## References
 
