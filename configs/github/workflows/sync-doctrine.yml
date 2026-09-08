@@ -1,0 +1,193 @@
+# Doctrine Config Sync — downstream template
+#
+# TEMPLATE. This file does not run in Doctrine itself: it lives outside
+# .github/workflows/ so GitHub cannot schedule it here. Copy it into your own
+# project to keep Doctrine's agent and command definitions up to date.
+#
+# Install:
+#   1. Copy to .github/workflows/sync-doctrine.yml in your project.
+#   2. Review SYNC_PATHS below — the defaults suit a Claude Code project.
+#   3. Enable "Allow GitHub Actions to create and approve pull requests" in
+#      Settings > Actions > General. Without it, create-pull-request fails.
+#   4. Optionally set DOCTRINE_SYNC_TOKEN if you need the pull request to
+#      trigger your own CI; GITHUB_TOKEN-authored pull requests deliberately
+#      do not.
+#
+# See configs/github/README.md for the full adoption notes.
+
+name: Sync Doctrine Configs
+
+on:
+  schedule:
+    # Weekly on Monday at 09:00 UTC.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview changes without creating a pull request'
+        required: false
+        default: false
+        type: boolean
+
+# Least privilege at the workflow level; the job widens only what it needs.
+permissions:
+  contents: read
+
+env:
+  DOCTRINE_REPO: agh/doctrine
+  DOCTRINE_BRANCH: main
+  # source:destination, one per line. Sources are paths inside Doctrine.
+  # Directories are mirrored exactly with rsync --delete, so anything removed
+  # upstream is removed locally too. Do not point a destination at a directory
+  # that also holds project-specific files.
+  SYNC_PATHS: |
+    agents:.claude/agents
+    commands:.claude/commands
+    configs/claude/settings.json:.claude/settings.json
+
+jobs:
+  sync:
+    name: Mirror Doctrine configuration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout Doctrine
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.DOCTRINE_REPO }}
+          ref: ${{ env.DOCTRINE_BRANCH }}
+          path: .doctrine-upstream
+          persist-credentials: false
+
+      - name: Sync configs
+        id: sync
+        run: |
+          set -euo pipefail
+
+          # Read the upstream version before the checkout is removed, so the
+          # commit message cannot say "unknown".
+          version="$(cat .doctrine-upstream/VERSION 2>/dev/null || echo unknown)"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+          while IFS= read -r mapping; do
+            [ -z "${mapping}" ] && continue
+
+            src="${mapping%%:*}"
+            dest="${mapping##*:}"
+            src_path=".doctrine-upstream/${src}"
+
+            if [ ! -e "${src_path}" ]; then
+              echo "::warning::source not found upstream: ${src}"
+              continue
+            fi
+
+            mkdir -p "$(dirname "${dest}")"
+
+            if [ -d "${src_path}" ]; then
+              # --archive preserves modes and symlinks, --delete removes files
+              # dropped upstream, and the trailing slashes copy contents rather
+              # than nesting the directory. Dotfiles come along automatically:
+              # rsync has no glob to forget them, unlike `cp -r src/*`.
+              mkdir -p "${dest}"
+              rsync --archive --delete "${src_path}/" "${dest}/"
+            else
+              rsync --archive "${src_path}" "${dest}"
+            fi
+
+            echo "synced: ${src} -> ${dest}"
+          done <<< "${SYNC_PATHS}"
+
+          rm -rf .doctrine-upstream
+
+          # git status --porcelain reports additions, modifications *and*
+          # deletions, which a diff of tracked files alone would miss.
+          changed="$(git status --porcelain)"
+          if [ -n "${changed}" ]; then
+            echo "changes=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changes=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+          {
+            echo 'report<<SYNC_REPORT_EOF'
+            echo "${changed:-No changes.}"
+            echo 'SYNC_REPORT_EOF'
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Dry run summary
+        # workflow_dispatch delivers a real Boolean, so compare against true
+        # rather than the string 'true'. On a scheduled run inputs.dry_run is
+        # null and this step is skipped.
+        if: inputs.dry_run == true
+        run: |
+          {
+            echo '## Doctrine sync — dry run'
+            echo
+            echo "Upstream version: \`${{ steps.sync.outputs.version }}\`"
+            echo
+            if [ "${{ steps.sync.outputs.changes }}" = 'true' ]; then
+              echo 'A pull request would be opened with these changes:'
+              echo
+              echo '```'
+              echo "${{ steps.sync.outputs.report }}"
+              echo '```'
+            else
+              echo 'No changes detected.'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          # A dry run must not mutate anything, including the workspace.
+          # Restore tracked files, then discard only the untracked files under
+          # the sync destinations — never a blanket `git clean -fd`, which
+          # would also delete a developer's unrelated untracked work.
+          git checkout -- .
+          while IFS= read -r mapping; do
+            [ -z "${mapping}" ] && continue
+            git clean -fdq -- "${mapping##*:}" 2>/dev/null || true
+          done <<< "${SYNC_PATHS}"
+
+      - name: Create pull request
+        if: steps.sync.outputs.changes == 'true' && inputs.dry_run != true
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.DOCTRINE_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: sync Doctrine configs to ${{ steps.sync.outputs.version }}
+
+            Mirrors ${{ env.DOCTRINE_REPO }}@${{ env.DOCTRINE_BRANCH }} into the
+            paths listed in SYNC_PATHS.
+          title: 'chore: sync Doctrine configs to ${{ steps.sync.outputs.version }}'
+          body: |
+            ## Doctrine config sync
+
+            Mirrors agent and command definitions from
+            [${{ env.DOCTRINE_REPO }}](https://github.com/${{ env.DOCTRINE_REPO }}).
+
+            - Upstream version: `${{ steps.sync.outputs.version }}`
+            - Source: `${{ env.DOCTRINE_REPO }}@${{ env.DOCTRINE_BRANCH }}`
+
+            Directories are mirrored with `rsync --archive --delete`, so files
+            removed upstream are removed here as well.
+
+            ### Changes
+
+            ```
+            ${{ steps.sync.outputs.report }}
+            ```
+
+            ### Before merging
+
+            - Confirm no project-specific overrides were overwritten.
+            - Exercise the agents and commands you rely on.
+            - Review any permission or hook changes in `settings.json`.
+          branch: chore/sync-doctrine
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
