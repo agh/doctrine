@@ -1,11 +1,16 @@
-// markdownlint-cli2 configuration.
-//
-// Rule configuration stays in .markdownlint.json, which this tool reads
-// automatically. This file exists only to make .markdownlintignore effective:
-// markdownlint-cli2 does not read .markdownlintignore the way markdownlint-cli
-// did (see node_modules/markdownlint-cli2/README.md, "markdownlint-cli"
-// differences), but its `gitignore` option accepts a glob naming the ignore
-// files to honour.
 {
-  "gitignore": ".markdownlintignore"
+  // Rule configuration lives in .markdownlint.json; this file adds the
+  // markdownlint-cli2 options that .markdownlint.json cannot express.
+  "config": {
+    "extends": ".markdownlint.json"
+  },
+  // reference/ holds verbatim third-party payloads. They are never linted and
+  // never auto-fixed: commit b6f870a ran markdownlint --fix over them and
+  // destroyed 474 list markers in the vendored Google guides. Ignoring them
+  // here means a bare `markdownlint-cli2 --fix "**/*.md"` cannot repeat that.
+  // See reference/ERRATA.md and scripts/check_vendored_payloads.py.
+  "ignores": [
+    "node_modules/**",
+    "reference/**"
+  ]
 }
