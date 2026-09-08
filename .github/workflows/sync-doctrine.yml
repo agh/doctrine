@@ -24,13 +24,13 @@ on:
         type: boolean
 
 env:
-  DOCTRINE_REPO: welshwandering/doctrine
+  DOCTRINE_REPO: agh/doctrine
   DOCTRINE_BRANCH: main
   # Customize these paths for your project
   SYNC_PATHS: |
     configs/claude/settings.json:.claude/settings.json
-    configs/claude/agents:.claude/agents
-    configs/claude/commands:.claude/commands
+    agents:.claude/agents
+    commands:.claude/commands
 
 jobs:
   sync:
