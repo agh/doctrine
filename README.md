@@ -280,3 +280,31 @@ style guides are licensed under CC-BY 3.0.
 - [Shopify](reference/shopify/) - Ruby
 - [Holywell](reference/holywell/) - SQL
 - [Rust API Guidelines](reference/rust/) - Rust
+
+---
+
+## Licence
+
+Doctrine's own guides, configuration files and agent definitions are licensed
+under the [MIT Licence](LICENSE), Copyright (c) 2026 Alex Howells.
+
+Everything under `reference/` is third-party material and is **NOT** covered
+by that grant. Each vendored source keeps its own licence:
+
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) records every source, its
+  licence and licence URL, what Doctrine changed, and the attribution that
+  **MUST** travel with the material.
+- Licence texts sit next to the material they cover, in
+  `reference/<vendor>/LICENSE*` and `reference/security/LICENSES/`.
+- Machine-readable licence fields for the security data are in
+  [reference/security/manifest.json](reference/security/manifest.json).
+
+Two sources restrict commercial use and **MUST** be excluded from commercial
+redistribution unless permission is obtained: the CIS Critical Security
+Controls in `reference/security/cis/` (CC BY-NC-ND 4.0, no derivatives) and
+the JA4+ variant material in `reference/security/fingerprints/` (FoxIO
+License 1.1, non-commercial). `reference/holywell/` is CC BY-SA 4.0 and
+carries a ShareAlike obligation.
+
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) is adapted from the Contributor
+Covenant 3.0 and is licensed under CC BY-SA 4.0, not MIT.
