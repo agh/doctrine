@@ -6,6 +6,23 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
 interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
+## Guides in This Section
+
+| Guide | Covers |
+| ----- | ------ |
+| [ai-workflows.md](./ai-workflows.md) | Hero Flow, TDD/3-way compare, visual iteration, long-running tasks |
+| [claude.md](./claude.md) | Anthropic Claude: model selection, API patterns, extended thinking |
+| [claude-code.md](./claude-code.md) | Claude Code CLI: hooks, permissions, subagents, commands, MCP |
+| [openai.md](./openai.md) | OpenAI GPT and Codex: API patterns, structured output, cost control |
+| [gemini.md](./gemini.md) | Google Gemini: model selection, function calling, long context |
+| [local-llms.md](./local-llms.md) | Self-hosted models: Ollama, vLLM, Docker Model Runner |
+| [agents-md.md](./agents-md.md) | AGENTS.md project instruction files and tool compatibility |
+| [code-agents.md](./code-agents.md) | Code agent family: review, performance, accessibility, API, tests |
+| [security-agents.md](./security-agents.md) | Security agent family: threat modelling, compliance, detection |
+| [system-agents.md](./system-agents.md) | System agent family: Docker, Ansible, Linux, networking, storage |
+| [release-manager-agent.md](./release-manager-agent.md) | Release automation, quality gates, changelog generation |
+| [security.md](./security.md) | LLM security: prompt injection, data handling, supply chain |
+
 ## Table of Contents
 
 1. [Introduction](#introduction)
@@ -3243,25 +3260,32 @@ Documentation workflows integrate with GitHub Actions:
 
 ### Configuration
 
-Agents are configured in `configs/claude/agents/`:
+Agents live in `agents/` and slash commands in `commands/` at the repository
+root; `configs/claude/` holds Claude Code settings and skills:
 
 ```text
-configs/claude/
+doctrine/
 ├── agents/
-│   ├── doc-architect.md   # Documentation planning
-│   ├── doc-writer.md      # Documentation generation
-│   ├── doc-reviewer.md    # Documentation review
-│   ├── doc-sync.md        # Staleness detection
-│   └── doc-publisher.md   # Multi-format output
+│   └── docs/
+│       ├── architect.md       # Documentation planning
+│       ├── writer.md          # Documentation generation
+│       ├── reviewer.md        # Documentation review
+│       ├── sync.md            # Staleness detection
+│       └── publisher.md       # Multi-format output
 ├── commands/
-│   ├── doc.md             # /doc command
-│   ├── doc-plan.md        # /doc-plan command
-│   ├── doc-review.md      # /doc-review command
-│   ├── doc-sync.md        # /doc-sync command
-│   ├── doc-publish.md     # /doc-publish command
-│   └── doc-status.md      # /doc-status command
-└── settings.json          # Claude Code configuration
+│   ├── doc.md                 # /doc command
+│   ├── doc-plan.md            # /doc-plan command
+│   ├── doc-review.md          # /doc-review command
+│   ├── doc-sync.md            # /doc-sync command
+│   ├── doc-publish.md         # /doc-publish command
+│   └── doc-status.md          # /doc-status command
+└── configs/
+    └── claude/
+        └── settings.json      # Claude Code configuration
 ```
+
+See [Syncing from Doctrine](./claude-code.md#syncing-from-doctrine) for
+installing these into a project's `.claude/` directory.
 
 ## See Also
 

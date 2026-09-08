@@ -6,7 +6,7 @@ model: sonnet
 
 # Test Writer: Rust Module
 
-> [Test Writer Agent](../test-writer.md) > Rust
+> [Test Writer Agent](../code/test-writer.md) > Rust
 
 Rust-specific guidance for test generation.
 
@@ -395,5 +395,5 @@ criterion_main!(benches);
 
 ## See Also
 
-- [Rust Style Guide](../../../../guides/languages/rust.md)
-- [Testing Guide](../../../../guides/process/testing.md)
+- [Rust Style Guide](rust.md)
+- [Testing Guide](../../guides/process/testing.md)
