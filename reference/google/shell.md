@@ -1314,7 +1314,7 @@ Examples:
 # Prefer this:
 addition="$(( X + Y ))"
 substitution="${string/#foo/bar}"
-if [[ "${string}" =~ foo:([0-9]+) ]]; then
+if [[ "${string}" =~ foo:(\d+) ]]; then
   extraction="${BASH_REMATCH[1]}"
 fi
 ```

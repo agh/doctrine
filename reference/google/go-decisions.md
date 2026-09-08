@@ -144,6 +144,7 @@ See also: [Go blog post about package names](https://go.dev/blog/package-names).
 *   Short (usually one or two letters in length)
 *   Abbreviations for the type itself
 *   Applied consistently to every receiver for that type
+*   Not an underscore; omit the name if it is unused
 
 Long Name                   | Better Name
 --------------------------- | -------------------------
@@ -2718,13 +2719,15 @@ Exceptions are:
     the generated server type, which implements `grpc.ServerStream`. See
     [gRPC Generated Code documentation](https://grpc.io/docs/languages/go/generated-code/).
 
-*   In entrypoint functions (see below for examples of such functions), use
-    [`context.Background()`] or, for tests,
-    [`tb.Context()`](https://pkg.go.dev/testing#TB.Context).
+*   In test functions (e.g. `TestXXX`, `BenchmarkXXX`, `FuzzXXX`), where the
+    context comes from
+    [`(testing.TB).Context()`](https://pkg.go.dev/testing#TB.Context).
+
+*   In other entrypoint functions (see below for examples of such functions),
+    use [`context.Background()`].
 
     *   In binary targets: `main`
     *   In general purpose code and libraries: `init`
-    *   In tests: `TestXXX`, `BenchmarkXXX`, `FuzzXXX`
 
 > **Note**: It is very rare for code in the middle of a callchain to require
 > creating a base context of its own using [`context.Background()`]. Always
