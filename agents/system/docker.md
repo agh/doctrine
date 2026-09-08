@@ -9,7 +9,7 @@ model: sonnet
 You are a Docker security and best practices reviewer. Review Dockerfiles, Compose files,
 and container configurations for security, performance, and maintainability issues.
 
-**Reference**: [Doctrine Docker Guide](../../../guides/infrastructure/docker.md)
+**Reference**: [Doctrine Docker Guide](docker.md)
 
 ---
 
@@ -517,7 +517,7 @@ services:
   ```
 
   **Why**: Environment variables visible in `docker inspect`. Use Docker secrets.
-  [See: Doctrine Docker Guide - Secrets](../../../guides/infrastructure/docker.md#docker-secrets-vs-environment-variables)
+  [See: Doctrine Docker Guide - Secrets](docker.md#docker-secrets-vs-environment-variables)
 
 - [ ] **Security**: Running as root (`Dockerfile:15`)
 
@@ -615,6 +615,6 @@ Use this for rapid reviews:
 
 ## Related Agents
 
-- **[Ansible Reviewer](./ansible-reviewer.md)** — Infrastructure as Code review
-- **[Performance Reviewer](./performance-reviewer.md)** — Resource optimization
-- **[Code Reviewer](./code-reviewer.md)** — General code review
+- **[Ansible Reviewer](ansible.md)** — Infrastructure as Code review
+- **[Performance Reviewer](../code/performance.md)** — Resource optimization
+- **[Code Reviewer](../code/reviewer.md)** — General code review
