@@ -70,8 +70,8 @@ project/
 │       └── ...
 ├── .mcp.json              # MCP server configuration
 ├── AGENTS.md              # Project context (see agents-md.md)
-├── CLAUDE.md              # Symlink → AGENTS.md
-└── GEMINI.md              # Symlink → AGENTS.md
+├── CLAUDE.md              # `@AGENTS.md` import
+└── GEMINI.md              # `@./AGENTS.md` import
 ```
 
 ### settings.json Structure
@@ -546,7 +546,7 @@ Based on subcommand, route to appropriate agent:
 | `/explain` | Explain code | `--deep` |
 | `/plan` | Create implementation plan | Feature description |
 
-See [configs/claude/commands/](../../configs/claude/commands/) for full definitions.
+See [commands/](../../commands/) for full definitions.
 
 ---
 
@@ -704,13 +704,25 @@ claude plugins install ralph-wiggum
 
 ## Syncing from Doctrine
 
-Doctrine provides standard Claude Code configurations.
+Doctrine provides standard Claude Code configurations. Agents and commands live
+at the repository root in `agents/` and `commands/`; `configs/claude/` holds
+`settings.json`, skills, and infrastructure context. A sync **MUST** copy from
+those four source paths directly.
+
+### Source-to-Destination Map
+
+| Doctrine source | Project destination | Managed by Doctrine |
+| --------------- | ------------------- | ------------------- |
+| `agents/` | `.claude/agents/` | Yes — do not add project-local files |
+| `commands/` | `.claude/commands/` | Yes — do not add project-local files |
+| `configs/claude/skills/` | `.claude/skills/` | No — merged, project skills preserved |
+| `configs/claude/settings.json` | `.claude/settings.json` | Yes — overwritten |
 
 ### Manual Sync
 
 ```bash
-# Clone Doctrine
-git clone https://github.com/welshwandering/doctrine.git ~/.doctrine
+# Clone Doctrine once
+git clone https://github.com/agh/doctrine.git ~/.doctrine
 
 # Copy the contents of configs/claude into .claude, following the
 # agents and commands symlinks
@@ -742,7 +754,19 @@ test -f .claude/agents/code/architect.md
 test -f .claude/commands/code.md
 ```
 
+The trailing slash on each source path is significant: it copies the directory
+**contents** rather than nesting a second directory inside the destination.
+`-L` dereferences any symlink so the installed tree contains regular files on
+every platform, including Windows checkouts made without `core.symlinks=true`.
+`--delete` removes agents and commands withdrawn upstream, so those two
+destinations **MUST NOT** hold project-local files.
+
 ### GitHub Action for Auto-Sync
+
+Use the maintained template at
+[`.github/workflows/sync-doctrine.yml`](../../configs/github/workflows/sync-doctrine.yml)
+rather than hand-rolling a workflow. Copy it into your project's
+`.github/workflows/`, then customise `SYNC_PATHS`:
 
 ```yaml
 # .github/workflows/sync-doctrine.yml
@@ -781,6 +805,12 @@ jobs:
 
 ### Version Pinning
 
+Pin to a release tag so config changes arrive on your schedule rather than
+upstream's. **The source paths differ by release**: `agents/` and `commands/`
+sit at the repository root only in releases *after* v2.11.0; in v2.11.0 and
+earlier they live under `configs/claude/`. Match `SYNC_PATHS` to the release
+you pin, or the sync step reports `Source not found` and copies nothing:
+
 ```yaml
 - name: Fetch Doctrine configs (pinned to v2.11.0)
   run: |
@@ -788,6 +818,22 @@ jobs:
     mkdir -p ./.claude
     cp -rL doctrine-2.11.0/configs/claude/. ./.claude/
 ```
+
+For a manual install from a pinned tarball (paths shown for v2.11.0):
+
+```bash
+DOCTRINE_VERSION=2.11.0
+curl -sL "https://github.com/agh/doctrine/archive/refs/tags/v${DOCTRINE_VERSION}.tar.gz" | tar xz
+mkdir -p .claude
+rsync -aL --delete "doctrine-${DOCTRINE_VERSION}/configs/claude/agents/"   .claude/agents/
+rsync -aL --delete "doctrine-${DOCTRINE_VERSION}/configs/claude/commands/" .claude/commands/
+rsync -aL "doctrine-${DOCTRINE_VERSION}/configs/claude/skills/" .claude/skills/
+cp "doctrine-${DOCTRINE_VERSION}/configs/claude/settings.json" .claude/settings.json
+rm -rf "doctrine-${DOCTRINE_VERSION}"
+```
+
+GitHub's tag archives preserve symlinks, so `-L` matters here: it turns any
+link in the archive into a regular file at the destination.
 
 ---
 
