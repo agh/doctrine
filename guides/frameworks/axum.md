@@ -1,39 +1,152 @@
 # Axum Style Guide
 
-> [Doctrine](../../README.md) > [Frameworks](../README.md) > Axum
+> [Doctrine](../../README.md) > [Frameworks](README.md) > Axum
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in
-[RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" in this document are to be interpreted as described in
+BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
+[RFC 8174](https://datatracker.ietf.org/doc/html/rfc8174) when, and only
+when, they appear in all capitals, as shown here.
 
 Extends [Rust style guide](../languages/rust.md) with Axum-specific conventions.
 
-**Target Version**: Axum 0.8+ with Rust 2024 edition
+**Target Version**: Axum 0.8.9 on the Rust 2024 edition, checked against Rust
+1.98.1. Everything in the [Rust style guide](../languages/rust.md) applies
+unchanged — formatting, linting, test invocation, error-type design and general
+SQLx usage all live there. This guide adds only what Axum changes.
 
 ## Quick Reference
 
-All Rust tooling applies. Additional tools:
-
 | Task | Tool | Command/Crate |
 | ---- | ---- | ------------- |
-| Format | rustfmt | `cargo fmt` |
-| Lint | Clippy | `cargo clippy` |
-| Test | cargo test | `cargo test` |
-| Test API | tower::ServiceExt | See Testing section |
-| Database | SQLx | `cargo sqlx prepare` |
-| Auth (sessions) | axum-login | See Security section |
-| Auth (JWT) | jsonwebtoken | See Security section |
-| Authorization | casbin-rs | See Security section |
-| WebSocket | axum::extract::ws | See WebSocket section |
-| Logging | tracing | See Observability section |
-| Metrics | axum-prometheus | See Observability section |
-| Background Jobs | apalis | See Background Jobs section |
-| In-Memory Cache | moka | See Caching section |
-| Distributed Cache | redis-rs + deadpool | See Caching section |
-| Rate Limiting | tower-governor | See Rate Limiting section |
-| Circuit Breaker | recloser | See Circuit Breakers section |
-| Feature Flags | unleash-api-client | See Feature Flags section |
+| Test API | tower::ServiceExt | See [Testing](#testing) |
+| Auth (sessions) | axum-login | See [Security](#security) |
+| Auth (JWT) | jsonwebtoken | See [Security](#security) |
+| Authorization | casbin-rs | See [Security](#security) |
+| WebSocket | axum::extract::ws | See [WebSocket](#websocket) |
+| Request tracing | tower-http TraceLayer | See [Observability](#performance-and-observability) |
+| Metrics | axum-prometheus | See [Observability](#performance-and-observability) |
+| Background Jobs | apalis | See [Background Jobs](#background-jobs) |
+| In-Memory Cache | moka | See [Caching](#caching) |
+| Distributed Cache | redis-rs + deadpool | See [Caching](#caching) |
+| Rate Limiting | tower-governor | See [Rate Limiting](#rate-limiting) |
+| Circuit Breaker | recloser | See [Circuit Breakers](#circuit-breakers) |
+| Feature Flags | unleash-api-client | See [Feature Flags](#feature-flags) |
+
+**Why**: `cargo fmt`, `cargo clippy`, `cargo test` and `cargo sqlx prepare` are
+language-level tooling, specified once in the [Rust style
+guide](../languages/rust.md#formatting-rustfmt). Restating them here creates two
+places to update and two chances to drift apart.
+
+## Dependencies
+
+Projects **MUST** pin the crates below, and **MUST** enable exactly the features
+the examples in this guide use. Every example in this guide was compiled against
+this set on Rust 1.98.1.
+
+```toml
+# Cargo.toml
+[package]
+edition = "2024"
+rust-version = "1.88"
+
+[dependencies]
+# Core HTTP
+axum = { version = "0.8.9", features = ["ws", "macros"] }
+axum-extra = { version = "0.12.6", features = ["typed-header"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.7.1", features = [
+    "trace", "cors", "compression-full", "limit",
+    "sensitive-headers", "request-id", "timeout",
+] }
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-util = { version = "0.7.19", features = ["rt"] }
+futures-util = "0.3.34"
+
+# Serialisation
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+# Errors
+thiserror = "2.0.20"
+anyhow = "1.0.104"
+
+# Database. See the pinning note below before changing this.
+sqlx = { version = "0.8.6", features = [
+    "runtime-tokio", "tls-rustls-ring", "postgres", "chrono", "macros", "migrate",
+] }
+
+# Authentication and authorisation
+axum-login = "0.18.0"
+tower-sessions = "0.14.0"
+tower-sessions-sqlx-store = { version = "0.15.0", features = ["postgres"] }
+password-auth = "1.0.0"
+jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
+rsa = { version = "0.9.10", features = ["pem"] }
+casbin = "2.20.0"
+
+# Rate limiting
+tower_governor = "0.8.0"
+governor = "0.10.4"
+
+# Caching
+moka = { version = "0.12.16", features = ["future"] }
+deadpool-redis = "0.23.1"
+
+# OpenAPI
+utoipa = { version = "5.5.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
+
+# Observability
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+time = "0.3.55"
+uuid = { version = "1.26.0", features = ["v4"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["full", "test-util"] }
+```
+
+Sections with their own runtimes pin separately, because they pull independent
+dependency trees:
+
+| Section | Crates |
+| ------- | ------ |
+| [OpenTelemetry](#opentelemetry-integration) | `opentelemetry` 0.32.0, `opentelemetry_sdk` 0.32.1, `opentelemetry-otlp` 0.32.0, `tracing-opentelemetry` 0.33.0 |
+| [Background jobs](#job-queues-with-apalis) | `apalis` 0.7.4, `apalis-redis` 0.7.4, `rusty-sidekiq` 0.14.2, `async-trait` 0.1.92 |
+| [Circuit breakers](#circuit-breakers) | `recloser` 1.4.0, `failsafe` 1.3.0, `reqwest` 0.13.4 |
+| [Feature flags](#feature-flags) | `unleash-api-client` 0.17.1 (feature `reqwest-client-rustls`), `enum-map` 2 |
+
+### Why the SQLx pin is 0.8, not 0.9
+
+SQLx 0.9.0 is the current release, but `tower-sessions-sqlx-store` 0.15.0 — the
+newest release — links `sqlx` 0.8. Cargo compiles both majors side by side and
+treats their `PgPool` types as unrelated, so handing the application pool to the
+session store fails to compile:
+
+```text
+error[E0308]: mismatched types
+   |     let store = PostgresStore::new(db);
+   |                 ------------------ ^^ expected `Pool<Postgres>`,
+   |                                       found `sqlx::Pool<sqlx::Postgres>`
+note: there are multiple different versions of crate `sqlx_core` in the
+      dependency graph
+```
+
+Pin the whole project to SQLx 0.8.6 while sharing a pool with the session store.
+Projects that need SQLx 0.9 **MUST** use a session store that does not take an
+`sqlx` pool, and **MUST NOT** try to bridge the two majors.
+
+**Why**: More than thirty crates appear across this guide. Without one pinned
+manifest a reader has to guess a version and a feature set for each, and the
+common failures — a missing `ws` feature, a `TypedHeader` that will not resolve,
+two SQLx majors in one graph — surface as opaque trait errors rather than as a
+missing dependency. Features are listed explicitly rather than left to
+`default`, so the build does not silently grow a TLS stack or a compression
+codec nobody asked for.
 
 ## Why Axum?
 
@@ -48,46 +161,86 @@ for the Tokio ecosystem with focus on type safety and ergonomics.
 - Composable middleware via Tower
 - Zero-cost abstractions with excellent performance[^4]
 
-**When to use Axum**: Choose Axum for greenfield async Rust services
-requiring type safety, high performance, and composability. Consider
-Actix-web[^5] for maximum performance or Rocket[^6] for simpler
-synchronous applications.
+**When to use Axum**: Axum suits async Rust services that already sit in the
+Tokio ecosystem and want their middleware to be ordinary Tower layers.
+
+Choose between Axum, Actix-web[^5] and Rocket[^6] on criteria you can check
+against your own workload:
+
+| Criterion | Favours |
+| --------- | ------- |
+| The service already uses Tokio, Hyper, Tower or tonic | Axum — same runtime, same middleware, no bridging |
+| Middleware must be shared with non-HTTP services (gRPC, queues) | Axum — Tower layers are transport-agnostic |
+| The team wants routing and guards expressed as attribute macros | Rocket — `#[get]`, `#[launch]` and typed request guards |
+| An actor model fits the domain | Actix-web — actor supervision is native |
+| Latency and throughput must meet a stated budget | Whichever wins **your** benchmark against **your** payloads |
+
+Rocket 0.5 is not a synchronous framework: launching "starts a multi-threaded
+asynchronous server and dispatches requests to matching routes as they
+arrive"[^6].
+
+**Why**: Absolute rankings do not survive contact with a real workload. Public
+suites measure a fixed set of synthetic endpoints on fixed hardware; the
+TechEmpower project that this guide once cited published its final results as
+Round 23 in March 2025 and archived the repository, so its numbers no longer
+track any current release[^4]. Ecosystem fit and operational constraints, which
+are checkable today, are better selection criteria than a number that was true
+of a different version on someone else's machine.
 
 ## Project Structure
 
-Projects **SHOULD** organize code by feature:
+Projects **SHOULD** organise code by feature, so that everything one endpoint
+needs is in one directory:
 
 ```text
 my-api/
 ├── src/
-│   ├── main.rs           # Application entry point
-│   ├── app.rs            # App factory and router setup
-│   ├── config.rs         # Configuration via environment
-│   ├── error.rs          # Error types and handlers
-│   ├── state.rs          # Shared application state
-│   ├── routes/
+│   ├── main.rs                # Application entry point
+│   ├── app.rs                 # App factory and router assembly
+│   ├── lib.rs
+│   ├── features/
 │   │   ├── mod.rs
-│   │   ├── users.rs
-│   │   └── health.rs
-│   ├── handlers/
-│   │   ├── mod.rs
-│   │   └── users.rs
-│   ├── models/
-│   │   ├── mod.rs
-│   │   └── user.rs
-│   └── middleware/
+│   │   ├── users/
+│   │   │   ├── mod.rs         # Re-exports; nothing else
+│   │   │   ├── routes.rs      # Router<AppState> for /users
+│   │   │   ├── handlers.rs    # Handlers for those routes
+│   │   │   ├── model.rs       # User, CreateUser, queries
+│   │   │   └── tests.rs       # Unit tests for this feature
+│   │   └── health/
+│   │       ├── mod.rs
+│   │       ├── routes.rs
+│   │       └── handlers.rs
+│   └── shared/                # Only what more than one feature uses
 │       ├── mod.rs
-│       └── auth.rs
+│       ├── config.rs          # Configuration via environment
+│       ├── error.rs           # AppError and IntoResponse
+│       ├── state.rs           # AppState
+│       ├── middleware.rs      # Cross-cutting layers
+│       └── ...                # jwt.rs, authz.rs, cache.rs, telemetry.rs, ...
 ├── migrations/
-├── tests/
+├── tests/                     # Integration tests across features
 ├── Cargo.toml
 └── .env
+```
+
+**Do**:
+
+```text
+src/features/users/{routes,handlers,model}.rs   # one feature, one directory
+```
+
+**Don't**:
+
+```text
+src/routes/users.rs
+src/handlers/users.rs      # the same feature spread across three trees
+src/models/user.rs
 ```
 
 ```rust
 // src/main.rs
 use my_api::app::create_app;
-use my_api::config::Config;
+use my_api::shared::config::Config;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -101,9 +254,14 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-**Why**: Feature-based organization scales better than layer-based
-organization. Keeping app creation separate enables testing with
-different configurations.
+**Why**: Adding an endpoint under the layered tree touches `routes/`,
+`handlers/`, `models/` and `tests/`, so every feature branch collides with every
+other feature branch in the same four `mod.rs` files. Under the feature tree the
+same change touches one directory, deleting a feature is `rm -r`, and the
+compiler enforces the boundary: anything a feature needs from outside must be
+imported from `shared/`, which makes accidental coupling visible in the import
+list. Keeping app creation in `app.rs` separate from `main.rs` is what lets
+tests build the router with a different configuration.
 
 ## Routing
 
@@ -144,7 +302,7 @@ allows feature modules to define their own routes independently.
 Routes **SHOULD** use method routing for clarity:
 
 ```rust
-// src/routes/users.rs
+// src/features/users/routes.rs
 use axum::{Router, routing::{get, post}};
 use crate::handlers::users;
 use crate::state::AppState;
@@ -208,21 +366,17 @@ the whole router. Prefer rewriting the route.
 
 ### Order of Extractors
 
-Extractors **MUST** appear in this order in handler function signatures:
-
-1. `Path` (URL path parameters)
-2. `Query` (query string parameters)
-3. `State` (application state)
-4. `Json` / `Form` (request body)
-5. `Extension` (request extensions)
-6. `Request` (full request, consumes body)
+A handler **MUST** place its single body-consuming extractor last. Every other
+extractor **MAY** appear in any order, and **SHOULD** be ordered for
+readability: path parameters first, then query, then state and request-scoped
+guards.
 
 ```rust
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Pagination {
@@ -240,52 +394,101 @@ pub async fn update_user(
     Path(user_id): Path<i64>,
     Query(params): Query<Pagination>,
     State(state): State<AppState>,
-    Json(payload): Json<UpdateUserRequest>,
+    auth: JwtAuth,
+    Json(payload): Json<UpdateUserRequest>,  // body extractor, last
 ) -> Result<Json<User>, AppError> {
     // Handler implementation
 }
 ```
 
-**Why**: This order matches Axum's extractor precedence and makes
-handlers more readable by placing path parameters first (most specific)
-and body last (most complex).
+**Do**:
+
+```rust
+// Any arrangement of the parts extractors compiles; pick the readable one
+pub async fn update_user(
+    State(state): State<AppState>,
+    auth: JwtAuth,
+    Path(user_id): Path<i64>,
+    Json(payload): Json<UpdateUserRequest>,
+) -> Result<Json<User>, AppError>
+
+// `Request` consumes the body too, so it also goes last
+pub async fn audit(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    request: Request,
+) -> String
+```
+
+**Don't**:
+
+```rust
+// `Json` consumes the body, so nothing may follow it
+pub async fn update_user(
+    Json(payload): Json<UpdateUserRequest>,
+    Extension(trace_id): Extension<TraceId>,   // will not compile
+) -> Result<Json<User>, AppError>
+
+// Two body extractors in one signature
+pub async fn update_user(
+    Json(payload): Json<UpdateUserRequest>,
+    body: String,                              // will not compile
+) -> Result<Json<User>, AppError>
+```
+
+**Why**: Axum splits extraction into two traits. `FromRequestParts` sees only
+the head — method, URI, headers, extensions — and leaves the body untouched, so
+`Path`, `Query`, `State`, `HeaderMap`, `Extension`, `TypedHeader` and custom
+guards built on that trait impose no ordering constraints on each other.
+`FromRequest` takes the whole request and consumes the body, which is why Axum
+implements the handler traits with the `FromRequest` argument in the final
+position only. Putting `Json` or `Form` anywhere else, or asking for two of
+them, is a compile error rather than a style problem.
+
+Parts extractors still run left to right, so ordering does decide *which*
+rejection a bad request receives: a handler with `Path` before `TypedHeader`
+answers `400` for an unparseable path parameter even when the `Authorization`
+header is also missing. Order for readability, and let the tests in
+[Testing](#testing) pin down the rejection each case produces.
 
 ### Custom Extractors
 
 Projects **SHOULD** create custom extractors for common patterns:
 
 ```rust
-// src/extractors/auth.rs
+// src/shared/extractors.rs
+use std::sync::Arc;
+
 use axum::{
-    async_trait,
-    extract::FromRequestParts,
+    extract::{FromRef, FromRequestParts},
     http::{request::Parts, StatusCode},
     RequestPartsExt,
 };
-use axum_extra::headers::{Authorization, authorization::Bearer};
+use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
 
 pub struct AuthUser {
-    pub user_id: i64,
+    pub user_id: String,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
+    Arc<JwtKeys>: FromRef<S>,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
             .map_err(|_| (StatusCode::UNAUTHORIZED, "Missing authorization header"))?;
 
-        let user_id = verify_token(bearer.token())
+        let keys = Arc::<JwtKeys>::from_ref(state);
+        let claims = verify_token(&keys, bearer.token())
             .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid token"))?;
 
-        Ok(AuthUser { user_id })
+        Ok(AuthUser { user_id: claims.sub })
     }
 }
 ```
@@ -296,151 +499,343 @@ pub async fn protected_route(
     auth: AuthUser,  // Custom extractor
     State(state): State<AppState>,
 ) -> Result<Json<User>, AppError> {
-    let user = state.db.get_user(auth.user_id).await?;
+    let user = state.db.get_user(&auth.user_id).await?;
     Ok(Json(user))
-}
-```
-
-**Why**: Custom extractors encapsulate common authentication and
-validation logic, reducing boilerplate and ensuring consistent error
-handling across routes.
-
-## Error Handling
-
-### Unified Error Type
-
-Projects **MUST** define a unified error type implementing `IntoResponse`:
-
-```rust
-// src/error.rs
-use axum::{
-    response::{IntoResponse, Response},
-    http::StatusCode,
-    Json,
-};
-use serde::Serialize;
-
-#[derive(Debug)]
-pub enum AppError {
-    NotFound,
-    Unauthorized,
-    Database(sqlx::Error),
-    Validation(String),
-}
-
-#[derive(Serialize)]
-struct ErrorResponse {
-    error: String,
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            Self::NotFound => (StatusCode::NOT_FOUND, "Resource not found"),
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
-            Self::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
-            Self::Validation(msg) => return (
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse { error: msg }),
-            ).into_response(),
-        };
-
-        (status, Json(ErrorResponse { error: message.to_string() })).into_response()
-    }
-}
-
-impl From<sqlx::Error> for AppError {
-    fn from(err: sqlx::Error) -> Self {
-        match err {
-            sqlx::Error::RowNotFound => Self::NotFound,
-            _ => Self::Database(err),
-        }
-    }
-}
-```
-
-**Why**: A unified error type provides consistent API responses and
-enables using `?` operator in handlers. Implementing `IntoResponse`
-allows returning errors directly from handlers.
-
-### Using thiserror and anyhow
-
-Projects **SHOULD** use thiserror[^7] for library errors and anyhow[^8] for application errors:
-
-```rust
-// src/error.rs
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum AppError {
-    #[error("Resource not found")]
-    NotFound,
-
-    #[error("Unauthorized: {0}")]
-    Unauthorized(String),
-
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-
-    #[error("Validation failed: {0}")]
-    Validation(String),
 }
 ```
 
 **Do**:
 
 ```rust
-use thiserror::Error;  // For typed errors
+impl<S: Send + Sync> FromRequestParts<S> for AuthUser {
+    type Rejection = (StatusCode, &'static str);
 
-#[derive(Error, Debug)]
-pub enum AppError {
-    #[error("User not found")]
-    NotFound,
+    async fn from_request_parts(parts: &mut Parts, state: &S)
+        -> Result<Self, Self::Rejection>
+    { /* ... */ }
 }
 ```
 
 **Don't**:
 
 ```rust
-use anyhow::Error;  // Too generic for API errors
+// `axum::async_trait` no longer exists in 0.8:
+// error[E0432]: unresolved import `axum::async_trait`
+use axum::async_trait;
 
-pub async fn handler() -> Result<Json<User>, Error> {
-    // Don't use anyhow for handler return types
+#[async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for AuthUser { /* ... */ }
+```
+
+**Why**: Axum 0.8 dropped its `async_trait` re-export because
+`FromRequestParts`, `FromRequest` and `Handler` now use native `async fn` in
+traits. Importing the removed re-export fails to resolve, and applying
+`#[async_trait]` to a trait that does not use it rewrites the method into a
+boxed future whose signature no longer matches the trait. Write the plain
+`async fn`.
+
+Taking the key material through `FromRef` rather than a whole `AppState` keeps
+the extractor usable from routers with different state types and stops the
+extractor from reaching parts of the state it has no business seeing.
+
+## Error Handling
+
+### Unified Error Type
+
+Projects **MUST** define one error type covering every failure the service can
+return, and **MUST** implement `IntoResponse` for it. Every example in this
+guide uses the variants below; a service that adds a failure mode adds a variant
+here and nowhere else.
+
+```rust
+// src/shared/error.rs
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use serde::Serialize;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error("resource not found")]
+    NotFound,
+
+    #[error("unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("validation failed: {0}")]
+    Validation(String),
+
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+
+    #[error("upstream service failed: {0}")]
+    External(String),
+
+    #[error("service unavailable: {0}")]
+    ServiceUnavailable(String),
+
+    #[error("internal error: {0}")]
+    Internal(String),
+}
+
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    pub error: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+}
+
+impl AppError {
+    /// The public face of the error: status, stable machine-readable code, and
+    /// a message that is safe to show a caller.
+    fn parts(&self) -> (StatusCode, &'static str, String) {
+        match self {
+            Self::NotFound => (StatusCode::NOT_FOUND, "NOT_FOUND", "Resource not found".into()),
+            Self::Unauthorized(_) => {
+                (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", "Unauthorized".into())
+            }
+            Self::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN", "Forbidden".into()),
+            Self::Validation(message) => {
+                (StatusCode::BAD_REQUEST, "VALIDATION_FAILED", message.clone())
+            }
+            Self::Database(_) | Self::Internal(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL",
+                "Internal server error".into(),
+            ),
+            Self::External(_) | Self::ServiceUnavailable(_) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "UPSTREAM_UNAVAILABLE",
+                "Upstream service unavailable".into(),
+            ),
+        }
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, code, message) = self.parts();
+
+        // Log the full error, including its source chain, at the boundary; send
+        // the caller only the sanitised message.
+        if status.is_server_error() {
+            tracing::error!(error = ?self, "request failed");
+        } else {
+            tracing::debug!(error = %self, "request rejected");
+        }
+
+        let body = ErrorResponse { error: message, code: Some(code.to_string()) };
+        (status, Json(body)).into_response()
+    }
+}
+
+impl From<tokio::task::JoinError> for AppError {
+    fn from(err: tokio::task::JoinError) -> Self {
+        Self::Internal(format!("background task failed: {err}"))
+    }
+}
+
+impl From<jsonwebtoken::errors::Error> for AppError {
+    fn from(err: jsonwebtoken::errors::Error) -> Self {
+        Self::Internal(format!("JWT key material rejected: {err}"))
+    }
 }
 ```
+
+Mapping `sqlx::Error::RowNotFound` onto `NotFound` is tempting, but a missing
+row is only a `404` when the handler was looking one up by identity; the same
+error from a join or an aggregate is a bug. Decide at the call site:
+
+```rust
+let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
+```
+
+**Do**:
+
+```rust
+// One variant per failure mode; sources kept, public message sanitised
+Self::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL",
+                      "Internal server error".into()),
+```
+
+**Don't**:
+
+```rust
+// Leaks schema, table names and connection strings to the caller
+Self::Database(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+
+// Discards the cause, so the log says nothing useful either
+Self::Database(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+```
+
+**Why**: One error type is what lets `?` work in every handler, and one
+`IntoResponse` is what makes the API answer consistently. Splitting the type —
+one enum in the error module, other variants invented ad hoc in the
+authentication, jobs and resilience code — produces handlers that will not
+compile against the declared enum, which is exactly the drift this section
+exists to prevent. `#[from]` on `sqlx::Error` and `JoinError` keeps the original
+error as the source, so `tracing::error!(error = ?self)` records the whole
+chain while the caller sees a fixed string.
+
+For general guidance on designing error types with `thiserror` and `anyhow`, see
+the [Rust style guide](../languages/rust.md#error-types). The rule specific to
+Axum is that handler return types **MUST NOT** be `anyhow::Error`: it has no
+`IntoResponse`, so there is nowhere to decide the status code.
+
+### Problem Details (RFC 9457)
+
+Projects that publish an API to other teams **SHOULD** serve errors as
+`application/problem+json` in the RFC 9457[^33] shape rather than an ad-hoc
+envelope:
+
+```rust
+// src/shared/problem.rs
+use axum::{http::{header, StatusCode}, response::{IntoResponse, Response}, Json};
+use serde::Serialize;
+use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+pub struct ProblemDetails {
+    /// Stable URI naming the problem kind. Dereferenceable, ideally.
+    #[schema(example = "https://api.example.com/problems/validation-failed")]
+    pub r#type: String,
+    #[schema(example = "Validation failed")]
+    pub title: String,
+    #[schema(example = 400)]
+    pub status: u16,
+    #[schema(example = "email is not a valid address")]
+    pub detail: String,
+    /// This occurrence. Using the request id makes it greppable in the logs.
+    #[schema(example = "/requests/018f3c2a")]
+    pub instance: String,
+    /// Extension members. Safe to expose, machine-readable.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<String>,
+}
+
+pub struct Problem(pub ProblemDetails);
+
+impl IntoResponse for Problem {
+    fn into_response(self) -> Response {
+        let status =
+            StatusCode::from_u16(self.0.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+
+        (status, [(header::CONTENT_TYPE, "application/problem+json")], Json(self.0))
+            .into_response()
+    }
+}
+```
+
+Reuse the same type in the OpenAPI document so the published contract and the
+wire format cannot drift:
+
+```rust
+#[utoipa::path(
+    get,
+    path = "/api/users/{id}",
+    responses(
+        (status = 200, description = "User found", body = User),
+        (status = 404, description = "User not found",
+         body = ProblemDetails, content_type = "application/problem+json"),
+    ),
+)]
+```
+
+**Why**: The `{"error": "..."}` envelope above is valid HTTP and is adequate for
+an API whose only consumer is your own front end. RFC 9457 earns its keep once
+other teams write clients: `type` gives them a stable identifier to branch on
+that survives message rewording, `instance` ties a report back to a specific
+request, and the media type tells a generic client that the body is a problem
+description rather than the resource it asked for. All members are optional in
+the specification, so a service **MAY** omit `instance` or `errors`; what it
+**MUST NOT** do is send problem details under `application/json`, because that
+defeats the content-negotiation the media type exists for.
 
 ## Middleware
 
 ### Tower Layers
 
-Projects **SHOULD** use Tower layers for cross-cutting concerns:
+Projects **SHOULD** use Tower layers for cross-cutting concerns, and **MUST**
+treat the declaration order inside `ServiceBuilder` as the request order:
 
 ```rust
 use axum::{
-    Router,
-    extract::Request,
-    http::StatusCode,
+    extract::{DefaultBodyLimit, Request},
+    http::{header, HeaderName, HeaderValue, Method, StatusCode},
     middleware::{self, Next},
     response::Response,
-};
-use tower::ServiceBuilder;
-use tower_http::{
-    trace::TraceLayer,
-    cors::CorsLayer,
-    compression::CompressionLayer,
+    routing::{get, post},
+    Router,
 };
 use std::time::Duration;
+use tower::ServiceBuilder;
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+    limit::RequestBodyLimitLayer,
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    sensitive_headers::{SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer},
+    trace::TraceLayer,
+};
 
-pub fn create_app() -> Router {
-    Router::new()
-        .nest("/api", api_routes())
+const REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
+const GLOBAL_BODY_LIMIT: usize = 256 * 1024;      // 256 KiB
+const UPLOAD_BODY_LIMIT: usize = 10 * 1024 * 1024; // 10 MiB
+
+fn cors(allowed_origins: &[String]) -> Result<CorsLayer, AppError> {
+    let origins = allowed_origins
+        .iter()
+        .map(|origin| {
+            HeaderValue::from_str(origin)
+                .map_err(|_| AppError::Validation(format!("invalid CORS origin: {origin}")))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .allow_credentials(true)
+        .max_age(Duration::from_secs(600)))
+}
+
+pub fn create_app(state: AppState) -> Result<Router, AppError> {
+    let sensitive = [header::AUTHORIZATION, header::COOKIE, header::SET_COOKIE];
+
+    let uploads = Router::new()
+        .route("/uploads", post(upload))
+        // `RequestBodyLimitLayer` rewrites the request body type, so it must be
+        // the innermost layer on the routes it guards.
+        .route_layer(RequestBodyLimitLayer::new(UPLOAD_BODY_LIMIT))
+        .route_layer(DefaultBodyLimit::disable());
+
+    let app = Router::new()
+        .route("/users", get(list_users))
+        .merge(uploads)
         .layer(
             ServiceBuilder::new()
+                .layer(SetRequestIdLayer::new(REQUEST_ID, MakeRequestUuid))
+                .layer(SetSensitiveRequestHeadersLayer::new(sensitive.clone()))
                 .layer(TraceLayer::new_for_http())
+                .layer(SetSensitiveResponseHeadersLayer::new(sensitive))
+                .layer(PropagateRequestIdLayer::new(REQUEST_ID))
+                .layer(cors(&state.config.allowed_origins)?)
                 .layer(CompressionLayer::new())
-                .layer(CorsLayer::permissive())
-                .layer(middleware::from_fn(timeout_middleware)),
+                .layer(middleware::from_fn(timeout_middleware))
+                .layer(DefaultBodyLimit::max(GLOBAL_BODY_LIMIT)),
         )
+        .with_state(state);
+
+    Ok(app)
 }
 
 async fn timeout_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
@@ -450,9 +845,112 @@ async fn timeout_middleware(req: Request, next: Next) -> Result<Response, Status
 }
 ```
 
-**Why**: Tower's layer system provides composable, reusable middleware.
-Using `ServiceBuilder` ensures middleware is applied in the correct
-order (inner to outer).
+The stack above traverses like this:
+
+```text
+request  ──► SetRequestId ──► SetSensitiveRequestHeaders ──► Trace
+         ──► SetSensitiveResponseHeaders ──► PropagateRequestId ──► Cors
+         ──► Compression ──► timeout_middleware ──► DefaultBodyLimit ──► handler
+response ◄── (the same layers in reverse) ◄────────────────────────────┘
+```
+
+**Do**:
+
+```rust
+// The layer that must see the request first is declared first
+ServiceBuilder::new()
+    .layer(SetRequestIdLayer::new(REQUEST_ID, MakeRequestUuid))
+    .layer(TraceLayer::new_for_http())
+```
+
+**Don't**:
+
+```rust
+// Trace now runs before the request id exists, so no span carries it
+ServiceBuilder::new()
+    .layer(TraceLayer::new_for_http())
+    .layer(SetRequestIdLayer::new(REQUEST_ID, MakeRequestUuid))
+
+// Repeated `Router::layer` calls are the opposite order: the *last* call
+// is the outermost layer. Don't mix the two styles in one router.
+router.layer(TraceLayer::new_for_http()).layer(CompressionLayer::new())
+```
+
+**Why**: Tower documents that "layers that are added first will be called with
+the request first"[^2], and demonstrates it with `buffer(100)` before
+`concurrency_limit(10)`, which admits up to 110 in-flight requests, against the
+reverse order, which admits 10. Request flow through a `ServiceBuilder` is
+therefore outer to inner in declaration order, and the response travels back
+through the same layers in reverse. That is why the request id is set before
+`TraceLayer` — a span cannot record an identifier that does not exist yet — and
+why the sensitive-header layers bracket it: the request headers are marked
+before tracing reads them, and the response headers are marked on the way out.
+
+`Router::layer` composes the other way round: each call wraps everything
+registered so far, so the last `layer` call is the outermost. Both APIs are
+correct; mixing them in one router is how ordering bugs get written.
+
+### Production Hardening
+
+Public deployments **MUST** allowlist CORS origins, **MUST** bound request
+bodies, **MUST** mark credential-bearing headers sensitive before any tracing
+layer, and **SHOULD** give every request a propagated identifier.
+
+**Do**:
+
+```rust
+// Origins from configuration, per environment
+CorsLayer::new()
+    .allow_origin(origins)
+    .allow_methods([Method::GET, Method::POST])
+    .allow_credentials(true)
+```
+
+**Don't**:
+
+```rust
+// `permissive` sends `Access-Control-Allow-Origin: *`, which browsers refuse
+// to combine with credentials — so cookie-authenticated calls fail, and the
+// usual "fix" is to reflect the caller's own Origin instead
+CorsLayer::permissive()
+```
+
+**Why**: `CorsLayer::permissive` is a development convenience. It allows any
+origin, method and header, which is defensible for a public read-only API with
+no credentials, and indefensible the moment a cookie or an `Authorization`
+header is involved. Naming the origins in configuration keeps the policy
+reviewable and per-environment.
+
+Axum applies a 2 MiB `DefaultBodyLimit` unless it is disabled, so bodies are
+not unbounded by default; the reason to set the limit explicitly is that 2 MiB
+is rarely the right number for either a JSON endpoint or an upload endpoint, and
+an explicit constant is what a reviewer can check against the deployment.
+Streaming endpoints that must disable `DefaultBodyLimit` need
+`RequestBodyLimitLayer` instead, and because that layer changes the body type
+from `Body` to `Limited<Body>` it **MUST** be applied with `route_layer` on the
+routes concerned rather than added to the global stack — any `from_fn`
+middleware inside it stops compiling:
+
+```text
+error[E0277]: the trait bound `FromFn<...>: Service<...>` is not satisfied
+   = help: the trait `Service<Request<Limited<Body>>>` is not implemented
+```
+
+`SetSensitiveRequestHeadersLayer` marks a header value so that `Debug` prints
+`Sensitive` instead of the token. `TraceLayer`'s default span does not record
+headers, so this is not a live leak in the stack above; it becomes one as soon
+as anyone adds `DefaultMakeSpan::new().include_headers(true)` or writes their
+own `on_request`, which is why the marking belongs in the stack from the start
+rather than after the incident.
+
+Request ids close the gap between an error a caller reports and the logs that
+explain it. `SetRequestIdLayer` accepts an inbound `x-request-id` when one is
+present and generates a UUID otherwise; `PropagateRequestIdLayer` copies it onto
+the response so the caller can quote it back.
+
+WebSocket connections need their own controls — origin checks, frame-size caps
+and idle timeouts — because the middleware above only runs on the upgrade
+request. See [WebSocket Security](#websocket-security).
 
 ### Custom Middleware
 
@@ -521,7 +1019,7 @@ forwarded to `next`.
 Projects **MUST** use `State` extractor for sharing state:
 
 ```rust
-// src/state.rs
+// src/shared/state.rs
 use sqlx::PgPool;
 
 #[derive(Clone)]
@@ -554,7 +1052,7 @@ pub async fn create_app(config: Config) -> anyhow::Result<Router> {
 ```
 
 ```rust
-// src/handlers/users.rs
+// src/features/users/handlers.rs
 pub async fn list_users(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<User>>, AppError> {
@@ -684,6 +1182,168 @@ pub async fn create_test_user(pool: &PgPool, name: &str) -> User {
 }
 ```
 
+### Negative and Lifecycle Tests
+
+Happy-path tests prove the router is wired up. They prove nothing about the
+contract a client actually depends on. Projects **MUST** test extractor
+rejections, authentication failures and body limits, and **SHOULD** test
+timeouts, rate limits, WebSocket lifecycle and shutdown.
+
+Drive the rejection contract from a table, so adding a case is one line:
+
+```rust
+// tests/rejections.rs
+use axum::body::Body;
+use axum::http::{header, Request, StatusCode};
+use tower::ServiceExt;
+
+mod common;
+
+async fn send(request: Request<Body>) -> StatusCode {
+    common::test_app().await.oneshot(request).await.unwrap().status()
+}
+
+#[tokio::test]
+async fn rejections_map_to_documented_statuses() {
+    let cases: Vec<(&str, Request<Body>, StatusCode)> = vec![
+        (
+            "valid body",
+            Request::post("/users")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"name":"Alice"}"#))
+                .unwrap(),
+            StatusCode::CREATED,
+        ),
+        (
+            "malformed JSON",
+            Request::post("/users")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from("{"))
+                .unwrap(),
+            StatusCode::BAD_REQUEST,
+        ),
+        (
+            "missing field",
+            Request::post("/users")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from("{}"))
+                .unwrap(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ),
+        (
+            "wrong content type",
+            Request::post("/users")
+                .header(header::CONTENT_TYPE, "text/plain")
+                .body(Body::from(r#"{"name":"Alice"}"#))
+                .unwrap(),
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+        ),
+        (
+            "oversized body",
+            Request::post("/users")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(format!(r#"{{"name":"{}"}}"#, "a".repeat(512))))
+                .unwrap(),
+            StatusCode::PAYLOAD_TOO_LARGE,
+        ),
+        (
+            "unknown route",
+            Request::get("/nope").body(Body::empty()).unwrap(),
+            StatusCode::NOT_FOUND,
+        ),
+        (
+            "wrong method",
+            Request::delete("/users").body(Body::empty()).unwrap(),
+            StatusCode::METHOD_NOT_ALLOWED,
+        ),
+        (
+            "missing credentials",
+            Request::get("/protected").body(Body::empty()).unwrap(),
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "valid credentials",
+            Request::get("/protected")
+                .header(header::AUTHORIZATION, "Bearer valid-token")
+                .body(Body::empty())
+                .unwrap(),
+            StatusCode::OK,
+        ),
+    ];
+
+    for (name, request, expected) in cases {
+        assert_eq!(send(request).await, expected, "case: {name}");
+    }
+}
+```
+
+Timeouts and other deadline behaviour belong on Tokio's paused clock, so the
+suite does not spend the real duration waiting:
+
+```rust
+#[tokio::test(start_paused = true)]  // needs tokio feature "test-util"
+async fn slow_handlers_hit_the_timeout() {
+    let app = common::test_app().await;
+    let request = Request::get("/slow").body(Body::empty()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(30), app.oneshot(request)).await;
+
+    assert!(result.is_err(), "handler should not have completed inside the deadline");
+}
+```
+
+Shutdown needs a test that the tracked work actually finishes, not merely that
+the process exits:
+
+```rust
+#[tokio::test]
+async fn shutdown_waits_for_tracked_work() {
+    let tasks = TaskTracker::new();
+    let cancel = CancellationToken::new();
+    let done = Arc::new(AtomicBool::new(false));
+
+    spawn_worker(&tasks, cancel.clone(), Arc::clone(&done));
+    cancel.cancel();
+    tasks.close();
+
+    tokio::time::timeout(Duration::from_secs(5), tasks.wait())
+        .await
+        .expect("tracked work did not finish inside the shutdown deadline");
+
+    assert!(done.load(Ordering::SeqCst), "worker did not run to completion");
+}
+```
+
+Rate limiting has its own test in [Rate Limiting](#rate-limiting-with-tower-governor),
+because Governor's clock does not respond to `tokio::time::pause`.
+
+**Do**:
+
+```rust
+// Assert the status a client will actually see
+assert_eq!(send(malformed_json).await, StatusCode::BAD_REQUEST);
+```
+
+**Don't**:
+
+```rust
+// "It didn't succeed" passes for a 400, a 500 and a routing typo alike
+assert!(!response.status().is_success());
+```
+
+**Why**: A rejection is part of the published contract, and Axum's rejections
+are not all the status a reader would guess: syntactically invalid JSON is
+`400`, but JSON that parses and then fails to deserialise is `422`, and the
+wrong `Content-Type` is `415` before the body is looked at. Those three are
+easy to document wrongly and impossible to notice from a suite that only asserts
+`201`. The table form matters because the interesting property is the *set* of
+mappings: a change to a shared extractor or to the body limit moves several
+cases at once, and a table shows which.
+
+Deadline tests on the paused clock cost microseconds instead of the configured
+timeout, which is what makes it reasonable to have one per deadline rather than
+one for the whole service.
+
 ### Router Construction Tests
 
 Projects **MUST** build the real router in a test:
@@ -724,32 +1384,19 @@ route matched rather than merely existing.
 
 ## Database Integration
 
-### SQLx with Compile-Time Verification
+SQLx itself — `query_as!`, offline mode, connection tuning, type mapping — is
+covered in the [Rust style guide](../languages/rust.md#sqlx-compile-time-checked-queries). This
+section covers only what Axum adds: reaching the pool through `State`, turning
+`sqlx::Error` into an HTTP response, and the transaction rules that handlers get
+wrong.
 
-Projects **MUST** use SQLx[^9] with compile-time query verification:
+### Pool Access from Handlers
 
-```rust
-// src/models/user.rs
-use sqlx::FromRow;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, FromRow, Serialize, Deserialize)]
-pub struct User {
-    pub id: i64,
-    pub name: String,
-    pub email: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Deserialize)]
-pub struct CreateUser {
-    pub name: String,
-    pub email: String,
-}
-```
+Handlers **MUST** reach the pool through the `State` extractor rather than a
+global:
 
 ```rust
-// src/handlers/users.rs
+// src/features/users/handlers.rs
 use sqlx::PgPool;
 use axum::{extract::State, Json};
 
@@ -793,9 +1440,11 @@ pub async fn get_user(
 }
 ```
 
-**Why**: SQLx's `query_as!` macro provides compile-time verification of
-SQL queries against the database schema, catching errors before
-runtime. It also generates type-safe bindings automatically.
+**Why**: `PgPool` is `Clone` and internally reference-counted, so putting it in
+`AppState` costs an atomic increment per request and keeps the pool a normal
+value that a test can substitute. A `static` pool or a `OnceCell` cannot be
+swapped per test, which forces the suite onto one shared database and makes
+`sqlx::test`'s per-test rollback unusable.
 
 ### Migrations
 
@@ -937,13 +1586,11 @@ that bypasses this function.
 Projects **SHOULD** use axum-login[^10] for session-based authentication:
 
 ```rust
-// src/auth.rs
-use axum_login::{
-    AuthUser, AuthnBackend, AuthSession, AuthManagerLayerBuilder,
-};
-use async_trait::async_trait;
+// src/shared/auth.rs
+use axum_login::{AuthUser, AuthnBackend, AuthSession, AuthManagerLayerBuilder, UserId};
 use password_auth::verify_password;
-use tokio::task;
+use serde::Deserialize;
+use sqlx::PgPool;
 
 #[derive(Clone, Debug)]
 pub struct User {
@@ -975,17 +1622,25 @@ pub struct Credentials {
     pub password: String,
 }
 
-#[async_trait]
+#[derive(Debug, thiserror::Error)]
+pub enum BackendError {
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+
+    #[error("password verification task failed")]
+    TaskJoin(#[from] tokio::task::JoinError),
+}
+
 impl AuthnBackend for Backend {
     type User = User;
     type Credentials = Credentials;
-    type Error = sqlx::Error;
+    type Error = BackendError;
 
     async fn authenticate(
         &self,
         creds: Self::Credentials,
     ) -> Result<Option<Self::User>, Self::Error> {
-        let user = sqlx::query_as!(
+        let user: Option<User> = sqlx::query_as!(
             User,
             "SELECT id, username, password_hash FROM users WHERE username = $1",
             creds.username
@@ -993,23 +1648,63 @@ impl AuthnBackend for Backend {
         .fetch_optional(&self.db)
         .await?;
 
-        // Verify password in blocking task to avoid blocking async runtime
-        task::spawn_blocking(|| {
-            Ok(user.filter(|user| {
-                verify_password(&creds.password, &user.password_hash).is_ok()
-            }))
+        // Argon2 is deliberately slow, so it must not run on a runtime worker.
+        // `move` gives the closure ownership of the candidate password and the
+        // row; a borrowing closure would not outlive this future.
+        let verified = tokio::task::spawn_blocking(move || {
+            user.filter(|user| verify_password(&creds.password, &user.password_hash).is_ok())
         })
-        .await
-        .map_err(|_| sqlx::Error::PoolClosed)?
+        .await?;
+
+        Ok(verified)
     }
 
-    async fn get_user(&self, user_id: &i64) -> Result<Option<Self::User>, Self::Error> {
-        sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", user_id)
-            .fetch_optional(&self.db)
-            .await
+    async fn get_user(&self, user_id: &UserId<Self>) -> Result<Option<Self::User>, Self::Error> {
+        let user = sqlx::query_as!(
+            User,
+            "SELECT id, username, password_hash FROM users WHERE id = $1",
+            user_id
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(user)
     }
 }
 ```
+
+**Do**:
+
+```rust
+// The closure owns what it touches, and a join failure is its own error
+let verified = tokio::task::spawn_blocking(move || {
+    user.filter(|user| verify_password(&creds.password, &user.password_hash).is_ok())
+})
+.await?;
+```
+
+**Don't**:
+
+```rust
+// Borrows `creds` and `user` across a thread boundary, and reports a panicked
+// verification thread as a closed SQL pool
+task::spawn_blocking(|| {
+    Ok(user.filter(|user| verify_password(&creds.password, &user.password_hash).is_ok()))
+})
+.await
+.map_err(|_| sqlx::Error::PoolClosed)?
+```
+
+**Why**: `spawn_blocking` requires a `'static` closure, so a closure that
+borrows `creds` from the surrounding `async fn` does not satisfy the bound;
+`move` transfers both values instead. Mapping the resulting `JoinError` onto
+`sqlx::Error::PoolClosed` is worse than losing the error: it tells whoever reads
+the log that the database pool shut down, sending them to the wrong subsystem
+when what actually happened is that the password-hashing thread panicked. A
+dedicated error type keeps the two apart. `AuthnBackend` also declares
+`get_user(&self, user_id: &UserId<Self>)`; for this backend `UserId<Self>` is
+`i64`, so the body is unchanged, but writing the associated type keeps the
+signature correct if `AuthUser::Id` ever changes.
 
 ```rust
 // src/app.rs - Setting up the auth layer
@@ -1073,11 +1768,14 @@ pub async fn logout(mut auth_session: AuthSession<Backend>) -> Result<StatusCode
 ```
 
 ```toml
-# Cargo.toml - pinned to the versions this example was checked against
+# Cargo.toml - pinned to the versions this example was checked against.
+# axum-login 0.18 depends on tower-sessions 0.14; declaring 0.15 here puts two
+# incompatible `SessionManagerLayer` types in the graph.
 axum-login = "0.18.0"
 tower-sessions = "0.14.0"
 tower-sessions-sqlx-store = { version = "0.15.0", features = ["postgres"] }
-time = "0.3"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres"] }
+time = "0.3.55"
 ```
 
 Deployed services **MUST NOT** use `MemoryStore`. It is for tests and local
@@ -1120,15 +1818,24 @@ not-before:
 
 ```toml
 # Cargo.toml - `rust_crypto` or `aws_lc_rs` selects the crypto provider;
-# jsonwebtoken 11 panics at runtime when neither is enabled.
+# jsonwebtoken 11 panics at runtime when neither is enabled. `rsa` is a direct
+# dependency because the key-size check below parses the modulus itself.
 jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
+rsa = { version = "0.9.10", features = ["pem"] }
 ```
 
 ```rust
-// src/jwt.rs
+// src/shared/jwt.rs
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use rsa::pkcs1::DecodeRsaPublicKey;
+use rsa::pkcs8::DecodePublicKey;
+use rsa::traits::PublicKeyParts;
+use rsa::RsaPublicKey;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Minimum modulus size this service accepts for RS256.
+pub const MIN_RSA_MODULUS_BITS: usize = 4096;
 
 /// The token profile. Every claim here is required by the verifier.
 #[derive(Debug, Serialize, Deserialize)]
@@ -1142,6 +1849,20 @@ pub struct Claims {
     pub roles: Vec<String>, // User roles
 }
 
+/// `jsonwebtoken` accepts any well-formed RSA key, so the size has to be
+/// checked against the parsed modulus before the key is used.
+fn rsa_modulus_bits(public_key_pem: &[u8]) -> Result<usize, AppError> {
+    let pem = std::str::from_utf8(public_key_pem)
+        .map_err(|_| AppError::Validation("public key PEM is not valid UTF-8".into()))?;
+
+    // SPKI ("BEGIN PUBLIC KEY") first, then PKCS#1 ("BEGIN RSA PUBLIC KEY").
+    let key = RsaPublicKey::from_public_key_pem(pem)
+        .or_else(|_| RsaPublicKey::from_pkcs1_pem(pem))
+        .map_err(|e| AppError::Validation(format!("public key is not RSA: {e}")))?;
+
+    Ok(key.n().bits())
+}
+
 pub struct JwtKeys {
     algorithm: Algorithm,
     encoding: EncodingKey,
@@ -1151,14 +1872,22 @@ pub struct JwtKeys {
 }
 
 impl JwtKeys {
-    /// RS256 with an RSA key pair (4096-bit minimum). Preferred in
-    /// production: only the issuing service needs the private key.
+    /// RS256 with an RSA key pair. Preferred in production: only the issuing
+    /// service needs the private key. The 4096-bit minimum is enforced below,
+    /// not merely documented.
     pub fn rs256(
         private_key_pem: &[u8],
         public_key_pem: &[u8],
         issuer: impl Into<String>,
         audience: impl Into<String>,
     ) -> Result<Self, AppError> {
+        let bits = rsa_modulus_bits(public_key_pem)?;
+        if bits < MIN_RSA_MODULUS_BITS {
+            return Err(AppError::Validation(format!(
+                "RSA modulus is {bits} bits; {MIN_RSA_MODULUS_BITS} is the minimum"
+            )));
+        }
+
         Ok(Self {
             algorithm: Algorithm::RS256,
             encoding: EncodingKey::from_rsa_pem(private_key_pem)?,
@@ -1191,9 +1920,11 @@ impl JwtKeys {
 }
 
 pub fn create_token(keys: &JwtKeys, user_id: &str, roles: Vec<String>) -> Result<String, AppError> {
+    // A clock before the Unix epoch is the only failure here, and it MUST NOT
+    // become a panic: the guide's own Clippy configuration denies `expect`.
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("system clock is before the Unix epoch")
+        .map_err(|_| AppError::Internal("system clock is before the Unix epoch".into()))?
         .as_secs();
 
     let claims = Claims {
@@ -1250,17 +1981,36 @@ fn rsa_verifier_rejects_hs256_tokens() {
 
     assert!(verify_token(&keys, &forged).is_err());
 }
+
+/// The size promise in the docstring is only worth anything if it is checked.
+#[test]
+fn undersized_rsa_keys_are_refused() {
+    // 2048-bit fixture: well-formed, parses cleanly, below the stated minimum.
+    let result = JwtKeys::rs256(
+        RSA_2048_PRIVATE_PEM,
+        RSA_2048_PUBLIC_PEM,
+        "https://auth.example.com",
+        "my-api",
+    );
+
+    let message = match result {
+        Ok(_) => panic!("2048-bit key accepted"),
+        Err(e) => e.to_string(),
+    };
+    assert!(message.contains("2048 bits"), "unexpected message: {message}");
+}
 ```
 
 ```rust
-// src/extractors/jwt_auth.rs - JWT extractor
+// src/shared/extractors.rs - JWT extractor
+use std::sync::Arc;
+
 use axum::{
-    async_trait,
-    extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
+    extract::{FromRef, FromRequestParts},
+    http::request::Parts,
     RequestPartsExt,
 };
-use axum_extra::headers::{Authorization, authorization::Bearer};
+use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
 
 pub struct JwtAuth {
@@ -1268,11 +2018,10 @@ pub struct JwtAuth {
     pub roles: Vec<String>,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for JwtAuth
 where
     S: Send + Sync,
-    AppState: FromRef<S>,
+    Arc<JwtKeys>: FromRef<S>,
 {
     type Rejection = AppError;
 
@@ -1282,13 +2031,10 @@ where
             .await
             .map_err(|_| AppError::Unauthorized("Missing authorization header".into()))?;
 
-        let state = AppState::from_ref(state);
-        let claims = verify_token(&state.jwt_keys, bearer.token())?;
+        let keys = Arc::<JwtKeys>::from_ref(state);
+        let claims = verify_token(&keys, bearer.token())?;
 
-        Ok(JwtAuth {
-            user_id: claims.sub,
-            roles: claims.roles,
-        })
+        Ok(JwtAuth { user_id: claims.sub, roles: claims.roles })
     }
 }
 ```
@@ -1318,6 +2064,17 @@ decode::<Claims>(token, &keys.decoding, &Validation::default())?;
 // Don't use weak secrets
 let keys = JwtKeys::hs256(b"secret", issuer, audience)?;  // Too short
 
+// Don't state a key-size minimum you never check: `from_rsa_pem` parses a
+// 2048-bit key just as happily as a 4096-bit one
+/// RS256 with an RSA key pair (4096-bit minimum).
+pub fn rs256(private_key_pem: &[u8], public_key_pem: &[u8]) -> Result<Self, AppError> {
+    Ok(Self {
+        encoding: EncodingKey::from_rsa_pem(private_key_pem)?,
+        decoding: DecodingKey::from_rsa_pem(public_key_pem)?,
+        // ...
+    })
+}
+
 // Don't set very long expiration
 let claims = Claims {
     exp: now + 86400 * 365,  // 1 year - too long for access tokens
@@ -1342,33 +2099,50 @@ service is otherwise accepted. `set_required_spec_claims` recognises
 as `jti` for replay tracking, has to be checked by the application. Use
 short-lived access tokens with refresh-token rotation.
 
+A docstring is not a constraint. `EncodingKey::from_rsa_pem` and
+`DecodingKey::from_rsa_pem` validate PEM structure and nothing else, so a
+constructor that promises a 4096-bit minimum and then only parses the key
+accepts a 2048-bit one without comment — and the operator who generated it has
+every reason to believe the guide's minimum was applied. `jsonwebtoken` exposes
+no accessor for the modulus, so the check needs the key parsed independently;
+`rsa::RsaPublicKey` is already in the dependency graph through the
+`rust_crypto` feature, so making it a direct dependency adds a version pin
+rather than a new tree. Check the public key, since that is the half the
+verifier uses and the half a rotation is most likely to get wrong.
+
 ### Authorization with Casbin
 
 Projects **SHOULD** use casbin-rs[^12] for flexible authorization (RBAC, ABAC):
 
 ```rust
-// src/authz.rs
-use casbin::{CoreApi, Enforcer, MgmtApi};
+// src/shared/authz.rs
+use casbin::{CoreApi, Enforcer, RbacApi};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub type SharedEnforcer = Arc<RwLock<Enforcer>>;
 
-pub async fn create_enforcer() -> anyhow::Result<SharedEnforcer> {
+pub async fn create_enforcer() -> Result<SharedEnforcer, AppError> {
     // Model defines access control rules structure
-    let enforcer = Enforcer::new("config/rbac_model.conf", "config/policy.csv").await?;
+    let enforcer = Enforcer::new("config/rbac_model.conf", "config/policy.csv")
+        .await
+        .map_err(|e| AppError::Internal(format!("authorization model failed to load: {e}")))?;
     Ok(Arc::new(RwLock::new(enforcer)))
 }
 
-// Check if user has permission
+// Check if user has permission. `Ok(false)` is a denial; `Err` is an
+// operational failure, and the two MUST NOT be conflated.
 pub async fn check_permission(
     enforcer: &SharedEnforcer,
     subject: &str,
     object: &str,
     action: &str,
-) -> bool {
+) -> Result<bool, AppError> {
     let e = enforcer.read().await;
-    e.enforce((subject, object, action)).unwrap_or(false)
+    e.enforce((subject, object, action)).map_err(|err| {
+        tracing::error!(%subject, %object, %action, error = ?err, "policy enforcement failed");
+        AppError::ServiceUnavailable("Authorization unavailable".into())
+    })
 }
 
 // Add role to user
@@ -1376,9 +2150,11 @@ pub async fn add_role_for_user(
     enforcer: &SharedEnforcer,
     user: &str,
     role: &str,
-) -> anyhow::Result<bool> {
+) -> Result<bool, AppError> {
     let mut e = enforcer.write().await;
-    Ok(e.add_role_for_user(user, role, None).await?)
+    e.add_role_for_user(user, role, None)
+        .await
+        .map_err(|err| AppError::Internal(format!("role assignment failed: {err}")))
 }
 ```
 
@@ -1415,24 +2191,27 @@ g, bob, editor
 
 ```rust
 // Authorization middleware
+use axum::extract::Request;
+use axum::http::Method;
 use axum::middleware::Next;
-use axum::http::Request;
 
 pub async fn require_permission(
     State(state): State<AppState>,
     auth: JwtAuth,
-    req: Request<Body>,
+    req: Request,
     next: Next,
 ) -> Result<Response, AppError> {
-    let path = req.uri().path();
-    let method = match req.method() {
-        &Method::GET => "read",
-        &Method::POST | &Method::PUT | &Method::PATCH => "write",
-        &Method::DELETE => "delete",
+    let path = req.uri().path().to_owned();
+    let action = match *req.method() {
+        Method::GET | Method::HEAD => "read",
+        Method::POST | Method::PUT | Method::PATCH => "write",
+        Method::DELETE => "delete",
         _ => "read",
     };
 
-    if !check_permission(&state.enforcer, &auth.user_id, path, method).await {
+    // `?` propagates an enforcement failure as 503; only `Ok(false)` is a
+    // genuine authorisation denial.
+    if !check_permission(&state.enforcer, &auth.user_id, &path, action).await? {
         return Err(AppError::Forbidden("Insufficient permissions".into()));
     }
 
@@ -1440,9 +2219,39 @@ pub async fn require_permission(
 }
 ```
 
-**Why**: Casbin provides a flexible, policy-based authorization system supporting ACL, RBAC, and
-ABAC models. Policies can be stored in files or databases and modified at runtime without code
-changes.
+**Do**:
+
+```rust
+e.enforce((subject, object, action)).map_err(|err| {
+    tracing::error!(error = ?err, "policy enforcement failed");
+    AppError::ServiceUnavailable("Authorization unavailable".into())
+})
+```
+
+**Don't**:
+
+```rust
+// A corrupt model, an unreadable policy file and a genuine denial all become
+// the same silent `403`
+e.enforce((subject, object, action)).unwrap_or(false)
+```
+
+**Why**: Casbin provides a flexible, policy-based authorization system
+supporting ACL, RBAC, and ABAC models. Policies can be stored in files or
+databases and modified at runtime without code changes.
+
+`unwrap_or(false)` fails closed, so it is not an authorisation bypass — but it
+is undiagnosable. A policy file that no longer parses, a matcher that refers to
+a removed attribute, or an adapter that cannot reach its store all present to
+the operator as users being denied access they should have, with nothing in the
+logs to say why. Returning `Result<bool, AppError>` keeps the safe default while
+recording the cause, and lets the boundary answer `503` — "ask again" — rather
+than `403` — "you are not allowed" — which is the accurate statement when the
+service could not evaluate the policy at all.
+
+Note that `enforce` on a loaded, in-memory model rarely fails; the failures this
+guards against arrive with database adapters, watchers and runtime policy
+reloads, which is precisely when a silent denial is hardest to trace.
 
 ### Tower-HTTP Auth Layers
 
@@ -1520,60 +2329,84 @@ or a custom extractor instead.
 Projects **MUST** use Axum's built-in WebSocket support[^14] for real-time communication:
 
 ```rust
-// src/handlers/ws.rs
+// src/features/chat/ws.rs
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{Message, Utf8Bytes, WebSocket, WebSocketUpgrade},
         State,
     },
     response::Response,
 };
 use futures_util::{SinkExt, StreamExt};
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::error::RecvError;
+use tokio_util::sync::CancellationToken;
 
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> Response {
-    ws.on_upgrade(|socket| handle_socket(socket, state))
+    let cancel = state.shutdown.clone();
+    ws.on_upgrade(move |socket| handle_socket(socket, state, cancel))
 }
 
-async fn handle_socket(socket: WebSocket, state: AppState) {
+async fn handle_socket(socket: WebSocket, state: AppState, cancel: CancellationToken) {
     let (mut sender, mut receiver) = socket.split();
 
     // Subscribe to broadcast channel
     let mut rx = state.broadcast_tx.subscribe();
+    let send_cancel = cancel.clone();
 
-    // Spawn task to forward broadcast messages to client
+    // Forward broadcast messages to the client
     let mut send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if sender.send(Message::Text(msg)).await.is_err() {
-                break;
+        loop {
+            let message = tokio::select! {
+                () = send_cancel.cancelled() => break,
+                received = rx.recv() => received,
+            };
+
+            match message {
+                // Axum 0.8 carries text as `Utf8Bytes`.
+                Ok(text) => {
+                    if sender.send(Message::Text(text)).await.is_err() {
+                        break;
+                    }
+                }
+                Err(RecvError::Lagged(skipped)) => {
+                    // The consumer fell behind. Tell the client to resynchronise
+                    // rather than silently dropping the connection.
+                    tracing::warn!(skipped, "websocket consumer lagged; resynchronising");
+                    let notice = Utf8Bytes::from_static(r#"{"type":"resync"}"#);
+                    if sender.send(Message::Text(notice)).await.is_err() {
+                        break;
+                    }
+                }
+                Err(RecvError::Closed) => break,
             }
         }
+
+        let _ = sender.close().await;
     });
 
     // Receive messages from client
     let mut recv_task = tokio::spawn(async move {
-        while let Some(Ok(msg)) = receiver.next().await {
-            match msg {
+        loop {
+            let next = tokio::select! {
+                () = cancel.cancelled() => break,
+                next = tokio::time::timeout(IDLE_TIMEOUT, receiver.next()) => next,
+            };
+
+            let Ok(Some(Ok(message))) = next else { break };
+
+            match message {
                 Message::Text(text) => {
-                    tracing::info!("Received: {}", text);
-                    // Handle text message
+                    tracing::debug!(bytes = text.len(), "text frame");
                 }
                 Message::Binary(data) => {
-                    tracing::info!("Received {} bytes", data.len());
-                    // Handle binary message
+                    tracing::debug!(bytes = data.len(), "binary frame");
                 }
-                Message::Ping(data) => {
-                    // Axum handles Pong automatically
-                    tracing::debug!("Ping received");
-                }
-                Message::Close(_) => {
-                    tracing::info!("Client disconnected");
-                    break;
-                }
-                _ => {}
+                Message::Close(_) => break,
+                // Axum answers Ping automatically; Pong needs no handling.
+                Message::Ping(_) | Message::Pong(_) => {}
             }
         }
     });
@@ -1587,13 +2420,17 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 ```
 
 ```rust
-// src/state.rs - Broadcast channel for WebSocket
+// src/shared/state.rs - Broadcast channel for WebSocket
+use axum::extract::ws::Utf8Bytes;
 use tokio::sync::broadcast;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
-    pub broadcast_tx: broadcast::Sender<String>,
+    /// Publish `Utf8Bytes` rather than `String`: the conversion then happens
+    /// once at publish time instead of once per subscriber.
+    pub broadcast_tx: broadcast::Sender<Utf8Bytes>,
+    pub shutdown: CancellationToken,
 }
 
 impl AppState {
@@ -1601,53 +2438,183 @@ impl AppState {
         let db = PgPool::connect(&config.database_url).await?;
         let (broadcast_tx, _) = broadcast::channel(100);
 
-        Ok(Self { db, broadcast_tx })
+        Ok(Self { db, broadcast_tx, shutdown: CancellationToken::new() })
     }
 }
 ```
 
+**Do**:
+
 ```rust
-// src/routes/ws.rs
-use axum::{Router, routing::get};
+// Channel already carries the wire type
+let (broadcast_tx, _) = broadcast::channel::<Utf8Bytes>(100);
+sender.send(Message::Text(text)).await
+
+// Or convert at the boundary when the channel carries String
+sender.send(Message::Text(msg.into())).await
+```
+
+**Don't**:
+
+```rust
+// error[E0308]: expected `Utf8Bytes`, found `String`
+let mut rx: broadcast::Receiver<String> = state.broadcast_tx.subscribe();
+sender.send(Message::Text(msg)).await
+
+// A lagging consumer silently kills the sender task, so the client sits on a
+// half-open socket receiving nothing
+while let Ok(msg) = rx.recv().await { /* ... */ }
+```
+
+```rust
+// src/features/chat/routes.rs
+use axum::{routing::get, Router};
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/ws", get(ws_handler))
+    Router::new().route("/ws", get(ws_handler))
 }
 ```
 
-**Why**: Axum's WebSocket support is built on tokio-tungstenite[^15] but exposes a stable API
-that won't break with internal updates. Use `socket.split()` to handle send and receive
-concurrently in separate tasks.
+**Why**: Axum 0.8 changed `Message::Text` to carry `Utf8Bytes` and
+`Message::Binary` to carry `Bytes`, so that cloning a frame for several
+subscribers is a reference-count bump rather than a copy. Enum construction does
+not apply `From`, so passing a `String` straight into `Message::Text` is a type
+error rather than an implicit conversion; either publish `Utf8Bytes` on the
+channel or convert with `.into()` at the send site.
 
-### WebSocket with Authentication
+`while let Ok(msg) = rx.recv().await` ends the loop on *any* error, and
+`broadcast::Receiver` returns `RecvError::Lagged` — a recoverable condition —
+whenever a slow consumer falls behind the channel capacity. Treating that as
+termination drops the client mid-session with no close frame and no log line.
+Matching the two error variants separately keeps a lagging client connected and
+tells it to resynchronise, and reserves disconnection for `Closed`.
 
-Projects **SHOULD** authenticate WebSocket connections during upgrade:
+Axum's WebSocket support is built on tokio-tungstenite[^15] but exposes a stable
+API that will not break with internal updates. Use `socket.split()` to handle
+send and receive concurrently in separate tasks, and pass both tasks the same
+`CancellationToken` so [graceful shutdown](#graceful-shutdown) can close them.
+
+### WebSocket Security
+
+Connections **MUST** be authenticated during the upgrade, **MUST** have their
+`Origin` validated, and **MUST** be bounded by frame size and idle timeout.
+Services **SHOULD** authenticate with a same-site cookie, or with a single-use
+handshake ticket, and **SHOULD NOT** put a reusable token in the URL.
 
 ```rust
-use axum::extract::Query;
+use axum::{
+    extract::{ws::WebSocketUpgrade, State},
+    http::{header, HeaderMap, StatusCode},
+    response::Response,
+};
 
-#[derive(Deserialize)]
-pub struct WsQuery {
-    token: String,
+const MAX_FRAME_BYTES: usize = 64 * 1024;
+const IDLE_TIMEOUT: Duration = Duration::from_secs(60);
+
+fn origin_allowed(headers: &HeaderMap, allowed: &[String]) -> bool {
+    headers
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|origin| allowed.iter().any(|candidate| candidate == origin))
 }
+
+/// Minted by an ordinary authenticated HTTP request, single use, short lived.
+pub async fn issue_ws_ticket(
+    State(state): State<AppState>,
+    auth: JwtAuth,
+) -> Result<(StatusCode, String), AppError> {
+    let ticket = state.tickets.mint(&auth.user_id, Duration::from_secs(30)).await?;
+    Ok((StatusCode::CREATED, ticket))
+}
+
+pub async fn authenticated_ws_handler(
+    ws: WebSocketUpgrade,
+    headers: HeaderMap,
+    State(state): State<AppState>,
+) -> Result<Response, AppError> {
+    if !origin_allowed(&headers, &state.config.allowed_origins) {
+        return Err(AppError::Forbidden("Origin not allowed".into()));
+    }
+
+    // The browser WebSocket API cannot set headers, but it can set
+    // subprotocols, and those are not written to access logs or Referer.
+    let ticket = headers
+        .get("sec-websocket-protocol")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').map(str::trim).nth(1))
+        .unwrap_or_default()
+        .to_owned();
+
+    // Redeeming deletes the ticket, so a captured handshake cannot be replayed.
+    let user_id = state.tickets.redeem(&ticket).await?;
+    let cancel = state.shutdown.clone();
+
+    Ok(ws
+        .max_frame_size(MAX_FRAME_BYTES)
+        .max_message_size(MAX_FRAME_BYTES)
+        .protocols(["bearer-ticket"])
+        .on_upgrade(move |socket| handle_authenticated_socket(socket, state, user_id, cancel)))
+}
+```
+
+Services **MUST** also:
+
+- serve WebSockets over `wss://` only, so the ticket and the frames are
+  encrypted in transit;
+- re-check authorisation per message for anything privileged, because the
+  connection outlives the token that opened it;
+- close connections whose session has expired or been logged out, rather than
+  letting an open socket outlive its session record;
+- rate-limit both connection attempts and messages per connection, since the
+  HTTP rate limiter only sees the single upgrade request.
+
+**Do**:
+
+```rust
+// One-time ticket, carried in the subprotocol, redeemed and destroyed
+ws.protocols(["bearer-ticket"]).max_frame_size(MAX_FRAME_BYTES)
+```
+
+**Don't**:
+
+```rust
+// A reusable access token in the query string: it reaches access logs, proxy
+// logs, browser history and the Referer header of anything the page loads next
+#[derive(Deserialize)]
+pub struct WsQuery { token: String }
 
 pub async fn authenticated_ws_handler(
     ws: WebSocketUpgrade,
     Query(query): Query<WsQuery>,
     State(state): State<AppState>,
 ) -> Result<Response, AppError> {
-    // Verify token before upgrading
     let claims = verify_token(&state.jwt_keys, &query.token)?;
-
-    Ok(ws.on_upgrade(move |socket| {
-        handle_authenticated_socket(socket, state, claims.sub)
-    }))
+    // ...
 }
 ```
 
-**Why**: WebSocket connections cannot use standard HTTP headers after the initial handshake. Pass
-authentication tokens via query parameters during the upgrade request.
+**Why**: WebSocket clients in the browser cannot set request headers on the
+upgrade, so the token has to travel some other way. A URL is the worst of the
+options: this guide recommends `TraceLayer`, whose default span records the
+request URI, so a 15-minute access token in the query string is written to the
+service's own logs, and from there to whatever aggregates them — plus the
+proxy's access log, the browser's history, and the `Referer` of any subsequent
+request. The token is reusable for its whole lifetime, so anyone who reads any
+of those logs holds a working credential.
+
+This is a property of *reusable* tokens in URLs, not of query parameters as
+such. A ticket that is single-use, valid for seconds, and bound to one account
+is not much use to a log reader, so a redacted or one-time query token remains a
+legitimate design; OWASP's guidance is against putting ordinary credentials
+there[^34]. Prefer the subprotocol or a `SameSite=Strict` cookie, and where a
+cookie authenticates the handshake, validate `Origin` explicitly: the browser
+sends the cookie cross-site on a WebSocket upgrade, and there is no CORS
+preflight to stop it.
+
+Frame and message size caps bound the memory a single connection can force the
+server to allocate, and the idle timeout reclaims connections from clients that
+vanished without a close frame — neither of which the HTTP middleware stack can
+do, because it only ever sees the upgrade.
 
 ## Performance and Observability
 
@@ -1678,7 +2645,7 @@ async fn main() -> anyhow::Result<()> {
 ```
 
 ```rust
-// src/handlers/users.rs - Instrumented handler
+// src/features/users/handlers.rs - Instrumented handler
 use tracing::instrument;
 
 #[instrument(skip(state), fields(user_id = %id))]
@@ -1775,38 +2742,106 @@ to various backends.
 
 ### OpenTelemetry Integration
 
-For distributed tracing, projects **MAY** use tracing-opentelemetry[^21]:
+For distributed tracing, projects **MAY** use tracing-opentelemetry[^21]. The
+four crates below share a version train and **MUST** be upgraded together:
+
+```toml
+# Cargo.toml
+opentelemetry = "0.32.0"
+opentelemetry_sdk = { version = "0.32.1", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.32.0", features = ["grpc-tonic"] }
+tracing-opentelemetry = "0.33.0"
+```
 
 ```rust
-use opentelemetry::global;
-use opentelemetry_sdk::trace::TracerProvider;
-use tracing_opentelemetry::OpenTelemetryLayer;
+// src/shared/telemetry.rs
+use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
+use opentelemetry_otlp::WithExportConfig as _;
+use opentelemetry_sdk::{
+    propagation::TraceContextPropagator,
+    trace::{Sampler, SdkTracerProvider},
+    Resource,
+};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-fn init_telemetry() -> anyhow::Result<()> {
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint("http://localhost:4317");
+/// Returns the provider so `main` can shut it down; dropping it silently
+/// discards whatever the batch processor has not yet exported.
+pub fn init_telemetry(service_name: &'static str) -> anyhow::Result<SdkTracerProvider> {
+    // W3C `traceparent`, so spans join a trace that started upstream.
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
-    let provider = TracerProvider::builder()
-        .with_batch_exporter(exporter.build_span_exporter()?, opentelemetry_sdk::runtime::Tokio)
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint("http://localhost:4317")
+        .build()?;
+
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_sampler(Sampler::ParentBased(Box::new(Sampler::TraceIdRatioBased(0.1))))
+        .with_resource(
+            Resource::builder()
+                .with_service_name(service_name)
+                .with_attributes([KeyValue::new("deployment.environment.name", "production")])
+                .build(),
+        )
         .build();
 
-    global::set_tracer_provider(provider);
-
-    let tracer = global::tracer("my-api");
-    let telemetry_layer = OpenTelemetryLayer::new(tracer);
+    let tracer = provider.tracer(service_name);
+    global::set_tracer_provider(provider.clone());
 
     tracing_subscriber::registry()
-        .with(telemetry_layer)
-        .with(tracing_subscriber::fmt::layer())
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
+        .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
+        .with(tracing_subscriber::fmt::layer().json())
         .init();
 
-    Ok(())
+    Ok(provider)
+}
+
+pub fn shutdown_telemetry(provider: SdkTracerProvider) {
+    if let Err(error) = provider.shutdown() {
+        tracing::error!(%error, "tracer provider shutdown failed");
+    }
 }
 ```
 
-**Why**: OpenTelemetry enables distributed tracing across microservices with unique trace IDs,
-essential for debugging request flows in distributed systems.
+Shut the provider down as the last step of [graceful
+shutdown](#graceful-shutdown), after the tracked tasks have finished, so the
+spans they emit on the way out are exported.
+
+**Do**:
+
+```rust
+let exporter = opentelemetry_otlp::SpanExporter::builder().with_tonic().build()?;
+let provider = SdkTracerProvider::builder().with_batch_exporter(exporter).build();
+```
+
+**Don't**:
+
+```rust
+// 0.32 removed all of these: `new_exporter`, the `TracerProvider` name, and the
+// runtime argument to `with_batch_exporter`
+let exporter = opentelemetry_otlp::new_exporter().tonic().with_endpoint(endpoint);
+let provider = TracerProvider::builder()
+    .with_batch_exporter(exporter.build_span_exporter()?, opentelemetry_sdk::runtime::Tokio)
+    .build();
+```
+
+**Why**: OpenTelemetry enables distributed tracing across microservices with
+unique trace IDs, essential for debugging request flows in distributed systems.
+
+The 0.32 API differs from the pipeline builders in earlier releases: exporters
+are built per signal with `SpanExporter::builder()`, the SDK type is
+`SdkTracerProvider`, and `with_batch_exporter` no longer takes a runtime because
+the processor uses a dedicated thread. Installing `TraceContextPropagator` is
+what makes a span join an upstream trace; without it every service starts a new
+trace and the distributed part of distributed tracing does not happen.
+
+Holding the provider matters as much as building it. `global::set_tracer_provider`
+takes a clone, so nothing else keeps the batch processor alive at shutdown, and
+a process that exits without calling `shutdown` loses the spans still sitting in
+the batch queue — which are exactly the spans describing whatever went wrong
+just before it exited.
 
 ## Background Jobs
 
@@ -1877,59 +2912,90 @@ runs blocking code on a dedicated thread pool, keeping the async runtime respons
 
 For persistent, retriable background jobs, projects **SHOULD** use apalis[^22]:
 
+```toml
+# Cargo.toml
+apalis = { version = "0.7.4", features = ["retry", "catch-panic", "limit"] }
+apalis-redis = "0.7.4"
+```
+
 ```rust
-// src/jobs/mod.rs
+// src/shared/jobs/mod.rs
+use std::time::Duration;
+
+use apalis::layers::retry::RetryPolicy;
 use apalis::prelude::*;
-use apalis_redis::RedisStorage;
+use apalis_redis::{Config as RedisConfig, RedisStorage};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SendEmailJob {
+/// Apalis 0.7 needs no `Job` trait: a task is an ordinary serialisable struct,
+/// and the queue namespace comes from the storage configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SendEmail {
+    /// Delivery is at-least-once, so the handler must be idempotent. Persist
+    /// this key on first success and skip the send when it is already present.
+    pub idempotency_key: String,
     pub to: String,
     pub subject: String,
     pub body: String,
 }
 
-impl Job for SendEmailJob {
-    const NAME: &'static str = "send_email";
-}
+async fn send_email(
+    job: SendEmail,
+    worker: Worker<Context>,
+    attempt: Attempt,
+    email_client: Data<EmailClient>,
+) -> Result<(), Error> {
+    tracing::info!(
+        worker = %worker.id(),
+        attempt = attempt.current(),
+        to = %job.to,
+        "sending email"
+    );
 
-async fn send_email_handler(job: SendEmailJob, ctx: JobContext) -> Result<(), Error> {
-    tracing::info!(to = %job.to, subject = %job.subject, "Sending email");
-
-    // Simulate email sending
-    let email_client = ctx.data::<EmailClient>().unwrap();
     email_client
         .send(&job.to, &job.subject, &job.body)
         .await
-        .map_err(|e| Error::Failed(e.into()))?;
-
-    Ok(())
+        .map_err(|e| Error::Failed(std::sync::Arc::new(Box::new(e))))
 }
 
 pub async fn start_worker(redis_url: &str, email_client: EmailClient) -> anyhow::Result<()> {
-    let storage = RedisStorage::<SendEmailJob>::connect(redis_url).await?;
+    let conn = apalis_redis::connect(redis_url).await?;
+
+    // Tasks whose worker dies mid-flight are re-enqueued after this timeout
+    // rather than being lost; tasks that exhaust the retry policy land on the
+    // backend's dead-job set, where they can be inspected and replayed.
+    let config = RedisConfig::default()
+        .set_namespace("send-email")
+        .set_enqueue_scheduled(Duration::from_secs(30))
+        .set_reenqueue_orphaned_after(Duration::from_secs(300));
+
+    let storage: RedisStorage<SendEmail> = RedisStorage::new_with_config(conn, config);
 
     Monitor::new()
-        .register({
+        .register(
             WorkerBuilder::new("email-worker")
+                .catch_panic()
+                .retry(RetryPolicy::retries(5))
+                .concurrency(4)
                 .data(email_client)
                 .backend(storage)
-                .build_fn(send_email_handler)
-        })
+                .build_fn(send_email),
+        )
         .run()
         .await?;
 
     Ok(())
 }
 
-// Enqueue a job
+/// `Storage::push` takes `&mut self`. `RedisStorage` is cheap to clone, so
+/// handlers keep a clone in `AppState` rather than a shared reference.
 pub async fn enqueue_email(
-    storage: &RedisStorage<SendEmailJob>,
-    job: SendEmailJob,
-) -> anyhow::Result<()> {
-    storage.push(job).await?;
-    Ok(())
+    storage: &RedisStorage<SendEmail>,
+    job: SendEmail,
+) -> anyhow::Result<TaskId> {
+    let mut storage = storage.clone();
+    let parts = storage.push(job).await?;
+    Ok(parts.task_id)
 }
 ```
 
@@ -1942,51 +3008,142 @@ pub async fn create_user(
     let user = /* create user */;
 
     // Enqueue welcome email job (persisted, retriable)
-    state.job_storage.push(SendEmailJob {
-        to: user.email.clone(),
-        subject: "Welcome!".into(),
-        body: "Thanks for signing up.".into(),
-    }).await?;
+    enqueue_email(
+        &state.job_storage,
+        SendEmail {
+            idempotency_key: format!("welcome:{}", user.id),
+            to: user.email.clone(),
+            subject: "Welcome!".into(),
+            body: "Thanks for signing up.".into(),
+        },
+    )
+    .await?;
 
     Ok(Json(user))
 }
 ```
 
-**Why**: Apalis provides type-safe, Tower-based job processing with support for Redis, PostgreSQL,
-and other backends. Jobs are persisted and can be retried on failure, with built-in concurrency
-control and monitoring.
+**Do**:
+
+```rust
+let conn = apalis_redis::connect(redis_url).await?;
+let storage: RedisStorage<SendEmail> = RedisStorage::new(conn);
+
+let mut storage = storage.clone();   // push needs &mut self
+storage.push(job).await?;
+```
+
+**Don't**:
+
+```rust
+// None of this exists in the stable API: no `Job` trait, no `JobContext`,
+// no `RedisStorage::connect`, and `push` cannot take `&self`
+impl Job for SendEmailJob { const NAME: &'static str = "send_email"; }
+async fn handler(job: SendEmailJob, ctx: JobContext) -> Result<(), Error>
+let storage = RedisStorage::<SendEmailJob>::connect(redis_url).await?;
+storage.push(job).await?;
+```
+
+**Why**: Apalis provides type-safe, Tower-based job processing with support for
+Redis, PostgreSQL and other backends, and because a worker *is* a Tower service,
+retries, panic recovery and concurrency limits are layers rather than bespoke
+code.
+
+The named `Job` trait, `JobContext` and `RedisStorage::connect` belong to a
+pre-0.7 API and no longer resolve. In 0.7 the handler's extra arguments are
+extractors — `Data<T>` for shared state, `Worker<Context>` for worker identity,
+`Attempt` for the retry count — and connection setup is split between
+`apalis_redis::connect`, which yields a connection manager, and
+`RedisStorage::new`, which wraps it. `Storage::push` takes `&mut self`, so the
+enqueue path needs an owned clone; passing `&RedisStorage` will not compile.
+
+Retry configuration is a layer (`RetryPolicy`), not storage configuration:
+`apalis_redis::Config` has no `set_max_retries`. What the storage configures is
+recovery — `set_reenqueue_orphaned_after` decides how long a task claimed by a
+dead worker waits before another worker may take it, which is the difference
+between a lost job and a late one.
 
 ### Alternative: rusty-sidekiq
 
 For interoperability with Ruby Sidekiq, projects **MAY** use rusty-sidekiq[^23]:
 
+```toml
+# Cargo.toml - the package is `rusty-sidekiq`; its library is `sidekiq`.
+# The unrelated crate published as `sidekiq` is not this one.
+rusty-sidekiq = { version = "0.14.2", default-features = false }
+async-trait = "0.1.92"
+```
+
 ```rust
-use sidekiq::{Job, Worker, RedisPool};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use sidekiq::{RedisPool, Worker};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct WelcomeEmailWorker {
+struct WelcomeEmailArgs {
     user_id: i64,
 }
 
+struct WelcomeEmailWorker;
+
+// rusty-sidekiq still declares `Worker` with `#[async_trait]`, so
+// implementations must carry the same attribute.
 #[async_trait]
-impl Worker<WelcomeEmailWorker> for WelcomeEmailWorker {
-    async fn perform(&self, _args: WelcomeEmailWorker) -> Result<(), Box<dyn std::error::Error>> {
+impl Worker<WelcomeEmailArgs> for WelcomeEmailWorker {
+    async fn perform(&self, _args: WelcomeEmailArgs) -> sidekiq::Result<()> {
         // Send email
         Ok(())
     }
 }
 
-// Enqueue job (compatible with Ruby Sidekiq)
+// Typed helper: the queue comes from the worker's own options.
+WelcomeEmailWorker::opts()
+    .queue("mailers")
+    .perform_async(&redis_pool, WelcomeEmailArgs { user_id: 123 })
+    .await?;
+
+// Crate-level helper, for enqueueing to a Ruby worker that has no Rust type.
+// Class and queue are both owned `String`s.
 sidekiq::perform_async(
     &redis_pool,
-    "WelcomeEmailWorker",
+    "WelcomeEmailWorker".to_string(),
+    "mailers".to_string(),
+    WelcomeEmailArgs { user_id: 123 },
+)
+.await?;
+```
+
+**Do**:
+
+```rust
+sidekiq::perform_async(&redis_pool, class, queue, args).await?;
+```
+
+**Don't**:
+
+```rust
+// error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+sidekiq::perform_async(
+    &redis_pool,
+    "WelcomeEmailWorker",              // also &str, not String
     WelcomeEmailWorker { user_id: 123 },
 ).await?;
 ```
 
-**Why**: rusty-sidekiq is compatible with Ruby Sidekiq for mixed Ruby/Rust environments. Use
-apalis for pure Rust applications.
+**Why**: rusty-sidekiq is compatible with Ruby Sidekiq for mixed Ruby/Rust
+environments. Use apalis for pure Rust applications.
+
+Sidekiq routes work by queue name, so the crate-level
+`perform_async(redis, class, queue, args)` requires the queue explicitly — there
+is no default. Omitting it is a compile error rather than a silent enqueue to
+`default`, which is the right trade: a job pushed to the wrong queue is picked
+up by no worker and discovered days later. The typed
+`Worker::opts().queue(..).perform_async(..)` path is preferable in Rust-to-Rust
+code because the class name is derived from the type and cannot drift from it.
+
+Keeping the argument struct separate from the worker type — rather than a struct
+that is both — is what lets `class_name()` name a Ruby class that has no Rust
+equivalent.
 
 ## Caching
 
@@ -1995,7 +3152,7 @@ apalis for pure Rust applications.
 Projects **SHOULD** use moka[^24] for high-performance in-memory caching:
 
 ```rust
-// src/cache.rs
+// src/shared/cache.rs
 use moka::future::Cache;
 use std::time::Duration;
 
@@ -2069,14 +3226,27 @@ ratios.
 For distributed caching, projects **SHOULD** use redis-rs[^25] with deadpool-redis[^26]:
 
 ```rust
-// src/redis.rs
+// src/shared/redis.rs
+use deadpool_redis::redis::AsyncCommands;
 use deadpool_redis::{Config, Pool, Runtime};
-use redis::AsyncCommands;
+use thiserror::Error;
 
 pub async fn create_redis_pool(url: &str) -> anyhow::Result<Pool> {
     let cfg = Config::from_url(url);
     let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
     Ok(pool)
+}
+
+#[derive(Debug, Error)]
+pub enum CacheError {
+    #[error("cache pool exhausted or unavailable")]
+    Pool(#[from] deadpool_redis::PoolError),
+
+    #[error("redis command failed")]
+    Redis(#[from] deadpool_redis::redis::RedisError),
+
+    #[error("cached value could not be decoded")]
+    Decode(#[from] serde_json::Error),
 }
 
 #[derive(Clone)]
@@ -2089,39 +3259,48 @@ impl RedisCache {
         Self { pool }
     }
 
-    pub async fn get<T: serde::de::DeserializeOwned>(&self, key: &str) -> Option<T> {
-        let mut conn = self.pool.get().await.ok()?;
-        let data: Option<String> = conn.get(key).await.ok()?;
-        data.and_then(|s| serde_json::from_str(&s).ok())
+    /// `Ok(None)` means the key is genuinely absent. Connection, protocol and
+    /// decoding failures are returned as errors, so the caller decides.
+    pub async fn get<T: serde::de::DeserializeOwned>(
+        &self,
+        key: &str,
+    ) -> Result<Option<T>, CacheError> {
+        let mut conn = self.pool.get().await?;
+        let raw: Option<String> = conn.get(key).await?;
+
+        match raw {
+            None => Ok(None),
+            Some(raw) => Ok(Some(serde_json::from_str(&raw)?)),
+        }
     }
 
-    pub async fn set<T: serde::Serialize>(
+    pub async fn set<T: serde::Serialize + Sync>(
         &self,
         key: &str,
         value: &T,
         ttl_secs: u64,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), CacheError> {
         let mut conn = self.pool.get().await?;
         let data = serde_json::to_string(value)?;
-        conn.set_ex(key, data, ttl_secs).await?;
+        let _: () = conn.set_ex(key, data, ttl_secs).await?;
         Ok(())
     }
 
-    pub async fn delete(&self, key: &str) -> anyhow::Result<()> {
+    pub async fn delete(&self, key: &str) -> Result<(), CacheError> {
         let mut conn = self.pool.get().await?;
-        conn.del(key).await?;
+        let _: () = conn.del(key).await?;
         Ok(())
     }
 
-    pub async fn set_nx<T: serde::Serialize>(
+    pub async fn set_nx<T: serde::Serialize + Sync>(
         &self,
         key: &str,
         value: &T,
         ttl_secs: u64,
-    ) -> anyhow::Result<bool> {
+    ) -> Result<bool, CacheError> {
         let mut conn = self.pool.get().await?;
         let data = serde_json::to_string(value)?;
-        let result: bool = redis::cmd("SET")
+        let result: bool = deadpool_redis::redis::cmd("SET")
             .arg(key)
             .arg(data)
             .arg("NX")
@@ -2134,8 +3313,80 @@ impl RedisCache {
 }
 ```
 
-**Why**: Redis provides distributed caching that survives application restarts and can be shared
-across multiple instances. deadpool-redis offers an async connection pool optimized for Tokio.
+Fail-open is a policy, and it belongs at the boundary, stated once and
+instrumented:
+
+```rust
+/// The bounds are also what make the future `Send`, and therefore usable from
+/// an Axum handler.
+pub async fn cached_or_fresh<T, F, Fut>(
+    cache: &RedisCache,
+    key: &str,
+    load: F,
+) -> Result<T, AppError>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync,
+    F: FnOnce() -> Fut + Send,
+    Fut: Future<Output = Result<T, AppError>> + Send,
+{
+    match cache.get::<T>(key).await {
+        Ok(Some(hit)) => return Ok(hit),
+        Ok(None) => tracing::debug!(key, "cache miss"),
+        Err(error) => {
+            // Explicit policy: serve from the source of truth, but record it,
+            // so a dead cache shows up as a rate rather than as latency.
+            metrics::counter!("cache_errors_total").increment(1);
+            tracing::warn!(key, %error, "cache read failed; falling back to origin");
+        }
+    }
+
+    let value = load().await?;
+
+    if let Err(error) = cache.set(key, &value, 300).await {
+        tracing::warn!(key, %error, "cache write failed");
+    }
+
+    Ok(value)
+}
+```
+
+**Do**:
+
+```rust
+// A miss and a failure are different values
+pub async fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>, CacheError>
+```
+
+**Don't**:
+
+```rust
+// A dead Redis, a corrupt entry and an absent key are indistinguishable
+pub async fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
+    let mut conn = self.pool.get().await.ok()?;
+    let data: Option<String> = conn.get(key).await.ok()?;
+    data.and_then(|s| serde_json::from_str(&s).ok())
+}
+```
+
+**Why**: Redis provides distributed caching that survives application restarts
+and can be shared across multiple instances. deadpool-redis offers an async
+connection pool optimised for Tokio.
+
+Collapsing failures into `None` is a defensible *policy* — an optional cache
+that is unreachable should not take the service down — but making it the
+signature's only option removes the choice. With `Option<T>`, a Redis outage
+looks exactly like a cold cache: the hit rate falls to zero, every request goes
+to the database, and nothing in the logs or metrics says why. A corrupt or
+schema-drifted entry is worse, because it re-serialises on every write and never
+recovers. Returning `Result<Option<T>, CacheError>` keeps the same runtime
+behaviour when the caller wants it, while making the fail-open decision explicit
+at one place and countable.
+
+Import the Redis traits through `deadpool_redis::redis` rather than a separate
+`redis` dependency. The re-export is guaranteed to be the version deadpool was
+built against; a separately declared `redis` can resolve to a different major,
+and `AsyncCommands` from the wrong one simply will not apply to the pooled
+connection.
 
 ### Multi-Level Caching
 
@@ -2153,11 +3404,16 @@ pub async fn get_user_multilevel(
         return Ok(user);
     }
 
-    // L2: Redis
+    // L2: Redis. A cache failure is logged and treated as a miss here, at the
+    // boundary, rather than being hidden inside the cache API.
     let redis_key = format!("user:{}", id);
-    if let Some(user) = redis_cache.get::<User>(&redis_key).await {
-        local_cache.set_user(id, user.clone()).await;
-        return Ok(user);
+    match redis_cache.get::<User>(&redis_key).await {
+        Ok(Some(user)) => {
+            local_cache.set_user(id, user.clone()).await;
+            return Ok(user);
+        }
+        Ok(None) => {}
+        Err(error) => tracing::warn!(%error, key = %redis_key, "L2 read failed"),
     }
 
     // L3: Database
@@ -2166,7 +3422,9 @@ pub async fn get_user_multilevel(
         .await?;
 
     // Populate caches
-    redis_cache.set(&redis_key, &user, 3600).await?;
+    if let Err(error) = redis_cache.set(&redis_key, &user, 3600).await {
+        tracing::warn!(%error, key = %redis_key, "L2 write failed");
+    }
     local_cache.set_user(id, user.clone()).await;
 
     Ok(user)
@@ -2190,7 +3448,7 @@ governor = "0.10"
 ```
 
 ```rust
-// src/middleware/rate_limit.rs
+// src/shared/rate_limit.rs
 use std::time::Duration;
 
 use axum::body::Body;
@@ -2402,7 +3660,7 @@ beyond IP address.
 Projects **SHOULD** use recloser[^28] for circuit breaker patterns:
 
 ```rust
-// src/resilience.rs
+// src/shared/resilience.rs
 use recloser::{AsyncRecloser, Recloser};
 use std::time::Duration;
 
@@ -2439,6 +3697,12 @@ impl ResilientClient {
                     .await
                     .map_err(|e| AppError::External(e.to_string()))?;
 
+                // Classify the status inside the protected future, before the
+                // body is read: an upstream 500 must count as a failure.
+                let response = response
+                    .error_for_status()
+                    .map_err(|e| AppError::External(e.to_string()))?;
+
                 response
                     .text()
                     .await
@@ -2455,38 +3719,117 @@ impl ResilientClient {
 }
 ```
 
-**Why**: Circuit breakers prevent cascading failures by temporarily rejecting requests to failing
-services. Recloser uses a ring buffer for efficient failure tracking with configurable
-thresholds.
+**Do**:
+
+```rust
+// error_for_status turns 4xx/5xx into Err, so the breaker records a failure
+let response = response.error_for_status()?;
+response.text().await
+```
+
+**Don't**:
+
+```rust
+// A cleanly delivered 503 body resolves to Ok, which *resets* the breaker's
+// failure history: the circuit never opens while the upstream is down
+let response = client.get(url).send().await?;
+response.text().await
+```
+
+**Why**: Circuit breakers prevent cascading failures by temporarily rejecting
+requests to failing services. Recloser uses a ring buffer for efficient failure
+tracking with configurable thresholds.
+
+The classification step is what makes the breaker measure the right thing.
+`Response::text` collects the body and never inspects the status, so a service
+returning `503` as fast as it can returns `Ok` every time; recloser records
+`Poll::Ready(Ok(_))` with `on_success`, so a total upstream outage that is
+politely reported looks like a perfectly healthy dependency and the circuit stays
+closed. `error_for_status` classifies any `4xx` or `5xx` as an error. Where the
+policy needs to be finer — treat `429` and `503` as failures but pass `404`
+through as an ordinary answer — match on `response.status()` explicitly, but
+make the decision inside the protected future either way.
 
 ### Alternative: failsafe-rs
 
-For more sophisticated failure policies, projects **MAY** use failsafe-rs[^29]:
+Projects **MAY** use failsafe-rs[^29] where the failure policy needs a
+configurable backoff between probe attempts, rather than recloser's single
+`open_wait` interval:
+
+```toml
+# Cargo.toml
+failsafe = "1.3.0"
+```
 
 ```rust
-use failsafe::{Config, CircuitBreaker, Error};
 use std::time::Duration;
 
+// `failsafe::futures::CircuitBreaker` is the async-aware trait; the root
+// `failsafe::CircuitBreaker` takes a synchronous `FnOnce() -> Result`.
+use failsafe::futures::CircuitBreaker as _;
+use failsafe::{backoff, failure_policy, Config, StateMachine};
+
+// `Config::build` returns a `StateMachine`, not a `CircuitBreaker`: the latter
+// is a trait, and `failsafe::backoff::Backoff` is a `dyn` alias, so neither can
+// be written as `CircuitBreaker<impl Backoff>`.
+type ApiBreaker = StateMachine<failure_policy::ConsecutiveFailures<backoff::Exponential>, ()>;
+
+pub fn create_circuit_breaker() -> ApiBreaker {
+    let backoff = backoff::exponential(Duration::from_secs(5), Duration::from_secs(60));
+
+    Config::new()
+        .failure_policy(failure_policy::consecutive_failures(5, backoff))
+        .build()
+}
+
+pub async fn call_with_failsafe<F, T, E>(
+    breaker: &ApiBreaker,
+    future: F,
+) -> Result<T, failsafe::Error<E>>
+where
+    F: Future<Output = Result<T, E>>,
+{
+    breaker.call(future).await
+}
+```
+
+**Do**:
+
+```rust
+use failsafe::futures::CircuitBreaker as _;   // for futures
+
+failure_policy::consecutive_failures(5, backoff::exponential(
+    Duration::from_secs(5),
+    Duration::from_secs(60),
+))
+```
+
+**Don't**:
+
+```rust
+// `CircuitBreaker` is a non-generic trait, `consecutive_failures` takes two
+// arguments, `Config` has no `success_policy`, and the root trait's `call`
+// takes a closure rather than a future
 fn create_circuit_breaker() -> CircuitBreaker<impl failsafe::backoff::Backoff> {
     Config::new()
         .failure_policy(failsafe::failure_policy::consecutive_failures(5))
         .success_policy(failsafe::success_policy::consecutive_successes(2))
         .build()
 }
-
-async fn call_with_failsafe<F, T, E>(
-    cb: &CircuitBreaker<impl failsafe::backoff::Backoff>,
-    f: F,
-) -> Result<T, Error<E>>
-where
-    F: Future<Output = Result<T, E>>,
-{
-    cb.call(f).await
-}
 ```
 
-**Why**: failsafe-rs provides more configurable failure/success policies and backoff strategies
-for complex resilience requirements.
+**Why**: failsafe-rs separates the failure policy from the state machine, so the
+half-open probe interval can grow while an upstream stays down instead of
+retrying on a fixed timer — which is the reason to reach for it over recloser.
+
+Its API does not match the shape the name suggests. `CircuitBreaker` is a trait,
+implemented by the `StateMachine` that `Config::build` returns, and it exists
+twice: the root trait wraps a synchronous `FnOnce() -> Result<R, E>`, and
+`failsafe::futures::CircuitBreaker` wraps a `TryFuture`. Async callers must
+import the second. `consecutive_failures` takes the failure count *and* a
+backoff, and there is no `success_policy` on `Config` at all: the number of
+successful probes needed to close the circuit is part of the state machine, not
+a configurable policy in 1.3.
 
 ## Feature Flags
 
@@ -2494,43 +3837,89 @@ for complex resilience requirements.
 
 Projects **SHOULD** use unleash-api-client[^30] for runtime feature flags:
 
+```toml
+# Cargo.toml - a transport feature is REQUIRED; without one there is no
+# `default_transport` and the client cannot be built.
+unleash-api-client = { version = "0.17.1", features = ["reqwest-client-rustls"] }
+enum-map = "2"
+```
+
 ```rust
-// src/features.rs
-use unleash_api_client::{client::ClientBuilder, Client};
+// src/shared/feature_flags.rs
 use std::sync::Arc;
 
-pub type FeatureClient = Arc<Client>;
+use enum_map::Enum;
+use unleash_api_client::client::{Client, ClientBuilder, FeatureKey};
+use unleash_api_client::context::Context;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-pub async fn create_feature_client(
+/// Feature names are a closed set. The client is generic over the key type, so
+/// a mistyped flag is a compile error rather than a silent `false`.
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, Copy, Enum)]
+pub enum Features {
+    new_dashboard,
+    beta_api,
+}
+
+impl FeatureKey for Features {
+    fn name(self) -> &'static str {
+        match self {
+            Features::new_dashboard => "new_dashboard",
+            Features::beta_api => "beta_api",
+        }
+    }
+}
+
+pub type FeatureClient = Arc<Client<Features>>;
+
+pub fn create_feature_client(
     api_url: &str,
     api_key: &str,
     app_name: &str,
 ) -> anyhow::Result<FeatureClient> {
-    let client = ClientBuilder::default()
-        .api_url(api_url)
-        .api_key(api_key)
-        .app_name(app_name)
-        .instance_id(uuid::Uuid::new_v4().to_string())
-        .build()
-        .await?;
-
-    // Start background polling
-    client.start().await?;
+    let client = ClientBuilder::default().into_client::<Features>(
+        api_url,
+        app_name,
+        &uuid::Uuid::new_v4().to_string(),
+        Some(api_key.to_string()),
+    )?;
 
     Ok(Arc::new(client))
 }
 
+/// Registration and polling are separate operations. `poll_for_updates` runs
+/// until `stop_poll`, so it belongs on its own tracked task, cancelled during
+/// graceful shutdown so the final metrics batch is submitted.
+pub async fn start_feature_client(
+    client: FeatureClient,
+    tasks: &TaskTracker,
+    cancel: CancellationToken,
+) -> anyhow::Result<()> {
+    client
+        .register()
+        .await
+        .map_err(|e| anyhow::anyhow!("Unleash registration failed: {e}"))?;
+
+    let polling = Arc::clone(&client);
+    tasks.spawn(async move {
+        tokio::select! {
+            () = polling.poll_for_updates() => {}
+            () = cancel.cancelled() => polling.stop_poll().await,
+        }
+    });
+
+    Ok(())
+}
+
 // Check feature flag
-pub fn is_enabled(client: &FeatureClient, feature: &str) -> bool {
+pub fn is_enabled(client: &FeatureClient, feature: Features) -> bool {
     client.is_enabled(feature, None, false)
 }
 
 // Check with context (for gradual rollouts, A/B tests)
-pub fn is_enabled_for_user(client: &FeatureClient, feature: &str, user_id: &str) -> bool {
-    let context = unleash_api_client::context::Context {
-        user_id: Some(user_id.to_string()),
-        ..Default::default()
-    };
+pub fn is_enabled_for_user(client: &FeatureClient, feature: Features, user_id: &str) -> bool {
+    let context = Context { user_id: Some(user_id.to_string()), ..Default::default() };
     client.is_enabled(feature, Some(&context), false)
 }
 ```
@@ -2541,25 +3930,66 @@ pub async fn get_dashboard(
     State(state): State<AppState>,
     auth: JwtAuth,
 ) -> Result<Json<Dashboard>, AppError> {
-    let dashboard = if is_enabled_for_user(&state.features, "new_dashboard", &auth.user_id) {
-        build_new_dashboard(&state, &auth.user_id).await?
-    } else {
-        build_legacy_dashboard(&state, &auth.user_id).await?
-    };
+    let dashboard =
+        if is_enabled_for_user(&state.features, Features::new_dashboard, &auth.user_id) {
+            build_new_dashboard(&state, &auth.user_id).await?
+        } else {
+            build_legacy_dashboard(&state, &auth.user_id).await?
+        };
 
     Ok(Json(dashboard))
 }
 ```
 
-**Why**: Unleash provides runtime feature toggles with gradual rollouts, A/B testing, and user
-targeting. Features can be enabled/disabled without code deployments.
-
-### Simple Feature Flags
-
-For simpler needs, projects **MAY** use environment-based feature flags:
+**Do**:
 
 ```rust
-// src/config.rs
+let client = ClientBuilder::default()
+    .into_client::<Features>(api_url, app_name, &instance_id, Some(api_key.into()))?;
+client.register().await?;
+tasks.spawn(async move { client.poll_for_updates().await });
+```
+
+**Don't**:
+
+```rust
+// None of these setters exist, `Client` is generic over its key type, and
+// there is no `start`
+let client = ClientBuilder::default()
+    .api_url(api_url)
+    .api_key(api_key)
+    .app_name(app_name)
+    .build()
+    .await?;
+client.start().await?;
+```
+
+**Why**: Unleash provides runtime feature toggles with gradual rollouts, A/B
+testing and user targeting, so a flag can be flipped without a deployment.
+
+The 0.17 client is constructed by converting the builder — `into_client::<F>`
+takes the API URL, application name, instance id and optional authorisation in
+one call — and it is generic over a `FeatureKey` type, so `Client` alone is not
+a type. Startup is two steps that the removed `start` used to hide:
+`register()` announces the instance and its strategies once, and
+`poll_for_updates()` is a loop that refreshes the toggle set and submits usage
+metrics until `stop_poll()` is called. Spawning it without registering means the
+server never learns the instance exists; registering without polling means the
+flags never change after start-up. Both need to happen, and the polling task
+needs cancelling at shutdown or the last metrics window is lost.
+
+A transport feature must be selected explicitly: `default_transport` is
+`#[cfg]`-gated on one of the `reqwest-client*` features, so a bare
+`unleash-api-client = "0.17.1"` does not compile against this example.
+
+### Environment Feature Flags
+
+Projects whose flags change only at deploy time — a killswitch, a migration
+toggle, a maintenance mode — **MAY** read them from the environment instead, and
+avoid the network dependency:
+
+```rust
+// src/shared/config.rs
 use std::env;
 
 #[derive(Clone)]
@@ -2600,121 +4030,205 @@ Projects **MUST** implement graceful shutdown to handle in-flight requests durin
 - **Connection cleanup**: Properly close database connections and external resources
 - **Kubernetes readiness**: Required for proper pod lifecycle management
 
-### Basic Graceful Shutdown
+### Signal Handling
 
 ```rust
-// src/main.rs
+// src/shared/shutdown.rs
+use anyhow::Context as _;
 use tokio::signal;
-use std::net::SocketAddr;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let config = Config::from_env()?;
-    let app = create_app(config.clone()).await?;
-
-    let addr: SocketAddr = config.addr.parse()?;
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-
-    tracing::info!("Server listening on {}", addr);
-
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-
-    tracing::info!("Server shutdown complete");
-    Ok(())
-}
-
-async fn shutdown_signal() {
+pub async fn shutdown_signal() -> anyhow::Result<()> {
     let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("Failed to install Ctrl+C handler");
+        signal::ctrl_c().await.context("failed to install the Ctrl+C handler")
     };
 
     #[cfg(unix)]
     let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("Failed to install SIGTERM handler")
-            .recv()
-            .await;
+        // `Signal::recv` takes `&mut self`, so the handler must be mutable and
+        // must outlive the `.recv()` call.
+        let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate())
+            .context("failed to install the SIGTERM handler")?;
+        sigterm.recv().await;
+        anyhow::Ok(())
     };
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
+    let terminate = std::future::pending::<anyhow::Result<()>>();
 
     tokio::select! {
-        _ = ctrl_c => {
-            tracing::info!("Received Ctrl+C, initiating graceful shutdown");
+        result = ctrl_c => {
+            result?;
+            tracing::info!("received SIGINT, starting graceful shutdown");
         }
-        _ = terminate => {
-            tracing::info!("Received SIGTERM, initiating graceful shutdown");
+        result = terminate => {
+            result?;
+            tracing::info!("received SIGTERM, starting graceful shutdown");
         }
     }
-}
-```
 
-### Shutdown with Resource Cleanup
-
-```rust
-// src/main.rs
-use std::sync::Arc;
-use tokio::sync::broadcast;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let config = Config::from_env()?;
-
-    // Create shutdown channel
-    let (shutdown_tx, _) = broadcast::channel::<()>(1);
-    let shutdown_rx = shutdown_tx.subscribe();
-
-    // Initialize resources
-    let db = PgPool::connect(&config.database_url).await?;
-    let redis = create_redis_pool(&config.redis_url).await?;
-
-    let state = AppState {
-        db: db.clone(),
-        redis: redis.clone(),
-        shutdown: shutdown_tx.clone(),
-    };
-
-    let app = create_app(state).await?;
-
-    let listener = tokio::net::TcpListener::bind(&config.addr).await?;
-
-    // Spawn server
-    let server_handle = tokio::spawn(async move {
-        axum::serve(listener, app)
-            .with_graceful_shutdown(async move {
-                let mut rx = shutdown_rx;
-                let _ = rx.recv().await;
-            })
-            .await
-    });
-
-    // Wait for shutdown signal
-    shutdown_signal().await;
-
-    // Notify all components
-    let _ = shutdown_tx.send(());
-
-    // Wait for server to finish
-    let _ = server_handle.await;
-
-    // Cleanup resources
-    tracing::info!("Closing database connections...");
-    db.close().await;
-
-    tracing::info!("Shutdown complete");
     Ok(())
 }
 ```
 
-### Kubernetes Health Probes with Shutdown
+**Do**:
 
 ```rust
-// src/routes/health.rs
+let mut sigterm = signal::unix::signal(SignalKind::terminate())?;
+sigterm.recv().await;
+```
+
+**Don't**:
+
+```rust
+// error[E0596]: cannot borrow `terminate` as mutable, as it is not declared
+// as mutable
+let terminate = signal::unix::signal(SignalKind::terminate())
+    .expect("Failed to install SIGTERM handler");
+tokio::select! { _ = terminate.recv() => {} }
+```
+
+**Why**: `tokio::signal::unix::Signal::recv` takes `&mut self`, so binding the
+handler immutably does not compile. Registering the handler is also fallible —
+it fails when the signal cannot be trapped — and `expect` at that point turns a
+recoverable start-up problem into a panic inside a shutdown path, where the
+stack trace is least useful.
+
+### Coordinated Shutdown
+
+Shutdown **MUST** fail readiness before it stops accepting, **MUST** cancel
+every spawned task, and **MUST** bound the wait on outstanding work:
+
+```rust
+// src/shared/shutdown.rs
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
+use anyhow::Context as _;
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
+
+pub struct Lifecycle {
+    pub health: Arc<HealthState>,
+    /// Handed to every worker, WebSocket and poller.
+    pub cancel: CancellationToken,
+    /// Every long-lived task is spawned through this.
+    pub tasks: TaskTracker,
+    /// Time the load balancer needs to observe the failing readiness probe.
+    pub deregistration_delay: Duration,
+    /// Hard ceiling on the whole drain.
+    pub shutdown_deadline: Duration,
+}
+
+pub async fn run(
+    app: axum::Router,
+    listener: tokio::net::TcpListener,
+    lifecycle: Lifecycle,
+) -> anyhow::Result<()> {
+    let Lifecycle { health, cancel, tasks, deregistration_delay, shutdown_deadline } = lifecycle;
+
+    let signal_health = Arc::clone(&health);
+    let signal_cancel = cancel.clone();
+
+    let server = axum::serve(listener, app).with_graceful_shutdown(async move {
+        if let Err(error) = shutdown_signal().await {
+            tracing::error!(%error, "signal handling failed; shutting down anyway");
+        }
+
+        // 1. Fail readiness so the load balancer stops routing new work.
+        signal_health.start_shutdown();
+        tokio::time::sleep(deregistration_delay).await;
+
+        // 2. Only now stop accepting. `with_graceful_shutdown` still waits for
+        //    in-flight HTTP requests after this future resolves.
+        signal_cancel.cancel();
+    });
+
+    server.await.context("HTTP server failed")?;
+
+    // 3. Workers and WebSockets saw the same token. Wait for the work actually
+    //    to finish, but never past the deadline.
+    tasks.close();
+    match tokio::time::timeout(shutdown_deadline, tasks.wait()).await {
+        Ok(()) => tracing::info!("all tracked tasks completed"),
+        Err(_) => tracing::warn!(
+            ?shutdown_deadline,
+            outstanding = tasks.len(),
+            "shutdown deadline reached with tasks still running"
+        ),
+    }
+
+    // 4. Close resources last, once nothing can still be using them.
+    Ok(())
+}
+
+pub fn spawn_worker(tasks: &TaskTracker, cancel: CancellationToken) {
+    tasks.spawn(async move {
+        loop {
+            tokio::select! {
+                () = cancel.cancelled() => break,
+                () = tokio::time::sleep(Duration::from_secs(5)) => {
+                    tracing::debug!("worker tick");
+                }
+            }
+        }
+    });
+}
+```
+
+**Do**:
+
+```rust
+// Wait for the work, with a ceiling
+tasks.close();
+tokio::time::timeout(shutdown_deadline, tasks.wait()).await
+```
+
+**Don't**:
+
+```rust
+// A fixed sleep neither drains anything nor bounds anything: background tasks
+// keep running, and every deployment costs the full five seconds
+health.start_shutdown();
+tokio::time::sleep(Duration::from_secs(5)).await;
+
+// Discards a send failure, a panicked server task and the server's own error
+let _ = shutdown_tx.send(());
+let _ = server_handle.await;
+```
+
+**Why**: The two waits in a shutdown do different jobs and neither substitutes
+for the other.
+
+`axum::serve(..).with_graceful_shutdown(..)` already drains HTTP: once the
+supplied future resolves, the server stops accepting new connections and then
+waits for the requests already in flight. That mechanism is sound and should be
+kept. What the sleep before it buys is different — it is deregistration time,
+the gap between the readiness probe starting to fail and the load balancer
+noticing, during which the process must keep accepting or clients see connection
+refusals. Calling that sleep "waiting for in-flight requests to complete" is
+what makes people delete it, or set it to the request timeout, both of which are
+wrong.
+
+Nothing in that mechanism touches spawned tasks. Background workers, WebSocket
+send and receive loops, the Unleash poller and the session-expiry sweeper all
+outlive the server future, so a process can report a clean shutdown while a job
+is halfway through a database transaction. A `CancellationToken` shared by all
+of them makes cancellation a single call, and `TaskTracker` turns "did they
+finish?" into an awaitable rather than a guess. Wrapping that in `timeout` is
+what stops one stuck task from holding the pod past its
+`terminationGracePeriodSeconds`, at which point the runtime sends `SIGKILL` and
+none of the cleanup runs at all.
+
+Failures during shutdown are worth surfacing rather than discarding with `let _
+=`. A server task that panicked, a channel with no receivers, a database that
+refused to close: each of them changes what the operator should do next, and
+each of them is invisible if the result is dropped.
+
+### Kubernetes Health Probes
+
+```rust
+// src/features/health/handlers.rs
 use axum::{extract::State, http::StatusCode, routing::get, Router};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -2726,10 +4240,7 @@ pub struct HealthState {
 
 impl HealthState {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            ready: AtomicBool::new(true),
-            live: AtomicBool::new(true),
-        })
+        Arc::new(Self { ready: AtomicBool::new(true), live: AtomicBool::new(true) })
     }
 
     pub fn start_shutdown(&self) {
@@ -2760,67 +4271,20 @@ async fn readiness(State(state): State<AppState>) -> StatusCode {
 }
 ```
 
-```rust
-// src/main.rs - Integration with shutdown
-async fn shutdown_signal(health: Arc<HealthState>) {
-    let ctrl_c = signal::ctrl_c();
-    let terminate = signal::unix::signal(signal::unix::SignalKind::terminate())
-        .expect("Failed to install SIGTERM handler");
+**Why**: Liveness and readiness answer different questions, and conflating them
+is how a rolling deployment turns into an outage. Liveness failing gets the pod
+restarted; readiness failing only removes it from the load balancer. During
+shutdown exactly one of them must change: readiness goes false so traffic drains
+away, while liveness stays true so the orchestrator does not kill the process
+that is trying to finish its work. Set `deregistration_delay` from the
+platform's probe interval — with a 2-second `periodSeconds` and a
+`failureThreshold` of 2, five seconds is enough; a longer interval needs a
+longer delay.
 
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate.recv() => {},
-    }
-
-    tracing::info!("Shutdown signal received, marking as not ready");
-    health.start_shutdown();
-
-    // Wait for load balancer to drain connections (k8s terminationGracePeriodSeconds)
-    tokio::time::sleep(Duration::from_secs(5)).await;
-}
-```
-
-### Draining Connections
-
-```rust
-// src/main.rs
-use std::time::Duration;
-
-async fn graceful_shutdown(
-    health: Arc<HealthState>,
-    drain_timeout: Duration,
-) {
-    shutdown_signal(health.clone()).await;
-
-    tracing::info!("Starting connection drain ({:?})...", drain_timeout);
-
-    // Mark as not ready (stops receiving new connections from LB)
-    health.start_shutdown();
-
-    // Wait for in-flight requests to complete
-    tokio::time::sleep(drain_timeout).await;
-
-    tracing::info!("Connection drain complete");
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let health = HealthState::new();
-    let drain_timeout = Duration::from_secs(30);
-
-    let app = create_app(state).await?;
-
-    axum::serve(listener, app)
-        .with_graceful_shutdown(graceful_shutdown(health, drain_timeout))
-        .await?;
-
-    Ok(())
-}
-```
-
-**Why**: Graceful shutdown ensures zero-downtime deployments by completing in-flight requests
-before terminating. The readiness probe integration ensures load balancers stop sending new
-traffic before the server shuts down.
+Give the process the whole grace period to work with:
+`terminationGracePeriodSeconds` **MUST** exceed `deregistration_delay` plus
+`shutdown_deadline`, or the platform sends `SIGKILL` in the middle of the drain
+that the code carefully arranged.
 
 ## OpenAPI Documentation
 
@@ -2838,15 +4302,43 @@ Projects **SHOULD** generate OpenAPI specifications from code using utoipa[^31].
 ```toml
 # Cargo.toml
 [dependencies]
-utoipa = { version = "5", features = ["axum_extras"] }
+utoipa = { version = "5.5.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
+```
+
+**Do**:
+
+```toml
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
+```
+
+**Don't**:
+
+```toml
+# Both majors integrate with Axum 0.7, not the 0.8 this guide targets
 utoipa-swagger-ui = { version = "8", features = ["axum"] }
 utoipa-redoc = { version = "5", features = ["axum"] }
 ```
 
+**Why**: The three crates version independently. utoipa is on 5.5.0, but its
+Swagger UI and ReDoc companions have each had a major release since: the `"8"`
+range resolves to `utoipa-swagger-ui` 8.1.0, which declares `axum ^0.7`, and the
+`"5"` range does the same for ReDoc. Cargo does not report that as an error — it
+compiles Axum 0.7 alongside 0.8 and then fails when the `Router` returned by
+`SwaggerUi` cannot be merged into the 0.8 router, because the two `Router` types
+are unrelated. Swagger UI 9.0.2 and ReDoc 6.0.0 depend on Axum 0.8, which is
+what makes `.merge()` type-check.
+
+Note also that `utoipa-swagger-ui` 8.1.1 is yanked. Yanking does not remove the
+whole major — Cargo still selects 8.1.0 from a `"8"` range — so the yank is not
+what fixes this; the major upgrade is.
+
 ### Documenting Handlers
 
 ```rust
-// src/handlers/users.rs
+// src/features/users/handlers.rs
 use axum::{extract::Path, Json};
 use utoipa::ToSchema;
 use utoipa::OpenApi;
@@ -2872,9 +4364,9 @@ pub struct CreateUserRequest {
     /// Display name
     #[schema(example = "Alice Smith")]
     pub name: String,
-    /// Password (min 15 characters for single-factor sign-in)
-    #[schema(example = "a wandering albatross", min_length = 15)]
-    pub password: String,
+    /// Validated at the type level; see Documenting Password Rules below.
+    #[schema(example = "a wandering albatross")]
+    pub password: Password,
 }
 
 /// List all users
@@ -2939,9 +4431,142 @@ pub async fn create_user(
 
 #### Documenting Password Rules
 
-A `min_length` annotation documents the contract; it does not enforce it.
-The handler **MUST** apply the same rule at runtime, and the two **MUST**
-agree. The documented minimum **MUST** be at least 15 characters where a
+A `min_length` annotation documents the contract; it does not enforce it. A
+handler whose field is a plain `String` accepts a five-character password no
+matter what the schema says, and the OpenAPI document then advertises a rule
+the API does not apply.
+
+The rule and its enforcement **MUST** therefore live in one place. Projects
+**MUST** parse the password into a validated type at the edge, and **MUST NOT**
+carry an unvalidated `String` past the deserialiser:
+
+```rust
+// src/shared/password.rs
+use std::fmt;
+
+use serde::{Deserialize, Deserializer};
+
+/// Single-factor minimum from NIST SP 800-63B.
+pub const MIN_PASSWORD_CHARS: usize = 15;
+/// A floor on what the verifier accepts, not a cap imposed on the user.
+pub const MAX_PASSWORD_CHARS: usize = 256;
+
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+pub enum PasswordError {
+    #[error("password must be at least {MIN_PASSWORD_CHARS} characters")]
+    TooShort,
+
+    #[error("password must be at most {MAX_PASSWORD_CHARS} characters")]
+    TooLong,
+
+    #[error("password appears on a blocklist of breached or guessable values")]
+    Blocked,
+}
+
+/// A password that has passed every rule below. There is no way to build one
+/// that has not: the only constructor is `new`, and `Deserialize` routes
+/// through it.
+#[derive(Clone)]
+pub struct Password(String);
+
+impl Password {
+    pub fn new(raw: impl Into<String>, context: &[&str]) -> Result<Self, PasswordError> {
+        let raw: String = raw.into();
+
+        // Count code points, not bytes: "pässwörtchen-ährenlese" is 22
+        // characters but 25 bytes, and byte counting would reject valid input.
+        let chars = raw.chars().count();
+
+        if chars < MIN_PASSWORD_CHARS {
+            return Err(PasswordError::TooShort);
+        }
+        if chars > MAX_PASSWORD_CHARS {
+            return Err(PasswordError::TooLong);
+        }
+        if is_blocked(&raw, context) {
+            return Err(PasswordError::Blocked);
+        }
+
+        Ok(Self(raw))
+    }
+
+    /// Deliberately not `Deref` or `AsRef`: the secret leaves only for hashing.
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+// Neither `Debug` nor `Display` may print the secret, or it reaches a log the
+// moment anyone derives `Debug` on a struct that contains it.
+impl fmt::Debug for Password {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Password(<redacted>)")
+    }
+}
+
+impl<'de> Deserialize<'de> for Password {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        // Axum's `Json` rejection turns this into 422 with the message above.
+        Password::new(raw, &[]).map_err(serde::de::Error::custom)
+    }
+}
+
+fn is_blocked(candidate: &str, context: &[&str]) -> bool {
+    // In production this queries a breached-password set, not a literal.
+    const BREACHED: &[&str] = &["password123456789", "qwertyuiopasdfgh"];
+
+    let lowered = candidate.to_lowercase();
+    BREACHED.iter().any(|entry| *entry == lowered)
+        || context
+            .iter()
+            .any(|term| !term.is_empty() && lowered.contains(&term.to_lowercase()))
+}
+```
+
+Generate the published schema from the same constants, so the document and the
+check cannot drift:
+
+```rust
+impl utoipa::PartialSchema for Password {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::SchemaType::Type(
+                utoipa::openapi::Type::String,
+            ))
+            .format(Some(utoipa::openapi::SchemaFormat::KnownFormat(
+                utoipa::openapi::KnownFormat::Password,
+            )))
+            .min_length(Some(MIN_PASSWORD_CHARS))
+            .max_length(Some(MAX_PASSWORD_CHARS))
+            .description(Some("Single-factor password; NIST SP 800-63B rules apply"))
+            .into()
+    }
+}
+
+impl utoipa::ToSchema for Password {}
+```
+
+**Do**:
+
+```rust
+// The type carries the contract; the handler cannot forget to check
+pub struct CreateUserRequest {
+    pub password: Password,
+}
+```
+
+**Don't**:
+
+```rust
+// The annotation is documentation. `"short"` deserialises and is persisted.
+pub struct CreateUserRequest {
+    #[schema(min_length = 15)]
+    pub password: String,
+}
+```
+
+The documented minimum **MUST** be at least 15 characters where a
 password is the only authentication factor; 8 characters is acceptable
 only when the password is one factor of multi-factor authentication.
 
@@ -2955,6 +4580,32 @@ Password handling **MUST** also:
 - impose no composition rules and no periodic expiry, forcing a change
   only on evidence of compromise.
 
+Projects **MUST** test the boundary rather than trusting the annotation:
+
+```rust
+// tests/password.rs
+#[test]
+fn five_character_password_is_rejected() {
+    let body = r#"{"email":"a@example.com","name":"Alice","password":"short"}"#;
+
+    let result: Result<CreateUserRequest, _> = serde_json::from_str(body);
+
+    assert!(result.is_err(), "five-character password still deserialised");
+}
+
+#[test]
+fn boundary_is_exactly_the_documented_minimum() {
+    assert!(Password::new("a".repeat(14), &[]).is_err());
+    assert!(Password::new("a".repeat(15), &[]).is_ok());
+}
+
+#[test]
+fn debug_never_prints_the_secret() {
+    let password = Password::new("a wandering albatross", &[]).unwrap();
+    assert_eq!(format!("{password:?}"), "Password(<redacted>)");
+}
+```
+
 **Why**: NIST SP 800-63B requires a 15-character minimum for single-factor
 passwords and permits 8 only within multi-factor authentication[^32]. An
 undifferentiated `min 8` reads as an endorsement of an eight-character
@@ -2964,10 +4615,20 @@ than that breaks password managers and passphrases. Composition rules and
 scheduled rotation are prohibited rather than merely discouraged, because
 both push users towards predictable variants.
 
+Stating the rule in prose and annotating the schema does not implement it.
+Deserialising into `String` and validating later gives every future handler a
+chance to forget, and the compiler cannot help, because an unchecked password
+and a checked one have the same type. Parsing into `Password` moves the rule
+into the type: a handler that receives one is holding a value that has already
+passed, and there is no constructor that skips the check. Counting `chars()`
+rather than `len()` is what makes the Unicode requirement true rather than
+aspirational — `len()` would reject a 22-character German passphrase as though
+it were 25 characters.
+
 ### OpenAPI Specification
 
 ```rust
-// src/openapi.rs
+// src/shared/openapi.rs
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -3057,7 +4718,7 @@ regression before deployment.
 ### Error Response Schemas
 
 ```rust
-// src/error.rs
+// src/shared/error.rs
 use utoipa::ToSchema;
 
 #[derive(ToSchema, serde::Serialize)]
@@ -3119,47 +4780,47 @@ annotations. This keeps documentation in sync with code and catches mismatches a
 
 [^1]: [Axum](https://github.com/tokio-rs/axum) - Ergonomic and modular web framework built with Tokio, Tower, and Hyper
 
-[^2]: [Tower](https://github.com/tower-rs/tower) - Modular and reusable components for building robust networking clients and servers
+[^2]: [Tower `ServiceBuilder`: Order](https://docs.rs/tower/0.5.3/tower/struct.ServiceBuilder.html#order) - "Layers that are added first will be called with the request first"
 
 [^3]: [Hyper](https://hyper.rs/) - Fast and safe HTTP implementation for Rust
 
-[^4]: [Axum Performance](https://www.techempower.com/benchmarks/#section=data-r21) - TechEmpower benchmarks showing Axum's performance
+[^4]: [TechEmpower Framework Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks/releases/tag/R23) - Round 23, published March 2025; the repository was archived in 2026 and no further rounds will be published
 
 [^5]: [Actix-web](https://actix.rs/) - Powerful, pragmatic, and extremely fast web framework for Rust
 
-[^6]: [Rocket](https://rocket.rs/) - Web framework for Rust with focus on ease-of-use, expressiveness, and speed
+[^6]: [Rocket: Launching](https://rocket.rs/guide/v0.5/overview/#launching) - Rocket 0.5 starts a multi-threaded asynchronous server
 
 [^7]: [thiserror](https://github.com/dtolnay/thiserror) - Derive macros for the standard library's `std::error::Error` trait
 
 [^8]: [anyhow](https://github.com/dtolnay/anyhow) - Flexible concrete Error type built on `std::error::Error`
 
-[^9]: [SQLx](https://github.com/launchbadge/sqlx) - Async, pure Rust SQL crate with compile-time checked queries
+[^9]: [SQLx](https://github.com/transact-rs/sqlx) - Async, pure Rust SQL crate with compile-time checked queries (the `launchbadge/sqlx` URL now redirects here)
 
 [^10]: [axum-login](https://github.com/maxcountryman/axum-login) - User identification, authentication, and authorization for Axum
 
 [^11]: [jsonwebtoken](https://github.com/Keats/jsonwebtoken) - JWT library for Rust with support for all standard algorithms
 
-[^12]: [casbin-rs](https://github.com/casbin/casbin-rs) - Authorization library supporting ACL, RBAC, ABAC models
+[^12]: [casbin-rs](https://github.com/apache/casbin-rs) - Authorization library supporting ACL, RBAC, ABAC models (the `casbin/casbin-rs` URL now redirects here)
 
 [^13]: [tower-http](https://github.com/tower-rs/tower-http) - HTTP-specific Tower middleware including auth, compression, and tracing
 
-[^14]: [Axum WebSocket](https://docs.rs/axum/latest/axum/extract/ws/index.html) - Native WebSocket support in Axum
+[^14]: [Axum WebSocket](https://docs.rs/axum/0.8.9/axum/extract/ws/index.html) - Native WebSocket support in Axum
 
 [^15]: [tokio-tungstenite](https://github.com/snapview/tokio-tungstenite) - Tokio bindings for the Tungstenite WebSocket library
 
 [^16]: [tracing](https://github.com/tokio-rs/tracing) - Application-level tracing for Rust with structured, contextual logging
 
-[^17]: [tracing-subscriber](https://docs.rs/tracing-subscriber) - Utilities for implementing and composing tracing subscribers
+[^17]: [tracing-subscriber](https://docs.rs/tracing-subscriber/0.3.23/tracing_subscriber/) - Utilities for implementing and composing tracing subscribers
 
-[^18]: [axum-prometheus](https://lib.rs/crates/axum-prometheus) - Prometheus metrics middleware for Axum
+[^18]: [axum-prometheus](https://crates.io/crates/axum-prometheus) - Prometheus metrics middleware for Axum
 
 [^19]: [metrics](https://github.com/metrics-rs/metrics) - High-quality, batteries-included metrics library for Rust
 
-[^20]: [metrics-exporter-prometheus](https://docs.rs/metrics-exporter-prometheus) - Prometheus exporter for the metrics crate
+[^20]: [metrics-exporter-prometheus](https://docs.rs/metrics-exporter-prometheus/0.18.3/metrics_exporter_prometheus/) - Prometheus exporter for the metrics crate
 
-[^21]: [tracing-opentelemetry](https://docs.rs/tracing-opentelemetry) - OpenTelemetry integration for tracing
+[^21]: [tracing-opentelemetry](https://docs.rs/tracing-opentelemetry/0.33.0/tracing_opentelemetry/) - OpenTelemetry integration for tracing
 
-[^22]: [apalis](https://github.com/geofmureithi/apalis) - Type-safe, extensible background job processing library for Rust
+[^22]: [apalis](https://github.com/apalis-dev/apalis) - Type-safe, extensible background job processing library for Rust (the `geofmureithi/apalis` URL now redirects here)
 
 [^23]: [rusty-sidekiq](https://github.com/film42/sidekiq-rs) - Sidekiq-compatible job processing for Rust
 
@@ -3167,7 +4828,7 @@ annotations. This keeps documentation in sync with code and catches mismatches a
 
 [^25]: [redis-rs](https://github.com/redis-rs/redis-rs) - Redis client library for Rust
 
-[^26]: [deadpool-redis](https://docs.rs/deadpool-redis) - Async Redis connection pool for Tokio
+[^26]: [deadpool-redis](https://docs.rs/deadpool-redis/0.23.1/deadpool_redis/) - Async Redis connection pool for Tokio
 
 [^27]: [tower-governor](https://github.com/benwis/tower-governor) - Rate limiting middleware for Tower/Axum using the governor crate
 
@@ -3180,3 +4841,7 @@ annotations. This keeps documentation in sync with code and catches mismatches a
 [^31]: [utoipa](https://github.com/juhaku/utoipa) - Auto-generate OpenAPI documentation from Rust code with compile-time validation
 
 [^32]: [NIST SP 800-63B, Authenticator and Verifier Requirements](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/#passwordver) - Password length, blocklist, and composition requirements
+
+[^33]: [RFC 9457, Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457.html) - Standard `application/problem+json` error representation
+
+[^34]: [OWASP WebSocket Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html) - Handshake authentication, origin validation, and message controls
