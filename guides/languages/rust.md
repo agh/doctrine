@@ -2300,5 +2300,5 @@ unsafe impl<T: Sync> Sync for MyWrapper<T> {}
 
 ## See Also
 
-- [Testing Guide](../testing.md) - Comprehensive testing strategies and best practices
-- [CI Guide](../../ci.md) - Continuous integration configuration and workflows
+- [Testing Guide](../process/testing.md) - Comprehensive testing strategies and best practices
+- [CI Guide](../process/ci.md) - Continuous integration configuration and workflows
