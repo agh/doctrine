@@ -436,7 +436,7 @@ from fastapi.testclient import TestClient
 def test_create_user(client: TestClient) -> None:
     response = client.post("/api/users/", json={
         "email": "test@example.com",
-        "password": "correct-battery-staple-2026",
+        "password": "example-passphrase-2026",
         "full_name": "Test User"
     })
     assert response.status_code == 201
@@ -445,7 +445,7 @@ def test_create_user(client: TestClient) -> None:
 def test_create_user_invalid_email(client: TestClient) -> None:
     response = client.post("/api/users/", json={
         "email": "not-an-email",
-        "password": "correct-battery-staple-2026",
+        "password": "example-passphrase-2026",
         "full_name": "Test User"
     })
     assert response.status_code == 422
