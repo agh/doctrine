@@ -221,7 +221,6 @@ High Capability, High Cost ($10-30/1M input)
 ┌─────────────────────────────────────────┐
 │ - Claude Opus 4.5[^2]                   │
 │ - GPT-4 Turbo[^3]                       │
-│ - Gemini 1.5 Pro[^4]                    │
 │                                         │
 │ Use for: Complex reasoning, architecture│
 │ decisions, security analysis            │
@@ -231,7 +230,6 @@ High Capability, Medium Cost ($3-10/1M input)
 ┌─────────────────────────────────────────┐
 │ - Claude Sonnet 4.5[^2]                 │
 │ - GPT-4o[^3]                            │
-│ - Gemini 1.5 Flash[^4]                  │
 │                                         │
 │ Use for: Most coding tasks, reviews,   │
 │ complex refactoring                     │
@@ -239,12 +237,21 @@ High Capability, Medium Cost ($3-10/1M input)
 
 Medium Capability, Low Cost ($0.10-3/1M input)
 ┌─────────────────────────────────────────┐
-│ - Claude Haiku 3.5[^2]                  │
+│ - Claude Haiku 4.5[^2]                  │
 │ - GPT-4o mini[^3]                       │
-│ - Gemini 1.5 Flash-8B[^4]               │
 │                                         │
 │ Use for: Code completion, simple tasks, │
 │ documentation generation                │
+└─────────────────────────────────────────┘
+
+Gemini Tiers (input price per 1M tokens, verified 2026-09)[^4]
+┌─────────────────────────────────────────┐
+│ - Gemini 2.5 Pro: $1.25/1M input        │
+│ - Gemini 3.8 Flash: $0.75/1M input      │
+│ - Gemini 3.5 Flash-Lite: $0.30/1M input │
+│                                         │
+│ Use for: 1M-token context, high-volume  │
+│ agentic work, cost-sensitive coding     │
 └─────────────────────────────────────────┘
 
 Specialized Models (Variable Cost)
@@ -369,13 +376,13 @@ Organizations MUST evaluate providers based on the following detailed comparison
 
 | Feature | Anthropic Claude[^2] | OpenAI GPT[^3] | Google Gemini[^4] | Self-Hosted (Llama/CodeLlama)[^5][^6] |
 |---------|-----------------|------------|---------------|-------------------------------|
-| **Latest Models** | Opus 4.5, Sonnet 4.5, Haiku 3.5 | GPT-4 Turbo, GPT-4o, GPT-4o mini | Gemini 1.5 Pro, Flash, Flash-8B | Llama 3.1, CodeLlama 34B, StarCoder2 |
-| **Context Window** | 200K tokens | 128K tokens | 1M tokens (Gemini Pro) | 4K-128K depending on model |
+| **Latest Models** | Opus 4.5, Sonnet 4.5, Haiku 4.5 | GPT-4 Turbo, GPT-4o, GPT-4o mini | Gemini 2.5 Pro, 3.8 Flash, 3.5 Flash-Lite | Llama 3.1, CodeLlama 34B, StarCoder2 |
+| **Context Window** | 200K tokens | 128K tokens | 1M tokens (2.5 Pro, 3.8 Flash) | 4K-128K depending on model |
 | **Coding Strength** | Excellent (especially Sonnet/Opus) | Excellent | Very Good | Good (code-specific models) |
 | **Response Speed** | Fast (Sonnet/Haiku), Slower (Opus) | Fast (GPT-4o), Medium (GPT-4) | Fast (Flash), Medium (Pro) | Variable (depends on hardware) |
 | **API Reliability** | Excellent (99.9% uptime) | Excellent (99.9% uptime) | Very Good (99.5% uptime) | Depends on infrastructure |
 | **Pricing Model** | Token-based, clear tiers | Token-based, clear tiers | Token-based, generous free tier | Hardware + operational costs |
-| **Privacy/Data Use** | Not used for training | Not used for training (API) | Not used for training | Complete control |
+| **Privacy/Data Use** | Not used for training | Not used for training (API) | Paid Services: not used to improve Google products. Unpaid Services: used to improve Google products, human review possible[^14] | Complete control |
 | **Tool/Function Calling** | Excellent | Excellent | Good | Limited (depends on model) |
 | **Structured Output** | Good (via prompting) | Excellent (JSON mode) | Good | Limited |
 | **System Prompts** | Excellent support | Good support | Good support | Variable |
@@ -405,7 +412,23 @@ Claude SHOULD be selected when:
 
 - Opus 4.5: $15/1M input tokens, $75/1M output tokens
 - Sonnet 4.5: $3/1M input tokens, $15/1M output tokens
-- Haiku 3.5: $0.25/1M input tokens, $1.25/1M output tokens
+- Haiku 4.5 (`claude-haiku-4-5-20251001`): $1/1M input tokens, $5/1M output
+  tokens[^16]
+
+**Retired budget model**: `claude-3-5-haiku-20241022` (Claude Haiku 3.5) was
+deprecated on 19 December 2025 and retired on 19 February 2026; requests to a
+retired model fail[^15]. `claude-haiku-4-5-20251001` is Anthropic's named
+replacement and offers a 200K-token context window with a 64K-token maximum
+output[^16]. Teams migrating MUST re-run their own evaluations rather than
+swapping the identifier in place, because output limits, pricing, and thinking
+behaviour differ between the two models.
+
+**Why**: Retirement dates on Anthropic's deprecation page apply to
+Anthropic-operated platforms (the Claude API, Claude Platform on AWS, and
+Microsoft Foundry). Partner-operated platforms — Amazon Bedrock and Google
+Cloud — set their own schedules, so a model that still answers on Bedrock can
+already be dead on the Claude API[^15]. Teams MUST check the lifecycle table
+for the platform they actually call.
 
 **Rate Limits**[^8]: Scale 1 tier starts at 50K requests/day, Scale 2 at 1M requests/day
 
@@ -432,16 +455,67 @@ GPT SHOULD be selected when:
 Gemini SHOULD be selected when:
 
 - **Long Context**: Tasks requiring 1M+ token context windows
-- **Cost Optimization**: Free tier available for experimentation and low-volume use
+- **Cost Optimization**: Flash and Flash-Lite tiers for high-volume paid workloads
 - **Google Ecosystem**: Integration with Google Cloud services
 - **Multimodal Tasks**: Vision and document understanding
 - **Rapid Iteration**: Fast Flash models for quick feedback loops
 
-**Pricing (as of 2025)**[^11]:
+**Current model IDs**[^4]: `gemini-2.5-pro` (Pro tier), `gemini-3.8-flash`
+(Flash tier), `gemini-3.5-flash-lite` (budget tier). Google publishes no
+shutdown date for any of the three[^13].
 
-- Gemini 1.5 Pro: $3.50/1M input tokens, $10.50/1M output tokens
-- Gemini 1.5 Flash: $0.075/1M input tokens, $0.30/1M output tokens
-- Gemini 1.5 Flash-8B: $0.0375/1M input tokens, $0.15/1M output tokens
+**Pricing (paid tier, Standard service tier, verified 2026-09-08)**[^11]:
+
+- Gemini 2.5 Pro: $1.25/1M input tokens and $10/1M output tokens for prompts
+  of 200K tokens or fewer; $2.50/1M input and $15/1M output above 200K
+- Gemini 3.8 Flash: $0.75/1M input tokens and $3.75/1M output tokens through
+  31 December 2026, rising to $1.50/1M input and $7.50/1M output on
+  1 January 2027
+- Gemini 3.5 Flash-Lite: $0.30/1M input tokens, $2.50/1M output tokens
+
+**Migration from Gemini 1.5**: `gemini-1.5-pro`, `gemini-1.5-flash`, and
+`gemini-1.5-flash-8b` are shut down; they no longer appear in the model
+catalogue or the deprecation schedule, and their endpoints are gone[^4][^13].
+Teams MUST re-test the application, not just swap the identifier: on Gemini 3
+and later the API replaces `thinking_budget` with a `thinking_level` enum,
+rejects `temperature`, `top_p`, `top_k`, and `candidate_count`, and tightens
+turn-validation and function-calling rules[^17]. Prompt behaviour, output
+limits, and cost forecasts all need re-baselining against the replacement.
+
+**Why**: A shut-down endpoint fails closed. Code still naming a 1.5 model
+returns an error rather than a worse answer, so every guide recommendation
+pointing at 1.5 is an outage waiting for the next deployment.
+
+**Data use — decide before sending code**[^14]: Google's Gemini API Additional
+Terms of Service split behaviour by *contractual service status*, not by
+whether a given request happens to cost money.
+
+| Service status | How Google uses prompts and responses |
+|----------------|---------------------------------------|
+| **Unpaid Services** — Google AI Studio used without an active billing link, and unpaid Gemini API quota | Content and generated responses are used to provide, improve, and develop Google products, services, and machine-learning technologies; human reviewers may read, annotate, and process input and output |
+| **Paid Services** — AI Studio accessed from an account with a Cloud project on an active Cloud Billing account or a Workspace enterprise account, and Gemini API called through a Cloud project with active billing | Prompts and responses are not used to improve Google products; they are processed under Google's data processor terms and logged only briefly, for abuse detection and legal obligations |
+
+Teams MUST therefore:
+
+1. **Classify the data first.** Proprietary source code, customer data,
+   credentials, and personal data MUST NOT be sent to Unpaid Services. The
+   terms state it directly: "Do not submit sensitive, confidential, or
+   personal information to the Unpaid Services."
+2. **Confirm Paid Service status, do not infer it from the bill.** Free-of-charge
+   AI Studio access still counts as a Paid Service when the account carries
+   active Cloud billing or enterprise Workspace access, and Gemini API usage
+   counts as Paid only when the call goes through a Cloud project with an
+   active billing account.
+3. **Apply the regional rule.** For the European Economic Area, Switzerland,
+   and the United Kingdom, the Paid Services data terms apply to all Services
+   including unpaid quota, and API clients made available to users in those
+   regions MUST use Paid Services only.
+
+**Why**: Disclosure is irreversible. Once proprietary code has been submitted
+to an Unpaid Service, it has been licensed for product improvement and may
+already have been read by a human reviewer; no later upgrade to a paid tier
+undoes that. Provider choice therefore MUST follow the data classification,
+not the budget.
 
 **Rate Limits**[^11]: 2M tokens/minute on free tier, higher for paid
 
@@ -514,7 +588,7 @@ These models SHOULD be used because:
 #### Bug Fixing
 
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
-**Budget Alternative**: Claude Haiku 3.5 or GPT-4o mini (for simple bugs)
+**Budget Alternative**: Claude Haiku 4.5 or GPT-4o mini (for simple bugs)
 
 Bug fixing workflow SHOULD:
 
@@ -580,7 +654,7 @@ Phase 3 (Sonnet/GPT-4o): Cleanup
 
 #### Code Generation (Boilerplate)
 
-**Primary Recommendation**: Claude Haiku 3.5 or GPT-4o mini
+**Primary Recommendation**: Claude Haiku 4.5 or GPT-4o mini
 **High-Volume Alternative**: Self-hosted CodeLlama
 
 Boilerplate generation SHOULD use budget models because:
@@ -599,7 +673,7 @@ Boilerplate generation SHOULD use budget models because:
 - DTO/Entity mappings
 - Test fixtures
 
-**Estimated Cost**: $0.002-0.01 per generation
+**Estimated Cost**: $0.008-0.04 per generation
 
 ### Code Review Tasks
 
@@ -687,7 +761,7 @@ Performance review SHOULD:
 #### API Documentation
 
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
-**Budget Alternative**: Claude Haiku 3.5 (for simple endpoints)
+**Budget Alternative**: Claude Haiku 4.5 (for simple endpoints)
 
 API documentation generation SHOULD:
 
@@ -714,7 +788,7 @@ Output:
 
 #### Code Documentation (Docstrings)
 
-**Primary Recommendation**: Claude Haiku 3.5 or GPT-4o mini
+**Primary Recommendation**: Claude Haiku 4.5 or GPT-4o mini
 
 Docstring generation SHOULD:
 
@@ -734,7 +808,7 @@ Process multiple functions in single request:
 - Significant cost savings vs. per-function
 ```
 
-**Estimated Cost**: $0.001-0.005 per function
+**Estimated Cost**: $0.004-0.02 per function
 
 #### Architecture Documentation
 
@@ -792,7 +866,7 @@ README generation SHOULD include:
 #### Unit Test Generation
 
 **Primary Recommendation**: Claude Sonnet 4.5 or GPT-4o
-**Budget Alternative**: Claude Haiku 3.5 (for simple functions)
+**Budget Alternative**: Claude Haiku 4.5 (for simple functions)
 
 Unit test generation SHOULD:
 
@@ -836,7 +910,7 @@ Integration tests SHOULD:
 
 #### Test Data Generation
 
-**Primary Recommendation**: Claude Haiku 3.5 or GPT-4o mini
+**Primary Recommendation**: Claude Haiku 4.5 or GPT-4o mini
 **High-Volume Alternative**: Self-hosted model
 
 Test data generation SHOULD:
@@ -855,7 +929,7 @@ Test data generation SHOULD:
 - Transaction records
 - Event streams
 
-**Estimated Cost**: $0.001-0.01 per dataset
+**Estimated Cost**: $0.004-0.04 per dataset
 
 #### End-to-End Test Generation
 
@@ -1359,7 +1433,7 @@ Teams MUST understand and respect context window limits:
 |-------|---------------|-----------------|----------------------|
 | Claude Opus/Sonnet | 200K tokens | ~150K tokens | ~100-120 files |
 | GPT-4 Turbo/4o | 128K tokens | ~100K tokens | ~60-80 files |
-| Gemini 1.5 Pro | 1M tokens | ~800K tokens | ~500-600 files |
+| Gemini 2.5 Pro / 3.8 Flash | 1M tokens | ~800K tokens | ~500-600 files |
 | Budget models | 128-200K tokens | ~100K tokens | ~60-80 files |
 | Self-hosted | 4-32K tokens | ~3-25K tokens | ~2-15 files |
 
@@ -2115,9 +2189,9 @@ Teams MUST educate developers on:
 Cost Awareness 101:
 
 1. Model costs (per 1M tokens input):
-   - Haiku: $0.25 (cheapest)
-   - Sonnet: $3 (12x more)
-   - Opus: $15 (60x more)
+   - Haiku 4.5: $1 (cheapest)
+   - Sonnet 4.5: $3 (3x more)
+   - Opus 4.5: $15 (15x more)
 
 2. Average request sizes:
    - Simple task: 1K-5K tokens
@@ -2125,7 +2199,7 @@ Cost Awareness 101:
    - Complex task: 20K-100K tokens
 
 3. Quick math:
-   - 100 simple tasks with Haiku: ~$0.03
+   - 100 simple tasks with Haiku: ~$0.12
    - 100 simple tasks with Opus: ~$1.80
    - Same output quality for simple tasks!
 
@@ -2162,21 +2236,35 @@ Recommendations:
 
 For teams with budget constraints:
 
+Free tiers differ in how the provider treats what you send. Teams MUST read the
+data-use terms before a free tier touches a repository: Gemini's Unpaid
+Services use submitted content and generated responses to improve Google
+products, and human reviewers may read that content[^14]. See
+[Google Gemini](#google-gemini) for the Unpaid/Paid split and the EEA,
+Switzerland, and UK exception.
+
 #### Free Tier Limits (2025)
 
-| Provider | Free Tier | Limits |
-|----------|-----------|--------|
-| Claude | Limited trial | ~50 requests/day on free |
-| OpenAI | $5 credit (new users) | Expires after 3 months |
-| Gemini | Generous free tier | 60 requests/minute |
-| Groq | Free tier available | Rate limited |
+| Provider | Free Tier | Limits | Data use |
+|----------|-----------|--------|----------|
+| Claude | Limited trial | ~50 requests/day on free | Verify in the provider's current terms |
+| OpenAI | $5 credit (new users) | Expires after 3 months | Verify in the provider's current terms |
+| Gemini | Generous free tier | 60 requests/minute | Unpaid Services: used to improve Google products, human review possible[^14] |
+| Groq | Free tier available | Rate limited | Verify in the provider's current terms |
 
 #### Strategy for Free Tiers
 
-1. **Use Gemini for exploration**: Generous free tier for learning
-2. **Reserve paid tier for production**: Use Claude/OpenAI for critical work
+1. **Use Gemini free tier for non-sensitive exploration only**: throwaway
+   snippets, public samples, and learning exercises. Proprietary, customer, or
+   personal data MUST NOT be sent to an unpaid tier[^14].
+2. **Reserve paid tier for production**: Use Claude/OpenAI for critical work,
+   and use Gemini Paid Services for anything covered by a data classification.
 3. **Self-host for volume**: Once usage exceeds free tiers significantly
 4. **Rotate accounts carefully**: Check ToS, many prohibit multiple accounts
+
+**Why**: A free tier that trains on your input converts a cost saving into an
+irreversible disclosure. The saving is measured in cents; the disclosure is
+permanent.
 
 ### ROI Monitoring
 
@@ -3114,7 +3202,7 @@ High volume, privacy → Self-hosted
 ### Cost Cheat Sheet
 
 ```text
-Haiku: ~$0.001 per request
+Haiku 4.5: ~$0.005 per request
 Sonnet: ~$0.01 per request
 Opus: ~$0.05 per request
 (Based on average 5K token request)
@@ -3279,7 +3367,7 @@ configs/claude/
 [^1]: [Claude/Anthropic Best Practices Guide](./claude.md)
 [^2]: [Anthropic Claude Models Documentation](https://docs.anthropic.com/claude/docs/models-overview)
 [^3]: [OpenAI GPT Models Documentation](https://platform.openai.com/docs/models)
-[^4]: [Google Gemini Models Documentation](https://ai.google.dev/gemini-api/docs/models/gemini)
+[^4]: [Google Gemini Models Documentation](https://ai.google.dev/gemini-api/docs/models)
 [^5]: [Meta Llama Models](https://www.llama.com/)
 [^6]: [StarCoder Models - Hugging Face](https://huggingface.co/bigcode/starcoder2-15b)
 [^7]: [Anthropic Pricing](https://www.anthropic.com/pricing)
@@ -3288,6 +3376,11 @@ configs/claude/
 [^10]: [OpenAI Rate Limits](https://platform.openai.com/docs/guides/rate-limits)
 [^11]: [Google AI Pricing and Quotas](https://ai.google.dev/pricing)
 [^12]: [DeepSeek Coder](https://github.com/deepseek-ai/DeepSeek-Coder)
+[^13]: [Gemini API Model Deprecations](https://ai.google.dev/gemini-api/docs/deprecations)
+[^14]: [Gemini API Additional Terms of Service](https://ai.google.dev/gemini-api/terms)
+[^15]: [Anthropic Model Deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+[^16]: [Anthropic Models Overview](https://platform.claude.com/docs/en/models/overview)
+[^17]: [Latest Gemini Models and Migration Checklist](https://ai.google.dev/gemini-api/docs/latest-model)
 
 ---
 
