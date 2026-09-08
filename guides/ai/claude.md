@@ -38,7 +38,7 @@ This guide covers:
 
 - Strategic model selection across Opus, Sonnet, and Haiku tiers
 - Claude Code CLI patterns and AGENTS.md conventions
-- API usage including system prompts, temperature settings, and token management
+- API usage including system prompts, effort settings, and token management
 - Extended thinking triggers and reasoning patterns
 - Multi-agent workflow design and orchestration
 - Common pitfalls and their solutions
@@ -163,21 +163,32 @@ Typical scenarios:
 development work. It provides excellent results at a fraction of Opus cost,
 making it ideal for daily development tasks.
 
-#### Claude Haiku 3.5
+#### Claude Haiku 4.5
+
+Teams MUST NOT use Claude Haiku 3.5 (`claude-3-5-haiku-20241022`). Anthropic
+retired it on 19 February 2026 and requests to it now fail; the recommended
+replacement is Claude Haiku 4.5[^8].
 
 **Capabilities**:
 
-- **Ultra-fast responses**: Sub-second latency
-- **Cost-effective**: Lowest cost per request
+- **Fastest responses**: Lowest latency in the current lineup
+- **Cost-effective**: Lowest cost per request of the current models
 - **Good for simple tasks**: Handles straightforward, well-defined tasks
 - **High throughput**: Ideal for batch processing
 
-**Specifications**[^2]:
+**Specifications**[^13]:
 
+- Model ID: `claude-haiku-4-5-20251001` (alias `claude-haiku-4-5`)
 - Context window: 200K tokens
-- Output limit: 8K tokens
-- Latency: <1 second typical
-- Cost (as of 2025): $0.25/1M input tokens, $1.25/1M output tokens
+- Output limit: 64K tokens
+- Latency: fastest of the current models
+- Cost: $1/1M input tokens, $5/1M output tokens
+- Effort parameter: not supported
+- Lifecycle: active; retirement not sooner than 15 October 2026[^8]
+
+**Why lifecycle matters**: Anthropic retires models on published schedules and
+requests to a retired model fail outright. Teams MUST recheck the deprecation
+table[^8] before pinning a model ID in production code.
 
 **Ideal Use Cases**:
 
@@ -209,6 +220,39 @@ Typical scenarios:
 - Code completion suggestions
 ```
 
+### Model IDs and Versioning
+
+Every API example in this guide pins a model ID. Teams MUST understand the two
+ID formats before copying one into production code[^12].
+
+| Generation | ID format | Example | Behaviour |
+| ---------- | --------- | ------- | --------- |
+| 4.6 and later | `claude-{name}-{major}[-{minor}]` | `claude-opus-5`, `claude-sonnet-5` | Dateless, but still a pinned snapshot |
+| Before 4.6 | `claude-{name}-{major}-{minor}-{YYYYMMDD}` | `claude-haiku-4-5-20251001` | Dated snapshot |
+| Before 4.6 | `claude-{name}-{major}-{minor}` | `claude-haiku-4-5` | Convenience alias to the newest dated snapshot |
+
+Three rules follow:
+
+- Teams MUST NOT assume a dateless ID such as `claude-opus-5` is an evergreen
+  pointer. From the 4.6 generation onwards the dateless ID **is** the snapshot:
+  Anthropic never changes the weights behind an existing ID and ships updates
+  under a new ID[^12].
+- Teams SHOULD prefer a dated snapshot or a dateless ID over a pre-4.6 alias
+  such as `claude-haiku-4-5` in production, because an alias can move to a
+  newer snapshot underneath a running deployment[^12].
+- Teams MUST check the deprecation table[^8] before pinning any ID. Every ID,
+  dated or dateless, carries its own retirement date, and requests to a retired
+  model fail.
+
+**Why**: Copy-pasted model IDs are the most common way a working integration
+breaks silently. A malformed or retired ID fails at request time, and an alias
+that quietly advances to a newer snapshot of the same minor version changes
+behaviour without a code change.
+
+The examples in this guide use `claude-opus-5`, `claude-sonnet-5`, and
+`claude-haiku-4-5-20251001`. On Amazon Bedrock and Google Cloud the same models
+carry provider-specific IDs and provider-specific retirement dates[^13].
+
 ### Model Selection Decision Matrix
 
 Teams MUST use this decision matrix to select appropriate models:
@@ -225,7 +269,7 @@ Teams MUST use this decision matrix to select appropriate models:
 │ ┌──────────────────────────────────────────────────────┐   │
 │ │ Low Complexity + Low Criticality = HAIKU             │   │
 │ │ Examples: Docstrings, formatting, simple CRUD        │   │
-│ │ Cost per task: ~$0.001-0.01                          │   │
+│ │ Cost per task: ~$0.004-0.04                          │   │
 │ └──────────────────────────────────────────────────────┘   │
 │                                                              │
 │ ┌──────────────────────────────────────────────────────┐   │
@@ -253,17 +297,17 @@ Teams MUST use this decision matrix to select appropriate models:
 
 Teams MUST understand token economics to optimize spending:
 
-**Input Token Costs (per 1M tokens)**:
+**Input Token Costs (per 1M tokens)**[^13]:
 
-- Haiku: $0.25 (baseline)
-- Sonnet: $3.00 (12× Haiku)
-- Opus: $15.00 (60× Haiku, 5× Sonnet)
+- Haiku 4.5: $1.00 (baseline)
+- Sonnet: $3.00 (3× Haiku)
+- Opus: $15.00 (15× Haiku, 5× Sonnet)
 
-**Output Token Costs (per 1M tokens)**:
+**Output Token Costs (per 1M tokens)**[^13]:
 
-- Haiku: $1.25 (baseline)
-- Sonnet: $15.00 (12× Haiku)
-- Opus: $75.00 (60× Haiku, 5× Sonnet)
+- Haiku 4.5: $5.00 (baseline)
+- Sonnet: $15.00 (3× Haiku)
+- Opus: $75.00 (15× Haiku, 5× Sonnet)
 
 **Practical Examples**:
 
@@ -272,12 +316,12 @@ Scenario 1: Generate docstrings for 50 functions
 Input: 25K tokens (function signatures + context)
 Output: 10K tokens (docstrings)
 
-Haiku cost:   ($0.25 × 0.025) + ($1.25 × 0.010) = $0.019
+Haiku cost:   ($1.00 × 0.025) + ($5.00 × 0.010) = $0.075
 Sonnet cost:  ($3.00 × 0.025) + ($15.00 × 0.010) = $0.225
 Opus cost:    ($15.00 × 0.025) + ($75.00 × 0.010) = $1.125
 
 Recommendation: Haiku (quality sufficient for docstrings)
-Savings: 91% vs Sonnet, 98% vs Opus
+Savings: 67% vs Sonnet, 93% vs Opus
 
 ---
 
@@ -285,7 +329,7 @@ Scenario 2: Complex security audit of authentication system
 Input: 100K tokens (full auth codebase)
 Output: 20K tokens (detailed findings)
 
-Haiku cost:   ($0.25 × 0.100) + ($1.25 × 0.020) = $0.050
+Haiku cost:   ($1.00 × 0.100) + ($5.00 × 0.020) = $0.200
 Sonnet cost:  ($3.00 × 0.100) + ($15.00 × 0.020) = $0.600
 Opus cost:    ($15.00 × 0.100) + ($75.00 × 0.020) = $3.000
 
@@ -298,7 +342,7 @@ Scenario 3: Implement standard API endpoint
 Input: 15K tokens (context + specs)
 Output: 8K tokens (implementation + tests)
 
-Haiku cost:   ($0.25 × 0.015) + ($1.25 × 0.008) = $0.014
+Haiku cost:   ($1.00 × 0.015) + ($5.00 × 0.008) = $0.055
 Sonnet cost:  ($3.00 × 0.015) + ($15.00 × 0.008) = $0.165
 Opus cost:    ($15.00 × 0.015) + ($75.00 × 0.008) = $0.825
 
@@ -388,12 +432,12 @@ Upgrade if any condition is true:
 □ Task complexity was underestimated
 □ Cost of fixing errors > cost of better model
 
-Example:
+Example (15K input, 8K output per attempt):
 Haiku generates function with bug → 10 min debugging
 Sonnet generates correct function on first try
 Time saved (10 min @ $150/hr) = $25
-Cost difference (Sonnet - Haiku) = $0.15
-ROI: 166:1 for using Sonnet
+Cost difference (Sonnet $0.165 - Haiku $0.055) = $0.11
+ROI: 227:1 for using Sonnet
 ```
 
 #### When to Upgrade from Sonnet to Opus
@@ -429,9 +473,10 @@ Example:
 Adding TypeScript types to 200 existing functions
 Initial thought: Use Sonnet for quality
 Actual: Pattern is consistent, types are simple
-Haiku cost: 200 × $0.01 = $2.00
-Sonnet cost: 200 × $0.15 = $30.00
-Savings: 93% without quality impact
+Per function: 1K input tokens, 0.5K output tokens
+Haiku cost: 200 × (($1.00 × 0.001) + ($5.00 × 0.0005)) = $0.70
+Sonnet cost: 200 × (($3.00 × 0.001) + ($15.00 × 0.0005)) = $2.10
+Savings: 67% without quality impact
 ```
 
 ---
@@ -452,7 +497,7 @@ Claude Code is:
 - Designed specifically for software development workflows
 - Optimized for codebase understanding and manipulation
 - Integrated with file system operations
-- Supports extended thinking mode
+- Supports adjustable reasoning depth through effort levels
 - Enables structured multi-turn conversations
 
 #### Key Features
@@ -469,29 +514,54 @@ Claude Code is:
 - Navigate project structure
 ```
 
-**Extended Thinking**:
+**Reasoning Depth (Effort Levels)**:
+
+Claude Code has no `--extended-thinking` flag. Reasoning depth is set by the
+model and by `--effort`[^10], which accepts `low`, `medium`, `high`, `xhigh`,
+or `max`. Available levels depend on the model.
 
 ```bash
-# Enable deeper reasoning for complex tasks
-claude --extended-thinking "Design authentication system"
+# Raise reasoning depth for a complex task
+claude --model claude-opus-5 --effort xhigh "Design authentication system"
 
-# Claude will:
-1. Think through problem deeply before responding
-2. Show reasoning process
-3. Produce more thoughtful solutions
-4. Consider edge cases more thoroughly
+# --effort applies to the whole session and does not persist to settings.
 ```
 
-**Context Persistence**:
+**Why**: On Claude Opus 5, Claude Sonnet 5, and Claude Fable 5.1 thinking is
+adaptive and always available, so there is nothing to switch on; effort is the
+control that decides how many tokens Claude spends thinking and answering[^11].
+Claude Haiku 4.5 does not support the effort parameter[^13], so teams MUST
+select a larger model rather than raise effort when a task needs deeper
+reasoning.
+
+**Session Persistence**:
+
+Each `claude` invocation starts a **new** session. A second shell command does
+not continue the first conversation. Teams MUST either stay inside one
+interactive session or resume explicitly[^9].
 
 ```bash
-# Context is maintained across commands in a session
+# DON'T: two launches, two unrelated sessions
 claude "Review authentication code"
-# (Claude reads and analyzes auth files)
+claude "Now add rate limiting to those endpoints"   # no memory of the review
 
-claude "Now add rate limiting to those endpoints"
-# (Claude remembers previous analysis, no re-reading needed)
+# DO: stay in one interactive session
+claude "Review authentication code"
+# > Now add rate limiting to those endpoints        (typed at the prompt)
+
+# DO: name a session, then resume it by name with a new prompt
+claude --name auth-review "Review authentication code"
+claude --resume auth-review "Now add rate limiting to those endpoints"
+
+# DO: continue the most recent conversation in this directory
+claude --continue                      # interactive
+claude --continue -p "Check for type errors"   # scripted
 ```
+
+**Why**: Resuming restores the conversation history, the session's model, its
+agent, and its permission mode. It does not restore launch-time configuration:
+`--mcp-config`, `--settings`, `--plugin-dir`, `--fallback-model`, and
+`--add-dir` MUST be passed again on the resuming command[^9].
 
 ### AGENTS.md Pattern
 
@@ -664,10 +734,10 @@ Be careful with 'use client' directive. Only use for interactive components.
 
 ```bash
 # Step 1: Provide context via AGENTS.md (already in repo)
-# Step 2: Start implementation conversation
+# Step 2: Start one named interactive session and keep it open
 
-claude "I need to add user profile editing functionality. \
-Should include:
+claude --name profile-editing "I need to add user profile editing \
+functionality. Should include:
 - Form to edit name, email, bio
 - Avatar upload
 - Validation
@@ -684,21 +754,22 @@ suggesting the implementation approach."
 4. Propose implementation approach
 5. Ask clarifying questions
 
-# Step 3: Request implementation
+# Steps 3-5 are follow-up turns typed at the prompt of the SAME session,
+# so Claude still has the analysis from step 2:
 
-claude "Implement the profile editing feature following \
-the approach we discussed. Include all files needed."
+# > Implement the profile editing feature following the approach we
+#   discussed. Include all files needed.
+# > The validation logic should also check for profanity in bio field
+# > Generate comprehensive tests for the profile editing feature
 
-# Step 4: Review and iterate
-
-claude "The validation logic should also check for \
-profanity in bio field"
-
-# Step 5: Generate tests
-
-claude "Generate comprehensive tests for the profile \
-editing feature"
+# If you exited the session, resume it by name before continuing:
+claude --resume profile-editing
 ```
+
+**Why**: Every bare `claude "..."` launch opens a new session with no memory of
+the previous one[^9]. Multi-step work MUST stay in one session or resume an
+existing one, otherwise each step re-reads the codebase and loses the agreed
+approach.
 
 #### Pattern 2: Debugging with Context
 
@@ -750,14 +821,14 @@ Files changed:
 #### Pattern 4: Refactoring
 
 ```bash
-# Request refactoring with extended thinking
+# Request refactoring at a higher effort level
 
-claude --extended-thinking "The user-service.ts file has \
-grown to 800 lines and is becoming hard to maintain. \
+claude --model claude-opus-5 --effort xhigh "The user-service.ts file \
+has grown to 800 lines and is becoming hard to maintain. \
 Refactor it following SOLID principles while maintaining \
 all existing functionality."
 
-# Extended thinking helps Claude:
+# Higher effort helps Claude:
 1. Deeply analyze current structure
 2. Identify cohesive responsibilities
 3. Plan refactoring strategy
@@ -765,15 +836,16 @@ all existing functionality."
 5. Produce thoughtful refactoring
 ```
 
-### Extended Thinking Triggers
+### Effort Level Triggers
 
-Extended thinking mode causes Claude to show its reasoning process before
-responding. This SHOULD be used for complex tasks requiring deep analysis.
+Effort controls how many tokens Claude spends on a response, including how
+often and how deeply it thinks[^10][^11]. Higher effort SHOULD be used for
+complex tasks requiring deep analysis.
 
-#### When to Use Extended Thinking
+#### When to Raise the Effort Level
 
 ```text
-Use --extended-thinking flag when:
+Use --effort xhigh (or max) when:
 ✓ Problem requires multi-step reasoning
 ✓ Architectural decisions needed
 ✓ Complex debugging scenarios
@@ -790,11 +862,15 @@ Examples:
 • "Analyze the security implications of this auth change"
 ```
 
-#### Extended Thinking Example
+**Why**: `high` is the default on Claude Opus 5 and Claude Sonnet 5, so raising
+effort is an explicit decision to trade tokens and latency for depth. Lowering
+it to `medium` or `low` is the primary cost control for routine work[^10].
+
+#### High-Effort Example
 
 ```bash
-claude --extended-thinking "Should we use Redis or Memcached \
-for caching user sessions in our high-traffic application?"
+claude --model claude-opus-5 --effort xhigh "Should we use Redis or \
+Memcached for caching user sessions in our high-traffic application?"
 
 # Claude's thinking process (shown to user):
 <thinking>
@@ -897,15 +973,18 @@ claude "Analyze src/services/ directory for code duplication
 and suggest consolidation opportunities"
 # Better: Specific scope, clear goal
 
-# DON'T: Repeated large context
-claude "Review all authentication code" # First request
-claude "Review all authentication code for security" # Repeat
-# Problem: Re-reads same context unnecessarily
+# DON'T: Repeated large context in separate launches
+claude "Review all authentication code" # First session
+claude "Review all authentication code for security" # New session, re-reads
+# Problem: A second launch starts a new session and re-reads the same files
 
-# DO: Build on previous context
-claude "Review all authentication code" # First request
-claude "Now focus on the security aspects we just discussed"
+# DO: Build on previous context inside one session
+claude --name auth-review "Review all authentication code"
+# > Now focus on the security aspects we just discussed   (same session)
 # Better: Leverages existing context
+
+# DO: Or resume that session explicitly when you come back to it
+claude --resume auth-review "Now focus on the security aspects we discussed"
 ```
 
 ---
@@ -913,7 +992,7 @@ claude "Now focus on the security aspects we just discussed"
 ## API Usage Patterns
 
 For teams integrating Claude via API[^5] rather than CLI, these patterns
-establish best practices for system prompts, temperature settings, token
+establish best practices for system prompts, effort settings, token
 management, and more.
 
 ### System Prompts
@@ -956,20 +1035,28 @@ Response format:
 
 ```python
 # ✓ Be specific about role and expertise
-system_prompt = "You are a senior Python developer specializing in
-data processing pipelines using Apache Spark."
+system_prompt = (
+    "You are a senior Python developer specializing in "
+    "data processing pipelines using Apache Spark."
+)
 
 # ✓ Specify output format expectations
-system_prompt += "\nAlways provide code with docstrings following
-Google style guide."
+system_prompt += (
+    "\nAlways provide code with docstrings following "
+    "Google style guide."
+)
 
 # ✓ Include relevant constraints
-system_prompt += "\nCode must be compatible with Python 3.11 and
-handle PySpark DataFrame operations efficiently."
+system_prompt += (
+    "\nCode must be compatible with Python 3.11 and "
+    "handle PySpark DataFrame operations efficiently."
+)
 
 # ✓ Set quality expectations
-system_prompt += "\nPrioritize code readability and maintainability.
-Include error handling for edge cases."
+system_prompt += (
+    "\nPrioritize code readability and maintainability. "
+    "Include error handling for edge cases."
+)
 ```
 
 **DON'T**:
@@ -982,8 +1069,10 @@ system_prompt = "You are a helpful assistant."
 system_prompt = "Be extremely concise. Provide extensive explanations."
 
 # ✗ Overly restrictive
-system_prompt = "Never use any external libraries. Only use built-in
-Python functions."
+system_prompt = (
+    "Never use any external libraries. Only use built-in "
+    "Python functions."
+)
 # Problem: Unnecessarily limits useful solutions
 
 # ✗ Too long (wastes tokens)
@@ -1057,79 +1146,93 @@ Always:
 """
 ```
 
-### Temperature Settings
+### Effort Settings
 
-Temperature controls randomness in Claude's responses. Teams MUST use
-appropriate temperature settings for different task types.
+Current Claude models do not accept the sampling parameters this guidance was
+once built on. `temperature`, `top_p`, and `top_k` are deprecated from Claude
+Opus 4.7 onwards: a non-default value returns HTTP 400 on Claude Opus 4.7 and
+later models, including Claude Sonnet 5 and Claude Opus 5[^8]. The Python SDK
+1.x removes them from `messages.create()` altogether, so passing one raises
+`TypeError` regardless of model.
 
-#### Temperature Guidelines
+Teams MUST use `output_config.effort` instead. Effort controls how many tokens
+Claude spends on the whole response, thinking included[^10].
+
+**Why**: Effort is a single knob that trades thoroughness against cost and
+latency, and it applies to text, tool calls, and thinking alike. Sampling
+parameters steered token-level randomness, which current models manage
+themselves; the replacement lever for output *style* is the prompt, not a
+numeric setting.
+
+#### Effort Guidelines
 
 ```python
-# Temperature range: 0.0 to 1.0
+from anthropic import Anthropic
 
-# Temperature: 0.0-0.3 (Deterministic)
-# Use for: Code generation, security reviews, factual Q&A
-# Behavior: Highly consistent, focused on most likely correct answer
-temperature = 0.0
+client = Anthropic()
+
+# Effort: low (most efficient, some capability reduction)
+# Use for: high-volume, latency-sensitive, well-defined tasks
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250329",
+    model="claude-sonnet-5",
     max_tokens=4096,
-    temperature=0.0,  # Deterministic code generation
-    messages=[{"role": "user", "content": "Generate login function"}]
+    output_config={"effort": "low"},
+    messages=[{"role": "user", "content": "Generate login function"}],
 )
 
-# Temperature: 0.4-0.7 (Balanced)
-# Use for: Refactoring, documentation, general assistance
-# Behavior: Some variation, good balance of consistency and creativity
-temperature = 0.5
+# Effort: high (the default on Claude Sonnet 5 and Claude Opus 5)
+# Use for: complex reasoning, difficult coding problems, agentic tasks
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250329",
-    max_tokens=4096,
-    temperature=0.5,  # Balanced refactoring suggestions
-    messages=[{"role": "user", "content": "Suggest refactorings"}]
+    model="claude-sonnet-5",
+    max_tokens=8192,
+    output_config={"effort": "high"},
+    messages=[{"role": "user", "content": "Suggest refactorings"}],
 )
 
-# Temperature: 0.8-1.0 (Creative)
-# Use for: Brainstorming, multiple approaches, creative solutions
-# Behavior: More varied responses, explores alternatives
-temperature = 0.9
-response = client.messages.create(
-    model="claude-sonnet-4-5-20250329",
-    max_tokens=4096,
-    temperature=0.9,  # Creative architecture ideas
-    messages=[{"role": "user", "content": "Suggest system architectures"}]
-)
+# Effort: xhigh (long-horizon agentic and coding work)
+# Set a large max_tokens: thinking tokens count against it. The Python SDK
+# rejects a non-streaming request whose max_tokens could exceed the 10-minute
+# timeout (above roughly 21,000 tokens), so stream this one.
+with client.messages.stream(
+    model="claude-opus-5",
+    max_tokens=64_000,
+    output_config={"effort": "xhigh"},
+    messages=[{"role": "user", "content": "Suggest system architectures"}],
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
 ```
 
-#### Temperature by Task Type
+#### Effort by Task Type
 
 ```python
-TEMPERATURE_SETTINGS = {
-    # Deterministic tasks (0.0-0.2)
-    "code_generation": 0.0,
-    "bug_fixing": 0.0,
-    "security_review": 0.0,
-    "test_generation": 0.1,
-    "type_checking_fixes": 0.0,
+EFFORT_SETTINGS = {
+    # Efficient tasks
+    "docstring_generation": "low",
+    "formatting_fixes": "low",
+    "type_checking_fixes": "low",
 
-    # Balanced tasks (0.3-0.6)
-    "code_review": 0.4,
-    "refactoring": 0.5,
-    "documentation": 0.3,
-    "api_design": 0.5,
-    "optimization": 0.4,
+    # Balanced tasks
+    "code_review": "medium",
+    "documentation": "medium",
+    "test_generation": "medium",
 
-    # Creative tasks (0.7-1.0)
-    "architecture_design": 0.7,
-    "brainstorming": 0.9,
-    "naming_suggestions": 0.8,
-    "alternative_approaches": 0.8,
-    "creative_problem_solving": 0.7,
+    # Intelligence-sensitive tasks (high is the API default)
+    "code_generation": "high",
+    "bug_fixing": "high",
+    "refactoring": "high",
+    "api_design": "high",
+
+    # Deepest reasoning
+    "architecture_design": "xhigh",
+    "security_review": "xhigh",
+    "elusive_debugging": "xhigh",
 }
 
-def get_temperature(task_type: str) -> float:
-    """Get appropriate temperature for task type."""
-    return TEMPERATURE_SETTINGS.get(task_type, 0.5)  # Default: balanced
+
+def get_effort(task_type: str) -> str:
+    """Get the appropriate effort level for a task type."""
+    return EFFORT_SETTINGS.get(task_type, "high")  # Default: API default
 ```
 
 ### Token Management
@@ -1231,7 +1334,7 @@ def create_cached_request(codebase_context: str, user_query: str):
     Use prompt caching for repeated codebase context.
     """
     response = client.messages.create(
-        model="claude-sonnet-4-5-20250329",
+        model="claude-sonnet-5",
         max_tokens=4096,
         system=[
             {
@@ -1284,7 +1387,7 @@ def stream_response(prompt: str):
     Stream Claude's response for immediate feedback.
     """
     with client.messages.stream(
-        model="claude-sonnet-4-5-20250329",
+        model="claude-sonnet-5",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}]
     ) as stream:
@@ -1322,7 +1425,7 @@ def call_claude_with_retry(
     for attempt in range(max_retries):
         try:
             response = client.messages.create(
-                model="claude-sonnet-4-5-20250329",
+                model="claude-sonnet-5",
                 max_tokens=4096,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -1402,7 +1505,7 @@ Skip extended thinking for:
 ```python
 # Without extended thinking
 response = client.messages.create(
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     max_tokens=8192,
     messages=[{
         "role": "user",
@@ -1413,7 +1516,7 @@ response = client.messages.create(
 
 # With extended thinking (via system prompt pattern)
 response = client.messages.create(
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     max_tokens=8192,
     system="Before answering, think step-by-step through the problem, considering all relevant factors, trade-offs, and implications. Show your reasoning in <thinking> tags before providing your final recommendation.",
     messages=[{
@@ -1449,7 +1552,7 @@ Context:
 ```python
 # Trigger extended thinking for debugging
 response = client.messages.create(
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     max_tokens=8192,
     system="You are a senior debugging expert. Think through problems systematically, considering all possible causes before suggesting solutions. Show your reasoning process.",
     messages=[{
@@ -1500,7 +1603,7 @@ Then provide your final answer with clear reasoning.
 """
 
 response = client.messages.create(
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     max_tokens=8192,
     system=extended_thinking_system,
     messages=[{"role": "user", "content": "Your complex question here"}]
@@ -1511,7 +1614,7 @@ response = client.messages.create(
 
 ```python
 response = client.messages.create(
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     max_tokens=8192,
     messages=[{
         "role": "user",
@@ -1531,11 +1634,12 @@ Show your reasoning process.
 )
 ```
 
-#### Method 3: CLI Flag (Claude Code)
+#### Method 3: CLI Effort Level (Claude Code)
 
 ```bash
-# Use --extended-thinking flag
-claude --extended-thinking "Design a caching strategy for our API"
+# Claude Code has no --extended-thinking flag; raise the effort level instead
+claude --model claude-opus-5 --effort xhigh \
+  "Design a caching strategy for our API"
 ```
 
 ### Interpreting Extended Thinking Output
@@ -1623,7 +1727,7 @@ Based on the analysis above, I recommend a hybrid caching strategy:
 ✗ Ignore the thinking section (valuable insights)
 ✗ Provide insufficient context (garbage in, garbage out)
 ✗ Use with token-limited models (thinking needs space)
-✗ Expect extended thinking from Haiku (use Sonnet/Opus)
+✗ Expect the effort parameter to work on Haiku 4.5 (use Sonnet/Opus)
 ```
 
 ---
@@ -1680,7 +1784,7 @@ def sequential_specialists_workflow(feature_requirements: str):
 
     # Agent 1: Architect (Opus for design)
     architect_response = client.messages.create(
-        model="claude-opus-4-5-20250329",
+        model="claude-opus-5",
         max_tokens=4096,
         system="""You are a software architect. Design the technical approach
         for implementing features. Provide:
@@ -1700,7 +1804,7 @@ def sequential_specialists_workflow(feature_requirements: str):
 
     # Agent 2: Developer (Sonnet for implementation)
     developer_response = client.messages.create(
-        model="claude-sonnet-4-5-20250329",
+        model="claude-sonnet-5",
         max_tokens=8192,
         system="""You are an expert developer. Implement features based on
         architectural plans. Write production-quality code with error handling.""",
@@ -1725,7 +1829,7 @@ Provide complete, working code."""
 
     # Agent 3: Tester (Sonnet for tests)
     tester_response = client.messages.create(
-        model="claude-sonnet-4-5-20250329",
+        model="claude-sonnet-5",
         max_tokens=4096,
         system="""You are a QA engineer. Generate comprehensive tests for code.
         Include unit tests, integration tests, and edge cases.""",
@@ -1750,7 +1854,7 @@ Include:
 
     # Agent 4: Reviewer (Opus for quality review)
     reviewer_response = client.messages.create(
-        model="claude-opus-4-5-20250329",
+        model="claude-opus-5",
         max_tokens=4096,
         system="""You are a senior code reviewer. Review code for:
         - Correctness and bugs
@@ -1830,7 +1934,7 @@ async def parallel_specialists_workflow(codebase: str):
     # Define specialist tasks
     async def security_audit(code: str):
         response = await client.messages.create(
-            model="claude-opus-4-5-20250329",
+            model="claude-opus-5",
             max_tokens=4096,
             system="""You are a security auditor. Find vulnerabilities:
             - SQL injection, XSS, CSRF
@@ -1846,7 +1950,7 @@ async def parallel_specialists_workflow(codebase: str):
 
     async def performance_analysis(code: str):
         response = await client.messages.create(
-            model="claude-sonnet-4-5-20250329",
+            model="claude-sonnet-5",
             max_tokens=4096,
             system="""You are a performance engineer. Analyze:
             - Algorithmic complexity
@@ -1862,7 +1966,7 @@ async def parallel_specialists_workflow(codebase: str):
 
     async def quality_review(code: str):
         response = await client.messages.create(
-            model="claude-sonnet-4-5-20250329",
+            model="claude-sonnet-5",
             max_tokens=4096,
             system="""You are a code quality expert. Review:
             - Code smells and anti-patterns
@@ -1885,7 +1989,7 @@ async def parallel_specialists_workflow(codebase: str):
 
     # Agent 4: Synthesizer combines all feedback
     synthesizer_response = await client.messages.create(
-        model="claude-opus-4-5-20250329",
+        model="claude-opus-5",
         max_tokens=4096,
         system="""You are a tech lead synthesizing code review feedback.
         Combine inputs from security, performance, and quality reviews into
@@ -1940,7 +2044,7 @@ def iterative_refinement_workflow(task: str, iterations: int = 3):
     for i in range(iterations):
         # Generator agent
         generator_response = client.messages.create(
-            model="claude-sonnet-4-5-20250329",
+            model="claude-sonnet-5",
             max_tokens=4096,
             system="You are a code generator. Create high-quality implementations.",
             messages=[
@@ -1961,7 +2065,7 @@ def iterative_refinement_workflow(task: str, iterations: int = 3):
 
         # Critic agent
         critic_response = client.messages.create(
-            model="claude-opus-4-5-20250329",
+            model="claude-opus-5",
             max_tokens=2048,
             system="""You are a critical code reviewer. Find flaws:
             - Logic errors
@@ -2007,9 +2111,12 @@ result = iterative_refinement_workflow(
 #### Workflow Orchestration Framework
 
 ```python
+import asyncio
 from dataclasses import dataclass
-from typing import Callable, List, Dict, Any
+from typing import Dict, List
 from enum import Enum
+
+from anthropic import AsyncAnthropic
 
 class AgentRole(Enum):
     ARCHITECT = "architect"
@@ -2024,7 +2131,7 @@ class Agent:
     role: AgentRole
     model: str
     system_prompt: str
-    temperature: float = 0.5
+    effort: str = "high"
 
 @dataclass
 class WorkflowStep:
@@ -2033,7 +2140,7 @@ class WorkflowStep:
     output_name: str
 
 class MultiAgentOrchestrator:
-    def __init__(self, client: Anthropic):
+    def __init__(self, client: AsyncAnthropic):
         self.client = client
         self.agents: Dict[AgentRole, Agent] = {}
         self.results: Dict[str, str] = {}
@@ -2058,8 +2165,8 @@ class MultiAgentOrchestrator:
         # Execute agent
         response = await self.client.messages.create(
             model=step.agent.model,
-            max_tokens=4096,
-            temperature=step.agent.temperature,
+            max_tokens=8192,
+            output_config={"effort": step.agent.effort},
             system=step.agent.system_prompt,
             messages=[{"role": "user", "content": full_prompt}]
         )
@@ -2079,23 +2186,23 @@ class MultiAgentOrchestrator:
 # Define agents
 architect = Agent(
     role=AgentRole.ARCHITECT,
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     system_prompt="You are a software architect...",
-    temperature=0.7
+    effort="xhigh"
 )
 
 developer = Agent(
     role=AgentRole.DEVELOPER,
-    model="claude-sonnet-4-5-20250329",
+    model="claude-sonnet-5",
     system_prompt="You are an expert developer...",
-    temperature=0.3
+    effort="high"
 )
 
 reviewer = Agent(
     role=AgentRole.REVIEWER,
-    model="claude-opus-4-5-20250329",
+    model="claude-opus-5",
     system_prompt="You are a senior code reviewer...",
-    temperature=0.4
+    effort="xhigh"
 )
 
 # Define workflow
@@ -2118,14 +2225,18 @@ workflow = [
 ]
 
 # Execute
-orchestrator = MultiAgentOrchestrator(client)
-for agent in [architect, developer, reviewer]:
-    orchestrator.register_agent(agent)
+async def main() -> Dict[str, str]:
+    orchestrator = MultiAgentOrchestrator(AsyncAnthropic())
+    for agent in [architect, developer, reviewer]:
+        orchestrator.register_agent(agent)
 
-results = await orchestrator.execute_workflow(
-    workflow,
-    "Build a REST API for user management"
-)
+    return await orchestrator.execute_workflow(
+        workflow,
+        "Build a REST API for user management"
+    )
+
+if __name__ == "__main__":
+    results = asyncio.run(main())
 ```
 
 ### Multi-Agent Best Practices
@@ -2371,9 +2482,12 @@ prompt = """
 Generate the code, and before finalizing, verify that all imported
 functions actually exist in the codebase. If uncertain, ask me.
 """
+```
 
-# ✓ Solution 3: Use AGENTS.md to document APIs
-# Include in AGENTS.md:
+✓ Solution 3: Use AGENTS.md to document APIs. Add a section like this to
+`AGENTS.md` so the same list is available to every session:
+
+```markdown
 ## Available Utilities
 
 ### Validators (@/lib/validators)
@@ -2528,11 +2642,18 @@ Check for:
 """)
 
 # ✓ Solution 3: Use Opus for security-critical code
+# max_tokens is REQUIRED on every messages.create call and caps thinking
+# plus response text, so budget for both.
 response = client.messages.create(
-    model="claude-opus-4-5-20250329",  # Use best model for security
+    model="claude-opus-5",  # Use best model for security
+    max_tokens=16_000,
+    output_config={"effort": "xhigh"},
     system=security_system_prompt,
     messages=[{"role": "user", "content": security_critical_task}]
 )
+
+if response.stop_reason == "max_tokens":
+    raise RuntimeError("Security review truncated; raise max_tokens and retry")
 ```
 
 ### Pitfall 6: Context Window Overflow
@@ -2669,9 +2790,9 @@ scenarios and show how each is handled in the code.
 │ QUICK REFERENCE: MODEL SELECTION               │
 ├─────────────────────────────────────────────────┤
 │                                                  │
-│ Simple + Non-Critical = HAIKU                   │
+│ Simple + Non-Critical = HAIKU 4.5               │
 │   • Docstrings, formatting, simple CRUD         │
-│   • Cost: ~$0.001-0.01/task                     │
+│   • Cost: ~$0.004-0.04/task                     │
 │                                                  │
 │ Standard Development = SONNET (DEFAULT)         │
 │   • Features, tests, refactoring, reviews       │
@@ -2736,7 +2857,7 @@ Output:
 **DO**:
 
 ```text
-✓ Use Haiku for simple, high-volume tasks (docstrings, formatting)
+✓ Use Haiku 4.5 for simple, high-volume tasks (docstrings, formatting)
 ✓ Use Sonnet as default for standard development
 ✓ Use Opus for security, architecture, and critical decisions
 ✓ Match model capability to task complexity
@@ -2749,6 +2870,7 @@ Output:
 ```text
 ✗ Use Opus for simple tasks (waste of money)
 ✗ Use Haiku for complex reasoning (poor results)
+✗ Use retired models such as Haiku 3.5 (requests fail)
 ✗ Ignore cost metrics and always use highest tier
 ✗ Assume one model fits all use cases
 ✗ Skip model selection evaluation
@@ -2799,7 +2921,7 @@ Output:
 ✗ Use for every simple query (wastes tokens/cost)
 ✗ Ignore the thinking section (valuable insights there)
 ✗ Use with insufficient context
-✗ Expect extended thinking from Haiku
+✗ Expect the effort parameter to work on Haiku 4.5
 ✗ Use when simple answer suffices
 ```
 
@@ -2889,7 +3011,7 @@ Output:
 
 ```text
 ✗ Trust generated security code without review
-✗ Use Haiku for authentication/authorization
+✗ Use Haiku 4.5 for authentication/authorization
 ✗ Skip security review for public-facing features
 ✗ Assume Claude catches all vulnerabilities
 ✗ Deploy security code without human expert review
@@ -2983,3 +3105,9 @@ responsible for all code quality, security, and correctness.
 [^5]: [Anthropic API Reference](https://docs.anthropic.com/en/api/getting-started) - Complete API documentation for integrating Claude
 [^6]: [Streaming Messages](https://docs.anthropic.com/en/api/streaming) - API documentation for streaming responses
 [^7]: [Extended Thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) - Guide to using extended thinking mode for complex reasoning tasks
+[^8]: [Model Deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations) - Lifecycle status, retirement dates, replacements, and API parameter deprecations
+[^9]: [Manage Sessions](https://code.claude.com/docs/en/sessions) - How Claude Code sessions are stored, named, resumed, and what a resumed session restores
+[^10]: [Effort](https://platform.claude.com/docs/en/build-with-claude/effort) - The `output_config.effort` parameter and its levels; see also the [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference) for `--effort`
+[^11]: [Thinking](https://platform.claude.com/docs/en/build-with-claude/thinking) - Adaptive thinking, thinking blocks, and how thinking interacts with effort
+[^12]: [Model IDs and Versioning](https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions) - Dated snapshots, convenience aliases, and dateless pinned IDs
+[^13]: [Models Overview](https://platform.claude.com/docs/en/models/overview) - Current lineup with model IDs, pricing, context and output limits, and default effort
