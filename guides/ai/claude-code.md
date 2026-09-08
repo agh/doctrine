@@ -785,7 +785,7 @@ jobs:
 
       - name: Fetch Doctrine configs
         run: |
-          curl -sL https://github.com/welshwandering/doctrine/archive/main.tar.gz | tar xz
+          curl -sL https://github.com/agh/doctrine/archive/main.tar.gz | tar xz
           mkdir -p ./.claude
           cp -rL doctrine-main/configs/claude/. ./.claude/
           test -f .claude/settings.json
@@ -800,7 +800,7 @@ jobs:
           commit-message: "chore: sync Claude configs from Doctrine"
           branch: sync-doctrine-configs
           body: |
-            Automated sync of Claude Code configs from [Doctrine](https://github.com/welshwandering/doctrine).
+            Automated sync of Claude Code configs from [Doctrine](https://github.com/agh/doctrine).
 ```
 
 ### Version Pinning
@@ -814,7 +814,7 @@ you pin, or the sync step reports `Source not found` and copies nothing:
 ```yaml
 - name: Fetch Doctrine configs (pinned to v2.11.0)
   run: |
-    curl -sL https://github.com/welshwandering/doctrine/archive/refs/tags/v2.11.0.tar.gz | tar xz
+    curl -sL https://github.com/agh/doctrine/archive/refs/tags/v2.11.0.tar.gz | tar xz
     mkdir -p ./.claude
     cp -rL doctrine-2.11.0/configs/claude/. ./.claude/
 ```
