@@ -14,7 +14,7 @@ selection for applications and libraries, runtime-agnostic library design, and
 the migration away from the discontinued async-std. The toolchain, lint,
 formatting, dependency and CI rules in the [Rust Style Guide](../rust.md) apply
 and are not repeated here; every version quoted is listed in its [Tested Version
-Matrix](../rust.md#tested-version-matrix) and was current on 8 September 2026.
+Matrix](versions.md#tested-version-matrix) and was current on 8 September 2026.
 
 Projects **SHOULD** use tokio[^14] as the default async runtime. Projects that
 need a smaller runtime **SHOULD** use smol[^18]. async-std **MUST NOT** be used

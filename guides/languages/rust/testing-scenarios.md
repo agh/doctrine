@@ -14,7 +14,7 @@ acceptance, idempotence, reliability under failure, compatibility across
 versions and platforms, internationalisation, and data integrity. The toolchain,
 lint, formatting, dependency and CI rules in the [Rust Style Guide](../rust.md)
 apply and are not repeated here; every version quoted is listed in its [Tested
-Version Matrix](../rust.md#tested-version-matrix) and was current on 8 September
+Version Matrix](versions.md#tested-version-matrix) and was current on 8 September
 2026.
 
 ## E2E & Acceptance Testing

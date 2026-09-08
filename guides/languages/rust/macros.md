@@ -14,7 +14,7 @@ layout, parsing with syn, code generation with quote, spanned errors and
 compile-fail testing with trybuild. The toolchain, lint, formatting, dependency
 and CI rules in the [Rust Style Guide](../rust.md) apply and are not repeated
 here; every version quoted is listed in its [Tested Version
-Matrix](../rust.md#tested-version-matrix) and was current on 8 September 2026.
+Matrix](versions.md#tested-version-matrix) and was current on 8 September 2026.
 
 Projects **MAY** create procedural macros to reduce boilerplate. Procedural
 macros **MUST** be defined in a separate crate with `proc-macro = true`.

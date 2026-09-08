@@ -10,7 +10,7 @@ Style guides for programming languages.
 | Ruby | [ruby.md](ruby.md) | Ruby 4.0 with StandardRB, Sorbet |
 | Go | [go.md](go.md) | Go 1.23+ with golangci-lint |
 | Rust | [rust.md](rust.md) | Rust 1.98 with Clippy, rustfmt; the core rules |
-| Rust topics | [rust/README.md](rust/README.md) | Rust API Design, Async Runtimes, Cargo Features, Procedural Macros, Rust Testing Tools, Rust Testing Scenarios, Unsafe Rust, WebAssembly |
+| Rust topics | [rust/README.md](rust/README.md) | Rust API Design, Async Runtimes, CI Pipeline, Dependencies and Supply Chain, Cargo Features, Procedural Macros, Rust Testing Tools, Rust Testing Scenarios, Unsafe Rust, Tested Version Matrix, WebAssembly |
 | TypeScript | [typescript.md](typescript.md) | TypeScript 5.x with Biome |
 | C# | [csharp.md](csharp.md) | C# 12+ with Roslynator |
 | .NET | [dotnet.md](dotnet.md) | .NET 8+ framework patterns |

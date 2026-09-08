@@ -14,7 +14,7 @@ them, testing every combination, feature unification, and what they are not
 (runtime A/B switches). The toolchain, lint, formatting, dependency and CI rules
 in the [Rust Style Guide](../rust.md) apply and are not repeated here; every
 version quoted is listed in its [Tested Version
-Matrix](../rust.md#tested-version-matrix) and was current on 8 September 2026.
+Matrix](versions.md#tested-version-matrix) and was current on 8 September 2026.
 
 Cargo features are **additive compile-time configuration**. They **MUST NOT**
 be used for A/B testing, staged rollout or any experiment whose cohort is

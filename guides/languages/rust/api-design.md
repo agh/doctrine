@@ -14,7 +14,7 @@ documentation and type-safety rules for a published Rust API, organised around
 the vendored [Rust API Guidelines](../../../reference/rust/checklist.md). The
 toolchain, lint, formatting, dependency and CI rules in the [Rust Style
 Guide](../rust.md) apply and are not repeated here; every version quoted is
-listed in its [Tested Version Matrix](../rust.md#tested-version-matrix) and was
+listed in the [Tested Version Matrix](versions.md#tested-version-matrix) and was
 current on 8 September 2026.
 
 ## Common Trait Implementations

@@ -14,7 +14,7 @@ This guide covers when `unsafe` is justified, the invariants every unsafe block
 and checking with Miri. The toolchain, lint, formatting, dependency and CI rules
 in the [Rust Style Guide](../rust.md) apply and are not repeated here; every
 version quoted is listed in its [Tested Version
-Matrix](../rust.md#tested-version-matrix) and was current on 8 September 2026.
+Matrix](versions.md#tested-version-matrix) and was current on 8 September 2026.
 
 Projects **SHOULD** minimize usage of `unsafe`. When `unsafe` is required, it
 **MUST** be carefully documented and isolated.
