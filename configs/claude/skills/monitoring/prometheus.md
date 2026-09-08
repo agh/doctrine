@@ -15,36 +15,75 @@ investigation, and capacity planning.
 
 ## Configuration
 
-### MCP Server (if available)
+### MCP Server
+
+Use the official [`prometheus/prometheus-mcp`](https://github.com/prometheus/prometheus-mcp)
+server, pinned at `v0.18.0`:
 
 ```json
 {
   "mcpServers": {
     "prometheus": {
-      "command": "mcp-prometheus",
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "PROMETHEUS_MCP_SERVER_PROMETHEUS_URL",
+        "-v", "/etc/prometheus-mcp:/config:ro",
+        "ghcr.io/tjhop/prometheus-mcp-server:v0.18.0",
+        "--http.config=/config/http-config.yml",
+        "--mcp.tools=core"
+      ],
       "env": {
-        "PROMETHEUS_URL": "${PROMETHEUS_URL}",
-        "PROMETHEUS_AUTH": "${PROMETHEUS_AUTH}"
+        "PROMETHEUS_MCP_SERVER_PROMETHEUS_URL": "${PROMETHEUS_URL}"
       }
     }
   }
 }
 ```
 
+Authentication is configured with a
+[Prometheus HTTP config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#http_config)
+file passed via `--http.config`, not through an environment variable:
+
+```yaml
+# /etc/prometheus-mcp/http-config.yml
+authorization:
+  type: Bearer
+  credentials_file: /config/token
+tls_config:
+  ca_file: /config/ca.pem
+```
+
+`--mcp.tools=core` loads only `docs_list`, `docs_read`, `docs_search`, `query`,
+`range_query`, `metric_metadata`, `label_names`, `label_values` and `series`.
+Without it the server registers every tool.
+
+TSDB administration — `delete_series`, `snapshot`, `clean_tombstones` — stays
+unavailable unless the server is started with
+`--dangerous.enable-tsdb-admin-tools`. Agents **MUST NOT** be given that flag.
+
+**Why**: the previously documented `mcp-prometheus` configuration set a
+`PROMETHEUS_AUTH` variable. That package documents only `PROMETHEUS_URL`, so
+the credential was never sent and the configuration silently failed against any
+protected endpoint. Configuration **MUST** use the variable or flag the chosen
+implementation actually reads.
+
 ### Direct API Access
 
-For CLI-based access or when MCP server unavailable:
+For CLI-based access or when the MCP server is unavailable:
 
 ```bash
 # Query via curl
-curl -G "${PROMETHEUS_URL}/api/v1/query" \
+curl -sS --fail-with-body -G "${PROMETHEUS_URL}/api/v1/query" \
   --data-urlencode "query=up{job='api'}"
 
-# Range query
-curl -G "${PROMETHEUS_URL}/api/v1/query_range" \
+# Range query. `date -d` is GNU-only and fails on macOS/BSD with
+# "date: illegal option -- d", so compute epochs portably.
+now=$(date +%s)
+curl -sS --fail-with-body -G "${PROMETHEUS_URL}/api/v1/query_range" \
   --data-urlencode "query=rate(http_requests_total[5m])" \
-  --data-urlencode "start=$(date -d '1 hour ago' +%s)" \
-  --data-urlencode "end=$(date +%s)" \
+  --data-urlencode "start=$((now - 3600))" \
+  --data-urlencode "end=${now}" \
   --data-urlencode "step=60"
 ```
 
@@ -68,15 +107,21 @@ ${VICTORIA_URL}/api/v1/label/__name__/values  # List all metric names
 
 ## Capabilities
 
+Tool names are those registered by `prometheus-mcp-server` v0.18.0 under
+`--mcp.tools=core`:
+
 | Capability | Description |
 | ---------- | ----------- |
-| `instant_query` | Point-in-time metric value |
-| `range_query` | Metrics over time range |
+| `query` | Point-in-time metric value (instant query) |
+| `range_query` | Metrics over a time range |
 | `series` | List matching time series |
-| `labels` | List label names/values |
-| `targets` | Scrape target status |
-| `alerts` | Active alert status |
-| `rules` | Alerting/recording rules |
+| `label_names` | List label names |
+| `label_values` | List values for a label |
+| `metric_metadata` | Type and help text for a metric |
+| `docs_search` | Search official Prometheus documentation |
+
+`targets`, `rules` and `alerts` are real tools but are not in the core set;
+add them explicitly with `--mcp.tools=targets --mcp.tools=rules` when needed.
 
 ## PromQL Patterns for Agents
 
@@ -262,16 +307,22 @@ When investigating an incident at time T:
 
 ### Authentication
 
-```yaml
-# Basic auth
-PROMETHEUS_AUTH="user:password"
+```bash
+# Basic auth: the wrapper sends these as -u user:password
+PROMETHEUS_USER="agent"
+PROMETHEUS_PASSWORD="..."
 
-# Bearer token
-PROMETHEUS_AUTH="Bearer ${TOKEN}"
+# Bearer token: sent as an Authorization header
+PROMETHEUS_TOKEN="..."
 
 # mTLS (recommended for production)
-# Configure via environment or config file
+# Configure via the MCP server's --http.config file, or curl --cert/--key
 ```
+
+Whichever is chosen, the credential **MUST** be read by the code that makes the
+request. A variable that nothing sends leaves the connection unauthenticated
+while appearing configured, and the failure only shows up as an unexpected
+`401` from a protected server.
 
 ### Network Security
 
@@ -299,24 +350,57 @@ PROMETHEUS_AUTH="Bearer ${TOKEN}"
 When MCP is unavailable, agents can use direct HTTP:
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 # prometheus-query.sh - Wrapper for agent use
+set -euo pipefail
 
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
+# One place where every HTTP call is made, so every call fails closed.
+_api() {
+  local path="$1"; shift
+
+  local auth=()
+  if [ -n "${PROMETHEUS_TOKEN:-}" ]; then
+    auth=(-H "Authorization: Bearer ${PROMETHEUS_TOKEN}")
+  elif [ -n "${PROMETHEUS_USER:-}" ]; then
+    auth=(-u "${PROMETHEUS_USER}:${PROMETHEUS_PASSWORD:?password required}")
+  fi
+
+  local body rc
+  # ${arr[@]+"${arr[@]}"} keeps an empty array from tripping `set -u`
+  # on bash 3.2, which is what macOS ships.
+  # `|| rc=$?` stops `set -e` killing the script before the body is shown.
+  rc=0
+  body=$(curl -sS --fail-with-body --max-time 30 -G \
+    ${auth[@]+"${auth[@]}"} \
+    "${PROMETHEUS_URL}${path}" "$@") || rc=$?
+
+  if [ "$rc" -ne 0 ]; then
+    printf 'prometheus request failed (curl %s): %s\n' "$rc" "$body" >&2
+    return "$rc"
+  fi
+
+  # A 200 response can still carry status:"error".
+  if [ "$(printf '%s' "$body" | jq -r '.status')" != "success" ]; then
+    printf 'prometheus error: %s\n' \
+      "$(printf '%s' "$body" | jq -r '.error // "unknown"')" >&2
+    return 1
+  fi
+
+  # Partial results are reported, not silently dropped.
+  printf '%s' "$body" | jq -r '.warnings // [], .infos // [] | .[]' >&2
+
+  printf '%s' "$body"
+}
+
 query() {
-  local promql="$1"
-  curl -s -G "${PROMETHEUS_URL}/api/v1/query" \
-    --data-urlencode "query=${promql}" | jq -r '.data.result'
+  _api /api/v1/query --data-urlencode "query=$1" | jq -r '.data.result'
 }
 
 query_range() {
-  local promql="$1"
-  local start="$2"
-  local end="$3"
-  local step="${4:-60}"
-
-  curl -s -G "${PROMETHEUS_URL}/api/v1/query_range" \
+  local promql="$1" start="$2" end="$3" step="${4:-60}"
+  _api /api/v1/query_range \
     --data-urlencode "query=${promql}" \
     --data-urlencode "start=${start}" \
     --data-urlencode "end=${end}" \
@@ -324,7 +408,37 @@ query_range() {
 }
 
 # Usage
+now=$(date +%s)
 query 'up{job="api"}'
-query_range 'rate(http_requests_total[5m])' \
-  "$(date -d '1 hour ago' +%s)" "$(date +%s)"
+query_range 'rate(http_requests_total[5m])' "$((now - 3600))" "${now}"
 ```
+
+The original wrapper reported failure as success. `curl -s` exits `0` on an
+HTTP `400`, and piping straight into `jq -r '.data.result'` prints `null`:
+
+```console
+$ query 'rate(((('
+null
+$ echo $?
+0
+```
+
+The version above exits non-zero and prints the server's message on stderr.
+Four things make that work, and all four are **REQUIRED**:
+
+- `set -euo pipefail`, so a failing command ends the script.
+- `--fail-with-body`, so an HTTP error is a non-zero `curl` exit **and** the
+  response body is still printed.
+- An explicit `.status == "success"` check, because Prometheus returns
+  `{"status":"error"}` inside some `200` responses.
+- `--max-time 30`, so a hung request cannot stall the agent indefinitely.
+
+`warnings` and `infos` are forwarded to stderr. Prometheus sets them when a
+query hit a limit and returned partial data, which otherwise looks identical to
+a complete result.
+
+`PROMETHEUS_TOKEN` or `PROMETHEUS_USER`/`PROMETHEUS_PASSWORD` are attached to
+every request rather than being declared and ignored.
+
+`date -d '1 hour ago'` is GNU-specific. On macOS it fails with `date: illegal
+option -- d`, so the wrapper does arithmetic on `date +%s`, which is portable.

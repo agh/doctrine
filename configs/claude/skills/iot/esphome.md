@@ -44,57 +44,120 @@ Provides access to ESPHome devices for monitoring, debugging, configuration mana
 
 ## Access Methods
 
-### 1. ESPHome Dashboard API
+### 1. Device Builder / CLI
+
+The ESPHome Dashboard is now
+[Device Builder](https://github.com/esphome/device-builder) (1.14.4). Its REST
+surface is a compatibility shim: the module is marked `DEPRECATED` in source and
+exists for the Home Assistant integration until that migrates to the `/ws`
+multiplexed API.
+
+There are no per-device REST routes. `/devices/<name>/info`,
+`/devices/<name>/logs`, `/devices/<name>/compile` and `/devices/<name>/upload`
+do not exist. An unmatched `GET` returns the front-end HTML shell rather than a
+`404`, so a script that only checks the status code will treat the failure as
+success.
+
+Agents **MUST** drive builds through the `esphome` CLI, pinned to 2026.8.2:
 
 ```bash
-# ESPHome Dashboard REST API
+# Validate configuration
+esphome config living_room_sensor.yaml
+
+# Compile only
+esphome compile living_room_sensor.yaml
+
+# Compile and flash over the air
+esphome upload living_room_sensor.yaml
+
+# Stream logs from the device
+esphome logs living_room_sensor.yaml
+```
+
+**Why**: the CLI exits non-zero on failure and takes the same YAML the device
+already uses, so a failed validation stops the pipeline. The deprecated HTTP
+routes give neither guarantee.
+
+The two legacy read endpoints that do exist are shaped differently from the
+guide's original assumption. `/devices` returns an **object** with `configured`
+and `importable` arrays, not a bare array:
+
+```bash
 ESPHOME_URL="http://esphome.local:6052"
 
-# List all devices
-curl -s "${ESPHOME_URL}/devices" | jq
+# List configured device names
+curl -sS --fail-with-body "${ESPHOME_URL}/devices" \
+  | jq -r '.configured[].name'
 
-# Get device info
-curl -s "${ESPHOME_URL}/devices/living_room_sensor/info"
+# Online-status map, keyed by config filename
+curl -sS --fail-with-body "${ESPHOME_URL}/ping" | jq
 
-# Get device logs
-curl -s "${ESPHOME_URL}/devices/living_room_sensor/logs"
-
-# Compile device (check config)
-curl -X POST "${ESPHOME_URL}/devices/living_room_sensor/compile"
-
-# OTA update (admin only)
-curl -X POST "${ESPHOME_URL}/devices/living_room_sensor/upload"
+# Fully resolved config as JSON
+curl -sS --fail-with-body \
+  "${ESPHOME_URL}/json-config?configuration=living_room_sensor.yaml" | jq
 ```
+
+`/compile` and `/upload` are WebSocket endpoints reached with `GET`, not `POST`
+REST calls. Use the CLI rather than driving them directly.
 
 ### 2. Native API (Direct Device)
 
-```python
-import aioesphomeapi
+Pinned to `aioesphomeapi` 46.3.0. Note that ESPHome 2026.8.2 itself pins
+`aioesphomeapi==45.10.3`, so install the client in its own environment.
 
-async def connect_to_device():
-    cli = aioesphomeapi.APIClient(
+```python
+import asyncio
+
+from aioesphomeapi import APIClient
+
+
+async def connect_to_device() -> None:
+    cli = APIClient(
         address="living_room_sensor.local",
         port=6053,
-        password="",  # or API password if set
+        noise_psk="<base64 key from api.encryption.key>",
     )
     await cli.connect(login=True)
+    try:
+        # Get device info
+        device_info = await cli.device_info()
+        print(f"Device: {device_info.name}")
+        print(f"Version: {device_info.esphome_version}")
 
-    # Get device info
-    device_info = await cli.device_info()
-    print(f"Device: {device_info.name}")
-    print(f"Version: {device_info.esphome_version}")
+        # Returns a tuple, not a flat list
+        entities, services = await cli.list_entities_services()
+        for entity in entities:
+            print(f"  {entity.name}: {entity.object_id}")
 
-    # List entities
-    entities = await cli.list_entities_services()
-    for entity in entities:
-        print(f"  {entity.name}: {entity.object_id}")
+        # Subscribe to state changes
+        def on_state(state) -> None:
+            print(f"State update: {state}")
 
-    # Subscribe to state changes
-    def on_state(state):
-        print(f"State update: {state}")
+        # Not a coroutine: do not await it
+        cli.subscribe_states(on_state)
+        await asyncio.sleep(60)
+    finally:
+        await cli.disconnect()
 
-    await cli.subscribe_states(on_state)
+
+asyncio.run(connect_to_device())
 ```
+
+Three details are load-bearing:
+
+- `list_entities_services()` returns
+  `tuple[list[EntityInfo], list[UserService]]`. Iterating it directly yields
+  the two lists, and `entity.name` then raises
+  `AttributeError: 'list' object has no attribute 'name'`.
+- `subscribe_states()` is a plain method returning `None`. Awaiting it raises
+  `TypeError: object NoneType can't be used in 'await' expression`. It returns
+  no unsubscribe handle; end the subscription by disconnecting.
+- The client **MUST** be disconnected. Without the `finally`, the connection
+  and its reconnect logic outlive the function.
+
+Prefer `noise_psk` over `password`. The `password` parameter still exists on
+`APIClient`, but transport encryption authenticates the peer and protects the
+session, whereas the API password does neither.
 
 ### 3. MQTT (If Configured)
 
@@ -226,12 +289,20 @@ binary_sensor:
     name: "Door"
     device_class: door
 
-# Power Monitoring (HLW8012 - Sonoff POW)
+# Power Monitoring - Sonoff POW R1 (HLW8012)
+# GPIO12 is the relay on this board and MUST NOT be used as sel_pin:
+# ESPHome drives sel_pin as an output and toggles it to switch the
+# HLW8012 between voltage and current measurement.
+switch:
+  - platform: gpio
+    pin: GPIO12
+    name: "Relay"
+
 sensor:
   - platform: hlw8012
-    sel_pin: GPIO12
-    cf_pin: GPIO5
-    cf1_pin: GPIO14
+    sel_pin: GPIO5
+    cf_pin: GPIO14
+    cf1_pin: GPIO13
     voltage:
       name: "Voltage"
     current:
@@ -242,6 +313,49 @@ sensor:
       name: "Energy"
     update_interval: 10s
 ```
+
+The Sonoff POW **R2** is a different board: its metering chip is a CSE7766 on
+the ESP8266's single UART, not an HLW8012. Applying the R1 block above to an R2
+drives the relay pin as a measurement-select output and produces no readings.
+
+```yaml
+# Power Monitoring - Sonoff POW R2 (CSE7766)
+# The CSE7766 occupies the only UART, so serial logging must be off.
+logger:
+  baud_rate: 0
+
+uart:
+  rx_pin: RX
+  baud_rate: 4800
+  parity: EVEN
+
+switch:
+  - platform: gpio
+    pin: GPIO12
+    name: "Relay"
+
+sensor:
+  - platform: cse7766
+    voltage:
+      name: "Voltage"
+      filters:
+        - throttle_average: 10s
+    current:
+      name: "Current"
+      filters:
+        - throttle_average: 10s
+    power:
+      name: "Power"
+      filters:
+        - throttle_average: 10s
+    energy:
+      name: "Energy"
+      filters:
+        - throttle: 10s
+```
+
+The CSE7766 pushes readings rather than being polled, so it takes no
+`update_interval`; rate is controlled with `throttle_average` filters.
 
 ### Common Actuator Configurations
 
@@ -286,13 +400,17 @@ servo:
 ### Device Inventory
 
 ```bash
-# List all ESPHome devices with status
-curl -s "${ESPHOME_URL}/devices" | jq '.[] | {
+# List all ESPHome devices with status.
+# /devices returns an object with `configured` and `importable` arrays,
+# so it must not be indexed as a bare array.
+curl -sS --fail-with-body "${ESPHOME_URL}/devices" | jq '.configured[] | {
   name: .name,
-  status: .status,
   address: .address,
-  version: .current_version
+  configuration: .configuration
 }'
+
+# Online status, keyed by config filename
+curl -sS --fail-with-body "${ESPHOME_URL}/ping" | jq
 ```
 
 ### Device Health Check
@@ -389,29 +507,59 @@ Current Readings:
 | Power | 4.8 W | Matches V*I |
 | Energy | 12.4 kWh | Total since boot |
 
-Configuration Check - default values detected:
+Configuration Check - wrong sensor platform for this board:
 
 ```yaml
+# Found on the device: an HLW8012 block on a POW R2
 sensor:
   - platform: hlw8012
+    sel_pin: GPIO12
     current_resistor: 0.001  # Default value
     voltage_divider: 2351    # Default value
 ```
 
-Diagnosis: The HLW8012 calibration values are defaults. This sensor needs
-calibration for accurate readings.
+Diagnosis: the POW R2 meters with a CSE7766 over UART, not an HLW8012. The
+configuration names the wrong driver, and `sel_pin: GPIO12` drives the relay
+pin as a measurement-select output. Calibration **MUST NOT** be attempted while
+the driver is mismatched; adjusting `current_resistor` or `voltage_divider`
+tunes a device that is not present.
 
-Recommended Fix - Option 1, calibrate with known load:
+Recommended Fix - use the board's real sensor:
+
+```yaml
+logger:
+  baud_rate: 0
+
+uart:
+  rx_pin: RX
+  baud_rate: 4800
+  parity: EVEN
+
+sensor:
+  - platform: cse7766
+    voltage:
+      name: "Voltage"
+    current:
+      name: "Current"
+    power:
+      name: "Power"
+```
+
+Only once the correct driver reports plausible values does calibration apply.
+On a genuine POW R1 (HLW8012), calibrate with a known load:
 
 ```yaml
 sensor:
   - platform: hlw8012
+    sel_pin: GPIO5
+    cf_pin: GPIO14
+    cf1_pin: GPIO13
     # Measure actual values and adjust:
     current_resistor: 0.00095  # Adjust based on actual
     voltage_divider: 2400      # Adjust based on multimeter
 ```
 
-Recommended Fix - Option 2, use calibrate_linear filter:
+Or use a `calibrate_linear` filter on the affected sensor:
 
 ```yaml
 filters:
@@ -479,21 +627,24 @@ Rollback Plan:
 ### Device Security
 
 ```yaml
-# Recommended ESPHome security settings
+# Recommended ESPHome security settings, validated against ESPHome 2026.8.2
 
-# API password (or encryption key in newer versions)
+# API encryption key (replaces the legacy api password)
 api:
   encryption:
     key: !secret esphome_api_key
 
-# OTA password
+# OTA is platform-based. A bare `ota: password:` fails validation with
+# "'ota' requires a 'platform' key but it was not specified."
 ota:
-  password: !secret esphome_ota_password
+  - platform: esphome
+    password: !secret esphome_ota_password
 
 # Web server authentication (if used)
 web_server:
   port: 80
   auth:
+    type: digest
     username: admin
     password: !secret esphome_web_password
 
@@ -502,6 +653,40 @@ logger:
   level: INFO
   baud_rate: 0  # Disable UART
 ```
+
+`auth.type` still defaults to `basic` in 2026.8.2, and omitting it logs a
+deprecation warning; the default becomes `digest` in ESPHome 2027.1.0. Set the
+type explicitly either way.
+
+**Why**: basic authentication sends the password in an easily reversible form
+on every request. Digest does not, and stating the type explicitly means the
+2027.1.0 default change cannot alter the device's behaviour unannounced.
+
+Two settings are conditional rather than universal:
+
+```yaml
+# Only when a browser on another origin must call the device
+web_server:
+  port: 80
+  auth:
+    type: digest
+    username: admin
+    password: !secret esphome_web_password
+  allowed_origins:
+    - http://homeassistant.local:8123
+
+# Only when firmware should also be uploadable through the web UI.
+# ota.web_server requires the web_server component above.
+ota:
+  - platform: esphome
+    password: !secret esphome_ota_password
+  - platform: web_server
+```
+
+`web_server: ota:` accepts only `false`, to disable web OTA. Enabling it
+requires the separate `web_server` OTA platform above. Adding that platform
+widens the attack surface to anyone who can reach port 80, so add it only when
+the web upload path is actually wanted.
 
 ### Agent Restrictions
 
