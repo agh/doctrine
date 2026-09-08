@@ -102,7 +102,7 @@ Comprehensive infrastructure assessment using the Doctrine System Agent Family.
 
 ## See Also
 
-- [System Agent Family](../../guides/ai/system-agents.md) — Architecture overview
+- [System Agent Family](../guides/ai/system-agents.md) — Architecture overview
 - [System Architect](../agents/system/architect.md) — Coordinator specification
 - [Docker Reviewer](../agents/system/docker.md) — Container security
 - [Ansible Reviewer](../agents/system/ansible.md) — Playbook review

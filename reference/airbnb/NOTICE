@@ -1,0 +1,32 @@
+NOTICE — Airbnb style guides vendored in Doctrine
+
+Upstream (javascript.md, react.md, css-in-javascript.md):
+  Airbnb JavaScript Style Guide
+  https://github.com/airbnb/javascript
+  Copyright (c) 2012 Airbnb
+
+Upstream (ruby.md):
+  Airbnb Ruby Style Guide
+  https://github.com/airbnb/ruby
+  Copyright (c) 2012 Airbnb
+
+Licence:       MIT License (both upstream repositories)
+Licence URL:   https://github.com/airbnb/javascript/blob/master/LICENSE.md
+               https://github.com/airbnb/ruby/blob/master/LICENSE.md
+Licence text:  ./LICENSE (verbatim copy of the upstream LICENSE.md; the
+               airbnb/ruby licence is the same MIT text with the same
+               copyright holder and year, differing only in line wrapping)
+
+Modifications by Doctrine
+-------------------------
+The copies in this directory are NOT byte-identical to upstream: prose has
+been reflowed, some code-sample quoting normalised, and files renamed
+(upstream README.md files are vendored under language-specific names). The
+upstream revision was not recorded at vendoring time. MIT imposes no
+modification-marking duty, but these files must not be treated as
+authoritative upstream copies.
+
+Required attribution
+--------------------
+The MIT copyright and permission notice in ./LICENSE must be retained in
+all copies or substantial portions of this material.

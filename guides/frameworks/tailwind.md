@@ -982,10 +982,10 @@ export default defineConfig({
 
 ## See Also
 
-- [CSS Best Practices](../docs/css.md) - General CSS conventions
-- [JavaScript Guide](../languages/javascript.md) - JavaScript and TypeScript patterns
+- [CSS Best Practices](../languages/css.md) - General CSS conventions
+- [JavaScript Guide](../../agents/test-writer/javascript.md) - JavaScript and TypeScript patterns
 - [React Guide](./react.md) - React-specific conventions
-- [Vue Guide](./vue.md) - Vue-specific conventions
+- Vue Guide - Vue-specific conventions
 
 ## References
 
