@@ -2,14 +2,14 @@
 
 ## Standards
 
-This project follows [Doctrine](https://github.com/welshwandering/doctrine) for all coding standards:
+This project follows [Doctrine](https://github.com/agh/doctrine) for all coding standards:
 
 | Concern | Guide |
 |---------|-------|
-| {Language} | [guides/languages/{language}.md](https://github.com/welshwandering/doctrine/blob/main/guides/languages/{language}.md) |
-| {Framework} | [guides/frameworks/{framework}.md](https://github.com/welshwandering/doctrine/blob/main/guides/frameworks/{framework}.md) |
-| Testing | [guides/process/testing.md](https://github.com/welshwandering/doctrine/blob/main/guides/process/testing.md) |
-| CI/CD | [guides/process/ci.md](https://github.com/welshwandering/doctrine/blob/main/guides/process/ci.md) |
+| {Language} | [guides/languages/{language}.md](https://github.com/agh/doctrine/blob/main/guides/languages/{language}.md) |
+| {Framework} | [guides/frameworks/{framework}.md](https://github.com/agh/doctrine/blob/main/guides/frameworks/{framework}.md) |
+| Testing | [guides/process/testing.md](https://github.com/agh/doctrine/blob/main/guides/process/testing.md) |
+| CI/CD | [guides/process/ci.md](https://github.com/agh/doctrine/blob/main/guides/process/ci.md) |
 
 **Do not duplicate Doctrine guidance here.** This file contains only project-specific context.
 

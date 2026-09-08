@@ -2696,12 +2696,12 @@ See [C# Style Guide](csharp.md) for:
 - Code coverage and testing patterns
 - Advanced C# features (records, pattern matching, etc.)
 
-See [EditorConfig Guide](../configs/editorconfig.md) for:
+See [EditorConfig Guide](../../configs/editorconfig/README.md) for:
 
 - Code style configuration
 - File formatting rules
 
-See [GitHub Actions Guide](../workflows/github-actions.md) for:
+See [GitHub Actions Guide](../process/ci.md) for:
 
 - CI/CD pipeline patterns
 - Workflow best practices

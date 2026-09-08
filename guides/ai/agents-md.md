@@ -137,7 +137,7 @@ the inspection command in the last column before relying on a file.
 ## DRY Pattern: Reference Doctrine
 
 Project AGENTS.md files **MUST** reference
-[Doctrine](https://github.com/welshwandering/doctrine) as the source of
+[Doctrine](https://github.com/agh/doctrine) as the source of
 truth for coding standards. This creates a "DRY for AI" pattern where:
 
 - **Doctrine** contains canonical style guides, tooling choices, and
@@ -161,7 +161,7 @@ Every project AGENTS.md **MUST** begin with a Standards section:
 ```markdown
 ## Standards
 
-This project follows [Doctrine](https://github.com/welshwandering/doctrine):
+This project follows [Doctrine](https://github.com/agh/doctrine):
 
 | Concern | Guide |
 | ------- | ----- |
@@ -169,9 +169,9 @@ This project follows [Doctrine](https://github.com/welshwandering/doctrine):
 | Django | [guides/frameworks/django.md][django] |
 | Testing | [guides/process/testing.md][testing] |
 
-[python]: https://github.com/welshwandering/doctrine/blob/main/guides/languages/python.md
-[django]: https://github.com/welshwandering/doctrine/blob/main/guides/frameworks/django.md
-[testing]: https://github.com/welshwandering/doctrine/blob/main/guides/process/testing.md
+[python]: https://github.com/agh/doctrine/blob/main/guides/languages/python.md
+[django]: https://github.com/agh/doctrine/blob/main/guides/frameworks/django.md
+[testing]: https://github.com/agh/doctrine/blob/main/guides/process/testing.md
 
 **Do not duplicate Doctrine guidance here.** This file contains only
 project-specific context.
