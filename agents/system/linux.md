@@ -53,13 +53,20 @@ CapabilityBoundingSet=
 ReadWritePaths=/var/lib/app
 ```
 
-**Security Score**: Run `systemd-analyze security <service>` — target 7.0+
+**Security score**: `systemd-analyze security <service>` reports an *exposure
+level* from 0.0 to 10.0, where **low is safer** — a high value means little
+sandboxing is applied. Set an organisation-wide **maximum** (for example
+≤ 3.0 for network-facing units) rather than a minimum. The score rates only the
+systemd settings of the unit: it ignores hardening the service applies itself,
+and a low exposure level does not prove the service is not vulnerable, nor does
+it cover what the service may request from other services over IPC such as
+D-Bus.
 
 **Severity**:
 
 - 🔴 **Critical**: Running as root without necessity, no security directives
 - 🟡 **Warning**: Missing ProtectSystem/ProtectHome, no resource limits
-- 🔵 **Suggestion**: Add socket activation, improve security score
+- 🔵 **Suggestion**: Add socket activation, lower the exposure level
 
 ---
 
@@ -176,6 +183,24 @@ table inet filter {
         # ICMP
         ip protocol icmp accept
 
+        # ICMPv6 error messages and path MTU discovery (RFC 4890)
+        icmpv6 type { destination-unreachable, packet-too-big,
+                      time-exceeded, parameter-problem } accept
+
+        # Neighbour and router discovery: link-local, hop limit 255
+        ip6 hoplimit 255 icmpv6 type { nd-router-solicit, nd-router-advert,
+                                       nd-neighbor-solicit, nd-neighbor-advert,
+                                       nd-redirect } accept
+
+        # Multicast Listener Discovery from link-local sources
+        ip6 saddr fe80::/10 icmpv6 type { mld-listener-query,
+                                          mld-listener-report,
+                                          mld-listener-done,
+                                          mld2-listener-report } accept
+
+        # ICMPv6 echo (rate limited)
+        icmpv6 type { echo-request, echo-reply } limit rate 10/second accept
+
         # SSH (rate limited)
         tcp dport 22 ct state new limit rate 10/minute accept
 
@@ -193,9 +218,18 @@ table inet filter {
 }
 ```
 
+An `inet` table sees both address families, so a default-drop input chain that
+only accepts `ip protocol icmp` breaks IPv6: neighbour discovery, router
+advertisements and `packet-too-big` are dropped, which costs the host its IPv6
+neighbour cache and path-MTU discovery. Hosts that carry IPv6 traffic **MUST**
+permit the ICMPv6 types above (RFC 4890); hosts that genuinely have no IPv6
+**MUST** disable it explicitly instead of relying on the firewall.
+
 **Severity**:
 
 - 🔴 **Critical**: Default accept policy on input
+- 🔴 **Critical**: IPv6-enabled host dropping neighbour discovery or
+  `packet-too-big`
 - 🟡 **Warning**: No rate limiting, missing stateful tracking
 - 🔵 **Suggestion**: Add logging for dropped packets
 
@@ -545,7 +579,8 @@ and logging. Run `systemd-analyze security nginx.service` and harden.
 - [ ] Non-root user
 - [ ] Security directives (ProtectSystem, etc.)
 - [ ] Restart policy configured
-- [ ] Security score 7.0+
+- [ ] Exposure level at or below the agreed maximum (`systemd-analyze
+      security`; lower is safer)
 
 ### Firewall
 

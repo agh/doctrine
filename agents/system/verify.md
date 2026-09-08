@@ -33,7 +33,7 @@ Detect project type and select appropriate toolchain:
 | `pyproject.toml` | Python | `uv build` | `pyright` | `ruff check .` | `pytest` | `ruff format --check .` |
 | `Cargo.toml` | Rust | `cargo build` | (built-in) | `cargo clippy` | `cargo test` | `cargo fmt --check` |
 | `go.mod` | Go | `go build ./...` | (built-in) | `golangci-lint run` | `go test ./...` | `gofmt -l .` |
-| `Gemfile` | Ruby | `bundle exec rake build` | `srb tc` | `rubocop` | `rspec` | `rubocop -a --fail-level error` |
+| `Gemfile` | Ruby | `bundle exec rake build` | `srb tc` | `rubocop` | `rspec` | `rubocop --only Layout` |
 | `mix.exs` | Elixir | `mix compile` | `mix dialyzer` | `mix credo` | `mix test` | `mix format --check-formatted` |
 | `pom.xml` | Java | `mvn compile` | (built-in) | `mvn checkstyle:check` | `mvn test` | `mvn spotless:check` |
 | `build.gradle` | Java/Kotlin | `./gradlew build` | (built-in) | `./gradlew check` | `./gradlew test` | `./gradlew spotlessCheck` |
@@ -128,13 +128,17 @@ rspec              # Ruby
 
 ### 6. Format Check
 
+Format checks **MUST** be read-only: they report offences and exit non-zero
+without touching the working tree. `rubocop -a` rewrites source files, and
+`rubocop -l` runs Lint cops only, so it passes badly formatted code.
+
 ```bash
-# Verify formatting
+# Verify formatting (no file is modified)
 prettier --check . # Node.js
 ruff format --check . # Python
 cargo fmt --check  # Rust
 gofmt -l .         # Go
-rubocop -l         # Ruby
+rubocop --only Layout # Ruby
 ```
 
 ### 7. Security Scan (--full mode)
@@ -190,7 +194,7 @@ FOR each failed check:
 | Check | Auto-Fix Action |
 | ----- | --------------- |
 | Lint errors | `npm run lint -- --fix` / `ruff check --fix` |
-| Format errors | `prettier --write` / `ruff format` / `cargo fmt` |
+| Format errors | `prettier --write` / `ruff format` / `cargo fmt` / `rubocop -a` |
 | Type errors | Analyze and add missing types/imports |
 | Missing deps | `npm install <pkg>` / `uv add <pkg>` |
 | Simple test failures | Analyze and fix obvious bugs |
