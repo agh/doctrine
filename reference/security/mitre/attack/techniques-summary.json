@@ -1,27 +1,32 @@
 {
   "name": "MITRE ATT&CK Enterprise Techniques Summary",
-  "version": "18.1",
-  "released": "2025-10-28",
+  "version": "19.2",
+  "released": "2026-08-05",
   "source": "https://attack.mitre.org/",
   "description": "Curated high-priority techniques for security agent analysis",
-  "changelog_v18": {
+  "data_source": "https://github.com/mitre-attack/attack-stix-data/blob/master/enterprise-attack/enterprise-attack-19.2.json",
+  "generation": {
+    "method": "Technique ids, names, platforms and detection strategies are copied from the ATT&CK STIX bundle for the declared version",
+    "regenerate": "Agents MUST regenerate from a named STIX release; ids MUST NOT be relabelled by hand, and revoked ids MUST be replaced with their revoked-by successor"
+  },
+  "changelog_v19": {
     "major_changes": [
-      "Retired traditional Detections in favor of Detection Strategies (DETxxxx)",
+      "TA0005 renamed from Defense Evasion to Stealth",
+      "New tactic TA0112 Defense Impairment",
+      "T1562 Impair Defenses revoked and replaced by T1685 Disable or Modify Tools",
+      "T1562.004 revoked and replaced by T1686 Disable or Modify System Firewall",
+      "T1070.001 Clear Windows Event Logs revoked and replaced by T1685.005"
+    ],
+    "v18_changes": [
+      "Retired traditional Detections in favour of Detection Strategies (DETxxxx)",
       "Added Detection Strategies and Analytics",
       "Major updates to Data Components",
-      "Deprecated Data Sources",
-      "12 new techniques added"
+      "Deprecated Data Sources"
     ],
     "v17_changes": [
       "Added ESXi platform to Enterprise domain",
-      "Renamed Network platform to Network Devices",
-      "Improved Enterprise Mitigation descriptions"
-    ],
-    "statistics": {
-      "software": 910,
-      "groups": 176,
-      "campaigns": 55
-    }
+      "Renamed Network platform to Network Devices"
+    ]
   },
   "tactics": [
     {
@@ -74,10 +79,11 @@
     },
     {
       "id": "TA0005",
-      "name": "Defense Evasion",
+      "name": "Stealth",
       "techniques": [
-        {"id": "T1070", "name": "Indicator Removal", "priority": "high", "subtechniques": ["T1070.001", "T1070.004", "T1070.006", "T1070.009"]},
-        {"id": "T1562", "name": "Impair Defenses", "priority": "critical", "subtechniques": ["T1562.001", "T1562.002", "T1562.004", "T1562.006", "T1562.012"]},
+        {"id": "T1070", "name": "Indicator Removal", "priority": "high", "subtechniques": ["T1070.003", "T1070.004", "T1070.006", "T1070.009"]},
+        {"id": "T1685", "name": "Disable or Modify Tools", "priority": "critical", "tactic": "TA0112", "subtechniques": ["T1685.001", "T1685.002", "T1685.004", "T1685.005", "T1685.006"]},
+        {"id": "T1686", "name": "Disable or Modify System Firewall", "priority": "critical", "tactic": "TA0112", "subtechniques": ["T1686.001", "T1686.002", "T1686.003"]},
         {"id": "T1036", "name": "Masquerading", "priority": "high"},
         {"id": "T1027", "name": "Obfuscated Files or Information", "priority": "high"},
         {"id": "T1055", "name": "Process Injection", "priority": "critical"},
@@ -166,38 +172,50 @@
     }
   ],
   "detection_strategies": {
-    "note": "v18 introduces Detection Strategies (DETxxxx) replacing traditional Detections",
+    "note": "v18 introduced Detection Strategies (DETxxxx) replacing traditional Detections; v19.2 publishes 697 non-revoked strategies",
     "model": {
-      "detection_strategy": "High-level defensive approach describing how to identify adversary behaviors",
+      "detection_strategy": "Named defensive approach attached to exactly one technique, carrying one or more analytics",
       "analytics": "Specific detection logic implementing a strategy"
     },
-    "priority_strategies": [
-      "DET0001: Process Creation Monitoring",
-      "DET0002: Command Line Logging",
-      "DET0003: Network Connection Monitoring",
-      "DET0004: File System Monitoring",
-      "DET0005: Authentication Event Analysis"
+    "lookup": "Each DET id belongs to a single technique. Resolve a DET id from the STIX bundle rather than assuming a generic name; DET names are technique-specific and are not a fixed catalogue of monitoring categories.",
+    "examples": [
+      {"id": "DET0080", "name": "Exploit Public-Facing Application – multi-signal correlation (request \u2192 error \u2192 post-exploit process/egress)", "detects": "T1190", "technique_name": "Exploit Public-Facing Application"},
+      {"id": "DET0070", "name": "Detection Strategy for Phishing across platforms.", "detects": "T1566", "technique_name": "Phishing"},
+      {"id": "DET0455", "name": "Abuse of PowerShell for Arbitrary Execution", "detects": "T1059.001", "technique_name": "PowerShell"},
+      {"id": "DET0363", "name": "Detection of Credential Dumping from LSASS Memory via Access and Dump Sequence", "detects": "T1003.001", "technique_name": "LSASS Memory"},
+      {"id": "DET0508", "name": "Behavioral Detection of Process Injection Across Platforms", "detects": "T1055", "technique_name": "Process Injection"},
+      {"id": "DET0215", "name": "Detection of Multi-Platform File Encryption for Impact", "detects": "T1486", "technique_name": "Data Encrypted for Impact"}
     ]
   },
   "detection_priority_techniques": [
     "T1059.001", "T1003.001", "T1055", "T1190", "T1566", "T1078",
-    "T1486", "T1562.001", "T1021.001", "T1550.002", "T1068", "T1105",
+    "T1486", "T1685", "T1021.001", "T1550.002", "T1068", "T1105",
     "T1621", "T1606", "T1611"
   ],
   "cloud_specific": [
-    {"id": "T1078.004", "name": "Cloud Accounts", "platforms": ["AWS", "Azure", "GCP", "SaaS"]},
-    {"id": "T1537", "name": "Transfer Data to Cloud Account"},
-    {"id": "T1580", "name": "Cloud Infrastructure Discovery"},
-    {"id": "T1538", "name": "Cloud Service Dashboard"},
-    {"id": "T1619", "name": "Cloud Storage Object Discovery"},
-    {"id": "T1552.007", "name": "Container API"}
+    {"id": "T1078.004", "name": "Cloud Accounts", "platforms": ["IaaS", "Identity Provider", "Office Suite", "SaaS"]},
+    {"id": "T1537", "name": "Transfer Data to Cloud Account", "platforms": ["IaaS", "Office Suite", "SaaS"]},
+    {"id": "T1580", "name": "Cloud Infrastructure Discovery", "platforms": ["IaaS"]},
+    {"id": "T1538", "name": "Cloud Service Dashboard", "platforms": ["IaaS", "SaaS", "Office Suite", "Identity Provider"]},
+    {"id": "T1619", "name": "Cloud Storage Object Discovery", "platforms": ["IaaS"]},
+    {"id": "T1552.007", "name": "Container API", "platforms": ["Containers"]}
   ],
   "esxi_specific": {
-    "note": "ESXi platform added in v17",
-    "techniques": [
-      {"id": "T1059.009", "name": "Cloud API (ESXi variant)"},
-      {"id": "T1562.012", "name": "Disable or Modify ESXi Firewall"},
-      {"id": "T1505.004", "name": "IIS Components (vCenter)"}
-    ]
+    "note": "ESXi platform added in v17. Only these techniques are exclusive to ESXi in v19.2; many others list ESXi alongside other platforms and MUST NOT be described as ESXi controls.",
+    "esxi_only": [
+      {"id": "T1059.012", "name": "Hypervisor CLI", "platforms": ["ESXi"]},
+      {"id": "T1505.006", "name": "vSphere Installation Bundles", "platforms": ["ESXi"]},
+      {"id": "T1675", "name": "ESXi Administration Command", "platforms": ["ESXi"]}
+    ],
+    "esxi_among_other_platforms": {
+      "note": "Frequently abused on ESXi but not ESXi-specific; always report the official platform list",
+      "techniques": [
+        {"id": "T1486", "name": "Data Encrypted for Impact", "platforms": ["ESXi", "IaaS", "Linux", "macOS", "Windows"]},
+        {"id": "T1490", "name": "Inhibit System Recovery", "platforms": ["Containers", "ESXi", "IaaS", "Linux", "macOS", "Network Devices", "Windows"]},
+        {"id": "T1489", "name": "Service Stop", "platforms": ["ESXi", "IaaS", "Linux", "macOS", "Windows"]},
+        {"id": "T1686", "name": "Disable or Modify System Firewall", "platforms": ["ESXi", "Linux", "macOS", "Network Devices", "Windows"]},
+        {"id": "T1021.004", "name": "SSH", "platforms": ["ESXi", "Linux", "macOS"]}
+      ]
+    }
   }
 }
