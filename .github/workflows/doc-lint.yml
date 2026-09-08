@@ -1,6 +1,13 @@
-# Documentation Lint Workflow
+# Documentation Lint
 #
-# Validates documentation files for formatting, broken links, and structure.
+# Doctrine's own CI. Every check here is blocking except the snippet syntax
+# check, which is advisory until the guides' fenced examples are corrected.
+#
+# Runtimes: Node.js 24 (Active LTS until 2026-10-20, EOL 2028-04-30) and
+# Python 3.14 (the baseline the guides document).
+#
+# Every action is pinned to a full commit SHA, per GitHub's secure-use
+# guidance: https://docs.github.com/en/actions/reference/security/secure-use-reference
 
 name: Documentation Lint
 
@@ -8,324 +15,295 @@ on:
   pull_request:
     paths:
       - '**.md'
-      - 'docs/**'
+      - '.github/**'
+      - 'scripts/**'
+      - 'configs/**'
+      - '.markdownlint.json'
+      - '.markdownlintignore'
+      - '.markdown-link-check.json'
+      - '.markdown-link-check-internal.json'
+      - '.markdownlint-cli2.jsonc'
+      - '.gitleaks.toml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Makefile'
   push:
     branches: [main]
     paths:
       - '**.md'
-      - 'docs/**'
+      - '.github/**'
+      - 'scripts/**'
+      - 'configs/**'
+      - '.markdownlint.json'
+      - '.markdownlintignore'
+      - '.markdown-link-check.json'
+      - '.markdown-link-check-internal.json'
+      - '.markdownlint-cli2.jsonc'
+      - '.gitleaks.toml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Makefile'
+  workflow_dispatch:
+
+# Least privilege: nothing here writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: doc-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+  PYTHON_VERSION: '3.14'
+  GITLEAKS_VERSION: '8.30.1'
+  # sha256 of gitleaks_8.30.1_linux_x64.tar.gz, taken from the release's
+  # gitleaks_8.30.1_checksums.txt.
+  GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
 
 jobs:
-  lint:
-    name: Lint Documentation
+  markdown:
+    name: Markdown, links and structure
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-      - name: Install linters
-        run: |
-          npm install -g markdownlint-cli2
-          npm install -g markdown-link-check
+      - name: Install documentation tools
+        run: npm ci
 
       - name: Lint Markdown
-        run: |
-          markdownlint-cli2 "**/*.md" "#node_modules" "#reference/**"
+        run: npx --no-install markdownlint-cli2 "**/*.md"
 
-      - name: Check links in README
+      - name: Check internal links in all first-party Markdown
         run: |
-          markdown-link-check README.md --quiet
-        continue-on-error: true
+          # Relative targets and heading anchors across every tracked Markdown
+          # file except the vendored reference/ tree. No network is involved,
+          # so this is deterministic and safe to gate on.
+          git ls-files -z '*.md' ':!:reference/**' \
+            | xargs -0 npx --no-install markdown-link-check \
+                --config .markdown-link-check-internal.json --quiet
 
       - name: Validate AGENTS.md structure
         run: |
-          echo "Checking AGENTS.md structure..."
+          set -euo pipefail
 
-          # Check required sections
-          required_sections=("Overview" "Commands" "Structure")
+          # AGENTS.md is the canonical instruction file; CLAUDE.md and
+          # GEMINI.md are symlinks to it. These are the sections the file
+          # actually declares, and the ones an agent relies on finding.
+          required=("Overview" "Repository Structure" "Writing Style")
+          missing=0
 
-          for section in "${required_sections[@]}"; do
-            if ! grep -q "## $section\|## .*$section" CLAUDE.md 2>/dev/null; then
-              echo "⚠️  Missing section: $section"
+          for section in "${required[@]}"; do
+            if grep -qE "^##[[:space:]]+${section}[[:space:]]*$" AGENTS.md; then
+              echo "found: ## ${section}"
             else
-              echo "✅ Found section: $section"
+              echo "::error file=AGENTS.md::missing required section '## ${section}'"
+              missing=1
             fi
           done
 
-      - name: Check for secrets
+          exit "${missing}"
+
+      - name: Verify agent instruction symlinks
         run: |
-          echo "Checking for potential secrets..."
+          set -euo pipefail
+          status=0
 
-          # Patterns that might indicate secrets
-          if grep -rn "password.*=.*['\"][^'\"]*['\"]" --include="*.md" .; then
-            echo "⚠️  Potential hardcoded password found"
-            exit 1
-          fi
-
-          if grep -rn "api_key.*=.*['\"][^'\"]*['\"]" --include="*.md" .; then
-            echo "⚠️  Potential hardcoded API key found"
-            exit 1
-          fi
-
-          echo "✅ No obvious secrets found"
-
-      - name: Verify symlinks
-        run: |
-          echo "Checking documentation symlinks..."
-
-          if [ -f "CLAUDE.md" ]; then
-            if [ -L "CLAUDE.md" ]; then
-              target=$(readlink CLAUDE.md)
-              echo "✅ CLAUDE.md is symlink → $target"
-            else
-              echo "⚠️  CLAUDE.md exists but is not a symlink"
-              echo "Consider: ln -sf AGENTS.md CLAUDE.md"
+          for name in CLAUDE.md GEMINI.md; do
+            if [ ! -L "${name}" ]; then
+              echo "::error file=${name}::expected a symlink to AGENTS.md (ln -sf AGENTS.md ${name})"
+              status=1
+              continue
             fi
+            target="$(readlink "${name}")"
+            if [ "${target}" != "AGENTS.md" ]; then
+              echo "::error file=${name}::symlink points at '${target}', expected 'AGENTS.md'"
+              status=1
+            else
+              echo "ok: ${name} -> ${target}"
+            fi
+          done
+
+          exit "${status}"
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+
+          curl --fail-with-body --location --silent --show-error \
+            --retry 3 --retry-delay 5 --output "${archive}" "${url}"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
+
+          mkdir -p "${RUNNER_TEMP}/gitleaks"
+          tar -xzf "${archive}" -C "${RUNNER_TEMP}/gitleaks" gitleaks
+          rm -f "${archive}"
+          echo "${RUNNER_TEMP}/gitleaks" >> "${GITHUB_PATH}"
+
+      - name: Confirm the allowlist still rejects a real token
+        run: |
+          set -euo pipefail
+
+          # The previous grep-based check failed on Doctrine's own "never do
+          # this" examples. The allowlist in .gitleaks.toml exempts those, so
+          # prove here that it has not been widened into uselessness. The
+          # fixture is generated outside the working tree and never committed.
+          fixture="${RUNNER_TEMP}/gitleaks-fixture"
+          rm -rf "${fixture}"
+          mkdir -p "${fixture}"
+
+          python3 - "${fixture}/leak.js" <<'PY'
+          import secrets
+          import string
+          import sys
+
+          ALNUM = string.ascii_letters + string.digits
+
+
+          def token(length: int) -> str:
+              return "".join(secrets.choice(ALNUM) for _ in range(length))
+
+
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              handle.write(f'const githubToken = "ghp_{token(36)}";\n')
+              handle.write(f'const stripeKey = "sk_live_{token(24)}";\n')
+          PY
+
+          if gitleaks dir "${fixture}" --config .gitleaks.toml --no-banner --redact; then
+            echo "::error::.gitleaks.toml no longer detects a realistic token — the allowlist is too broad"
+            exit 1
           fi
+          echo "self-test passed: realistic tokens are still detected"
 
-  # Quick Win #1: Executable Code Examples
-  code-examples:
-    name: Validate Code Examples
+      - name: Scan working tree
+        run: gitleaks dir . --config .gitleaks.toml --no-banner --redact --verbose
+
+      - name: Scan history
+        run: gitleaks git . --config .gitleaks.toml --no-banner --redact
+
+  versions:
+    name: Tool version drift
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
+      - name: Unit tests
+        run: python3 -m unittest discover scripts
 
-      - name: Extract and test Python examples
-        run: |
-          echo "## Python Code Example Validation" >> $GITHUB_STEP_SUMMARY
+      - name: Validate versions against the canonical pre-commit config
+        run: python3 scripts/validate_versions.py
 
-          # Find all Python code blocks in markdown files
-          python3 << 'EOF'
-          import re
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          failed = []
-          passed = 0
-
-          for md_file in Path('.').rglob('*.md'):
-              # Skip vendored/reference files
-              if 'reference/' in str(md_file) or 'node_modules/' in str(md_file):
-                  continue
-
-              content = md_file.read_text()
-
-              # Find Python code blocks with # doctest: verify marker
-              pattern = r'```python\s*\n#\s*doctest:\s*verify\s*\n(.*?)```'
-              matches = re.findall(pattern, content, re.DOTALL)
-
-              for code in matches:
-                  try:
-                      # Syntax check only (compile, don't execute)
-                      compile(code, str(md_file), 'exec')
-                      passed += 1
-                  except SyntaxError as e:
-                      failed.append(f"{md_file}: {e}")
-
-          print(f"✅ {passed} Python examples validated")
-          if failed:
-              print(f"❌ {len(failed)} examples failed:")
-              for f in failed:
-                  print(f"  - {f}")
-              sys.exit(1)
-          EOF
-
-      - name: Extract and test JavaScript/TypeScript examples
-        run: |
-          echo "## JavaScript Code Example Validation" >> $GITHUB_STEP_SUMMARY
-
-          # Install TypeScript for syntax checking
-          npm install -g typescript
-
-          python3 << 'EOF'
-          import re
-          import subprocess
-          import sys
-          import tempfile
-          from pathlib import Path
-
-          failed = []
-          passed = 0
-
-          for md_file in Path('.').rglob('*.md'):
-              if 'reference/' in str(md_file) or 'node_modules/' in str(md_file):
-                  continue
-
-              content = md_file.read_text()
-
-              # Find JS/TS code blocks with doctest marker
-              pattern = r'```(?:javascript|typescript|js|ts)\s*\n//\s*doctest:\s*verify\s*\n(.*?)```'
-              matches = re.findall(pattern, content, re.DOTALL)
-
-              for code in matches:
-                  with tempfile.NamedTemporaryFile(suffix='.ts', delete=False, mode='w') as f:
-                      f.write(code)
-                      f.flush()
-
-                      # Syntax check with tsc --noEmit
-                      result = subprocess.run(
-                          ['tsc', '--noEmit', '--allowJs', '--checkJs', f.name],
-                          capture_output=True, text=True
-                      )
-
-                      if result.returncode == 0:
-                          passed += 1
-                      else:
-                          failed.append(f"{md_file}: {result.stderr[:200]}")
-
-          print(f"✅ {passed} JS/TS examples validated")
-          if failed:
-              print(f"❌ {len(failed)} examples failed:")
-              for f in failed:
-                  print(f"  - {f}")
-              sys.exit(1)
-          EOF
-        continue-on-error: true
-
-      - name: Check shell examples syntax
-        run: |
-          echo "## Shell Example Validation" >> $GITHUB_STEP_SUMMARY
-
-          python3 << 'EOF'
-          import re
-          import subprocess
-          import sys
-          from pathlib import Path
-
-          failed = []
-          passed = 0
-
-          for md_file in Path('.').rglob('*.md'):
-              if 'reference/' in str(md_file) or 'node_modules/' in str(md_file):
-                  continue
-
-              content = md_file.read_text()
-
-              # Find bash/shell code blocks with doctest marker
-              pattern = r'```(?:bash|shell|sh)\s*\n#\s*doctest:\s*verify\s*\n(.*?)```'
-              matches = re.findall(pattern, content, re.DOTALL)
-
-              for code in matches:
-                  # Syntax check with bash -n
-                  result = subprocess.run(
-                      ['bash', '-n'],
-                      input=code, capture_output=True, text=True
-                  )
-
-                  if result.returncode == 0:
-                      passed += 1
-                  else:
-                      failed.append(f"{md_file}: {result.stderr[:200]}")
-
-          print(f"✅ {passed} shell examples validated")
-          if failed:
-              print(f"❌ {len(failed)} examples failed:")
-              for f in failed:
-                  print(f"  - {f}")
-              sys.exit(1)
-          EOF
-
-  # Quick Win #2: Version Drift Detection
-  version-drift:
-    name: Detect Version Drift
+  external-links:
+    name: External URLs (advisory)
     runs-on: ubuntu-latest
-
+    # Advisory by design. Reproduced on 2026-09-08: docs.ansible.com and
+    # molecule.readthedocs.io answer this checker with 429 and then drop the
+    # connection under retry, and openai.com, hhs.gov, stackoverflow.com,
+    # dev.mysql.com and lib.rs return 403 to CI user agents. Gating merges on
+    # third-party availability would produce a workflow that fails for reasons
+    # unrelated to the change — the exact defect this repair is undoing.
+    # Genuine 404s are reported to the job summary for follow-up.
+    continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check version consistency
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install documentation tools
+        run: npm ci
+
+      - name: Check external URLs
         run: |
-          echo "## Version Drift Detection" >> $GITHUB_STEP_SUMMARY
+          set -uo pipefail
 
-          python3 << 'EOF'
-          import re
-          import json
-          from pathlib import Path
+          # One file at a time: batching raises request concurrency enough that
+          # healthy hosts start refusing connections.
+          report="$(mktemp)"
+          failed=0
+          while IFS= read -r -d '' file; do
+            if ! npx --no-install markdown-link-check \
+                  --config .markdown-link-check.json --quiet --retry "${file}" \
+                  >> "${report}" 2>&1; then
+              failed=$((failed + 1))
+            fi
+          done < <(git ls-files -z '*.md' ':!:reference/**')
 
-          drift_detected = []
+          {
+            echo '## External link check'
+            echo
+            if [ "${failed}" -eq 0 ]; then
+              echo 'Every external URL resolved.'
+            else
+              echo "${failed} file(s) contain unreachable external URLs."
+              echo
+              echo '```'
+              grep -E '^(ERROR:|\s+\[)' "${report}" || true
+              echo '```'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
 
-          # Common version patterns to check
-          version_files = {
-              'package.json': lambda c: json.loads(c).get('dependencies', {}),
-              'pyproject.toml': None,  # Would need toml parser
-              'go.mod': None,
-              'Cargo.toml': None,
-          }
+          exit "${failed}"
 
-          # Find version mentions in markdown
-          version_pattern = r'(?:version|v)?(\d+\.\d+(?:\.\d+)?)'
+  snippets:
+    name: Snippet syntax (advisory)
+    runs-on: ubuntu-latest
+    # Advisory only: the guides carry mistagged and incomplete fenced blocks
+    # that are being corrected separately. Drop continue-on-error, and the
+    # --warn flag, once the reported failures reach zero.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-          # Check if VERSION file exists and matches docs
-          version_file = Path('VERSION')
-          if version_file.exists():
-              current_version = version_file.read_text().strip()
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-              # Check README mentions same version
-              readme = Path('README.md')
-              if readme.exists():
-                  content = readme.read_text()
-                  # Look for version badges or explicit version mentions
-                  if current_version not in content:
-                      print(f"⚠️  VERSION ({current_version}) not found in README.md")
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-              # Check CHANGELOG has entry for current version
-              changelog = Path('CHANGELOG.md')
-              if changelog.exists():
-                  content = changelog.read_text()
-                  if f"[{current_version}]" not in content and f"## {current_version}" not in content:
-                      drift_detected.append(f"CHANGELOG.md missing entry for {current_version}")
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27'
+          cache: false
 
-          # Check for tool version consistency
-          tool_versions = {}
-          for md_file in Path('.').rglob('*.md'):
-              if 'reference/' in str(md_file) or 'node_modules/' in str(md_file):
-                  continue
+      - name: Install checkers
+        run: |
+          npm ci
+          python3 -m pip install --disable-pip-version-check --quiet 'PyYAML==6.0.3'
 
-              content = md_file.read_text()
-
-              # Look for specific tool versions mentioned
-              tools = ['Python', 'Node', 'Go', 'Rust', 'Ruby', 'Java']
-              for tool in tools:
-                  pattern = rf'{tool}\s+(\d+\.\d+(?:\.\d+)?)'
-                  matches = re.findall(pattern, content, re.IGNORECASE)
-                  for version in matches:
-                      key = f"{tool}:{version}"
-                      if key not in tool_versions:
-                          tool_versions[key] = []
-                      tool_versions[key].append(str(md_file))
-
-          # Report findings
-          print("### Version Consistency Report\n")
-
-          if drift_detected:
-              print("❌ **Drift Detected:**")
-              for d in drift_detected:
-                  print(f"  - {d}")
-          else:
-              print("✅ No version drift detected")
-
-          # Show tool version mentions
-          print("\n### Tool Versions Mentioned:")
-          for tool_ver, files in sorted(tool_versions.items()):
-              print(f"  - {tool_ver}: {len(files)} files")
-          EOF
+      - name: Syntax-check fenced code blocks
+        run: python3 scripts/check_snippets.py --warn --summary "${GITHUB_STEP_SUMMARY}"
