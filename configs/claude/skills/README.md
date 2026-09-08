@@ -50,9 +50,36 @@ Skills define access levels that agents should request:
 
 ## Configuration
 
-Skills are configured via MCP server settings:
+Skills are configured as MCP servers. Add them with `claude mcp add`, which
+writes the file that Claude Code actually reads for the scope you choose, and
+verify each one with `claude mcp get <name>` before an agent depends on it.
+
+- **MUST** pin the server version (`@bytebase/dbhub@1.2.3`, not a floating tag)
+- **MUST** pass credentials as `${VAR}` references, never as literal values
+- **MUST NOT** put `mcpServers` in `~/.claude/settings.json`
+- **SHOULD** use the maintained connector for a service, not an archived
+  reference implementation
+
+**Why**: the reference PostgreSQL and GitHub servers under
+`@modelcontextprotocol/*` are archived, and Claude Code only loads MCP servers
+from `.mcp.json`, `~/.claude.json`, and managed configuration — a server
+declared in `~/.claude/settings.json` is silently ignored. See
+[MCP configuration](https://code.claude.com/docs/en/mcp).
 
 ### Project-Level (`.mcp.json`)
+
+Project scope is shared through version control. [DBHub](https://github.com/bytebase/dbhub)
+reads its connection string from the `DSN` environment variable, so the
+credential stays out of the command line, where any local process could read
+it from `ps`:
+
+```bash
+claude mcp add --env DSN='${DATABASE_URL}' --scope project \
+  --transport stdio postgres -- npx -y @bytebase/dbhub@1.2.3
+claude mcp get postgres
+```
+
+The command writes `.mcp.json` at the project root:
 
 ```json
 {
@@ -73,7 +100,50 @@ Skills are configured via MCP server settings:
 }
 ```
 
-### User-Level (`~/.claude/settings.json`)
+`DATABASE_URL` **MUST** name a read-only database role. Claude Code expands
+`${VAR}` and `${VAR:-default}` in `command`, `args`, `env`, `url`, and
+`headers` when it launches the server; it does **not** run shell command
+substitution, so `$(...)` reaches the server as literal text.
+
+A project-scoped server reports `⏸ Pending approval` until you approve it in
+an interactive session; run `claude` once in the project, then re-run
+`claude mcp get postgres` to see `✔ Connected`.
+
+### User-Level (`~/.claude.json`)
+
+User scope makes a server available in every project on your machine. Use
+GitHub's maintained remote server rather than the archived npm package:
+
+```bash
+claude mcp add --scope user --transport http github \
+  https://api.githubcopilot.com/mcp/ \
+  --header 'Authorization: Bearer ${GITHUB_MCP_PAT}'
+claude mcp get github
+```
+
+The command writes `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_MCP_PAT}"
+      }
+    }
+  }
+}
+```
+
+Single quotes around the header keep the literal `${GITHUB_MCP_PAT}` in the
+file so the token is never written to disk. Issue a fine-grained personal
+access token limited to the repositories the agent needs. `claude mcp get`
+reports `✔ Connected` on success and `✘ Failed to connect` with the HTTP
+status when the token is wrong.
+
+**Don't** — Claude Code never reads MCP servers from this file:
 
 ```json
 {

@@ -1,6 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "_comment": "Doctrine standard Claude Code configuration - https://github.com/agh/doctrine",
+  "_comment": "Doctrine standard Claude Code configuration - https://github.com/welshwandering/doctrine",
+  "_comment_secrets": [
+    "Secret paths are denied for Read as well as Edit: a Read deny also blocks",
+    "Edit and Write, and covers the file commands Claude Code recognises in Bash.",
+    "NotebookEdit is not covered by a Read deny, so the Edit denies are kept.",
+    "The *secret*, *password*, *credential* and *token* patterns are deliberately",
+    "broad and also match source files such as tokenizer.ts; narrow them per",
+    "project when that blocks legitimate reads."
+  ],
 
   "attribution": {
     "commit": "",
@@ -49,7 +57,6 @@
       "Bash(echo:*)",
       "Bash(pwd)",
       "Bash(date)",
-      "Bash(env)",
       "Read",
       "Glob",
       "Grep",
@@ -78,6 +85,16 @@
       "Bash(fdisk:*)",
       "Bash(git push --force:*)",
       "Bash(git reset --hard:*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*secret*)",
+      "Read(**/*password*)",
+      "Read(**/*credential*)",
+      "Read(**/*token*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa*)",
       "Edit(.env)",
       "Edit(.env.*)",
       "Edit(**/secrets/**)",
@@ -89,6 +106,7 @@
       "Edit(**/*.key)",
       "Edit(**/id_rsa*)"
     ],
+    "blockReadsOutsideWorkingDirectories": true,
     "defaultMode": "auto"
   },
 
@@ -99,6 +117,31 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
+    "credentials": {
+      "files": [
+        { "path": ".env", "mode": "deny" },
+        { "path": "**/.env", "mode": "deny" },
+        { "path": "**/*.pem", "mode": "deny" },
+        { "path": "**/*.key", "mode": "deny" },
+        { "path": "~/.ssh", "mode": "deny" },
+        { "path": "~/.aws/credentials", "mode": "deny" },
+        { "path": "~/.config/gh/hosts.yml", "mode": "deny" },
+        { "path": "~/.config/sops/age/keys.txt", "mode": "deny" },
+        { "path": "~/.docker/config.json", "mode": "deny" },
+        { "path": "~/.netrc", "mode": "deny" },
+        { "path": "~/.npmrc", "mode": "deny" }
+      ],
+      "envVars": [
+        { "name": "ANTHROPIC_API_KEY", "mode": "deny" },
+        { "name": "AWS_ACCESS_KEY_ID", "mode": "deny" },
+        { "name": "AWS_SECRET_ACCESS_KEY", "mode": "deny" },
+        { "name": "AWS_SESSION_TOKEN", "mode": "deny" },
+        { "name": "GH_TOKEN", "mode": "deny" },
+        { "name": "GITHUB_TOKEN", "mode": "deny" },
+        { "name": "NPM_TOKEN", "mode": "deny" },
+        { "name": "SOPS_AGE_KEY", "mode": "deny" }
+      ]
+    },
     "network": {
       "allowUnixSockets": [
         "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
