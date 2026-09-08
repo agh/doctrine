@@ -443,7 +443,11 @@ Rejected: ACID requirements favor relational model.
 
 ### Design Doc Format
 
-```markdown
+This template nests `text`, `typescript`, and `sql` blocks, so its outer fence
+uses four backticks. A three-backtick outer fence ends at the first nested
+block and the rest of the template renders as page content.
+
+````markdown
 ---
 type: design-doc
 title: "Payment Processing Redesign"
@@ -551,10 +555,7 @@ Rejected because...
 ## Open Questions
 
 - [ ] Retry strategy for failed webhooks?
-
-```text
-
-```
+````
 
 ### PR/FAQ Format (Amazon Working Backwards)
 
@@ -720,18 +721,70 @@ The llms.txt standard enables LLMs to efficiently consume documentation[^9].
 ### Model Context Protocol (MCP)
 
 MCP enables AI agents to retrieve structured context[^10]. Teams **SHOULD**
-design APIs and documentation with MCP compatibility:
+serve documentation through an MCP server so agents read current content
+instead of relying on training data.
+
+MCP revisions are dates, not SemVer versions; the current revision is
+`2026-07-28`. Every request declares its revision in `params._meta` under
+`io.modelcontextprotocol/protocolVersion`, and the server accepts or rejects
+each request independently — a server that does not support the requested
+revision returns `UnsupportedProtocolVersionError` (`-32022`) listing the
+revisions it does support. Documentation **MUST** state the revision its
+examples target: negotiation happens per request, so an example that omits the
+revision cannot be copied into a client without guessing, and a wrong guess
+returns a protocol error instead of a resource list.
+
+Messages are JSON-RPC 2.0. Listing documentation resources is a
+`resources/list` request:
 
 ```json
 {
-  "schema": "mcp/1.0",
-  "resources": [
-    {
-      "type": "documentation",
-      "uri": "docs://acme/api/users",
-      "content_type": "text/markdown"
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "resources/list",
+  "params": {
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientInfo": {
+        "name": "acme-docs-agent",
+        "version": "1.0.0"
+      },
+      "io.modelcontextprotocol/clientCapabilities": {}
     }
-  ]
+  }
+}
+```
+
+`io.modelcontextprotocol/protocolVersion` and
+`io.modelcontextprotocol/clientCapabilities` are **REQUIRED** on every request;
+omitting either is a malformed request that the server **MUST** reject with
+JSON-RPC `-32602`. `io.modelcontextprotocol/clientInfo` is optional, and
+clients **SHOULD** send it for logging and debugging.
+
+The result carries `resultType` and the resource list. Only `uri` and `name`
+are required per resource; `mimeType` is optional but **SHOULD** be set so
+agents know how to parse each document. The caching hints `ttlMs` and
+`cacheScope` are **REQUIRED** on this result; use `public` only for
+documentation that is identical for every caller:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "resultType": "complete",
+    "resources": [
+      {
+        "uri": "https://docs.acme.com/api/users.md",
+        "name": "users-api",
+        "title": "Users API Reference",
+        "description": "REST endpoints for user management",
+        "mimeType": "text/markdown"
+      }
+    ],
+    "ttlMs": 300000,
+    "cacheScope": "public"
+  }
 }
 ```
 
@@ -778,21 +831,138 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Install the pinned documentation toolchain
+      - run: npm ci
+
       # Lint markdown
       - run: npx markdownlint-cli2 "**/*.md"
 
       # Check links
       - run: npx markdown-link-check docs/**/*.md
 
-      # Validate frontmatter
-      - run: npx front-matter-lint docs/**/*.md
+      # Validate frontmatter against the checked-in schema
+      - run: node scripts/check-frontmatter.mjs
 
-      # Generate diagrams
-      - run: npx @mermaid-js/mermaid-cli docs/**/*.md -o docs/
+      # Render diagrams: one input path and one output path per invocation
+      - run: |
+          git ls-files -z -- '*.md' | while IFS= read -r -d '' file; do
+            grep -q '^```mermaid' "$file" || continue
+            mkdir -p "build/$(dirname "$file")"
+            node_modules/.bin/mmdc -i "$file" -o "build/$file"
+          done
 
-      # Build site
-      - run: npx mintlify build
+      # Validate the site build (Mintlify projects)
+      - run: node_modules/.bin/mint validate
 ```
+
+The tools invoked from `node_modules/.bin` come from a committed manifest and
+lockfile, installed by `npm ci`:
+
+```json
+{
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "11.17.0",
+    "ajv": "8.20.0",
+    "mint": "4.2.876",
+    "yaml": "2.9.0"
+  }
+}
+```
+
+#### Frontmatter Validation
+
+No maintained CLI validates Markdown frontmatter against JSON Schema, so the
+contract lives in the repository as a schema file and CI applies it. Teams
+**MUST** keep the schema in version control rather than inlining rules in a
+workflow step, so editors, pre-commit hooks, and CI enforce one definition.
+
+`docs/frontmatter.schema.json` encodes the contract from
+[Machine-Readable Frontmatter](#machine-readable-frontmatter):
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.acme.com/schemas/frontmatter.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "type", "status", "authors", "created"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "type": { "enum": ["rfc", "adr", "design-doc", "prd", "spec"] },
+    "status": { "enum": ["draft", "review", "approved", "superseded"] },
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string" }
+        }
+      }
+    },
+    "created": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "updated": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "supersedes": { "type": "string" },
+    "related": { "type": "array", "items": { "type": "string" } },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  }
+}
+```
+
+`scripts/check-frontmatter.mjs` reports every violation and exits non-zero:
+
+```javascript
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import Ajv2020 from 'ajv/dist/2020.js';
+import { parse } from 'yaml';
+
+const schema = JSON.parse(readFileSync('docs/frontmatter.schema.json', 'utf8'));
+const validate = new Ajv2020({ allErrors: true }).compile(schema);
+const files = execFileSync('git', ['ls-files', '-z', '--', 'docs/*.md'], {
+  encoding: 'utf8',
+}).split('\0').filter(Boolean);
+
+let failures = 0;
+for (const file of files) {
+  const matched = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(file, 'utf8'));
+  if (!matched) {
+    console.error(`${file}: missing YAML frontmatter`);
+    failures += 1;
+  } else if (!validate(parse(matched[1]))) {
+    for (const error of validate.errors) {
+      console.error(`${file}: ${error.instancePath || '/'} ${error.message}`);
+    }
+    failures += 1;
+  }
+}
+
+process.exit(failures === 0 ? 0 : 1);
+```
+
+The `yaml` parser follows the YAML 1.2 core schema, so `created: 2025-01-15`
+stays a string and the schema's date pattern applies. Parsers that coerce
+timestamps to date objects **MUST NOT** be used here, because the coerced value
+no longer matches a string constraint.
+
+#### Diagram Rendering
+
+`mmdc` takes exactly one input path through `-i` and one output path through
+`-o`. It rejects positional file arguments with `error: too many arguments`,
+and it aborts when the output directory does not exist, so the step creates the
+directory before each invocation. Rendering into `build/` keeps generated SVGs
+out of the source tree; sites that render Mermaid at build time **SHOULD** drop
+this step entirely.
+
+#### Site Validation
+
+`mint validate` builds the site in strict mode and exits non-zero on any
+warning or error. It does not publish: Mintlify deploys from the connected Git
+repository, and `mint export` writes an offline archive. There is no
+`mintlify build` command, and the step applies only to Mintlify projects.
 
 ### Recommended Tools
 
@@ -991,7 +1161,7 @@ outlasts any individual.
 [^7]: [C4 Model](https://c4model.com/)
 [^8]: [arc42 Documentation Template](https://arc42.org/)
 [^9]: [llms.txt Standard](https://llms-txt.io/)
-[^10]: [Model Context Protocol](https://modelcontextprotocol.io/)
+[^10]: [Model Context Protocol Specification, Revision 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/)
 [^11]: [AWS Documentation AI Practices](https://aws.amazon.com/blogs/aws-insights/aws-documentation-update-progress-challenges-and-whats-next-for-2025/)
 [^12]: [adr-tools](https://github.com/npryce/adr-tools)
 [^13]: [2024 DORA Report](https://dora.dev/)
