@@ -301,17 +301,54 @@ Animate list items sequentially:
 
 ### Focus States
 
-Focus transitions SHOULD be instant or very fast:
+Focus indication **MUST NOT** be animated. The indicator **MUST** be painted in
+the same frame the control takes focus, so no `transition` or `animation` may
+target focus styles. Use an opaque `:focus-visible` outline of at least 2 CSS
+pixels, offset from the control.
+
+**Why**: [SC 2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html)
+(Level AA) requires a visible keyboard focus indicator, and
+[SC 2.4.13 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html)
+(Level AAA) sets the target adopted here: an area at least as large as a 2 CSS
+pixel perimeter of the unfocused control, at 3:1 contrast between the focused
+and unfocused states. Fading that indicator in delays the one signal keyboard
+and switch users navigate by.
 
 ```css
+/* ✓ DO: Opaque outline, painted the instant focus lands */
+.input:focus-visible {
+  outline: 2px solid var(--interactive-default);
+  outline-offset: 2px;
+}
+
+/* ✗ DON'T: var() has no alpha modifier, so this halo never renders */
 .input {
   transition: box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .input:focus {
-  box-shadow: 0 0 0 3px var(--interactive-default / 0.2);
+  box-shadow: 0 0 0 3px var(--interactive-default / 0.2);  /* Parse error */
 }
 ```
+
+`var()` accepts a custom-property name and an optional comma-separated
+fallback and nothing else, so `/ 0.2` is a parse error and the browser
+discards the whole declaration
+([CSS Custom Properties §3](https://www.w3.org/TR/css-variables-1/#using-variables)).
+A translucent halo **MUST** be written with `color-mix()`, and **MUST**
+supplement the opaque outline rather than replace it:
+
+```css
+.input:focus-visible {
+  outline: 2px solid var(--interactive-default);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px color-mix(in oklch, var(--interactive-default) 20%, transparent);
+}
+```
+
+Both [`:focus-visible`](https://webstatus.dev/features/focus-visible) and
+[`color-mix()`](https://webstatus.dev/features/color-mix) are Baseline Widely
+available, so neither needs a fallback.
 
 ### Success Feedback
 
