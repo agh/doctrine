@@ -38,6 +38,10 @@ jobs:
         run: |
           markdownlint-cli2 "**/*.md" "#node_modules" "#reference/**"
 
+      - name: Verify vendored payload integrity
+        run: |
+          python3 scripts/check_vendored_payloads.py
+
       - name: Check links in README
         run: |
           markdown-link-check README.md --quiet

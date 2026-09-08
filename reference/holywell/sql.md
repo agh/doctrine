@@ -154,7 +154,7 @@ Always use uppercase for the [reserved keywords][reserved-keywords]
 like `SELECT` and `WHERE`.
 
 It is best to avoid the abbreviated keywords and use the full length ones where
-available (prefer `ABSOLUTE` to `ABS`).
+available (prefer `INTEGER` to `INT`).
 
 Do not use database server specific keywords where an ANSI SQL keyword already
 exists performing the same function. This helps to make the code more portable.

@@ -1391,7 +1391,7 @@ In either case:
     # good
     begin
       read_file
-    rescue Errno:ENOENT => ex
+    rescue Errno::ENOENT => ex
       handle_error(ex)
     end
     ```

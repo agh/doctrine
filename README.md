@@ -223,7 +223,9 @@ Google style guides are licensed under CC-BY 3.0. Vendored copies in `reference/
 
 Industry style guides vendored in `reference/` for comparison:
 
-- [Airbnb](reference/airbnb/) - JavaScript, React, CSS-in-JS, Ruby
+- [Airbnb](reference/airbnb/) - JavaScript, CSS-in-JS, Ruby; the
+  [React snapshot](reference/airbnb/react.md) is historical (2021) and superseded by the
+  [React style guide](guides/frameworks/react.md)
 - [Uber](reference/uber/) - Go
 - [RuboCop](reference/rubocop/) - Ruby, Rails
 - [Shopify](reference/shopify/) - Ruby
