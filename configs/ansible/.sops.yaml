@@ -2,35 +2,44 @@
 # SOPS configuration for Ansible secrets
 # Copy to project root as .sops.yaml
 # See: https://github.com/getsops/sops
+#
+# No rule sets `encrypted_regex`. Without a selector SOPS encrypts every value
+# in the document, so a credential named `client_secret`, `private_key`,
+# `aws_secret_access_key` or `database_password` is covered without anyone
+# having to extend an allowlist first.
+#
+# If a file must keep readable metadata, add `unencrypted_regex` to that single
+# rule and review the pattern as carefully as the secrets themselves. Anything
+# the pattern matches is committed in the clear:
+#
+#     unencrypted_regex: "^(app_name|environment|ansible_managed)$"
+#
+# SOPS accepts only one selector per rule, so `unencrypted_regex` and
+# `encrypted_regex` are mutually exclusive.
 
 creation_rules:
   # Production secrets - use AWS KMS
-  - path_regex: vault/production\.yml$
+  - path_regex: vault/production\.ya?ml$
     kms: arn:aws:kms:us-east-1:123456789:key/your-key-id
-    encrypted_regex: "^(password|secret|key|token|private|api_key|db_password)$"
     pgp: ""  # Disable PGP for this rule
 
   # Staging secrets - use PGP
-  - path_regex: vault/staging\.yml$
+  - path_regex: vault/staging\.ya?ml$
     pgp: "YOUR_PGP_FINGERPRINT"
-    encrypted_regex: "^(password|secret|key|token|private)$"
 
   # Development secrets - use age (modern alternative to PGP)
-  - path_regex: vault/dev\.yml$
+  - path_regex: vault/dev\.ya?ml$
     age: age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
-    encrypted_regex: "^(password|secret|key|token)$"
 
   # Multi-cloud example - use multiple KMS providers
-  - path_regex: vault/multicloud\.yml$
+  - path_regex: vault/multicloud\.ya?ml$
     kms: arn:aws:kms:us-east-1:123456789:key/aws-key-id
     gcp_kms: projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key
     azure_kv: https://my-vault.vault.azure.net/keys/my-key/version
-    encrypted_regex: "^(password|secret|key|token)$"
 
   # Default rule for all other files
-  - path_regex: \.yml$
+  - path_regex: \.ya?ml$
     pgp: "YOUR_PGP_FINGERPRINT"
-    encrypted_regex: "^(password|secret|key|token|private)$"
 
 # Unencrypted suffix (optional)
 # Files ending with .cleartext.yml won't be encrypted

@@ -387,20 +387,38 @@ $env:MY_VAR = "value"
 
 ### Signals (Linux/macOS)
 
-| Signal | Number | Purpose |
-| ------ | ------ | ------- |
-| SIGHUP | 1 | Reload configuration |
-| SIGINT | 2 | Interrupt (Ctrl+C) |
-| SIGTERM | 15 | Graceful termination |
-| SIGKILL | 9 | Immediate termination (cannot be caught) |
-| SIGUSR1/2 | 10/12 | User-defined |
+Scripts and runbooks **MUST** use symbolic signal names, never numbers. Signal
+numbers are not portable: they differ between Linux and macOS, and on Linux
+they differ between CPU architectures.
+
+| Signal | Linux (x86/ARM) | macOS | Purpose |
+| ------ | --------------- | ----- | ------- |
+| SIGHUP | 1 | 1 | Reload configuration |
+| SIGINT | 2 | 2 | Interrupt (Ctrl+C) |
+| SIGKILL | 9 | 9 | Immediate termination (cannot be caught) |
+| SIGTERM | 15 | 15 | Graceful termination |
+| SIGUSR1 | 10 | 30 | User-defined |
+| SIGUSR2 | 12 | 31 | User-defined |
+| SIGCHLD | 17 | 20 | Child process stopped or exited |
 
 ```bash
-# Send specific signal
-kill -HUP $(pgrep nginx)    # Reload nginx
-kill -TERM 1234             # Graceful stop
-kill -KILL 1234             # Force kill (last resort)
+# Do: symbolic names work on every platform
+kill -HUP $(pgrep nginx)     # Reload nginx
+kill -TERM 1234              # Graceful stop
+kill -USR1 1234              # User-defined signal 1
+kill -KILL 1234              # Force kill (last resort)
+
+# Don't: numeric signals are platform-specific
+kill -10 1234                # SIGUSR1 on Linux, SIGBUS on macOS
+kill -12 1234                # SIGUSR2 on Linux, SIGSYS on macOS
 ```
+
+**Why**: on macOS, 10 and 12 are SIGBUS and SIGSYS, so `kill -10` delivers a
+bus-error signal to a process expecting a reload request. Linux itself is not
+uniform either: SIGUSR1 is 10 on x86 and ARM, 30 on Alpha and SPARC, and 16 on
+MIPS and PA-RISC. Numbers **MUST NOT** be persisted in configuration files,
+container stop signals, or process supervisors that run on more than one
+platform; write `SIGUSR1`, not `10`.
 
 ---
 

@@ -25,11 +25,11 @@ All Python tooling applies. Additional considerations:
 | Auth (OAuth) | Authlib | `uv add authlib` |
 | Auth (JWT) | PyJWT | `uv add pyjwt[crypto]` |
 | Permissions | Flask-Principal | `uv add flask-principal` |
-| WebSocket | Flask-SocketIO | `uv add flask-socketio gevent` |
+| WebSocket | Flask-SocketIO | `uv add flask-socketio simple-websocket gunicorn` |
 | Profiling | py-spy | `py-spy top --pid PID` |
 | Metrics | prometheus_client | `uv add prometheus-client` |
 | Background jobs | Celery | `uv add celery[redis]` |
-| Simple queues | RQ | `uv add flask-rq2` |
+| Simple queues | RQ | `uv add rq` |
 | Async views | Flask 2.0+ | `uv add "flask[async]"` |
 | Caching | Flask-Caching | `uv add flask-caching` |
 | Rate limiting | Flask-Limiter | `uv add flask-limiter` |
@@ -61,9 +61,10 @@ def create_app(config: dict | None = None) -> Flask:
         app.config.update(config)
 
     # Initialize extensions
-    from myapp.extensions import db, migrate
+    from myapp.extensions import db, login_manager, migrate
     db.init_app(app)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
 
     # Register blueprints
     from myapp.auth import auth_bp
@@ -76,7 +77,10 @@ def create_app(config: dict | None = None) -> Flask:
 
 **Why**: The application factory pattern enables multiple app instances with
 different configurations, facilitates testing, and defers extension
-initialization until configuration is loaded.
+initialization until configuration is loaded. Every extension instance
+**MUST** be initialised here: an extension that is only constructed in
+`extensions.py` is never attached to the app, and the first request that
+depends on it fails at runtime.
 
 ### Recommended Structure
 
@@ -140,30 +144,41 @@ concerns.
 
 ## Configuration Management
 
-Projects **MUST** use environment-based configuration:
+Projects **MUST** use environment-based configuration, and **MUST NOT** give
+`SECRET_KEY` a fallback value that a production configuration can inherit:
 
 ```python
 # src/myapp/config.py
 import os
+import secrets
 
 class Config:
-    SECRET_KEY: str = os.environ.get("SECRET_KEY", "dev-key-change-in-prod")
+    SECRET_KEY: str | None = os.environ.get("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI: str = os.environ["DATABASE_URL"]
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
 
 class DevelopmentConfig(Config):
     DEBUG: bool = True
+    # Development-only: generated per process, so it is never a published
+    # constant and ProductionConfig can never inherit it.
+    SECRET_KEY: str = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(32)
 
 class ProductionConfig(Config):
     DEBUG: bool = False
 
 class TestingConfig(Config):
     TESTING: bool = True
+    SECRET_KEY: str = secrets.token_urlsafe(32)
     SQLALCHEMY_DATABASE_URI: str = "sqlite:///:memory:"
 ```
 
+The factory **MUST** refuse to build an application whose `SECRET_KEY` is
+missing or shorter than 32 characters:
+
 ```python
 # src/myapp/__init__.py
+MINIMUM_SECRET_KEY_LENGTH = 32
+
 def create_app(config_name: str = "development") -> Flask:
     app = Flask(__name__)
 
@@ -174,12 +189,66 @@ def create_app(config_name: str = "development") -> Flask:
     }
     app.config.from_object(configs.get(config_name, configs["development"]))
 
+    secret_key = app.config.get("SECRET_KEY") or ""
+    if len(secret_key) < MINIMUM_SECRET_KEY_LENGTH:
+        raise RuntimeError(
+            "SECRET_KEY is missing or shorter than "
+            f"{MINIMUM_SECRET_KEY_LENGTH} characters; supply a random value "
+            "from the deployment environment or secret manager."
+        )
+
     return app
+```
+
+Don't publish a fallback that production inherits:
+
+```python
+# Don't: every deployment that forgets SECRET_KEY signs sessions with a
+# value that is printed in this guide.
+class Config:
+    SECRET_KEY: str = os.environ.get("SECRET_KEY", "dev-key-change-in-prod")
+
+class ProductionConfig(Config):  # inherits the published key
+    DEBUG: bool = False
 ```
 
 **Why**: Environment-based configuration separates deployment concerns from
 code, prevents secrets from being committed, and enables different settings
-per environment.
+per environment. `SECRET_KEY` signs the session cookie that Flask-Login[^7]
+uses to identify users, so a fallback shared by every reader of this guide
+lets anyone forge a session for any account. Flask requires a long random
+value that is never revealed[^26]; failing startup makes a missing secret a
+deployment error instead of a silent authentication bypass. A development
+value generated per process keeps local work convenient without creating a
+constant that `ProductionConfig` can inherit.
+
+Projects **MUST** test that a production configuration refuses to start
+without a supplied secret:
+
+```python
+# tests/test_config.py
+import importlib
+
+import pytest
+
+import myapp.config
+from myapp import create_app
+
+def test_production_refuses_to_start_without_a_secret(monkeypatch) -> None:
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    # Configuration classes read the environment when the module is imported.
+    importlib.reload(myapp.config)
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        create_app("production")
+
+def test_production_never_inherits_the_development_secret(monkeypatch) -> None:
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    importlib.reload(myapp.config)
+
+    assert myapp.config.ProductionConfig.SECRET_KEY is None
+    assert len(myapp.config.DevelopmentConfig.SECRET_KEY) >= 32
+```
 
 ## Testing with pytest
 
@@ -356,6 +425,76 @@ from myapp.models.user import User
 @login_manager.user_loader
 def load_user(user_id: str) -> User | None:
     return User.query.filter_by(fs_uniquifier=user_id).first()
+
+def create_app(config_name: str = "development") -> Flask:
+    app = Flask(__name__)
+    # ... configuration ...
+
+    # Required: without this call current_user and login_required raise
+    # AttributeError: 'Flask' object has no attribute 'login_manager'.
+    login_manager.init_app(app)
+
+    # ... register blueprints ...
+    return app
+```
+
+Routes establish and end the session with `login_user` and `logout_user`:
+
+```python
+# src/myapp/auth/routes.py
+from flask import request
+from flask_login import login_required, login_user, logout_user
+from werkzeug.security import check_password_hash
+
+from myapp.models.user import User
+
+@auth_bp.route("/login", methods=["POST"])
+def login() -> tuple[dict, int]:
+    credentials = request.get_json()
+    user = User.query.filter_by(email=credentials["email"]).first()
+    if user is None or not check_password_hash(
+        user.password_hash, credentials["password"]
+    ):
+        return {"error": "Invalid credentials"}, 401
+
+    login_user(user)
+    return {"message": "Logged in"}, 200
+
+@auth_bp.route("/logout", methods=["POST"])
+@login_required
+def logout() -> tuple[dict, int]:
+    logout_user()
+    return {"message": "Logged out"}, 200
+```
+
+**Why**: Flask-Login stores the value returned by `get_id()` in the signed
+session cookie and rebuilds `current_user` from it through the `user_loader`.
+Constructing `LoginManager()` in `extensions.py` only creates the object;
+`init_app` is what attaches it to an application instance[^7]. An
+uninitialised manager is not a login failure but a server error: every
+`login_required` route returns 500 with `AttributeError: 'Flask' object has
+no attribute 'login_manager'`.
+
+Projects **MUST** cover both the anonymous and the authenticated path:
+
+```python
+# tests/test_auth.py
+def test_anonymous_request_is_redirected_to_login(client) -> None:
+    response = client.get("/private")
+
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["Location"]
+
+def test_authenticated_request_reaches_the_route(client, user) -> None:
+    login = client.post(
+        "/auth/login",
+        json={"email": "test@example.com", "password": "password123"},
+    )
+    assert login.status_code == 200
+
+    response = client.get("/private")
+
+    assert response.status_code == 200
 ```
 
 ### JWT Token Authentication with PyJWT
@@ -421,7 +560,8 @@ def jwt_required(f):
 
 ### OAuth 2.0 with Authlib
 
-Projects **SHOULD** use Authlib for OAuth 2.0 and OpenID Connect integration:
+Projects **SHOULD** use Authlib for OAuth 2.0 and OpenID Connect integration,
+and **MUST** enable PKCE with `S256`:
 
 ```python
 # src/myapp/extensions.py
@@ -446,16 +586,48 @@ def create_app(config_name: str = "development") -> Flask:
         server_metadata_url=(
             "https://accounts.google.com/.well-known/openid-configuration"
         ),
-        client_kwargs={"scope": "openid email profile"},
+        client_kwargs={
+            "scope": "openid email profile",
+            # Authlib adds code_challenge and code_verifier for PKCE.
+            "code_challenge_method": "S256",
+        },
     )
 
     return app
 ```
 
+The provider identity **MUST** be the issuer and subject pair, not the email
+address, and it **MUST** be stored against a local account:
+
+```python
+# src/myapp/models/oauth.py
+from myapp.extensions import db
+
+class OAuthIdentity(db.Model):
+    """A provider identity (issuer plus subject) linked to a local account."""
+
+    __tablename__ = "oauth_identity"
+    __table_args__ = (db.UniqueConstraint("issuer", "subject"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    issuer = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user = db.relationship("User")
+```
+
 ```python
 # src/myapp/auth/routes.py
-from flask import redirect, url_for, session
-from myapp.extensions import oauth
+import secrets
+
+from authlib.integrations.base_client import OAuthError
+from flask import abort, current_app, redirect, url_for
+from flask_login import login_user
+from werkzeug.security import generate_password_hash
+
+from myapp.extensions import db, oauth
+from myapp.models.oauth import OAuthIdentity
+from myapp.models.user import User
 
 @auth_bp.route("/login/google")
 def google_login():
@@ -464,11 +636,131 @@ def google_login():
 
 @auth_bp.route("/callback/google")
 def google_callback():
-    token = oauth.google.authorize_access_token()
-    userinfo = token.get("userinfo")
-    # Create or update user from userinfo
-    session["user_email"] = userinfo["email"]
+    try:
+        token = oauth.google.authorize_access_token()
+    except OAuthError as error:
+        current_app.logger.warning("Google callback rejected: %s", error.error)
+        abort(401, description="OAuth callback failed")
+
+    claims = token.get("userinfo")
+    if claims is None or "sub" not in claims or "iss" not in claims:
+        abort(401, description="Provider returned no verifiable identity")
+    if not claims.get("email_verified", False):
+        abort(403, description="Provider has not verified this email address")
+
+    login_user(link_local_user(claims))
     return redirect(url_for("main.index"))
+
+def link_local_user(claims: dict) -> User:
+    """Map a verified provider identity to a local account."""
+    identity = OAuthIdentity.query.filter_by(
+        issuer=claims["iss"], subject=claims["sub"]
+    ).first()
+    if identity is not None:
+        return identity.user
+
+    user = User.query.filter_by(email=claims["email"]).first()
+    if user is None:
+        user = User(
+            email=claims["email"],
+            # No local password: sign-in happens through the provider only.
+            password_hash=generate_password_hash(secrets.token_urlsafe(32)),
+            fs_uniquifier=secrets.token_urlsafe(32),
+        )
+        db.session.add(user)
+
+    db.session.add(
+        OAuthIdentity(issuer=claims["iss"], subject=claims["sub"], user=user)
+    )
+    db.session.commit()
+    return user
+```
+
+Redirect URIs registered with the provider **MUST** match the value the
+application sends exactly, and the callback **MUST NOT** be reachable through
+an open redirector.
+
+**Why**: Storing the email in `session` leaves `current_user` anonymous, so
+every `login_required` route still rejects the user; `login_user` is what
+establishes the Flask-Login session[^7]. An email address is not a stable
+identifier — providers let users change it and reuse it — whereas the issuer
+and subject pair is stable for the lifetime of the account, so linking on
+`(iss, sub)` prevents one user inheriting another's account after an address
+change. RFC 9700[^27] requires exact string matching of redirect URIs
+(Section 2.1) and recommends PKCE for confidential clients with `S256` as the
+only challenge method that does not expose the verifier (Section 2.1.1);
+Authlib generates and verifies the challenge when `code_challenge_method` is
+set in `client_kwargs`[^28]. Authlib validates the `state` value and parses
+the ID token during `authorize_access_token()`[^28], which makes a forged or
+replayed callback raise `OAuthError` rather than silently succeed — but only
+the application can decide whether an unverified email may be linked.
+
+Projects **MUST** test the state, replay, and rejected-claim paths:
+
+```python
+# tests/test_oauth.py
+from urllib.parse import parse_qs, urlparse
+
+from myapp.extensions import oauth
+from myapp.models.user import User
+
+ISSUER = "https://accounts.google.com"
+
+def start_login(client) -> str:
+    """Run the redirect leg and return the state Authlib stored in session."""
+    response = client.get("/auth/login/google")
+    assert response.status_code == 302
+    query = parse_qs(urlparse(response.headers["Location"]).query)
+    assert query["code_challenge_method"] == ["S256"]
+    return query["state"][0]
+
+def test_callback_rejects_an_unknown_state(client) -> None:
+    response = client.get("/auth/callback/google?code=abc&state=forged")
+
+    assert response.status_code == 401
+
+def test_callback_replay_is_rejected(client, monkeypatch) -> None:
+    state = start_login(client)
+    monkeypatch.setattr(
+        oauth.google,
+        "fetch_access_token",
+        lambda **kwargs: {
+            "access_token": "provider-token",
+            "userinfo": {
+                "iss": ISSUER,
+                "sub": "1234567890",
+                "email": "person@example.com",
+                "email_verified": True,
+            },
+        },
+    )
+    first = client.get(f"/auth/callback/google?code=abc&state={state}")
+    assert first.status_code == 302
+
+    replayed = client.get(f"/auth/callback/google?code=abc&state={state}")
+
+    assert replayed.status_code == 401
+
+def test_callback_rejects_an_unverified_email(client, monkeypatch) -> None:
+    state = start_login(client)
+    monkeypatch.setattr(
+        oauth.google,
+        "fetch_access_token",
+        lambda **kwargs: {
+            "access_token": "provider-token",
+            "userinfo": {
+                "iss": ISSUER,
+                "sub": "2222",
+                "email": "person@example.com",
+                "email_verified": False,
+            },
+        },
+    )
+
+    response = client.get(f"/auth/callback/google?code=abc&state={state}")
+
+    assert response.status_code == 403
+    assert User.query.count() == 0
 ```
 
 ### Role-Based Authorization with Flask-Principal
@@ -541,12 +833,13 @@ support and room-based messaging.
 
 ### Server Selection
 
-Projects **SHOULD** use gevent for production deployments as eventlet is now deprecated:
+Projects **SHOULD** use Gunicorn's threaded worker with `simple-websocket`,
+because eventlet is deprecated and the gevent WebSocket layer is archived:
 
 | Server | Status | Use Case |
 | ------ | ------ | -------- |
-| gevent | Active, recommended | Production with high concurrency |
-| Threading mode | Stable | CPU-heavy apps, maximum library compatibility |
+| Threading + simple-websocket | Recommended | Production default; best library compatibility |
+| gevent + gevent-websocket | gevent-websocket archived | Existing greenlet stacks only |
 | eventlet | Deprecated | Legacy applications only |
 
 ### Configuration
@@ -567,6 +860,7 @@ def create_app(config_name: str = "development") -> Flask:
     from myapp.extensions import socketio
     socketio.init_app(
         app,
+        async_mode="threading",  # Must match the deployed Gunicorn worker
         message_queue=app.config.get("SOCKETIO_MESSAGE_QUEUE"),  # Redis for multi-process
         cors_allowed_origins=app.config.get("CORS_ORIGINS", "*"),
         logger=app.config.get("DEBUG", False),
@@ -599,13 +893,60 @@ def handle_message(data: dict):
 
 ### Production Deployment
 
-Projects **MUST** use gevent workers with Gunicorn for production:
+Projects **MUST** install the server they invoke, and **SHOULD** run
+Flask-SocketIO behind Gunicorn's threaded worker:
 
 ```bash
-# Install dependencies
-uv add flask-socketio gevent gevent-websocket
+# Install dependencies: the server is part of the dependency set
+uv add "flask-socketio==5.6.1" "gunicorn==26.2.0" "simple-websocket==1.1.0"
 
-# Run with gevent worker
+# Run the threaded worker; simple-websocket supplies the WebSocket transport
+gunicorn -w 1 --threads 100 --bind 0.0.0.0:5000 "myapp:create_app()"
+```
+
+The `async_mode` passed to `socketio.init_app` **MUST** match the deployed
+worker: `"threading"` for the command above, `"gevent"` for a greenlet stack.
+
+**Why**: The gevent WebSocket worker requires five packages that must all be
+present — Flask-SocketIO, gevent, gevent-websocket, `packaging` and Gunicorn
+itself — and its WebSocket layer, `gevent-websocket`, has been archived by its
+author[^29], so it receives no compatibility fixes. Installing only
+Flask-SocketIO, gevent and gevent-websocket leaves no `gunicorn` executable
+and makes the documented worker import fail with `ModuleNotFoundError: No
+module named 'gunicorn'`. The threaded worker with `simple-websocket` is a
+maintained path documented by Flask-SocketIO[^13] and avoids monkey patching
+entirely. Gunicorn's load balancer cannot do sticky sessions, so `-w 1` is
+required in every variant; scale by running several single-worker instances
+behind nginx.
+
+Projects **MUST** smoke test the deployment command, not only the application:
+
+```python
+# tests/smoke/test_websocket.py — run against a started Gunicorn process
+import socketio
+
+def test_websocket_round_trip() -> None:
+    client = socketio.Client()
+    received: list[dict] = []
+    client.on("pong_test", received.append)
+
+    client.connect("http://127.0.0.1:5000", transports=["websocket"])
+    client.emit("ping_test", {"hello": "world"})
+    client.sleep(1)
+    client.disconnect()
+
+    assert client.transport() == "websocket"
+    assert received == [{"echo": {"hello": "world"}}]
+```
+
+Projects that require a greenlet stack **MUST** install every dependency the
+worker imports, including `packaging`, which Gunicorn's gevent worker needs
+but does not declare:
+
+```bash
+uv add "flask-socketio==5.6.1" "gunicorn==26.2.0" "gevent==26.8.0" \
+    "gevent-websocket==0.10.1" "packaging==25.0"
+
 gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
     -w 1 --bind 0.0.0.0:5000 "myapp:create_app()"
 ```
@@ -818,29 +1159,111 @@ def send_email(self, to: str, subject: str, body: str) -> None:
 
 ### RQ for Simpler Queues
 
-Projects with simpler requirements **MAY** use RQ:
+Projects with simpler requirements **MAY** use RQ[^18] directly, and
+**MUST NOT** use Flask-RQ2:
+
+```python
+# src/myapp/config.py
+class Config:
+    RQ_REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    RQ_QUEUE_NAME: str = os.environ.get("RQ_QUEUE_NAME", "default")
+```
 
 ```python
 # src/myapp/extensions.py
-from flask_rq2 import RQ
+from flask import Flask
+from redis import Redis
+from rq import Queue
 
-rq = RQ()
+def rq_init_app(app: Flask) -> Queue:
+    """Create this app instance's RQ queue and store it in app.extensions."""
+    connection = Redis.from_url(app.config["RQ_REDIS_URL"])
+    queue = Queue(app.config["RQ_QUEUE_NAME"], connection=connection)
+    app.extensions["rq_queue"] = queue
+    return queue
+```
+
+```python
+# src/myapp/__init__.py
+from myapp.extensions import rq_init_app
+
+def create_app(config_name: str = "development") -> Flask:
+    app = Flask(__name__)
+    # ... configuration ...
+    rq_init_app(app)
+    return app
 ```
 
 ```python
 # src/myapp/tasks.py
-from myapp.extensions import rq
+def process_upload(file_id: int) -> str:
+    """Process an uploaded file in a worker process."""
+    return f"processed {file_id}"
+```
 
-@rq.job
-def process_upload(file_id: int) -> None:
-    """Process uploaded file in background."""
-    # Processing logic
-    pass
+```python
+# src/myapp/api/routes.py
+from flask import current_app
+from myapp.tasks import process_upload
+
+@api_bp.route("/uploads/<int:file_id>/process", methods=["POST"])
+def enqueue_processing(file_id: int) -> tuple[dict, int]:
+    """Hand the slow work to a worker and return the job ID."""
+    job = current_app.extensions["rq_queue"].enqueue(process_upload, file_id)
+    return {"job_id": job.id}, 202
 ```
 
 ```bash
-# Run RQ worker
-rq worker --with-scheduler
+uv add "rq==2.12.0"
+
+# Run an RQ 2.12 worker with the built-in scheduler
+rq worker --url "$REDIS_URL" --path src --with-scheduler default
+```
+
+Jobs that need application configuration or the database **MUST** run under an
+application context:
+
+```python
+# src/myapp/worker.py
+from rq import Worker
+
+from myapp import create_app
+
+def main() -> None:
+    app = create_app("production")
+    with app.app_context():
+        queue = app.extensions["rq_queue"]
+        Worker([queue], connection=queue.connection).work(with_scheduler=True)
+
+if __name__ == "__main__":
+    main()
+```
+
+Run that worker with `python -m myapp.worker`.
+
+**Why**: Flask-RQ2's last release was 18.3 in December 2018[^30] and it imports
+`pkg_resources` at module scope, which current setuptools no longer ships, so
+`from flask_rq2 import RQ` fails on Python 3.14 with `ModuleNotFoundError: No
+module named 'pkg_resources'`. RQ itself is maintained, tests on Python 3.14,
+and needs no Flask-specific wrapper: a `Queue` on `app.extensions` follows the
+same factory-scoped pattern as Celery above, so each application instance owns
+its own connection instead of sharing module state.
+
+```python
+# tests/test_rq.py
+import fakeredis
+from rq import Queue, SimpleWorker
+
+from myapp.tasks import process_upload
+
+def test_enqueue_and_run_a_job() -> None:
+    connection = fakeredis.FakeRedis()
+    queue = Queue("default", connection=connection)
+
+    job = queue.enqueue(process_upload, 42)
+    SimpleWorker([queue], connection=connection).work(burst=True)
+
+    assert job.latest_result().return_value == "processed 42"
 ```
 
 ## Async Views
@@ -1077,19 +1500,164 @@ def health_check():
 
 ### API Key-Based Limiting
 
+The limiter **MUST NOT** be keyed by a raw request header. Authentication
+**MUST** resolve the credential to a stored identifier first:
+
+```python
+# src/myapp/models/api_key.py
+from myapp.extensions import db
+
+class ApiKey(db.Model):
+    """A hashed API credential; the raw key is shown once at creation."""
+
+    __tablename__ = "api_key"
+
+    id = db.Column(db.Integer, primary_key=True)
+    key_digest = db.Column(db.String(64), unique=True, nullable=False)
+    revoked = db.Column(db.Boolean, nullable=False, default=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+```
+
+```python
+# src/myapp/auth/api_keys.py
+import hashlib
+from collections.abc import Callable
+from functools import wraps
+
+from flask import abort, g, request
+
+from myapp.models.api_key import ApiKey
+
+def digest_api_key(raw_key: str) -> str:
+    """Hash a raw API key for storage and lookup."""
+    return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+def authenticate_api_key() -> None:
+    """Resolve X-API-Key to a stored key ID before any limit is applied."""
+    g.api_key_id = None
+    presented = request.headers.get("X-API-Key")
+    if presented is None:
+        return
+
+    api_key = ApiKey.query.filter_by(key_digest=digest_api_key(presented)).first()
+    if api_key is not None and not api_key.revoked:
+        g.api_key_id = str(api_key.id)
+
+def api_key_required(view: Callable) -> Callable:
+    """Reject unknown or revoked credentials after the limit is applied."""
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if g.get("api_key_id") is None:
+            abort(401, description="Valid X-API-Key required")
+        return view(*args, **kwargs)
+
+    return wrapper
+```
+
 ```python
 # src/myapp/extensions.py
-from flask import request
+from flask import g
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
-def get_api_key() -> str:
-    """Rate limit by API key when present, otherwise by IP."""
-    return request.headers.get("X-API-Key", get_remote_address())
+def api_key_or_address() -> str:
+    """Key limits by the authenticated API key, falling back to the address."""
+    key_id = g.get("api_key_id")
+    if key_id is not None:
+        return f"key:{key_id}"
+    return f"ip:{get_remote_address()}"
 
 limiter = Limiter(
-    key_func=get_api_key,
+    key_func=api_key_or_address,
     default_limits=["1000 per hour"],
     storage_uri=os.environ.get("REDIS_URL", "redis://localhost:6379/1"),
 )
+```
+
+Authentication **MUST** be registered before `limiter.init_app`, and the
+application **MUST** apply `ProxyFix` with the exact number of trusted proxies
+when it runs behind one:
+
+```python
+# src/myapp/__init__.py
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from myapp.auth.api_keys import authenticate_api_key
+from myapp.extensions import limiter
+
+def create_app(config_name: str = "development") -> Flask:
+    app = Flask(__name__)
+    # ... configuration ...
+
+    if app.config.get("TRUSTED_PROXY_COUNT"):
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=app.config["TRUSTED_PROXY_COUNT"],
+            x_proto=app.config["TRUSTED_PROXY_COUNT"],
+            x_host=0,
+            x_prefix=0,
+        )
+
+    app.before_request(authenticate_api_key)  # populates g.api_key_id
+    limiter.init_app(app)                     # keys on the trusted identity
+
+    return app
+```
+
+```python
+# src/myapp/api/routes.py
+from myapp.auth.api_keys import api_key_required
+from myapp.extensions import limiter
+
+@api_bp.route("/reports")
+@limiter.limit("3 per minute")
+@api_key_required
+def reports():
+    """The limiter counts the request before the credential is rejected."""
+    return jsonify({"reports": []})
+```
+
+**Why**: `request.headers.get("X-API-Key", ...)` lets an unauthenticated caller
+choose its own quota bucket, so rotating the header gives an attacker an
+unlimited number of fresh buckets and the limit protects nothing. Keying on a
+database identifier the caller cannot influence removes that choice, and the
+address fallback is applied only to callers that presented no credential.
+Ordering matters twice: `authenticate_api_key` must run before
+`limiter.init_app` registers its own `before_request`, or `g.api_key_id` is
+still unset when `key_func` runs; and rejection must happen inside the view
+chain, below `limiter.limit`, or an aborted request never reaches the limiter
+and an attacker can spend unlimited invalid credentials. `get_remote_address`
+reads `request.remote_addr`, which is the proxy's address unless `ProxyFix` is
+configured with the exact hop count[^31] — a guessed count lets clients spoof
+`X-Forwarded-For` and forge the fallback bucket.
+
+```python
+# tests/test_rate_limit.py
+def test_rotating_invalid_keys_cannot_reset_the_bucket(client) -> None:
+    """An attacker rotating X-API-Key stays in one address bucket."""
+    statuses = [
+        client.get(
+            "/api/reports", headers={"X-API-Key": f"attacker-key-{n}"}
+        ).status_code
+        for n in range(1, 5)
+    ]
+
+    assert statuses == [401, 401, 401, 429]
+
+def test_authenticated_key_shares_one_bucket_across_addresses(
+    client, api_key
+) -> None:
+    """Spoofed forwarding headers give an authenticated key no new bucket."""
+    statuses = [
+        client.get(
+            "/api/reports",
+            headers={"X-API-Key": api_key, "X-Forwarded-For": f"10.0.0.{n}"},
+        ).status_code
+        for n in range(1, 5)
+    ]
+
+    assert statuses == [200, 200, 200, 429]
 ```
 
 ## Circuit Breakers
@@ -1124,38 +1692,128 @@ external_api_breaker = pybreaker.CircuitBreaker(
 
 ### Usage Patterns
 
+Exclusions **MUST** inspect the response status, because `raise_for_status()`
+raises the same `HTTPError` for 4xx and 5xx:
+
 ```python
 # src/myapp/services/payment.py
 import pybreaker
 import requests
 from flask import current_app
 
+def is_client_error(exc: BaseException) -> bool:
+    """Return True for 4xx responses, which are caller errors, not outages."""
+    response = getattr(exc, "response", None)
+    return response is not None and 400 <= response.status_code < 500
+
 payment_breaker = pybreaker.CircuitBreaker(
     fail_max=3,
     reset_timeout=60,
-    exclude=[requests.exceptions.HTTPError],  # Don't trip on 4xx errors
+    # 5xx responses and transport failures still count towards fail_max.
+    exclude=[is_client_error],
 )
 
 class PaymentService:
     @payment_breaker
-    def process_payment(self, amount: float, token: str) -> dict:
+    def process_payment(
+        self, amount: float, token: str, idempotency_key: str
+    ) -> dict:
         """Process payment with circuit breaker protection."""
         response = requests.post(
             current_app.config["PAYMENT_API_URL"],
             json={"amount": amount, "token": token},
+            headers={"Idempotency-Key": idempotency_key},
             timeout=10,
         )
         response.raise_for_status()
         return response.json()
 
-    def process_payment_safe(self, amount: float, token: str) -> dict | None:
+    def process_payment_safe(
+        self, amount: float, token: str, idempotency_key: str
+    ) -> dict | None:
         """Process payment with fallback handling."""
         try:
-            return self.process_payment(amount, token)
+            return self.process_payment(amount, token, idempotency_key)
         except pybreaker.CircuitBreakerError:
-            current_app.logger.warning("Payment service circuit open, queuing for retry")
-            queue_payment_retry.delay(amount, token)
+            current_app.logger.warning(
+                "Payment service circuit open, queuing for retry"
+            )
+            queue_payment_retry.delay(amount, token, idempotency_key)
             return None
+```
+
+Don't exclude the exception class:
+
+```python
+# Don't: raise_for_status() raises HTTPError for 500s too, so a total
+# outage leaves the breaker closed with fail_counter at 0.
+payment_breaker = pybreaker.CircuitBreaker(
+    fail_max=3,
+    exclude=[requests.exceptions.HTTPError],
+)
+```
+
+Retries queued while the circuit is open **MUST** carry the idempotency key of
+the original attempt.
+
+**Why**: pybreaker treats an excluded exception as a business outcome rather
+than a system failure[^23], and `requests` signals both "the caller sent bad
+data" and "the service is broken" with `HTTPError`. Excluding the class means
+five consecutive 500 responses leave the breaker closed with `fail_counter`
+at 0, so the breaker never opens and every request keeps paying the full
+timeout. A predicate that reads `exc.response.status_code` excludes only the
+4xx range and leaves 5xx, `ConnectionError` and `Timeout` counting. Because a
+payment request may have been processed before the response failed, replaying
+it without the original idempotency key can charge the customer twice; the
+key makes the retry safe to repeat.
+
+```python
+# tests/test_payment_breaker.py
+import requests
+
+from myapp.services import payment
+from myapp.services.payment import PaymentService, payment_breaker
+
+class FakeResponse:
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise requests.exceptions.HTTPError(
+                f"{self.status_code} Error", response=self
+            )
+
+    def json(self) -> dict:
+        return {"status": "ok"}
+
+def call_five_times(monkeypatch, behaviour) -> None:
+    monkeypatch.setattr(payment.requests, "post", behaviour)
+    service = PaymentService()
+    for attempt in range(5):
+        try:
+            service.process_payment(10.0, "card-token", f"key-{attempt}")
+        except Exception:
+            pass
+
+def test_client_errors_do_not_trip_the_breaker(app, monkeypatch) -> None:
+    call_five_times(monkeypatch, lambda *a, **k: FakeResponse(404))
+
+    assert payment_breaker.current_state == "closed"
+    assert payment_breaker.fail_counter == 0
+
+def test_server_errors_trip_the_breaker(app, monkeypatch) -> None:
+    call_five_times(monkeypatch, lambda *a, **k: FakeResponse(500))
+
+    assert payment_breaker.current_state == "open"
+
+def test_transport_failures_trip_the_breaker(app, monkeypatch) -> None:
+    def explode(*args, **kwargs):
+        raise requests.exceptions.ConnectionError("refused")
+
+    call_five_times(monkeypatch, explode)
+
+    assert payment_breaker.current_state == "open"
 ```
 
 ### Monitoring Circuit State
@@ -1364,3 +2022,9 @@ def create_app(config_name: str = "development") -> Flask:
 [^23]: [pybreaker](https://github.com/danielfm/pybreaker) - Python circuit breaker implementation
 [^24]: [Flask-FeatureFlags](https://flask-featureflags.readthedocs.io/) - Feature flags for Flask
 [^25]: [Unleash](https://docs.getunleash.io/) - Open-source feature management platform
+[^26]: [Flask SECRET_KEY](https://flask.palletsprojects.com/en/stable/config/#SECRET_KEY) - Session signing key requirements
+[^27]: [RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html) - Best Current Practice for OAuth 2.0 Security
+[^28]: [Authlib Flask OAuth client](https://docs.authlib.org/en/latest/oauth2/client/web/flask.html) - Flask integration and PKCE configuration
+[^29]: [gevent-websocket](https://github.com/jgelens/gevent-websocket) - Archived WebSocket library for gevent
+[^30]: [Flask-RQ2 on PyPI](https://pypi.org/project/Flask-RQ2/) - Release history for the unmaintained RQ integration
+[^31]: [Werkzeug ProxyFix](https://flask.palletsprojects.com/en/stable/deploying/proxy_fix/) - Trusting forwarded client addresses

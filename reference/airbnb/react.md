@@ -1,5 +1,37 @@
 # Airbnb React/JSX Style Guide
 
+> **Historical snapshot — not current Doctrine guidance.**
+>
+> This is a verbatim copy of the Airbnb React/JSX style guide at upstream commit
+> [`7a6ef3e`](https://github.com/airbnb/javascript/commit/7a6ef3e7db0f988932d73386af9c6a15a739f64f)
+> (17 February 2021), retained for historical comparison only. It **MUST NOT** be
+> used as current React guidance. For current guidance use
+> [Doctrine's React style guide](../../guides/frameworks/react.md), which targets
+> React 19.
+>
+> Rules below that conflict with React 19.2.8:
+>
+> - **`defaultProps` on function components** — React 19 removed `defaultProps`
+>   from function components in favour of ES6 default parameters. Class
+>   components keep `defaultProps`.
+> - **`propTypes`** — React 19 removed the `propTypes` check from the `react`
+>   package and ignores it silently; use TypeScript instead.
+> - **`React.createClass`** — deprecated in React 15.5 and extracted to the
+>   separate `create-react-class` package.
+> - **Legacy context (`contextTypes`, `getChildContext`) and string refs** —
+>   removed in React 19.
+> - **`componentWill*` lifecycle methods** — deprecated and renamed with
+>   `UNSAFE_` prefixes; class components themselves remain supported, but React
+>   recommends functions for new code.
+> - The guide predates Hooks, Suspense, Server Components, the automatic JSX
+>   transform and the React Compiler, none of which it covers.
+>
+> Sources: <https://registry.npmjs.org/react/latest>,
+> <https://react.dev/blog/2024/04/25/react-19-upgrade-guide>,
+> <https://react.dev/reference/react/Component>,
+> <https://legacy.reactjs.org/blog/2017/04/07/react-v15.5.0.html>
+> (all fetched 8 September 2026).
+
 *A mostly reasonable approach to React and JSX*
 
 This style guide is mostly based on the standards that are currently prevalent
@@ -468,6 +500,10 @@ anything prior to stage 3 is not included nor recommended in this guide.
   ```
 
 - Always define explicit defaultProps for all non-required props.
+
+  > **Doctrine erratum:** React 19 removed `defaultProps` from function
+  > components; use ES6 default parameters instead. See the historical-snapshot
+  > notice at the top of this file.
 
   > Why? propTypes are a form of documentation, and providing defaultProps
   > means the reader of your code doesn't have to assume as much. In addition,

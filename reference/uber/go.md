@@ -1781,6 +1781,7 @@ func readFile(path string) (string, error) {
   if err != nil {
     return "", err
   }
+  defer f.Close()
 
   b, err := io.ReadAll(f)
   if err != nil {

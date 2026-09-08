@@ -1,0 +1,114 @@
+# Config Validation Workflow
+#
+# Executes the copy-paste configurations under configs/ so a coordinate,
+# schema key or hook repository that no longer exists cannot ship again.
+
+name: Config Validation
+
+on:
+  pull_request:
+    paths:
+      - 'configs/**'
+      - '.github/workflows/config-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'configs/**'
+      - '.github/workflows/config-validation.yml'
+
+jobs:
+  ansible:
+    name: Validate Ansible configs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install Ansible tooling
+        run: python -m pip install 'ansible-lint==26.8.0'
+
+      - name: Resolve every Galaxy requirement
+        run: |
+          ansible-galaxy collection install \
+            -r configs/ansible/requirements.yml \
+            -p "${RUNNER_TEMP}/collections"
+
+      - name: Validate ansible-lint configuration
+        run: |
+          workdir="${RUNNER_TEMP}/ansible-lint-check"
+          mkdir -p "${workdir}"
+          cp configs/ansible/.ansible-lint "${workdir}/.ansible-lint"
+          cat > "${workdir}/play.yml" <<'PLAY'
+          ---
+          - name: Converge | Exercise the shipped ansible-lint configuration
+            hosts: localhost
+            gather_facts: false
+            tasks:
+              - name: Converge | Emit a message
+                ansible.builtin.debug:
+                  msg: "configuration accepted"
+          PLAY
+          cd "${workdir}"
+          ansible-lint --offline play.yml
+
+  pre-commit:
+    name: Validate pre-commit config
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install pre-commit
+        run: python -m pip install 'pre-commit==4.6.2'
+
+      - name: Validate the shipped configuration
+        run: |
+          pre-commit validate-config configs/pre-commit/.pre-commit-config.yaml
+
+      - name: Install the optional Ruby hook
+        run: |
+          # Uncomment the Ruby block and install it. A remote repository
+          # without a .pre-commit-hooks.yaml fails here; a local hook does not.
+          python3 << 'EOF'
+          import os
+          import pathlib
+          import re
+
+          path = pathlib.Path('configs/pre-commit/.pre-commit-config.yaml')
+          lines = path.read_text().splitlines()
+          start = next(
+              i for i, line in enumerate(lines)
+              if line.strip().startswith('# Ruby (uncomment')
+          )
+
+          block = []
+          collecting = False
+          for line in lines[start:]:
+              if line.strip().startswith('# - repo:'):
+                  collecting = True
+              if collecting:
+                  if not line.lstrip().startswith('#'):
+                      break
+                  block.append(re.sub(r'^(\s*)# ?', r'\1', line))
+
+          if not block:
+              raise SystemExit('Ruby hook block not found in the config')
+
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'ruby-hook.yaml'
+          out.write_text('repos:\n' + '\n'.join(block) + '\n')
+          print(out.read_text())
+          EOF
+
+          pre-commit install-hooks -c "${RUNNER_TEMP}/ruby-hook.yaml"

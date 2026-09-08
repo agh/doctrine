@@ -42,17 +42,32 @@ Optimized configuration with:
 
 - **Performance**: 20 forks, SSH pipelining, fact caching
 - **Security**: Host key checking enabled, strict SSH settings
-- **Output**: YAML output with task profiling
+- **Output**: Built-in default callback with YAML result format and task
+  profiling
 - **Plugins**: SOPS vars plugin enabled for secrets
+
+Comments are kept on their own lines throughout. Ansible's INI parser treats
+an inline `# ...` as part of the value: on an integer it aborts startup, and
+on a boolean such as `host_key_checking` it evaluates to `False`, quietly
+disabling the setting the comment claims to document.
+
+The stdout callback is `ansible.builtin.default` with
+`callback_result_format = yaml`, not the `yaml` callback. The
+`community.general.yaml` callback has been removed, so a clean install that
+resolves a current `community.general` cannot start a playbook configured to
+use it. Aggregate callbacks are named by FQCN
+(`ansible.posix.profile_tasks`, `ansible.posix.timer`).
 
 ### .ansible-lint
 
 Production-profile linting with:
 
-- Minimum Ansible Core 2.18
 - Opt-in security rules (no-log-password, etc.)
-- Task name prefix enforcement
+- Task name prefix enforcement via `name[prefix]` and `task_name_prefix`
 - FQCN requirements
+
+ansible-lint has no minimum-ansible-core setting, so pin the supported range
+in your Python requirements (for example `ansible-core>=2.18,<2.22`).
 
 ### .yamllint
 
@@ -70,17 +85,18 @@ Multi-cloud secrets management:
 - Production: AWS KMS
 - Staging: PGP
 - Development: age (modern PGP alternative)
-- Encrypted regex patterns for sensitive keys
+- Every value encrypted by default; no `encrypted_regex` allowlist to outgrow
 
 ### requirements.yml
 
-Essential collections:
+Essential collections, pinned to the current Galaxy releases:
 
 - Core: ansible.posix, ansible.utils
-- Community: general, docker, postgresql, mysql
+- Community: general, docker, postgresql, crypto
+- Database: ansible.mysql (community.mysql is deprecated)
 - Security: community.sops
 - Cloud: AWS, Azure, GCP
-- Observability: Prometheus, Grafana
+- Observability: `prometheus.prometheus`, `community.grafana`
 
 ## Customization
 
