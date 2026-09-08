@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "_comment": "Doctrine standard Claude Code configuration - https://github.com/welshwandering/doctrine",
+  "_comment": "Doctrine standard Claude Code configuration - https://github.com/agh/doctrine",
 
   "attribution": {
     "commit": "",
