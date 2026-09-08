@@ -221,50 +221,85 @@ Projects **SHOULD** use `Data.define` for immutable value objects instead of
 `Struct` when immutability is desired. Use `Struct` only when you need mutable
 objects.
 
-### Frozen String Literals by Default (Ruby 4.0)
+### Frozen String Literals: Still Opt-In (Ruby 4.0)
 
-Ruby 4.0 makes frozen string literals the default behavior. All string
-literals are now frozen by default, improving performance and preventing
-accidental mutations.
+Ruby 4.0 does **not** freeze string literals by default. The
+`frozen_string_literal` magic comment still defaults to `false`, and the
+interpreter ships with the `frozen-string-literal` feature disabled;
+`ruby --enable=frozen-string-literal` opts a whole process in.[^30]
 
-#### Why Frozen by Default?
+Since Ruby 3.4, literals in files without the magic comment are *chilled*:
+they remain mutable and `frozen?` reports `false`, but mutating one emits the
+deprecation warning `literal string will be frozen in the future`. That
+warning is only printed when deprecation warnings are on (`-W:deprecated` or
+`Warning[:deprecated] = true`).[^31]
 
-Frozen string literals became the default because they:
+Projects **MUST** keep `# frozen_string_literal: true` in files that depend on
+immutable literals. Projects **MUST NOT** rely on chilled literals for
+immutability, because mutation warns instead of raising. Projects **SHOULD**
+run CI with `RUBYOPT="-W:deprecated"` so chilled-string mutations surface
+before a future release flips the default.
 
-- **Improve performance**: Identical frozen strings can share memory
-- **Prevent bugs**: Eliminates accidental string mutations
-- **Thread safety**: Frozen strings are inherently thread-safe
-- **Reduce memory**: String deduplication works automatically
-- **Modern best practice**: Aligns with immutability principles
+#### Why Freeze Explicitly?
+
+Explicit freezing is required because it:
+
+- **Behaves identically across releases**: A file carrying the magic comment
+  behaves the same on Ruby 3.4, 4.0, and whichever release changes the default
+- **Fails loudly**: Mutating a frozen literal raises `FrozenError`; mutating a
+  chilled literal only warns, and only under `-W:deprecated`
+- **Reduces memory**: Literals frozen at parse time are deduplicated, so
+  repeated literals share one object
+- **Guarantees thread safety**: A frozen string cannot be mutated by another
+  thread
+- **Turns migration into a task list**: `-W:deprecated` reports every
+  mutation that a future default would break
 
 ```ruby
-# Ruby 4.0: All string literals are frozen by default
-name = "Alice"
-name.frozen?  # => true
+# frozen_string_literal: true
 
-# No longer need magic comment
-# frozen_string_literal: true  # Not needed in Ruby 4.0+
+CONFIG_PATH = "config/database.yml"
+CONFIG_PATH.frozen?       # => true
+CONFIG_PATH << "!"        # raises FrozenError
 
-# Create mutable strings when needed
-mutable_name = String.new("Alice")
-mutable_name.frozen?  # => false
+buffer = +"log:"          # unary plus returns a mutable copy
+buffer << " ready"        # => "log: ready"
 
-# Or use unary plus operator
-mutable_name = +"Alice"
-mutable_name.frozen?  # => false
-mutable_name << " Smith"  # Works
-
-# Concatenation creates new frozen strings
-greeting = "Hello, " + name  # => "Hello, Alice" (frozen)
-
-# String interpolation creates frozen strings
-message = "User: #{name}"
-message.frozen?  # => true
+name = String.new("Alice")
+name.frozen?              # => false
 ```
 
-Projects **MUST** remove `# frozen_string_literal: true` magic comments in Ruby
-4.0+. When mutable strings are needed, **MUST** use `String.new` or the unary
-plus operator `+`.
+Only literals are frozen by the magic comment. Strings produced at runtime by
+concatenation, interpolation, or `dup` are mutable, so code **MUST NOT** treat
+them as immutable:
+
+```ruby
+# frozen_string_literal: true
+
+name = "Alice"
+name.frozen?              # => true (literal)
+
+greeting = "Hello, " + name
+greeting.frozen?          # => false (String#+ allocates a mutable string)
+
+message = "User: #{name}"
+message.frozen?           # => false (dynamic literals are never frozen)
+
+name.dup.frozen?          # => false
+```
+
+Do/Don't:
+
+```ruby
+# Don't: assume an interpolated string cannot change under you
+key = "user:#{user.id}"
+CACHE[key] = user         # any holder of key can mutate this hash key
+
+# Do: intern or freeze strings that must not change
+key = -"user:#{user.id}"  # String#-@ returns a frozen, deduplicated string
+key.frozen?               # => true
+CACHE[key] = user
+```
 
 ### Set as Core Class (Ruby 3.2+)
 
@@ -332,13 +367,29 @@ numbers.find { it > 5 }   # => 6
 # Find last match (searches from end)
 numbers.rfind { it < 5 }  # => 4
 
-# With default value
-numbers.find(0) { it > 100 }   # => 0
-numbers.rfind(0) { it > 100 }  # => 0
+# No match and no fallback returns nil
+numbers.find { it > 100 }             # => nil
+
+# The optional ifnone argument is called, so it MUST be callable
+numbers.find(-> { 0 }) { it > 100 }   # => 0
+numbers.rfind(-> { 0 }) { it > 100 }  # => 0
 
 # Practical example: find most recent valid record
 logs = [log1, log2, log3, log4]
 logs.rfind { it.valid? }  # Efficiently finds last valid log
+```
+
+Both methods keep `Enumerable#find` semantics for the optional `ifnone`
+argument: when no element matches, Ruby invokes `ifnone.call`. Projects
+**MUST** pass a lambda or proc, never a bare value.
+
+```ruby
+# Don't: a plain value raises NoMethodError: undefined method 'call' for an
+# instance of Integer
+numbers.find(0) { it > 100 }
+
+# Do: pass a callable that produces the fallback
+numbers.find(-> { 0 }) { it > 100 }  # => 0
 ```
 
 Projects **SHOULD** prefer `Array#find` and `Array#rfind` over
@@ -651,8 +702,22 @@ gem install debride
 debride .
 debride lib/ app/
 
-# With Rails
-debride-rails .
+# With Rails: --rails is a flag on debride itself, not a separate executable
+debride --rails .
+```
+
+The debride gem ships the executables `debride`, `debride_rails_whitelist`,
+and `debride_rm`. Rails projects **SHOULD** pair `--rails` with a whitelist
+generated from routes and production logs, because framework callbacks and
+route targets are never called from application code:
+
+```bash
+# Generate a whitelist from routes and observed usage
+bin/rails routes > routes.txt
+debride_rails_whitelist routes.txt log/production.log | sort -u > whitelist.txt
+
+# Report using Rails knowledge plus the whitelist
+debride --rails --whitelist whitelist.txt .
 ```
 
 ## Code Coverage: SimpleCov
@@ -680,20 +745,72 @@ RSpec[^17] is the recommended testing framework for Ruby projects.
 
 ## Cyclomatic Complexity: Flog
 
-Projects **SHOULD** use Flog[^6] to measure and control code complexity (higher
-scores indicate more complex code).
+Projects **SHOULD** use Flog[^6] to measure code complexity (higher scores
+indicate more complex code). Flog is a reporter, not a gate: it exits `0`
+whatever it finds, and `-t N` sets the *report cut-off* as a percentage of the
+total score, not a failure threshold. A CI gate **MUST** compare the reported
+score itself and exit non-zero.
 
 ```bash
+# Report the top 60% of total score
 bundle exec flog lib/
 
-# Show only methods above threshold
-bundle exec flog -a lib/ | head -20
+# Report every method
+bundle exec flog -a lib/
 
-# Fail if average exceeds threshold
-bundle exec flog -a lib/ -t 10
+# Total and average only
+bundle exec flog -a -s lib/
 ```
 
-Guidelines:
+### Failing the Build on Complexity
+
+Projects **SHOULD** enforce a complexity budget with an explicit comparison.
+The Rake task below reads the average through Flog's API and aborts when the
+budget is exceeded. Read `average` before calling `report`, because `report`
+resets the flogger.
+
+```ruby
+# lib/tasks/flog.rake
+require "flog"
+require "flog_cli"
+require "path_expander"
+
+FLOG_PATHS = ["lib"].freeze
+FLOG_MAX_AVERAGE = 10.0
+
+desc "Fail the build when the average method score exceeds the budget"
+task :flog do
+  files = PathExpander.new(FLOG_PATHS.dup, "**/*.{rb,rake}").process
+  flogger = FlogCLI.new(all: true)
+  flogger.flog(*files)
+
+  average = flogger.average
+  flogger.report
+
+  abort format("flog average %.1f exceeds budget %.1f", average, FLOG_MAX_AVERAGE) if
+    average > FLOG_MAX_AVERAGE
+end
+```
+
+Projects without Rake **MAY** gate in the shell instead:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+max_average="${FLOG_MAX_AVERAGE:-10}"
+
+average=$(bundle exec flog -a -s lib |
+  awk '/flog\/method average/ { sub(/:$/, "", $1); print $1 }')
+
+if awk -v a="$average" -v m="$max_average" 'BEGIN { exit !(a + 0 > m + 0) }'; then
+  printf 'flog average %s exceeds budget %s\n' "$average" "$max_average" >&2
+  exit 1
+fi
+```
+
+Score bands are conventions, not tool defaults; teams **MUST** pick a budget
+and hold it rather than assume Flog enforces one:
 
 - 0-10: Ideal
 - 11-20: Might need refactoring
@@ -749,15 +866,22 @@ Projects **MAY** use Spring[^18] to preload the application and speed up develop
 
 Projects **SHOULD** configure pre-commit hooks to catch issues before commit.
 
+StandardRB[^1] publishes no `.pre-commit-hooks.yaml`, so it **MUST NOT** be
+listed as a hook repository: pre-commit clones the repo and then aborts with
+`InvalidManifestError: ... .pre-commit-hooks.yaml is not a file`. Run it as a
+`local` system hook against the project's locked bundle instead, which also
+keeps the hook on the same StandardRB version as `bundle exec`.
+
 ```yaml
 repos:
-  - repo: https://github.com/standardrb/standard
-    rev: v1.43.0
-    hooks:
-      - id: standardrb
-
   - repo: local
     hooks:
+      - id: standardrb
+        name: StandardRB
+        entry: bundle exec standardrb
+        language: system
+        types: [ruby]
+
       - id: reek
         name: Reek
         entry: bundle exec reek
@@ -765,9 +889,17 @@ repos:
         types: [ruby]
 ```
 
+Pin the version in the `Gemfile`, where Bundler enforces it:
+
+```ruby
+# Gemfile
+gem "standard", "~> 1.56", group: [:development, :test]
+```
+
 ## CI Pipeline
 
-Projects **MUST** include linting and testing in their CI pipeline.
+Projects **MUST** include linting and testing in their CI pipeline. The
+workflow below uses ruby/setup-ruby[^26] and the Codecov action[^27].
 
 ```yaml
 jobs:
@@ -784,11 +916,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1[^26]
+      - uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
       - run: bundle exec parallel_rspec
-      - uses: codecov/codecov-action@v4[^27]
+      - uses: codecov/codecov-action@v4
 ```
 
 ## Dependencies & Package Management
@@ -862,12 +994,13 @@ updates:
 
 ### Capybara for Browser Testing
 
-Projects with web interfaces **SHOULD** use Capybara[^14] for browser-based acceptance testing.
+Projects with web interfaces **SHOULD** use Capybara[^14] for browser-based
+acceptance testing, driving a real browser through Selenium WebDriver[^28].
 
 ```ruby
 # Gemfile
 gem "capybara", group: :test
-gem "selenium-webdriver", group: :test[^28]
+gem "selenium-webdriver", group: :test
 
 # spec/spec_helper.rb
 require "capybara/rspec"
@@ -1049,29 +1182,143 @@ end
 
 ### Sidekiq Job Idempotence
 
-Projects **SHOULD** use Sidekiq[^24] for background job processing.
+Projects **SHOULD** use Sidekiq[^24] for background job processing. Sidekiq
+runs a job **at least** once, never exactly once: even a completed job can be
+re-run if Redis goes down after the job finished but before Sidekiq
+acknowledged it.[^32]
+
+Jobs **MUST NOT** guard external side effects with a read-then-write cache
+check. The read and the write are separate operations, so two attempts can
+both pass the check and both send, and a cache entry can expire or be evicted
+before the retry arrives.
 
 ```ruby
+# Don't: two attempts can both read a miss before either writes, and the
+# entry disappears after its TTL or under memory pressure
+def perform(user_id, email_type)
+  key = "email:#{user_id}:#{email_type}"
+  return if Rails.cache.read(key)
+
+  send_email(user_id, email_type)
+  Rails.cache.write(key, true, expires_in: 1.hour)
+end
+```
+
+Jobs **MUST** claim their work in durable storage, with the claim enforced by
+a unique constraint rather than by application logic:
+
+```ruby
+class CreateEmailDeliveries < ActiveRecord::Migration[8.1]
+  def change
+    create_table :email_deliveries do |t|
+      t.references :user, null: false, foreign_key: true, index: false
+      t.string :email_type, null: false
+      t.string :idempotency_key, null: false
+      t.datetime :delivered_at
+      t.timestamps
+    end
+
+    add_index :email_deliveries, [:user_id, :email_type], unique: true
+  end
+end
+```
+
+```ruby
+# Do: the unique index decides the winner, and the stored key makes the
+# provider call repeatable
 class SendEmailJob
   include Sidekiq::Job
 
   sidekiq_options retry: 3
 
   def perform(user_id, email_type)
-    # Use idempotency key to prevent duplicate sends
-    key = "email:#{user_id}:#{email_type}"
-    return if Rails.cache.read(key)
+    delivery = claim(user_id, email_type)
+    return if delivery.nil?  # already sent and confirmed
 
-    send_email(user_id, email_type)
-    Rails.cache.write(key, true, expires_in: 1.hour)
+    Mailer.deliver(
+      user_id: user_id,
+      email_type: email_type,
+      idempotency_key: delivery.idempotency_key
+    )
+
+    delivery.update!(delivered_at: Time.current)
+  end
+
+  private
+
+  # Inserting the row is the claim. A loser reuses the winner's key so a
+  # second call to the provider is deduplicated rather than delivered.
+  def claim(user_id, email_type)
+    EmailDelivery.create!(
+      user_id: user_id,
+      email_type: email_type,
+      idempotency_key: SecureRandom.uuid
+    )
+  rescue ActiveRecord::RecordNotUnique
+    existing = EmailDelivery.find_by!(user_id: user_id, email_type: email_type)
+    existing.delivered_at.nil? ? existing : nil
   end
 end
+```
 
+#### Transaction Boundaries
+
+- The claim **MUST** be committed before the provider call. A claim held open
+  in the same transaction as the side effect is invisible to a concurrent
+  attempt until commit, which reopens the race
+- The provider call **MUST NOT** run inside a database transaction. An
+  external call cannot be rolled back, and holding a transaction open across a
+  network request starves the connection pool
+- `delivered_at` is a confirmation, not a lock. The claim row already prevents
+  a second claim; `delivered_at` records that the send returned successfully
+
+#### What This Guarantees
+
+- Exactly one claim per `(user_id, email_type)`, enforced by the database
+- Exactly one email, **provided the provider deduplicates on the idempotency
+  key**. Stripe's `Idempotency-Key` is the reference behaviour: the first
+  result is saved and replayed for every later request using the same key[^33]
+- If the provider does not deduplicate, a crash between the send and the
+  `delivered_at` update **MAY** still produce a duplicate. Projects **MUST**
+  state that limit in the delivery contract instead of claiming exactly-once
+
+```ruby
 RSpec.describe SendEmailJob do
-  it "sends email only once when retried" do
-    expect {
-      3.times { SendEmailJob.new.perform(1, "welcome") }
-    }.to change { ActionMailer::Base.deliveries.count }.by(1)
+  it "sends once when the job is retried after completion" do
+    allow(Mailer).to receive(:deliver)
+
+    3.times { described_class.new.perform(user.id, "welcome") }
+
+    expect(Mailer).to have_received(:deliver).once
+  end
+
+  # Threads check out their own connections and cannot see the test
+  # transaction, so this group MUST run without transactional fixtures
+  context "under concurrency" do
+    self.use_transactional_tests = false
+
+    it "claims once when two attempts race" do
+      threads = 2.times.map do
+        Thread.new { described_class.new.perform(user.id, "welcome") }
+      end
+      threads.each(&:join)
+
+      expect(EmailDelivery.where(user_id: user.id, email_type: "welcome").count)
+        .to eq(1)
+    end
+  end
+
+  it "reuses the idempotency key after a failure mid-delivery" do
+    allow(Mailer).to receive(:deliver).and_raise(Net::OpenTimeout)
+    expect { described_class.new.perform(user.id, "welcome") }
+      .to raise_error(Net::OpenTimeout)
+    first_key = EmailDelivery.sole.idempotency_key
+
+    allow(Mailer).to receive(:deliver)  # the retry reaches the provider
+    described_class.new.perform(user.id, "welcome")
+
+    expect(EmailDelivery.sole.idempotency_key).to eq(first_key)
+    expect(EmailDelivery.sole.delivered_at).to be_present
   end
 end
 ```
@@ -1461,6 +1708,10 @@ end
 [^27]: [Codecov](https://about.codecov.io/) - Code coverage reporting and analytics
 [^28]: [Selenium WebDriver](https://www.selenium.dev/documentation/webdriver/) - Browser automation framework
 [^29]: [Minitest](https://github.com/minitest/minitest) - A complete suite of testing facilities supporting TDD, BDD, mocking, and benchmarking
+[^30]: [Ruby magic comments](https://docs.ruby-lang.org/en/4.0/syntax/comments_rdoc.html) - `frozen_string_literal` defaults to false in Ruby 4.0
+[^31]: [Ruby 3.4 NEWS](https://github.com/ruby/ruby/blob/ruby_3_4/NEWS.md) - Chilled string literals warn on mutation under `-W:deprecated`
+[^32]: [Sidekiq Best Practices](https://github.com/sidekiq/sidekiq/wiki/Best-Practices) - Sidekiq executes jobs at least once, never exactly once
+[^33]: [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests) - Reference behaviour for provider-side idempotency keys
 
 ## See Also
 

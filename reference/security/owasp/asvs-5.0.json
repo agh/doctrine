@@ -1,200 +1,644 @@
 {
   "name": "OWASP Application Security Verification Standard (ASVS)",
   "version": "5.0.0",
-  "released": "2025-05-01",
-  "source": "https://owasp.org/ASVS/",
+  "released": "2025-05-30",
+  "source": "https://owasp.org/www-project-application-security-verification-standard/",
+  "release": "https://github.com/OWASP/ASVS/releases/tag/v5.0.0_release",
+  "data_source": "https://github.com/OWASP/ASVS/blob/master/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json",
   "license": "CC-BY-SA-4.0",
   "description": "Framework of security requirements for designing, developing and testing secure web applications",
-  "total_requirements": 350,
+  "total_requirements": 345,
+  "total_chapters": 17,
+  "generation": {
+    "method": "Chapter numbers, names, section names and counts are generated from the official ASVS 5.0.0 JSON export",
+    "regenerate": "Agents MUST NOT carry ASVS 4.x chapter numbers into 5.0; the chapter layout was rebuilt for 5.0"
+  },
   "changelog": {
     "v5_0": {
-      "released": "2025-05-01",
+      "released": "2025-05-30",
       "major_changes": [
-        "New chapter structure with 14 chapters",
-        "350 requirements (reduced from 400+ for clarity)",
-        "Renamed from 'Verification Standard' to focus on requirements",
-        "Enhanced OAuth2/OIDC guidance",
-        "Improved cryptography requirements",
-        "Better integration with NIST 800-63b"
-      ]
+        "Chapter structure rebuilt: 17 chapters, renumbered from 4.x",
+        "345 requirements",
+        "Levels are priority-based and no longer carry the 4.x names",
+        "OAuth and OIDC promoted to its own chapter (V10)",
+        "WebRTC added as V17",
+        "Encoding and Sanitization moved to V1; Authentication moved from V2 to V6"
+      ],
+      "migration": "https://github.com/OWASP/ASVS/blob/master/5.0/en/0x05-For-Users-Of-4.0.md"
     }
   },
   "levels": {
     "L1": {
-      "name": "Opportunistic",
-      "description": "Low assurance - Appropriate for all applications as minimum baseline",
+      "name": "Level 1",
+      "description": "Minimum requirements to consider when securing an application; a critical starting point",
       "effort": "Lowest",
-      "use_case": "Public-facing sites with no sensitive data",
-      "requirement_count": 150
+      "share": "around 20% of requirements",
+      "requirement_count": 70,
+      "cumulative_count": 70
     },
     "L2": {
-      "name": "Standard",
-      "description": "Standard assurance - Recommended for most applications",
+      "name": "Level 2",
+      "description": "The level most applications should strive for; less common attacks and more complicated protections",
       "effort": "Moderate",
-      "use_case": "Applications handling sensitive data, business applications",
-      "requirement_count": 280
+      "share": "around 50% of requirements, 70% cumulative",
+      "requirement_count": 183,
+      "cumulative_count": 253
     },
     "L3": {
-      "name": "Advanced",
-      "description": "High assurance - For critical applications",
+      "name": "Level 3",
+      "description": "Highest assurance; defence-in-depth and hard-to-implement controls",
       "effort": "Highest",
-      "use_case": "Financial, healthcare, critical infrastructure",
-      "requirement_count": 350
+      "share": "the final ~30% of requirements",
+      "requirement_count": 92,
+      "cumulative_count": 345
     }
   },
   "chapters": {
     "V1": {
-      "name": "Architecture, Design and Threat Modeling",
-      "description": "Security architecture requirements",
-      "key_requirements": [
-        "Threat model maintained and updated",
-        "Security architecture documented",
-        "Components use least privilege",
-        "Sensitive data flows identified"
+      "name": "Encoding and Sanitization",
+      "requirements": 30,
+      "level_counts": {
+        "L1": 8,
+        "L2": 19,
+        "L3": 3
+      },
+      "sections": [
+        {
+          "id": "V1.1",
+          "name": "Encoding and Sanitization Architecture",
+          "requirements": 2
+        },
+        {
+          "id": "V1.2",
+          "name": "Injection Prevention",
+          "requirements": 10
+        },
+        {
+          "id": "V1.3",
+          "name": "Sanitization",
+          "requirements": 12
+        },
+        {
+          "id": "V1.4",
+          "name": "Memory, String, and Unmanaged Code",
+          "requirements": 3
+        },
+        {
+          "id": "V1.5",
+          "name": "Safe Deserialization",
+          "requirements": 3
+        }
       ]
     },
     "V2": {
-      "name": "Authentication",
-      "description": "Identity verification requirements",
-      "key_requirements": [
-        "Multi-factor authentication for sensitive operations",
-        "Password requirements per NIST 800-63b",
-        "Credential recovery secure",
-        "Session fixation prevention",
-        "Passkeys/WebAuthn support"
-      ],
-      "nist_alignment": "SP 800-63b Digital Identity Guidelines"
+      "name": "Validation and Business Logic",
+      "requirements": 13,
+      "level_counts": {
+        "L1": 4,
+        "L2": 7,
+        "L3": 2
+      },
+      "sections": [
+        {
+          "id": "V2.1",
+          "name": "Validation and Business Logic Documentation",
+          "requirements": 3
+        },
+        {
+          "id": "V2.2",
+          "name": "Input Validation",
+          "requirements": 3
+        },
+        {
+          "id": "V2.3",
+          "name": "Business Logic Security",
+          "requirements": 5
+        },
+        {
+          "id": "V2.4",
+          "name": "Anti-automation",
+          "requirements": 2
+        }
+      ]
     },
     "V3": {
-      "name": "Session Management",
-      "description": "Session security requirements",
-      "key_requirements": [
-        "Session tokens cryptographically secure",
-        "Session timeout configurable",
-        "Session invalidation on logout",
-        "Concurrent session controls",
-        "Session binding to device/IP"
+      "name": "Web Frontend Security",
+      "requirements": 31,
+      "level_counts": {
+        "L1": 8,
+        "L2": 11,
+        "L3": 12
+      },
+      "sections": [
+        {
+          "id": "V3.1",
+          "name": "Web Frontend Security Documentation",
+          "requirements": 1
+        },
+        {
+          "id": "V3.2",
+          "name": "Unintended Content Interpretation",
+          "requirements": 3
+        },
+        {
+          "id": "V3.3",
+          "name": "Cookie Setup",
+          "requirements": 5
+        },
+        {
+          "id": "V3.4",
+          "name": "Browser Security Mechanism Headers",
+          "requirements": 8
+        },
+        {
+          "id": "V3.5",
+          "name": "Browser Origin Separation",
+          "requirements": 8
+        },
+        {
+          "id": "V3.6",
+          "name": "External Resource Integrity",
+          "requirements": 1
+        },
+        {
+          "id": "V3.7",
+          "name": "Other Browser Security Considerations",
+          "requirements": 5
+        }
       ]
     },
     "V4": {
-      "name": "Access Control",
-      "description": "Authorization requirements",
-      "key_requirements": [
-        "Principle of least privilege enforced",
-        "RBAC or ABAC implemented",
-        "Sensitive resources protected server-side",
-        "Access control failures logged",
-        "Rate limiting on sensitive endpoints"
+      "name": "API and Web Service",
+      "requirements": 16,
+      "level_counts": {
+        "L1": 2,
+        "L2": 8,
+        "L3": 6
+      },
+      "sections": [
+        {
+          "id": "V4.1",
+          "name": "Generic Web Service Security",
+          "requirements": 5
+        },
+        {
+          "id": "V4.2",
+          "name": "HTTP Message Structure Validation",
+          "requirements": 5
+        },
+        {
+          "id": "V4.3",
+          "name": "GraphQL",
+          "requirements": 2
+        },
+        {
+          "id": "V4.4",
+          "name": "WebSocket",
+          "requirements": 4
+        }
       ]
     },
     "V5": {
-      "name": "Input Validation",
-      "description": "Data validation requirements",
-      "key_requirements": [
-        "Positive validation (allowlist)",
-        "Structured data validation (JSON schema)",
-        "File upload validation (type, size, name)",
-        "Injection prevention for all interpreters",
-        "Context-aware output encoding"
+      "name": "File Handling",
+      "requirements": 13,
+      "level_counts": {
+        "L1": 4,
+        "L2": 5,
+        "L3": 4
+      },
+      "sections": [
+        {
+          "id": "V5.1",
+          "name": "File Handling Documentation",
+          "requirements": 1
+        },
+        {
+          "id": "V5.2",
+          "name": "File Upload and Content",
+          "requirements": 6
+        },
+        {
+          "id": "V5.3",
+          "name": "File Storage",
+          "requirements": 3
+        },
+        {
+          "id": "V5.4",
+          "name": "File Download",
+          "requirements": 3
+        }
       ]
     },
     "V6": {
-      "name": "Stored Cryptography",
-      "description": "Cryptographic storage requirements",
-      "key_requirements": [
-        "Sensitive data encrypted at rest",
-        "Approved algorithms only (AES-256-GCM, ChaCha20-Poly1305)",
-        "Key management documented",
-        "Password storage using approved functions (Argon2id, bcrypt, scrypt)",
-        "Secrets never in source code"
+      "name": "Authentication",
+      "requirements": 47,
+      "level_counts": {
+        "L1": 13,
+        "L2": 22,
+        "L3": 12
+      },
+      "sections": [
+        {
+          "id": "V6.1",
+          "name": "Authentication Documentation",
+          "requirements": 3
+        },
+        {
+          "id": "V6.2",
+          "name": "Password Security",
+          "requirements": 12
+        },
+        {
+          "id": "V6.3",
+          "name": "General Authentication Security",
+          "requirements": 8
+        },
+        {
+          "id": "V6.4",
+          "name": "Authentication Factor Lifecycle and Recovery",
+          "requirements": 6
+        },
+        {
+          "id": "V6.5",
+          "name": "General Multi-factor authentication requirements",
+          "requirements": 8
+        },
+        {
+          "id": "V6.6",
+          "name": "Out-of-Band authentication mechanisms",
+          "requirements": 4
+        },
+        {
+          "id": "V6.7",
+          "name": "Cryptographic authentication mechanism",
+          "requirements": 2
+        },
+        {
+          "id": "V6.8",
+          "name": "Authentication with an Identity Provider",
+          "requirements": 4
+        }
       ]
     },
     "V7": {
-      "name": "Error Handling and Logging",
-      "description": "Error and logging requirements",
-      "key_requirements": [
-        "Generic error messages to users",
-        "Detailed errors in logs only",
-        "Security events logged",
-        "Log injection prevention",
-        "Tamper-evident logging"
+      "name": "Session Management",
+      "requirements": 19,
+      "level_counts": {
+        "L1": 6,
+        "L2": 12,
+        "L3": 1
+      },
+      "sections": [
+        {
+          "id": "V7.1",
+          "name": "Session Management Documentation",
+          "requirements": 3
+        },
+        {
+          "id": "V7.2",
+          "name": "Fundamental Session Management Security",
+          "requirements": 4
+        },
+        {
+          "id": "V7.3",
+          "name": "Session Timeout",
+          "requirements": 2
+        },
+        {
+          "id": "V7.4",
+          "name": "Session Termination",
+          "requirements": 5
+        },
+        {
+          "id": "V7.5",
+          "name": "Defenses Against Session Abuse",
+          "requirements": 3
+        },
+        {
+          "id": "V7.6",
+          "name": "Federated Re-authentication",
+          "requirements": 2
+        }
       ]
     },
     "V8": {
-      "name": "Data Protection",
-      "description": "Data security requirements",
-      "key_requirements": [
-        "Sensitive data classified",
-        "HTTP Strict Transport Security enabled",
-        "Cache-Control headers for sensitive data",
-        "Privacy policy enforcement",
-        "Data minimization implemented"
+      "name": "Authorization",
+      "requirements": 13,
+      "level_counts": {
+        "L1": 4,
+        "L2": 3,
+        "L3": 6
+      },
+      "sections": [
+        {
+          "id": "V8.1",
+          "name": "Authorization Documentation",
+          "requirements": 4
+        },
+        {
+          "id": "V8.2",
+          "name": "General Authorization Design",
+          "requirements": 4
+        },
+        {
+          "id": "V8.3",
+          "name": "Operation Level Authorization",
+          "requirements": 3
+        },
+        {
+          "id": "V8.4",
+          "name": "Other Authorization Considerations",
+          "requirements": 2
+        }
       ]
     },
     "V9": {
-      "name": "Communications",
-      "description": "Transport security requirements",
-      "key_requirements": [
-        "TLS 1.2+ required for all connections",
-        "TLS 1.3 preferred",
-        "Certificate validation enforced",
-        "Certificate pinning for mobile apps",
-        "HSTS preload recommended"
+      "name": "Self-contained Tokens",
+      "requirements": 7,
+      "level_counts": {
+        "L1": 4,
+        "L2": 3,
+        "L3": 0
+      },
+      "sections": [
+        {
+          "id": "V9.1",
+          "name": "Token source and integrity",
+          "requirements": 3
+        },
+        {
+          "id": "V9.2",
+          "name": "Token content",
+          "requirements": 4
+        }
       ]
     },
     "V10": {
-      "name": "Malicious Code",
-      "description": "Code integrity requirements",
-      "key_requirements": [
-        "Integrity verification of dependencies",
-        "SRI for third-party resources",
-        "No untrusted code execution",
-        "Safe deserialization only",
-        "SBOM maintained"
+      "name": "OAuth and OIDC",
+      "requirements": 36,
+      "level_counts": {
+        "L1": 5,
+        "L2": 24,
+        "L3": 7
+      },
+      "sections": [
+        {
+          "id": "V10.1",
+          "name": "Generic OAuth and OIDC Security",
+          "requirements": 2
+        },
+        {
+          "id": "V10.2",
+          "name": "OAuth Client",
+          "requirements": 3
+        },
+        {
+          "id": "V10.3",
+          "name": "OAuth Resource Server",
+          "requirements": 5
+        },
+        {
+          "id": "V10.4",
+          "name": "OAuth Authorization Server",
+          "requirements": 16
+        },
+        {
+          "id": "V10.5",
+          "name": "OIDC Client",
+          "requirements": 5
+        },
+        {
+          "id": "V10.6",
+          "name": "OpenID Provider",
+          "requirements": 2
+        },
+        {
+          "id": "V10.7",
+          "name": "Consent Management",
+          "requirements": 3
+        }
       ]
     },
     "V11": {
-      "name": "Business Logic",
-      "description": "Business logic security requirements",
-      "key_requirements": [
-        "Sensitive workflows protected from automation",
-        "Rate limiting on business operations",
-        "Transaction integrity verified",
-        "Abuse cases considered in design",
-        "State machine validation"
+      "name": "Cryptography",
+      "requirements": 24,
+      "level_counts": {
+        "L1": 3,
+        "L2": 11,
+        "L3": 10
+      },
+      "sections": [
+        {
+          "id": "V11.1",
+          "name": "Cryptographic Inventory and Documentation",
+          "requirements": 4
+        },
+        {
+          "id": "V11.2",
+          "name": "Secure Cryptography Implementation",
+          "requirements": 5
+        },
+        {
+          "id": "V11.3",
+          "name": "Encryption Algorithms",
+          "requirements": 5
+        },
+        {
+          "id": "V11.4",
+          "name": "Hashing and Hash-based Functions",
+          "requirements": 4
+        },
+        {
+          "id": "V11.5",
+          "name": "Random Values",
+          "requirements": 2
+        },
+        {
+          "id": "V11.6",
+          "name": "Public Key Cryptography",
+          "requirements": 2
+        },
+        {
+          "id": "V11.7",
+          "name": "In-Use Data Cryptography",
+          "requirements": 2
+        }
       ]
     },
     "V12": {
-      "name": "Files and Resources",
-      "description": "File handling requirements",
-      "key_requirements": [
-        "User-uploaded files stored outside webroot",
-        "File type validation by content",
-        "File names sanitized",
-        "Antivirus scanning for uploads",
-        "Resource limits enforced"
+      "name": "Secure Communication",
+      "requirements": 12,
+      "level_counts": {
+        "L1": 3,
+        "L2": 6,
+        "L3": 3
+      },
+      "sections": [
+        {
+          "id": "V12.1",
+          "name": "General TLS Security Guidance",
+          "requirements": 5
+        },
+        {
+          "id": "V12.2",
+          "name": "HTTPS Communication with External Facing Services",
+          "requirements": 2
+        },
+        {
+          "id": "V12.3",
+          "name": "General Service to Service Communication Security",
+          "requirements": 5
+        }
       ]
     },
     "V13": {
-      "name": "API and Web Service",
-      "description": "API security requirements",
-      "key_requirements": [
-        "RESTful APIs use proper HTTP methods",
-        "GraphQL depth/complexity limits",
-        "OAuth2/OIDC properly implemented",
-        "API versioning strategy",
-        "OpenAPI spec validation"
+      "name": "Configuration",
+      "requirements": 21,
+      "level_counts": {
+        "L1": 1,
+        "L2": 12,
+        "L3": 8
+      },
+      "sections": [
+        {
+          "id": "V13.1",
+          "name": "Configuration Documentation",
+          "requirements": 4
+        },
+        {
+          "id": "V13.2",
+          "name": "Backend Communication Configuration",
+          "requirements": 6
+        },
+        {
+          "id": "V13.3",
+          "name": "Secret Management",
+          "requirements": 4
+        },
+        {
+          "id": "V13.4",
+          "name": "Unintended Information Leakage",
+          "requirements": 7
+        }
       ]
     },
     "V14": {
-      "name": "Configuration",
-      "description": "Security configuration requirements",
-      "key_requirements": [
-        "Security headers configured",
-        "Default credentials removed",
-        "Components hardened",
-        "Unnecessary features disabled",
-        "Content Security Policy enforced"
+      "name": "Data Protection",
+      "requirements": 13,
+      "level_counts": {
+        "L1": 2,
+        "L2": 7,
+        "L3": 4
+      },
+      "sections": [
+        {
+          "id": "V14.1",
+          "name": "Data Protection Documentation",
+          "requirements": 2
+        },
+        {
+          "id": "V14.2",
+          "name": "General Data Protection",
+          "requirements": 8
+        },
+        {
+          "id": "V14.3",
+          "name": "Client-side Data Protection",
+          "requirements": 3
+        }
+      ]
+    },
+    "V15": {
+      "name": "Secure Coding and Architecture",
+      "requirements": 21,
+      "level_counts": {
+        "L1": 3,
+        "L2": 10,
+        "L3": 8
+      },
+      "sections": [
+        {
+          "id": "V15.1",
+          "name": "Secure Coding and Architecture Documentation",
+          "requirements": 5
+        },
+        {
+          "id": "V15.2",
+          "name": "Security Architecture and Dependencies",
+          "requirements": 5
+        },
+        {
+          "id": "V15.3",
+          "name": "Defensive Coding",
+          "requirements": 7
+        },
+        {
+          "id": "V15.4",
+          "name": "Safe Concurrency",
+          "requirements": 4
+        }
+      ]
+    },
+    "V16": {
+      "name": "Security Logging and Error Handling",
+      "requirements": 17,
+      "level_counts": {
+        "L1": 0,
+        "L2": 16,
+        "L3": 1
+      },
+      "sections": [
+        {
+          "id": "V16.1",
+          "name": "Security Logging Documentation",
+          "requirements": 1
+        },
+        {
+          "id": "V16.2",
+          "name": "General Logging",
+          "requirements": 5
+        },
+        {
+          "id": "V16.3",
+          "name": "Security Events",
+          "requirements": 4
+        },
+        {
+          "id": "V16.4",
+          "name": "Log Protection",
+          "requirements": 3
+        },
+        {
+          "id": "V16.5",
+          "name": "Error Handling",
+          "requirements": 4
+        }
+      ]
+    },
+    "V17": {
+      "name": "WebRTC",
+      "requirements": 12,
+      "level_counts": {
+        "L1": 0,
+        "L2": 7,
+        "L3": 5
+      },
+      "sections": [
+        {
+          "id": "V17.1",
+          "name": "TURN Server",
+          "requirements": 2
+        },
+        {
+          "id": "V17.2",
+          "name": "Media",
+          "requirements": 8
+        },
+        {
+          "id": "V17.3",
+          "name": "Signaling",
+          "requirements": 2
+        }
       ]
     }
   },
@@ -226,7 +670,13 @@
       "notes": "ASVS L2 covers most PCI DSS 6.x requirements"
     },
     "nist_800_53": {
-      "covered_controls": ["SC", "AC", "IA", "AU", "SI"],
+      "covered_controls": [
+        "SC",
+        "AC",
+        "IA",
+        "AU",
+        "SI"
+      ],
       "notes": "ASVS maps to many 800-53 controls"
     },
     "iso_27001": {
@@ -235,13 +685,41 @@
     }
   },
   "quick_reference": {
-    "authentication": "V2",
-    "session": "V3",
-    "access_control": "V4",
-    "injection": "V5",
-    "cryptography": "V6",
-    "api_security": "V13",
-    "configuration": "V14"
+    "encoding_and_sanitization": "V1",
+    "injection": "V1",
+    "input_validation": "V2",
+    "business_logic": "V2",
+    "web_frontend": "V3",
+    "api_security": "V4",
+    "file_handling": "V5",
+    "authentication": "V6",
+    "session": "V7",
+    "authorization": "V8",
+    "tokens": "V9",
+    "oauth_oidc": "V10",
+    "cryptography": "V11",
+    "communications": "V12",
+    "configuration": "V13",
+    "data_protection": "V14",
+    "secure_coding_and_architecture": "V15",
+    "logging_and_error_handling": "V16",
+    "webrtc": "V17"
+  },
+  "chapter_migration_from_4_0": {
+    "note": "Chapter numbers changed between 4.x and 5.0; these are the traps that most often produce a wrong citation",
+    "authentication": "V2 (4.x) -> V6 (5.0)",
+    "session_management": "V3 (4.x) -> V7 (5.0)",
+    "access_control": "V4 (4.x) -> V8 (5.0) Authorization",
+    "validation_and_encoding": "V5 (4.x) -> V1 Encoding and Sanitization plus V2 Validation and Business Logic (5.0)",
+    "stored_cryptography": "V6 (4.x) -> V11 Cryptography (5.0)",
+    "error_handling_and_logging": "V7 (4.x) -> V16 (5.0)",
+    "data_protection": "V8 (4.x) -> V14 (5.0)",
+    "communications": "V9 (4.x) -> V12 Secure Communication (5.0)",
+    "malicious_code": "V10 (4.x) -> V15 Secure Coding and Architecture (5.0)",
+    "business_logic": "V11 (4.x) -> V2 (5.0)",
+    "files_and_resources": "V12 (4.x) -> V5 File Handling (5.0)",
+    "api_and_web_service": "V13 (4.x) -> V4 (5.0)",
+    "configuration": "V14 (4.x) -> V13 (5.0)"
   },
   "cross_references": {
     "owasp_top10": "reference/security/owasp/top10-web-2025.json",
