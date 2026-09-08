@@ -1,0 +1,21 @@
+{
+  "_comment": [
+    "Internal-link policy for the BLOCKING step in .github/workflows/doc-lint.yml.",
+    "Every http(s) URL is ignored here, leaving relative file targets and heading",
+    "anchors — the links Doctrine actually controls. This check needs no network,",
+    "so it is deterministic and safe to gate on.",
+    "External URLs are covered separately and advisorily by",
+    ".markdown-link-check.json; third-party availability is not a property of",
+    "Doctrine, and hosts such as docs.ansible.com answer CI clients with 429 or",
+    "drop the connection outright."
+  ],
+  "ignorePatterns": [
+    { "pattern": "^https?://" },
+    { "pattern": "^mailto:" },
+    { "pattern": "^ftp://" },
+    { "pattern": "^\\{\\{" },
+    { "pattern": "<[A-Za-z_-]+>" }
+  ],
+  "timeout": "5s",
+  "retryOn429": false
+}
