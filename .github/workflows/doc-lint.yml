@@ -198,7 +198,8 @@ jobs:
         run: gitleaks dir . --config .gitleaks.toml --no-banner --redact --verbose
 
       - name: Scan history
-        run: # On pull requests scan only the commits this PR adds; a full fetch also
+        run: |
+          # On pull requests scan only the commits this PR adds; a full fetch also
           # brings in every other branch, whose commits are not under review here.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             gitleaks git . --config .gitleaks.toml --no-banner --redact \
