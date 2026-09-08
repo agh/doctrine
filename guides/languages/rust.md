@@ -63,7 +63,7 @@ panic = "deny"
 Or in `clippy.toml`:
 
 ```toml
-msrv = "1.75"
+msrv = "1.88"
 cognitive-complexity-threshold = 25
 ```
 
@@ -285,6 +285,7 @@ my_project/
 [package]
 name = "my_macro"
 version = "0.1.0"
+edition = "2021"    # REQUIRED: an omitted edition defaults to 2015
 
 [lib]
 proc-macro = true
@@ -294,6 +295,13 @@ syn = { version = "2.0", features = ["full"] }      # syn[^21]
 quote = "1.0"                                        # quote[^22]
 proc-macro2 = "1.0"                                  # proc-macro2[^23]
 ```
+
+Every crate manifest **MUST** declare `package.edition`.
+
+**Why**: Cargo defaults an omitted `edition` to 2015, where `use quote::quote;`
+and `use syn::...;` do not resolve without an `extern crate` declaration. The
+macro crate above fails to compile with "error[E0432]: unresolved import
+quote" until the edition is declared.[^27]
 
 ### Derive Macro Example
 
@@ -553,8 +561,10 @@ integrates seamlessly into CI pipelines and provides actionable remediation
 steps for vulnerable dependencies.
 
 ```bash
-# Install
-cargo install cargo-audit
+# Install, pinned. --features=fix is REQUIRED for the `cargo audit fix`
+# subcommand shown under "Vulnerability Scanning"; it is not in the default
+# build.
+cargo install cargo-audit --version 0.22.2 --locked --features=fix
 
 # Check for vulnerabilities
 cargo audit
@@ -677,31 +687,56 @@ not needed.
 
 ### tokio Configuration
 
-```toml
-# Cargo.toml
-[dependencies]
-# Full features for applications
-tokio = { version = "1.43", features = ["full"] }
+Feature sets **MUST** cover every tokio item the crate uses. tokio ships
+almost everything behind a feature flag, and a missing flag is a compile error,
+not a runtime fallback: a bare `#[tokio::main]` without `rt-multi-thread` fails
+with "The default runtime flavor is `multi_thread`, but the `rt-multi-thread`
+feature is disabled", `#[tokio::test(flavor = "multi_thread")]` fails with "The
+runtime flavor `multi_thread` requires the `rt-multi-thread` feature", and
+`Builder::new_multi_thread` fails with `error[E0599]`.[^14]
 
-# Minimal features for libraries
-tokio = { version = "1.43", features = ["rt", "macros"] }
+```toml
+# Cargo.toml — application. `full` enables every runtime and utility feature,
+# which is the right trade-off for a binary that controls its own dependency
+# tree.
+[dependencies]
+tokio = { version = "1.53.1", features = ["full"] }
+```
+
+```toml
+# Cargo.toml — library. Enable only what the library itself needs, and put
+# test-only runtime features in dev-dependencies so downstream crates do not
+# inherit them. Cargo unions both sets when building tests.
+[dependencies]
+tokio = { version = "1.53.1", default-features = false, features = [
+    "rt",    # tokio::spawn, spawn_blocking, LocalSet
+    "time",  # tokio::time::timeout, tokio::time::sleep
+] }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = [
+    "macros",          # #[tokio::test], tokio::join!
+    "rt-multi-thread", # flavor = "multi_thread", Builder::new_multi_thread
+] }
 ```
 
 ```rust
-// Application entry point
+// Application entry point. Requires the `macros` and `rt-multi-thread`
+// features (both are in `full`).
 #[tokio::main]
 async fn main() {
     let result = fetch_data().await;
-    println!("{:?}", result);
+    println!("{result:?}");
 }
 
-// Configure runtime explicitly
+// Configure runtime explicitly. Requires `rt-multi-thread`.
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
     // Multi-threaded runtime with 4 workers
 }
 
-// Current-thread runtime for simpler apps
+// Current-thread runtime for simpler apps. Requires `rt` and `macros`, but
+// not `rt-multi-thread`.
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     // Single-threaded runtime
@@ -730,12 +765,19 @@ Libraries **SHOULD** be runtime-agnostic when possible:
 ```rust
 // GOOD: Use async traits without runtime coupling
 use std::future::Future;
+use std::time::Duration;
 
 pub trait DataSource {
     fn fetch(&self, id: u64) -> impl Future<Output = Result<Data, Error>> + Send;
 }
 
+// Every cfg configuration MUST produce a return path. Guard the item on the
+// set of backends and fail explicitly when none is selected.
+#[cfg(not(any(feature = "tokio", feature = "async-std")))]
+compile_error!("enable the `tokio` or `async-std` feature to pick a backend");
+
 // GOOD: Accept executor as parameter
+#[cfg(any(feature = "tokio", feature = "async-std"))]
 pub async fn process_with_timeout<F, T>(
     future: F,
     timeout: Duration,
@@ -743,7 +785,32 @@ pub async fn process_with_timeout<F, T>(
 where
     F: Future<Output = T>,
 {
-    // Implementation can use tokio or async-std
+    // Cargo features are additive, so both backends can be enabled at once.
+    // tokio takes precedence; the async-std arm is then compiled out.
+    #[cfg(feature = "tokio")]
+    return tokio::time::timeout(timeout, future)
+        .await
+        .map_err(|_| TimeoutError);
+
+    #[cfg(all(feature = "async-std", not(feature = "tokio")))]
+    return async_std::future::timeout(timeout, future)
+        .await
+        .map_err(|_| TimeoutError);
+}
+```
+
+```rust
+// BAD: no arm matches when neither feature is enabled, so the body evaluates
+// to `()`:
+//   error[E0308]: mismatched types
+//   expected `Result<T, TimeoutError>`, found `()`
+// The two arms are also not mutually exclusive: with both features enabled
+// the first `return` wins silently.
+pub async fn process_with_timeout<F, T>(future: F, timeout: Duration)
+    -> Result<T, TimeoutError>
+where
+    F: Future<Output = T>,
+{
     #[cfg(feature = "tokio")]
     return tokio::time::timeout(timeout, future).await.map_err(|_| TimeoutError);
 
@@ -755,6 +822,7 @@ where
 ### Spawning Tasks
 
 ```rust
+// `tokio::spawn`, `spawn_blocking` and `LocalSet` require the `rt` feature.
 use tokio::task;
 
 // Spawn async task on runtime
@@ -782,13 +850,16 @@ local.run_until(async {
 ### Async Testing
 
 ```rust
+// Requires the `macros` and `rt` features.
 #[tokio::test]
 async fn test_async_operation() {
     let result = fetch_data().await;
     assert!(result.is_ok());
 }
 
-// Multi-threaded test
+// Multi-threaded test. Requires `rt-multi-thread` in addition to `macros`;
+// without it the attribute fails with "The runtime flavor `multi_thread`
+// requires the `rt-multi-thread` feature".
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_concurrent_operations() {
     let (a, b) = tokio::join!(
@@ -799,7 +870,8 @@ async fn test_concurrent_operations() {
     assert!(b.is_ok());
 }
 
-// Test with custom runtime
+// Test with custom runtime. `Builder::new_multi_thread` requires
+// `rt-multi-thread`.
 #[test]
 fn test_with_custom_runtime() {
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -860,10 +932,22 @@ jobs:
 
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write   # the Action reports findings as a check run
+      issues: write   # ...and as an issue on `schedule` events
     steps:
       - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v2
+      - uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+`rustsec/audit-check` declares `token` as a required input with no default, so
+the step **MUST** pass `${{ secrets.GITHUB_TOKEN }}` explicitly. The Action
+parses its inputs before running the audit, so omitting the token fails the job
+outright. It reports via the Checks API for most events and via the Issues API
+for `schedule` events, which is why both write permissions are granted.[^28]
 
 ## Dependencies & Package Management
 
@@ -902,15 +986,23 @@ utils = "1.*"
 ### Vulnerability Scanning
 
 ```bash
-# Install cargo-audit
-cargo install cargo-audit
+# Install cargo-audit with the optional `fix` feature
+cargo install cargo-audit --version 0.22.2 --locked --features=fix
 
 # Run security audit
 cargo audit
 
-# Fix vulnerabilities automatically (when possible)
+# Fix vulnerabilities automatically (experimental; requires --features=fix)
 cargo audit fix
+
+# Preview the changes without writing Cargo.toml
+cargo audit fix --dry-run
 ```
+
+`cargo audit fix` **MUST NOT** be invoked from a default `cargo install
+cargo-audit` build: the subcommand is compiled out unless the `fix` feature is
+enabled, and the documented remediation step then fails with "error:
+unrecognized subcommand 'fix'".[^3]
 
 ### Dependabot Configuration
 
@@ -948,31 +1040,45 @@ fn test_end_to_end_flow() {
 
 ```toml
 [dev-dependencies]
-cucumber = "0.21"  # cucumber-rs[^12]
+cucumber = "0.23.0"  # cucumber-rs[^12]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+
+# REQUIRED: a named test target with the libtest harness disabled, so that
+# the `main` in tests/cucumber.rs is the entry point.
+[[test]]
+name = "cucumber"
+harness = false
 ```
+
+A Cucumber test target **MUST** set `harness = false`.
+
+**Why**: with the default libtest harness, Cargo generates its own `main` and
+the `#[tokio::main] async fn main` below is never called. `cargo test --test
+cucumber` then reports "running 0 tests ... test result: ok" and the build goes
+green having executed no scenarios at all.[^12]
 
 ```rust
 // tests/cucumber.rs
-use cucumber::{given, when, then, World};
+use cucumber::{World as _, given, then, when};
 
-#[derive(Debug, Default, World)]
+#[derive(Debug, Default, cucumber::World)]
 struct MyWorld {
     result: Option<String>,
 }
 
 #[given("a user is logged in")]
-async fn given_logged_in(world: &mut MyWorld) {
+async fn given_logged_in(_world: &mut MyWorld) {
     // Setup
 }
 
-#[when(regex = r"they request (.*)")]
+#[when(regex = r"^they request (.*)$")]
 async fn when_request(world: &mut MyWorld, resource: String) {
     world.result = Some(fetch(&resource).await);
 }
 
-#[then(regex = r"they receive (.*)")]
+#[then(regex = r"^they receive (.*)$")]
 async fn then_receive(world: &mut MyWorld, expected: String) {
-    assert_eq!(world.result.as_ref().unwrap(), &expected);
+    assert_eq!(world.result.as_deref(), Some(expected.as_str()));
 }
 
 #[tokio::main]
@@ -980,6 +1086,9 @@ async fn main() {
     MyWorld::run("tests/features").await;
 }
 ```
+
+cucumber 0.23.0 requires Rust 1.88 or later, which sets the floor for the
+`msrv` and `rust-toolchain.toml` values used elsewhere in this guide.[^12]
 
 ### API Testing Patterns
 
@@ -1182,10 +1291,14 @@ async fn test_circuit_breaker() {
 ```toml
 # rust-toolchain.toml
 [toolchain]
-channel = "1.75.0"
+channel = "1.98.1"
 components = ["rustfmt", "clippy"]
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 ```
+
+The pinned channel **MUST** be at least the highest MSRV of any dependency.
+cucumber 0.23.0 requires Rust 1.88, so a 1.75 pin cannot build this guide's
+own BDD example.[^12]
 
 ### Cross-Compilation Testing
 
@@ -1201,17 +1314,34 @@ cargo check --target aarch64-apple-darwin
 
 ### CI Matrix for Multiple Targets
 
+Matrices **MUST** pair each target with a host that can build and run it. A
+Cartesian product of `os` and `target` produces combinations such as
+`windows-latest` building `x86_64-unknown-linux-gnu`, for which no linker or
+runner is installed. Native test runs **MUST** be expressed as explicit
+`include` tuples; cross-compilation **MUST** use `cargo check`, which does not
+link or execute.[^29]
+
 ```yaml
 jobs:
+  # Native: host and target agree, so binaries link and run.
   test:
+    name: test (${{ matrix.rust }}, ${{ matrix.target }})
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable, beta, nightly]
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
+        include:
+          - os: ubuntu-latest      # x64 Linux
+            target: x86_64-unknown-linux-gnu
+            rust: stable
+          - os: windows-latest     # x64 Windows
+            target: x86_64-pc-windows-msvc
+            rust: stable
+          - os: macos-latest       # arm64 macOS
+            target: aarch64-apple-darwin
+            rust: stable
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            rust: beta
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -1220,7 +1350,30 @@ jobs:
           toolchain: ${{ matrix.rust }}
           targets: ${{ matrix.target }}
       - run: cargo test --target ${{ matrix.target }}
+
+  # Cross: compile only. `cargo check` never links, so no cross linker or
+  # emulator is required.
+  cross-check:
+    name: cross-check (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - wasm32-unknown-unknown
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo check --target ${{ matrix.target }}
 ```
+
+`macos-latest` is an arm64 image, so `aarch64-apple-darwin` is its native
+target; `x86_64-apple-darwin` would need Rosetta to run the resulting test
+binary.[^29]
 
 ## WebAssembly (WASM)
 
@@ -1334,8 +1487,28 @@ wasm-opt -Os -o pkg/optimized.wasm pkg/app_bg.wasm
 
 ### Using in JavaScript
 
+The import shape **MUST** match the `--target` the package was built with.
+`--target bundler` output re-exports named bindings only and starts the module
+itself; it has no default export, so `import init from './pkg/my_crate.js'`
+fails to link with "SyntaxError: The requested module does not provide an
+export named 'default'". Only `--target web` exports the asynchronous
+initialiser as the default.[^20]
+
 ```javascript
-// With bundler (webpack/vite)
+// GOOD: `wasm-pack build --target bundler` — named exports, no init call.
+// The bundler resolves and instantiates the .wasm import for you.
+import { greet, Counter } from './pkg/my_crate.js';
+
+console.log(greet('World'));
+
+const counter = new Counter();
+counter.increment();
+console.log(counter.value()); // 1
+```
+
+```javascript
+// GOOD: `wasm-pack build --target web` — default export is the initialiser
+// and MUST be awaited before any other export is called.
 import init, { greet, Counter } from './pkg/my_crate.js';
 
 async function run() {
@@ -1350,8 +1523,13 @@ async function run() {
 run();
 ```
 
+```javascript
+// BAD: bundler output has no default export; this is a link-time SyntaxError.
+import init, { greet } from './pkg/my_crate.js';  // built with --target bundler
+```
+
 ```html
-<!-- Without bundler -->
+<!-- Without bundler: built with `wasm-pack build --target web` -->
 <script type="module">
   import init, { greet } from './pkg/my_crate.js';
 
@@ -1474,17 +1652,36 @@ fn test_unicode_handling() {
 unic = "0.9"  # unic[^16]
 ```
 
+Normalisation fixtures **MUST** be written with explicit Unicode escapes.
+Editors and clipboards silently normalise pasted text, so two literals that
+look different on screen can hold identical code points, which turns the
+assertion into a no-op or an outright failure.
+
 ```rust
 use unic::normal::StrNormalForm;
 
 #[test]
 fn test_unicode_normalization() {
-    let s1 = "café";  // NFC
-    let s2 = "café";  // NFD
+    // "café" with a precomposed U+00E9, versus "e" + U+0301 combining acute.
+    let precomposed = "caf\u{e9}";  // NFC
+    let decomposed = "cafe\u{301}"; // NFD
 
-    assert_ne!(s1, s2);
-    assert_eq!(s1.nfc().collect::<String>(), s2.nfc().collect::<String>());
+    // Different code points before normalisation.
+    assert_ne!(precomposed, decomposed);
+    assert_eq!(precomposed.chars().count(), 4);
+    assert_eq!(decomposed.chars().count(), 5);
+
+    // Equal after normalisation.
+    let normalised_precomposed: String = precomposed.nfc().collect();
+    let normalised_decomposed: String = decomposed.nfc().collect();
+    assert_eq!(normalised_precomposed, normalised_decomposed);
 }
+```
+
+```rust
+// BAD: both literals are precomposed, so `assert_ne!` fails immediately.
+let s1 = "café";  // claims NFC
+let s2 = "café";  // claims NFD, but holds the same U+00E9
 ```
 
 ### Testing with Non-ASCII Fixtures
@@ -1570,30 +1767,99 @@ feature-b = []
 experimental = ["feature-b"]
 ```
 
+Overlapping features **MUST** have an explicit, documented precedence, and
+every `cfg` arm **MUST** be reachable in exactly one configuration.
+
+**Why**: Cargo features are additive. A dependency, `--all-features`, or
+feature unification across a workspace can enable `feature-a` and `feature-b`
+together. Writing `#[cfg(feature = "feature-a")]` against
+`#[cfg(not(feature = "feature-a"))]` in the implementation while the test
+asserts on `feature-a` and `feature-b` independently makes both assertions
+compile at once, and `cargo test --all-features` fails with
+`left: "Algorithm A", right: "Algorithm B"`.
+
 ```rust
+// GOOD: feature-a takes precedence over feature-b; neither means baseline.
 #[cfg(feature = "feature-a")]
 pub fn new_algorithm() -> String {
     "Algorithm A".into()
 }
 
-#[cfg(not(feature = "feature-a"))]
+#[cfg(all(feature = "feature-b", not(feature = "feature-a")))]
 pub fn new_algorithm() -> String {
     "Algorithm B".into()
+}
+
+#[cfg(not(any(feature = "feature-a", feature = "feature-b")))]
+pub fn new_algorithm() -> String {
+    "Baseline".into()
 }
 
 #[test]
 fn test_feature_behavior() {
     let result = new_algorithm();
 
+    // Exactly one of these assertions is compiled in, mirroring the
+    // precedence above.
+    #[cfg(feature = "feature-a")]
+    assert_eq!(result, "Algorithm A");
+
+    #[cfg(all(feature = "feature-b", not(feature = "feature-a")))]
+    assert_eq!(result, "Algorithm B");
+
+    #[cfg(not(any(feature = "feature-a", feature = "feature-b")))]
+    assert_eq!(result, "Baseline");
+}
+```
+
+```rust
+// BAD: with both features enabled, both assertions compile and contradict.
+#[test]
+fn test_feature_behavior() {
+    let result = new_algorithm();  // "Algorithm A"
+
     #[cfg(feature = "feature-a")]
     assert_eq!(result, "Algorithm A");
 
     #[cfg(feature = "feature-b")]
-    assert_eq!(result, "Algorithm B");
+    assert_eq!(result, "Algorithm B");  // fails under --all-features
 }
 ```
 
+### Feature Matrix in CI
+
+Projects with optional features **MUST** test the combinations they support,
+not only the default set:
+
+```yaml
+jobs:
+  features:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - "--no-default-features"
+          - ""
+          - "--no-default-features --features feature-b"
+          - "--all-features"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test ${{ matrix.features }}
+```
+
 ### Conditional Compilation with cfg Attributes
+
+Every `cfg`-gated item that unconditional code calls **MUST** be defined for
+every target the CI matrix builds, or the build **MUST** fail with an explicit
+message.
+
+**Why**: `target_os` arms for Linux and Windows alone leave the item undefined
+on the `macos-latest` runner, and the unconditional test call fails with
+`error[E0425]: cannot find function 'platform_specific' in this scope`. A
+`compile_error!` in the fallback arm turns a confusing name-resolution error
+into a statement of what is missing.
 
 ```rust
 #[cfg(target_os = "linux")]
@@ -1601,10 +1867,22 @@ fn platform_specific() -> &'static str {
     "Linux"
 }
 
+#[cfg(target_os = "macos")]
+fn platform_specific() -> &'static str {
+    "macOS"
+}
+
 #[cfg(target_os = "windows")]
 fn platform_specific() -> &'static str {
     "Windows"
 }
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows"
+)))]
+compile_error!("platform_specific() has no implementation for this target_os");
 
 #[test]
 fn test_platform_behavior() {
@@ -1617,6 +1895,7 @@ fn test_platform_behavior() {
 #[cfg(all(feature = "feature-a", not(feature = "feature-b")))]
 fn test_feature_combination_a_only() {
     // Only runs when feature-a is enabled but feature-b is not
+    assert_eq!(new_algorithm(), "Algorithm A");
 }
 ```
 
@@ -1644,14 +1923,126 @@ Projects **SHOULD** minimize usage of `unsafe`. When `unsafe` is required, it
 
 ### Unsafe Best Practices
 
+A function that cannot uphold an unsafe operation's preconditions itself
+**MUST** be declared `unsafe fn` with a `# Safety` section. A `// SAFETY:`
+comment **MUST NOT** be used to push an obligation onto callers of a safe
+function.
+
+**Why**: safety is part of the signature, not of a comment. A safe
+`get_unchecked` can be called from entirely safe code with any index; under
+Miri, `get_unchecked(&[], 0)` aborts with "unsafe precondition(s) violated:
+slice::get_unchecked requires that the index is within the slice".[^26]
+
 ```rust
-// GOOD: Isolate unsafe in minimal scope
+// GOOD: bounds-checked, safe to call with any index
+pub fn get(slice: &[u8], index: usize) -> Option<u8> {
+    slice.get(index).copied()
+}
+
+// GOOD: the obligation is in the signature and documented
+/// Reads `slice[index]` without a bounds check.
+///
+/// # Safety
+///
+/// `index` must be strictly less than `slice.len()`. Violating this reads
+/// out of bounds, which is undefined behaviour.
+pub unsafe fn get_unchecked(slice: &[u8], index: usize) -> u8 {
+    debug_assert!(index < slice.len());
+    // SAFETY: the caller guarantees `index < slice.len()`.
+    unsafe { *slice.get_unchecked(index) }
+}
+```
+
+```rust
+// BAD: safe fn, unchecked index. The comment transfers nothing; safe callers
+// can pass any index and cause undefined behaviour.
 pub fn get_unchecked(slice: &[u8], index: usize) -> u8 {
     // SAFETY: Caller must ensure index < slice.len()
     unsafe { *slice.get_unchecked(index) }
 }
+```
 
-// GOOD: Encapsulate unsafe in safe API
+An abstraction over a raw allocation **MUST** handle allocation failure,
+initialise memory before it is read, and free the allocation in `Drop`.
+
+**Why**: `std::alloc::alloc` returns uninitialised memory and a null pointer on
+failure, and it never frees anything. Reading such a byte through a safe method
+is undefined behaviour even when the allocation succeeds: on the `SafeBuffer`
+shown below, Miri reports "Undefined Behavior: reading memory ..., but memory is
+uninitialized ..., and this operation requires initialized memory" for
+`SafeBuffer::new(1).get(0)`.[^26]
+`alloc_zeroed` initialises the whole block, `handle_alloc_error` reports failure
+without producing a dangling `NonNull`, and `Drop` returns the memory.
+
+```rust
+// GOOD: Encapsulate unsafe in a safe API with a complete set of invariants
+use std::alloc::{alloc_zeroed, dealloc, handle_alloc_error, Layout};
+use std::ptr::NonNull;
+
+pub struct ZeroedBuffer {
+    ptr: NonNull<u8>,
+    layout: Layout,
+}
+
+impl ZeroedBuffer {
+    /// Allocates `len` zeroed bytes. Returns `None` for `len == 0`, which is
+    /// not a valid allocation size.
+    pub fn new(len: usize) -> Option<Self> {
+        if len == 0 {
+            return None;
+        }
+        let layout = Layout::array::<u8>(len).ok()?;
+
+        // SAFETY: `layout` has non-zero size because `len > 0`.
+        let ptr = unsafe { alloc_zeroed(layout) };
+
+        // The allocator returns null on failure; it must never be
+        // dereferenced or wrapped in `NonNull`.
+        let Some(ptr) = NonNull::new(ptr) else {
+            handle_alloc_error(layout)
+        };
+        Some(Self { ptr, layout })
+    }
+
+    pub fn len(&self) -> usize {
+        self.layout.size()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
+    pub fn get(&self, index: usize) -> Option<u8> {
+        if index >= self.len() {
+            return None;
+        }
+        // SAFETY: `index < self.len()`, so the offset stays inside the
+        // allocation, and `alloc_zeroed` initialised every byte of it.
+        Some(unsafe { self.ptr.as_ptr().add(index).read() })
+    }
+
+    pub fn set(&mut self, index: usize, value: u8) -> bool {
+        if index >= self.len() {
+            return false;
+        }
+        // SAFETY: `index < self.len()` and `&mut self` rules out aliasing.
+        unsafe { self.ptr.as_ptr().add(index).write(value) };
+        true
+    }
+}
+
+impl Drop for ZeroedBuffer {
+    fn drop(&mut self) {
+        // SAFETY: `ptr` came from `alloc_zeroed` with exactly `self.layout`
+        // and has not been freed; `Drop` runs at most once.
+        unsafe { dealloc(self.ptr.as_ptr(), self.layout) };
+    }
+}
+```
+
+```rust
+// BAD: unwraps the layout, ignores allocation failure, reads uninitialised
+// bytes through a safe method, and leaks the allocation.
 pub struct SafeBuffer {
     ptr: *mut u8,
     len: usize,
@@ -1660,7 +2051,7 @@ pub struct SafeBuffer {
 impl SafeBuffer {
     pub fn new(size: usize) -> Self {
         let ptr = unsafe {
-            // SAFETY: size is non-zero, layout is valid
+            // SAFETY: size is non-zero, layout is valid   <- neither is checked
             std::alloc::alloc(std::alloc::Layout::array::<u8>(size).unwrap())
         };
         Self { ptr, len: size }
@@ -1668,14 +2059,27 @@ impl SafeBuffer {
 
     pub fn get(&self, index: usize) -> Option<u8> {
         if index < self.len {
-            // SAFETY: index is bounds-checked
+            // SAFETY: index is bounds-checked   <- but the byte is uninitialised
             Some(unsafe { *self.ptr.add(index) })
         } else {
             None
         }
     }
 }
+// No `Drop`: every SafeBuffer leaks its allocation.
+```
 
+Prefer a safe owner where one exists. `vec![0u8; len]` gives the same
+guarantees with no `unsafe` at all; reach for raw allocation only when the
+layout or ownership cannot be expressed with `Vec` or `Box`.
+
+```rust
+// GOOD: no unsafe needed for a zeroed byte buffer
+let buffer = vec![0u8; 100];
+assert_eq!(buffer.get(100), None);
+```
+
+```rust
 // GOOD: Document invariants
 /// A non-null pointer to a valid T.
 ///
@@ -1766,25 +2170,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_checked_access() {
+        let data = [1u8, 2, 3];
+        assert_eq!(get(&data, 0), Some(1));
+        assert_eq!(get(&data, 3), None);
+
+        // SAFETY: 2 < data.len().
+        assert_eq!(unsafe { get_unchecked(&data, 2) }, 3);
+    }
+
+    #[test]
     fn test_safe_wrapper() {
-        let buffer = SafeBuffer::new(100);
-        assert!(buffer.get(0).is_some());
-        assert!(buffer.get(99).is_some());
-        assert!(buffer.get(100).is_none());
+        let buffer = ZeroedBuffer::new(100).expect("100 > 0");
+        assert_eq!(buffer.get(0), Some(0));
+        assert_eq!(buffer.get(99), Some(0));
+        assert_eq!(buffer.get(100), None);
     }
 
     #[test]
     fn test_edge_cases() {
-        // Test with minimum size
-        let buffer = SafeBuffer::new(1);
-        assert!(buffer.get(0).is_some());
-        assert!(buffer.get(1).is_none());
+        // Zero-sized allocations are rejected, not silently allowed.
+        assert!(ZeroedBuffer::new(0).is_none());
+
+        let mut buffer = ZeroedBuffer::new(1).expect("1 > 0");
+        assert_eq!(buffer.get(0), Some(0));
+        assert!(buffer.set(0, 42));
+        assert_eq!(buffer.get(0), Some(42));
+        assert_eq!(buffer.get(1), None);
+        assert!(!buffer.set(1, 42));
     }
 }
 
-// Use Miri for detecting undefined behavior
+// Use Miri for detecting undefined behaviour
 // cargo +nightly miri test
 ```
+
+Tests over `unsafe` code **MUST** assert on values, not merely on
+`is_some()`. `assert!(buffer.get(0).is_some())` passes just as happily when the
+byte behind it is uninitialised, so it cannot distinguish a sound
+implementation from an unsound one; only Miri or a value assertion can.
 
 ### Miri for Undefined Behavior Detection
 
@@ -1870,6 +2294,9 @@ unsafe impl<T: Sync> Sync for MyWrapper<T> {}
 [^24]: [trybuild](https://github.com/dtolnay/trybuild) - Test harness for ui tests of compiler diagnostics
 [^25]: [darling](https://github.com/TedDriggs/darling) - Declarative attribute parser for Rust proc macros
 [^26]: [Miri](https://github.com/rust-lang/miri) - Experimental interpreter for Rust's mid-level intermediate representation
+[^27]: [The `edition` field](https://doc.rust-lang.org/cargo/reference/manifest.html#the-edition-field) - Cargo manifest reference
+[^28]: [rustsec/audit-check](https://github.com/rustsec/audit-check) - GitHub Action running cargo-audit
+[^29]: [GitHub Actions runner images](https://github.com/actions/runner-images) - Runner image labels and architectures
 
 ## See Also
 
