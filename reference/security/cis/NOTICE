@@ -1,0 +1,47 @@
+NOTICE — CIS Critical Security Controls material
+
+DO NOT MODIFY THE FILES IN THIS DIRECTORY.
+
+Upstream:      CIS Critical Security Controls v8.1
+Upstream URL:  https://www.cisecurity.org/controls/v8-1
+               https://www.cisecurity.org/controls/
+Copyright:     Copyright (c) Center for Internet Security, Inc. (CIS(R))
+Licence:       Creative Commons Attribution-NonCommercial-NoDerivatives 4.0
+               International Public License (CC BY-NC-ND 4.0)
+Licence URL:   https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
+Licence text:  ../LICENSES/CC-BY-NC-ND-4.0.txt
+
+Upstream licence statement, as published by CIS with the CIS Controls
+--------------------------------------------------------------------
+"This work is licensed under a Creative Commons Attribution-NonCommercial-No
+Derivatives 4.0 International Public License (the link can be found at
+https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode). To further
+clarify the Creative Commons license related to the CIS Controls(R) content,
+you are authorized to copy and redistribute the content as a framework for use
+by you, within your organization and outside of your organization, for
+non-commercial purposes only, provided that (i) appropriate credit is given to
+CIS, and (ii) a link to the license is provided. Additionally, if you remix,
+transform, or build upon the CIS Controls, you may not distribute the modified
+materials. Users of the CIS Controls framework are also required to refer to
+(http://www.cisecurity.org/controls/) when referring to the CIS Controls in
+order to ensure that users are employing the most up-to-date guidance.
+Commercial use of the CIS Controls is subject to the prior approval of the
+Center for Internet Security, Inc. (CIS(R))"
+
+What this means for this directory
+----------------------------------
+controls-v8.json is reproduced here under the upstream terms above. The
+NoDerivatives condition means it MUST NOT be modified, remixed, transformed or
+built upon and then redistributed. Contributors and automated agents MUST NOT
+edit, reformat, summarise further, translate or extend this file. If it needs
+to change, the correct action is to re-derive it from the current upstream
+publication or to remove it, not to edit it in place.
+
+Doctrine's own MIT licence does NOT apply to this material.
+
+Required attribution
+--------------------
+"CIS Critical Security Controls v8.1, Copyright (c) Center for Internet
+Security, Inc., licensed under CC BY-NC-ND 4.0
+(https://creativecommons.org/licenses/by-nc-nd/4.0/). See
+http://www.cisecurity.org/controls/ for the current guidance."

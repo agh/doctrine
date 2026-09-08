@@ -2,7 +2,7 @@
 
 # Go Style Best Practices
 
-<https://google.github.io/styleguide/go/best-practices>
+https://google.github.io/styleguide/go/best-practices
 
 [Overview](index) | [Guide](guide) | [Decisions](decisions) |
 [Best practices](best-practices)
@@ -46,13 +46,13 @@ When choosing the name for a function or method, consider the context in which
 the name will be read. Consider the following recommendations to avoid excess
 [repetition](decisions#repetition) at the call site:
 
-*The following can generally be omitted from function and method names:
+*   The following can generally be omitted from function and method names:
 
-  *The types of the inputs and outputs (when there is no collision)
-  *The type of a method's receiver
-  *Whether an input or output is a pointer
+    *   The types of the inputs and outputs (when there is no collision)
+    *   The type of a method's receiver
+    *   Whether an input or output is a pointer
 
-*For functions, do not
+*   For functions, do not
     [repeat the name of the package](decisions#repetitive-with-package).
 
     ```go
@@ -69,7 +69,7 @@ the name will be read. Consider the following recommendations to avoid excess
     func Parse(input string) (*Config, error)
     ```
 
-*For methods, do not repeat the name of the method receiver.
+*   For methods, do not repeat the name of the method receiver.
 
     ```go
     // Bad:
@@ -81,7 +81,7 @@ the name will be read. Consider the following recommendations to avoid excess
     func (c *Config) WriteTo(w io.Writer) (int64, error)
     ```
 
-*Do not repeat the names of variables passed as parameters.
+*   Do not repeat the names of variables passed as parameters.
 
     ```go
     // Bad:
@@ -93,7 +93,7 @@ the name will be read. Consider the following recommendations to avoid excess
     func Override(dest, source *Config) error
     ```
 
-*Do not repeat the names and types of the return values.
+*   Do not repeat the names and types of the return values.
 
     ```go
     // Bad:
@@ -121,7 +121,7 @@ func (c *Config) WriteBinaryTo(w io.Writer) (int64, error)
 There are some other common conventions when choosing names for functions and
 methods:
 
-*Functions that return something are given noun-like names.
+*   Functions that return something are given noun-like names.
 
     ```go
     // Good:
@@ -136,14 +136,14 @@ methods:
     func (c *Config) GetJobName(key string) (value string, ok bool)
     ```
 
-*Functions that do something are given verb-like names.
+*   Functions that do something are given verb-like names.
 
     ```go
     // Good:
     func (c *Config) WriteDetail(w io.Writer) (int64, error)
     ```
 
-*Identical functions that differ only by the types involved include the name
+*   Identical functions that differ only by the types involved include the name
     of the type at the end of the name.
 
     ```go
@@ -274,7 +274,7 @@ other engineers.
 
 See also:
 
-*[Go Tip #42: Authoring a Stub for Testing](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #42: Authoring a Stub for Testing](https://google.github.io/styleguide/go/index.html#gotip)
 
 <a id="naming-doubles-multiple-behaviors"></a>
 
@@ -630,36 +630,36 @@ its own directory is if you expect to open source your project in the future.
 A few non-canonical reference examples to help demonstrate these ideas in
 action:
 
-*small packages that contain one cohesive idea that warrant nothing more
+*   small packages that contain one cohesive idea that warrant nothing more
     being added nor nothing being removed:
 
-  *[package `csv`][package `csv`]: CSV data encoding and decoding with
+    *   [package `csv`][package `csv`]: CSV data encoding and decoding with
         responsibility split respectively between [reader.go] and [writer.go].
-  *[package `expvar`][package `expvar`]: whitebox program telemetry all
+    *   [package `expvar`][package `expvar`]: whitebox program telemetry all
         contained in [expvar.go].
 
-*moderately sized packages that contain one large domain and its multiple
+*   moderately sized packages that contain one large domain and its multiple
     responsibilities together:
 
-  *[package `flag`][package `flag`]: command line flag management all
+    *   [package `flag`][package `flag`]: command line flag management all
         contained in [flag.go].
 
-*large packages that divide several closely related domains across several
+*   large packages that divide several closely related domains across several
     files:
 
-  *[package `http`][package `http`]: the core of HTTP:
+    *   [package `http`][package `http`]: the core of HTTP:
         [client.go][http-client], support for HTTP clients;
         [server.go][http-client], support for HTTP servers; [cookie.go], cookie
         management.
-  *[package `os`][package `os`]: cross-platform operating system
+    *   [package `os`][package `os`]: cross-platform operating system
         abstractions: [exec.go], subprocess management; [file.go], file
         management; [tempfile.go], temporary files.
 
 See also:
 
-*[Test double packages](#naming-doubles)
-*[Organizing Go Code (Blog Post)]
-*[Organizing Go Code (Presentation)]
+*   [Test double packages](#naming-doubles)
+*   [Organizing Go Code (Blog Post)]
+*   [Organizing Go Code (Presentation)]
 
 [blog-pkg-names]: https://go.dev/blog/package-names
 [package `bytes`]: https://go.dev/src/bytes/
@@ -694,8 +694,8 @@ Proto library imports are treated differently than standard Go imports due to
 their cross-language nature. The convention for renamed proto imports are based
 on the rule that generated the package:
 
-*The `pb` suffix is generally used for `go_proto_library` rules.
-*The `grpc` suffix is generally used for `go_grpc_library` rules.
+*   The `pb` suffix is generally used for `go_proto_library` rules.
+*   The `grpc` suffix is generally used for `go_grpc_library` rules.
 
 Often a single word describing the package is used:
 
@@ -737,9 +737,9 @@ See the [Go Style Decisions: Import grouping](decisions.md#import-grouping).
 In Go, [errors are values]; they are created by code and consumed by code.
 Errors can be:
 
-*Converted into diagnostic information for display to humans
-*Used by the maintainer
-*Interpreted by an end user
+*   Converted into diagnostic information for display to humans
+*   Used by the maintainer
+*   Interpreted by an end user
 
 Error messages also show up across a variety of different surfaces including log
 messages, error dumps, and rendered UIs.
@@ -751,11 +751,11 @@ positioned to handle the error most effectively. This is a large topic and it is
 hard to give categorical advice. Use your judgment, but keep the following
 considerations in mind:
 
-*When creating an error value, decide whether to give it any
+*   When creating an error value, decide whether to give it any
     [structure](#error-structure).
-*When handling an error, consider [adding information](#error-extra-info)
+*   When handling an error, consider [adding information](#error-extra-info)
     that you have but that the caller and/or callee might not.
-*See also guidance on [error logging](#error-logging).
+*   See also guidance on [error logging](#error-logging).
 
 While it is usually not appropriate to ignore an error, a reasonable exception
 to this is when orchestrating related operations, where often only the first
@@ -767,13 +767,13 @@ group of operations that can all fail or be canceled as a group.
 
 See also:
 
-*[Effective Go on errors](https://go.dev/doc/effective_go#errors)
-*[A post by the Go Blog on errors](https://go.dev/blog/go1.13-errors)
-*[Package `errors`](https://pkg.go.dev/errors)
-*[Package `upspin.io/errors`](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html)
-*[GoTip #89: When to Use Canonical Status Codes as Errors](https://google.github.io/styleguide/go/index.html#gotip)
-*[GoTip #48: Error Sentinel Values](https://google.github.io/styleguide/go/index.html#gotip)
-*[GoTip #13: Designing Errors for Checking](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Effective Go on errors](https://go.dev/doc/effective_go#errors)
+*   [A post by the Go Blog on errors](https://go.dev/blog/go1.13-errors)
+*   [Package `errors`](https://pkg.go.dev/errors)
+*   [Package `upspin.io/errors`](https://commandcenter.blogspot.com/2017/12/error-handling-in-upspin.html)
+*   [GoTip #89: When to Use Canonical Status Codes as Errors](https://google.github.io/styleguide/go/index.html#gotip)
+*   [GoTip #48: Error Sentinel Values](https://google.github.io/styleguide/go/index.html#gotip)
+*   [GoTip #13: Designing Errors for Checking](https://google.github.io/styleguide/go/index.html#gotip)
 
 <a id="error-structure"></a>
 
@@ -927,7 +927,7 @@ are propagated handled, inspected, and documented within your application. The
 core principle is to make error values useful to their observers, whether those
 observers are humans or code.
 
-1.**`%v` for simple annotation or new error**
+1.  **`%v` for simple annotation or new error**
 
     The `%v` verb is your general-purpose tool for string formatting of any Go
     value, including errors. When used with `fmt.Errorf`, it embeds the string
@@ -935,15 +935,15 @@ observers are humans or code.
     error value, dropping any structured information from the original error.
     Examples to use `%v`:
 
-  *Adding interesting, non-redundant context: as in the example above.
+    *   Adding interesting, non-redundant context: as in the example above.
 
-  *Logging or displaying errors: When the primary goal is to present a
+    *   Logging or displaying errors: When the primary goal is to present a
         human-readable error message in logs or to a user, and you don't intend
         for the caller to programmatically `errors.Is` or `errors.As` the error
         (Note: `errors.Unwrap` is generally not recommended here as it doesn't
         handle multi-errors).
 
-  *Creating fresh, independent errors: Sometimes it is necessary to
+    *   Creating fresh, independent errors: Sometimes it is necessary to
         transform an error into a new error message, thereby hiding the
         specifics of the original error. This practice is particularly
         beneficial at system boundaries, including but not limited to RPC, IPC,
@@ -980,14 +980,14 @@ observers are humans or code.
         }
         ```
 
-1.**`%w` (wrap) for programmatic inspection and error chaining**
+1.  **`%w` (wrap) for programmatic inspection and error chaining**
 
     The `%w` verb is specifically designed for error wrapping. It creates a new
     error that provides an `Unwrap()` method, allowing callers to
     programmatically inspect the error chain using `errors.Is` and `errors.As`.
     Examples to use `%w`:
 
-  *Adding context while preserving the original error for programmatic
+    *   Adding context while preserving the original error for programmatic
         inspection: This is the primary use case within helpers of your
         application. You want to enrich an error with additional context (e.g.,
         what operation was being performed when it failed) but still allow the
@@ -1015,7 +1015,7 @@ observers are humans or code.
         doesn't care about the exact internal file system error; they care about
         the canonical result (e.g., `Internal`, `NotFound`, `PermissionDenied`).
 
-  *When you explicitly document and test the underlying errors you expose:
+    *   When you explicitly document and test the underlying errors you expose:
         If your package's API guarantees that certain underlying errors can be
         unwrapped and checked by callers (e.g., "this function might return
         `ErrInvalidConfig` wrapped within a more general error"), then `%w` is
@@ -1023,8 +1023,8 @@ observers are humans or code.
 
 See also:
 
-*[Error Documentation Conventions](#documentation-conventions-errors)
-*[Blog post on error wrapping](https://blog.golang.org/go1.13-errors)
+*   [Error Documentation Conventions](#documentation-conventions-errors)
+*   [Blog post on error wrapping](https://blog.golang.org/go1.13-errors)
 
 <a id="error-percent-w"></a>
 
@@ -1096,6 +1096,75 @@ fmt.Println(err3) // err3-1 err2-1 err1 err2-2 err3-2
 Therefore, in order for error text to mirror error chain structure, prefer
 placing the `%w` verb at the end with the form `[...]: %w`.
 
+<a id="error-percent-w-sentinel-placement"></a>
+
+#### Sentinel error placement
+
+An exception to this rule is when wrapping sentinel errors. A sentinel error is
+an error that serves as a primary categorization of a failure. This helps
+observers quickly understand the nature of a failure (such as "not found" or
+"invalid argument") without having to parse the entire error message.
+Identifying that error type as early as possible in the error string is
+beneficial.
+
+Examples of sentinel errors include os errors (e.g., [`os.ErrInvalid`]) and
+package-level errors.
+
+In these cases, placing the `%w` verb at the beginning of the error string can
+improve readability by immediately identifying the category of the error.
+
+```go
+// Good:
+package parser
+
+var ErrParse = fmt.Errorf("parse error")
+
+// This is another package error that could be returned.
+var ErrParseInvalidHeader = fmt.Errorf("%w: invalid header", ErrParse)
+
+func parseHeader() error {
+  err := checkHeader()
+  return fmt.Errorf("%w: invalid character in header: %v", ErrParseInvalidHeader, err)
+}
+
+err := fmt.Errorf("%w: couldn't find fortune database: %v", ErrInternal, err)
+```
+
+Placing the status at the beginning ensures that the most relevant categorical
+information is most prominent.
+
+```go
+// Bad:
+package parser
+
+var ErrParse = fmt.Errorf("parse error")
+
+// This is another package error that could be returned.
+var ErrParseInvalidHeader = fmt.Errorf("%w: invalid header", ErrParse)
+
+func parseHeader() error {
+  err := checkHeader()
+  return fmt.Errorf("invalid character in header: %v: %w", err, ErrParseInvalidHeader)
+}
+
+var ErrInternal = status.Error(codes.Internal, "internal")
+err2 := fmt.Errorf("couldn't find fortune database: %v: %w", err, ErrInternal)
+```
+
+When you place it at the end, it makes it harder to identify the error category
+when reading the error text, as it's buried in the specific error details.
+
+[`os.ErrInvalid`]: https://pkg.go.dev/os#ErrInvalid
+
+See also:
+
+*   [Go Tip #48: Error Sentinel Values]
+*   [Go Tip #106: Error Naming Conventions]
+
+[commentary]: decisions#commentary
+[Go Tip #48: Error Sentinel Values]: https://google.github.io/styleguide/go/index.html#gotip
+[Go Tip #106: Error Naming Conventions]: https://google.github.io/styleguide/go/index.html#gotip
+
 <a id="error-logging"></a>
 
 ### Logging errors
@@ -1104,11 +1173,11 @@ Functions sometimes need to tell an external system about an error without
 propagating it to their callers. Logging is an obvious choice here; but be
 conscious of what and how you log errors.
 
-*Like [good test failure messages], log messages should clearly express what
+*   Like [good test failure messages], log messages should clearly express what
     went wrong and help the maintainer by including relevant information to
     diagnose the problem.
 
-*Avoid duplication. If you return an error, it's usually better not to log it
+*   Avoid duplication. If you return an error, it's usually better not to log it
     yourself but rather let the caller handle it. The caller can choose to log
     the error, or perhaps rate-limit logging using [`rate.Sometimes`]. Other
     options include attempting recovery or even [stopping the program]. In any
@@ -1117,16 +1186,16 @@ conscious of what and how you log errors.
     The downside to this approach, however, is that any logging is written using
     the caller's line coordinates.
 
-*Be careful with [PII]. Many log sinks are not appropriate destinations for
+*   Be careful with [PII]. Many log sinks are not appropriate destinations for
     sensitive end-user information.
 
-*Use `log.Error` sparingly. ERROR level logging causes a flush and is more
+*   Use `log.Error` sparingly. ERROR level logging causes a flush and is more
     expensive than lower logging levels. This can have serious performance
     impact on your code. When deciding between error and warning levels,
     consider the best practice that messages at the error level should be
     actionable rather than "more serious" than a warning.
 
-*Inside Google, we have monitoring systems that can be set up for more
+*   Inside Google, we have monitoring systems that can be set up for more
     effective alerting than writing to a log file and hoping someone notices it.
     This is similar but not identical to the standard library
     [package `expvar`].
@@ -1145,9 +1214,9 @@ Use verbose logging ([`log.V`]) to your advantage. Verbose logging can be useful
 for development and tracing. Establishing a convention around verbosity levels
 can be helpful. For example:
 
-*Write a small amount of extra information at `V(1)`
-*Trace more information in `V(2)`
-*Dump large internal states in `V(3)`
+*   Write a small amount of extra information at `V(1)`
+*   Trace more information in `V(2)`
+*   Dump large internal states in `V(3)`
 
 To minimize the cost of verbose logging, you should ensure not to accidentally
 call expensive functions even when `log.V` is turned off. `log.V` offers two
@@ -1304,11 +1373,11 @@ the fatal logging call.
 
 See also:
 
-*[Handling panics](https://go.dev/ref/spec#Handling_panics) and
+*   [Handling panics](https://go.dev/ref/spec#Handling_panics) and
     [Run-time Panics](https://go.dev/ref/spec#Run_time_panics) in the language
     specification
-*[Defer, Panic, and Recover](https://go.dev/blog/defer-panic-and-recover)
-*[On the uses and misuses of panics in Go](https://eli.thegreenplace.net/2018/on-the-uses-and-misuses-of-panics-in-go/)
+*   [Defer, Panic, and Recover](https://go.dev/blog/defer-panic-and-recover)
+*   [On the uses and misuses of panics in Go](https://eli.thegreenplace.net/2018/on-the-uses-and-misuses-of-panics-in-go/)
 
 [Go Tip #81: Avoiding Resource Leaks in API Design]: https://google.github.io/styleguide/go/index.html#gotip
 
@@ -1335,9 +1404,9 @@ explaining how to use your code.
 
 Not every parameter must be enumerated in the documentation. This applies to:
 
-*function and method parameters
-*struct fields
-*APIs for options
+*   function and method parameters
+*   struct fields
+*   APIs for options
 
 Document the error-prone or non-obvious fields and parameters by saying why they
 are interesting.
@@ -1378,8 +1447,8 @@ mind when you first come to write your docs.
 
 See also:
 
-*[GoTip #41: Identify Function Call Parameters]
-*[GoTip #51: Patterns for Configuration]
+*   [GoTip #41: Identify Function Call Parameters]
+*   [GoTip #51: Patterns for Configuration]
 
 [commentary]: decisions#commentary
 [GoTip #41: Identify Function Call Parameters]: https://google.github.io/styleguide/go/index.html#gotip
@@ -1415,7 +1484,7 @@ func (Worker) Run(ctx context.Context) error
 Where context behavior is different or non-obvious, it should be expressly
 documented if any of the following are true.
 
-*The function returns an error other than `ctx.Err()` when the context is
+*   The function returns an error other than `ctx.Err()` when the context is
     cancelled:
 
     ```go
@@ -1426,7 +1495,7 @@ documented if any of the following are true.
     func (Worker) Run(ctx context.Context) error
     ```
 
-*The function has other mechanisms that may interrupt it or affect lifetime:
+*   The function has other mechanisms that may interrupt it or affect lifetime:
 
     ```go
     // Good:
@@ -1442,7 +1511,7 @@ documented if any of the following are true.
     func (Worker) Stop()
     ```
 
-*The function has special expectations about context lifetime, lineage, or
+*   The function has special expectations about context lifetime, lineage, or
     attached values:
 
     ```go
@@ -1491,7 +1560,7 @@ func (*Buffer) Grow(n int)
 
 Documentation is strongly encouraged if any of the following are true.
 
-*It is unclear whether the operation is read-only or mutating:
+*   It is unclear whether the operation is read-only or mutating:
 
     ```go
     // Good:
@@ -1506,7 +1575,7 @@ Documentation is strongly encouraged if any of the following are true.
     Why? A cache hit when looking up the key mutate a LRU cache internally. How
     this is implemented may not be obvious to all readers.
 
-*Synchronization is provided by the API:
+*   Synchronization is provided by the API:
 
     ```go
     // Good:
@@ -1522,7 +1591,7 @@ Documentation is strongly encouraged if any of the following are true.
     **Note:** If the API is a type and the API provides synchronization in
     entirety, conventionally only the type definition documents the semantics.
 
-*The API consumes user-implemented types of interfaces, and the interface's
+*   The API consumes user-implemented types of interfaces, and the interface's
     consumer has particular concurrency requirements:
 
     ```go
@@ -1586,7 +1655,7 @@ func (c *Client) Get(url string) (resp *Response, err error)
 
 See also:
 
-*[GoTip #110: Don’t Mix Exit With Defer]
+*   [GoTip #110: Don’t Mix Exit With Defer]
 
 [GoTip #110: Don’t Mix Exit With Defer]: https://google.github.io/styleguide/go/index.html#gotip
 
@@ -1659,8 +1728,8 @@ callers avoid adding redundant annotations.
 
 See also:
 
-*[Go Tip #106: Error Naming Conventions](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #89: When to Use Canonical Status Codes as Errors](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #106: Error Naming Conventions](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #89: When to Use Canonical Status Codes as Errors](https://google.github.io/styleguide/go/index.html#gotip)
 
 <a id="documentation-preview"></a>
 
@@ -1680,7 +1749,7 @@ during the code review process. This helps to validate that the
 
 [Godoc] provides some specific syntax to [format documentation].
 
-*A blank line is required to separate paragraphs:
+*   A blank line is required to separate paragraphs:
 
     ```go
     // Good:
@@ -1689,7 +1758,7 @@ during the code review process. This helps to validate that the
     // See some/shortlink for config file format details.
     ```
 
-*Test files can contain [runnable examples] that appear attached to the
+*   Test files can contain [runnable examples] that appear attached to the
     corresponding documentation in godoc:
 
     ```go
@@ -1708,7 +1777,7 @@ during the code review process. This helps to validate that the
     }
     ```
 
-*Indenting lines by an additional two spaces formats them verbatim:
+*   Indenting lines by an additional two spaces formats them verbatim:
 
     ```go
     // Good:
@@ -1736,7 +1805,7 @@ during the code review process. This helps to validate that the
     //   "env" if present will be populated with the system environment.
     ```
 
-*A single line that begins with a capital letter, contains no punctuation
+*   A single line that begins with a capital letter, contains no punctuation
     except parentheses and commas, and is followed by another paragraph, is
     formatted as a header:
 
@@ -2066,12 +2135,12 @@ exported function.)
 
 Using an option structure has a number of benefits:
 
-*The struct literal includes both fields and values for each argument, which
+*   The struct literal includes both fields and values for each argument, which
     makes them self-documenting and harder to swap.
-*Irrelevant or "default" fields can be omitted.
-*Callers can share the option struct and write helpers to operate on it.
-*Structs provide cleaner per-field documentation than function arguments.
-*Option structs can grow over time without impacting call-sites.
+*   Irrelevant or "default" fields can be omitted.
+*   Callers can share the option struct and write helpers to operate on it.
+*   Structs provide cleaner per-field documentation than function arguments.
+*   Option structs can grow over time without impacting call-sites.
 
 Here is an example of a function that could be improved:
 
@@ -2130,9 +2199,9 @@ func foo(ctx context.Context) {
 
 This option is often preferred when some of the following apply:
 
-*All callers need to specify one or more of the options.
-*A large number of callers need to provide many options.
-*The options are shared between multiple functions that the user will call.
+*   All callers need to specify one or more of the options.
+*   A large number of callers need to provide many options.
+*   The options are shared between multiple functions that the user will call.
 
 <a id="variadic-options"></a>
 
@@ -2148,14 +2217,14 @@ type) that will be updated based on the inputs.
 
 Using variadic options can provide a number of benefits:
 
-*Options take no space at a call-site when no configuration is needed.
-*Options are still values, so callers can share them, write helpers, and
+*   Options take no space at a call-site when no configuration is needed.
+*   Options are still values, so callers can share them, write helpers, and
     accumulate them.
-*Options can accept multiple parameters (e.g. `cartesian.Translate(dx, dy
+*   Options can accept multiple parameters (e.g. `cartesian.Translate(dx, dy
     int) TransformOption`).
-*The option functions can return a named type to group options together in
+*   The option functions can return a named type to group options together in
     godoc.
-*Packages can allow (or prevent) third-party packages to define (or from
+*   Packages can allow (or prevent) third-party packages to define (or from
     defining) their own options.
 
 **Note:** Using variadic options requires a substantial amount of additional
@@ -2255,14 +2324,14 @@ func foo(ctx context.Context) {
 
 Prefer this option when many of the following apply:
 
-*Most callers will not need to specify any options.
-*Most options are used infrequently.
-*There are a large number of options.
-*Options require arguments.
-*Options could fail or be set incorrectly (in which case the option function
+*   Most callers will not need to specify any options.
+*   Most options are used infrequently.
+*   There are a large number of options.
+*   Options require arguments.
+*   Options could fail or be set incorrectly (in which case the option function
     returns an `error`).
-*Options require a lot of documentation that can be hard to fit in a struct.
-*Users or other packages can provide custom options.
+*   Options require a lot of documentation that can be hard to fit in a struct.
+*   Users or other packages can provide custom options.
 
 Options in this style should accept parameters rather than using presence to
 signal their value; the latter can make dynamic composition of arguments much
@@ -2304,18 +2373,18 @@ is recommended, since it is the simplest and is easy to use correctly. However,
 if you need different features that it doesn't provide, pick one of the other
 options.
 
-***[cobra]**
+*   **[cobra]**
 
-  *Flag convention: getopt
-  *Common outside the Google codebase.
-  *Many extra features.
-  *Pitfalls in usage (see below).
+    *   Flag convention: getopt
+    *   Common outside the Google codebase.
+    *   Many extra features.
+    *   Pitfalls in usage (see below).
 
-***[subcommands]**
+*   **[subcommands]**
 
-  *Flag convention: Go
-  *Simple and easy to use correctly.
-  *Recommended if you don't need extra features.
+    *   Flag convention: Go
+    *   Simple and easy to use correctly.
+    *   Recommended if you don't need extra features.
 
 **Warning**: cobra command functions should use `cmd.Context()` to obtain a
 context rather than creating their own root context with `context.Background`.
@@ -2348,7 +2417,7 @@ language often wonder about. -->
 
 Go distinguishes between "test helpers" and "assertion helpers":
 
-***Test helpers** are functions that do setup or cleanup tasks. All failures
+*   **Test helpers** are functions that do setup or cleanup tasks. All failures
     that occur in test helpers are expected to be failures of the environment
     (not from the code under test) — for example when a test database cannot be
     started because there are no more free ports on this machine. For functions
@@ -2356,7 +2425,7 @@ Go distinguishes between "test helpers" and "assertion helpers":
     [mark them as a test helper]. See [error handling in test helpers] for more
     details.
 
-***Assertion helpers** are functions that check the correctness of a system
+*   **Assertion helpers** are functions that check the correctness of a system
     and fail the test if an expectation is not met. Assertion helpers are
     [not considered idiomatic] in Go.
 
@@ -2381,12 +2450,12 @@ If many separate test cases require the same validation logic, arrange the test
 in one of the following ways instead of using assertion helpers or complex
 validation functions:
 
-*Inline the logic (both the validation and the failure) in the `Test`
+*   Inline the logic (both the validation and the failure) in the `Test`
     function, even if it is repetitive. This works best in simple cases.
-*If inputs are similar, consider unifying them into a [table-driven test]
+*   If inputs are similar, consider unifying them into a [table-driven test]
     while keeping the logic inlined in the loop. This helps to avoid repetition
     while keeping the validation and failure in the `Test`.
-*If there are multiple callers who need the same validation function but
+*   If there are multiple callers who need the same validation function but
     table tests are not suitable (typically because the inputs are not simple
     enough or the validation is required as part of a sequence of operations),
     arrange the validation function so that it returns a value (typically an
@@ -2514,11 +2583,11 @@ simulate chess games. Users of `chess` are expected to implement the
 validate. Our acceptance test concerns itself with whether the player
 implementation makes legal moves, not whether the moves are smart.
 
-1.Create a new package for the validation behavior,
+1.  Create a new package for the validation behavior,
     [customarily named](#naming-doubles-helper-package) by appending the word
     `test` to the package name (for example, `chesstest`).
 
-1.Create the function that performs the validation by accepting the
+1.  Create the function that performs the validation by accepting the
     implementation under test as an argument and exercises it:
 
     ```go
@@ -2535,7 +2604,7 @@ implementation makes legal moves, not whether the moves are smart.
     The test should note which invariants are broken and how. Your design can
     choose between two disciplines for failure reporting:
 
-  ***Fail fast**: return an error as soon as the implementation violates an
+    *   **Fail fast**: return an error as soon as the implementation violates an
         invariant.
 
         This is the simplest approach, and it works well if the acceptance test
@@ -2553,7 +2622,7 @@ implementation makes legal moves, not whether the moves are smart.
         }
         ```
 
-  ***Aggregate all failures**: collect all failures, and report them all.
+    *   **Aggregate all failures**: collect all failures, and report them all.
 
         This approach resembles the [keep going](decisions#keep-going) guidance
         in feel and may be preferable if the acceptance test is expected to
@@ -2671,9 +2740,9 @@ test function before the test loop. Failures that affect a single entry in the
 test table, which make it impossible to continue with that entry, should be
 reported as follows:
 
-*If you're not using `t.Run` subtests, use `t.Error` followed by a `continue`
+*   If you're not using `t.Run` subtests, use `t.Error` followed by a `continue`
     statement to move on to the next table entry.
-*If you're using subtests (and you're inside a call to `t.Run`), use
+*   If you're using subtests (and you're inside a call to `t.Run`), use
     `t.Fatal`, which ends the current subtest and allows your test case to
     progress to the next subtest.
 
@@ -2808,9 +2877,9 @@ Whereas `paint_test.go:32` refers to the line of the test that failed in
 Correctly using `(*testing.T).Helper` attributes the location of the failure
 much better when:
 
-*the helper functions grow
-*the helper functions call other helpers
-*the amount of helper usage in the test functions grow
+*   the helper functions grow
+*   the helper functions call other helpers
+*   the amount of helper usage in the test functions grow
 
 **Tip:** If a helper calls `(*testing.T).Error` or `(*testing.T).Fatal`, provide
 some context in the format string to help determine what went wrong and why.
@@ -3085,9 +3154,9 @@ an external database).
 Using a `sync.Once` may be appropriate, though not required, if all of the
 following are true about the common setup:
 
-*It is expensive.
-*It only applies to some tests.
-*It does not require teardown.
+*   It is expensive.
+*   It only applies to some tests.
+*   It does not require teardown.
 
 ```go
 // Good:
@@ -3149,11 +3218,11 @@ easily made to respect the context's cancellation.
 
 There are several ways to concatenate strings in Go. Some examples include:
 
-*The "+" operator
-*`fmt.Sprintf`
-*`strings.Builder`
-*`text/template`
-*`safehtml/template`
+*   The "+" operator
+*   `fmt.Sprintf`
+*   `strings.Builder`
+*   `text/template`
+*   `safehtml/template`
 
 Though there is no one-size-fits-all rule for which to choose, the following
 guidance outlines when each method is preferred.
@@ -3298,12 +3367,12 @@ constructors, functions, methods, or struct fields on the call chain.
 
 See also:
 
-*[Go Tip #5: Slimming Your Client Libraries](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #24: Use Case-Specific Constructions](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #40: Improving Time Testability with Function Parameters](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #41: Identify Function Call Parameters](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #44: Improving Time Testability with Struct Fields](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #80: Dependency Injection Principles](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #5: Slimming Your Client Libraries](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #24: Use Case-Specific Constructions](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #40: Improving Time Testability with Function Parameters](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #41: Identify Function Call Parameters](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #44: Improving Time Testability with Struct Fields](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #80: Dependency Injection Principles](https://google.github.io/styleguide/go/index.html#gotip)
 
 APIs that do not support explicit dependency passing become fragile as the
 number of clients increases:
@@ -3356,7 +3425,7 @@ func TestRegression_InvalidUser(t *testing.T) {
 
 Go tests are executed sequentially by default, so the tests above run as:
 
-1.`TestEndToEnd`
+1.  `TestEndToEnd`
 2.  `TestRegression_NetworkUnavailability`, which overrides the default value of
     cloudlogger
 3.  `TestRegression_InvalidUser`, which requires the default value of
@@ -3368,17 +3437,17 @@ filters, and prevents tests from running in parallel or being sharded.
 Using global state poses problems that lack easy answers for you and the API's
 clients:
 
-*What happens if a client needs to use different and separately operating
+*   What happens if a client needs to use different and separately operating
     sets of `Plugin`s (for example, to support multiple servers) in the same
     process space?
 
-*What happens if a client wants to replace a registered `Plugin` with an
+*   What happens if a client wants to replace a registered `Plugin` with an
     alternative implementation in a test, like a [test double]?
 
     What happens if a client's tests require hermeticity between instances of a
     `Plugin`, or between all of the plugins registered?
 
-*What happens if multiple clients `Register` a `Plugin` under the same name?
+*   What happens if multiple clients `Register` a `Plugin` under the same name?
     Which one wins, if any?
 
     How should errors be [handled](decisions#handle-errors)? If the code panics
@@ -3386,7 +3455,7 @@ clients:
     [appropriate for all places in which API would be called](decisions#dont-panic)?
     Can a client verify it doesn't do something bad before doing so?
 
-*Are there certain stages in a program's startup phases or lifetime during
+*   Are there certain stages in a program's startup phases or lifetime during
     which `Register` can be called and when it can't?
 
     What happens if `Register` is called at the wrong time? A client could call
@@ -3399,18 +3468,18 @@ clients:
     `Must`-like function. Aborting is not appropriate for general-purpose
     library functions that can be used at any stage.
 
-*What if the client's and the designer's concurrency needs are mismatched?
+*   What if the client's and the designer's concurrency needs are mismatched?
 
 See also:
 
-*[Go Tip #36: Enclosing Package-Level State](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #71: Reducing Parallel Test Flakiness](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #80: Dependency Injection Principles](https://google.github.io/styleguide/go/index.html#gotip)
-*Error Handling:
+*   [Go Tip #36: Enclosing Package-Level State](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #71: Reducing Parallel Test Flakiness](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #80: Dependency Injection Principles](https://google.github.io/styleguide/go/index.html#gotip)
+*   Error Handling:
     [Look Before You Leap](https://docs.python.org/3/glossary.html#term-LBYL)
     versus
     [Easier to Ask for Forgiveness than Permission](https://docs.python.org/3/glossary.html#term-EAFP)
-*[Unit Testing Practices on Public APIs]
+*   [Unit Testing Practices on Public APIs]
 
 Global state has cascading effects on the
 [health of the Google codebase](guide.md#maintainability). Global state should
@@ -3427,7 +3496,7 @@ be approached with **extreme scrutiny**.
 
 Several of the most common problematic API forms are enumerated below:
 
-*Top-level variables irrespective of whether they are exported.
+*   Top-level variables irrespective of whether they are exported.
 
     ```go
     // Bad:
@@ -3440,12 +3509,12 @@ Several of the most common problematic API forms are enumerated below:
 
     See the [litmus tests](#globals-litmus-tests) to know when these are safe.
 
-*The
+*   The
     [service locator pattern](https://en.wikipedia.org/wiki/Service_locator_pattern).
     See the [first example](#globals). The service locator pattern itself is not
     problematic, rather the locator being defined as global.
 
-*Registries for
+*   Registries for
     [callbacks](https://en.wikipedia.org/wiki/Callback_\(computer_programming\))
     and similar behaviors.
 
@@ -3460,7 +3529,7 @@ Several of the most common problematic API forms are enumerated below:
     }
     ```
 
-*Thick-Client singletons for things like backends, storage, data access
+*   Thick-Client singletons for things like backends, storage, data access
     layers, and other system resources. These often pose additional problems
     with service reliability.
 
@@ -3493,28 +3562,28 @@ Several of the most common problematic API forms are enumerated below:
 
 [APIs using the patterns above](#globals-forms) are unsafe when:
 
-*Multiple functions interact via global state when executed in the same
+*   Multiple functions interact via global state when executed in the same
     program, despite being otherwise independent (for example, authored by
     different authors in vastly different directories).
-*Independent test cases interact with each other through global state.
-*Users of the API are tempted to swap or replace global state for testing
+*   Independent test cases interact with each other through global state.
+*   Users of the API are tempted to swap or replace global state for testing
     purposes, particularly to replace any part of the state with a
     [test double], like a stub, fake, spy, or mock.
-*Users have to consider special ordering requirements when interacting with
+*   Users have to consider special ordering requirements when interacting with
     global state: `func init`, whether flags are parsed yet, etc.
 
 Provided the conditions above are avoided, there are a **few limited
 circumstances under which these APIs are safe**, namely when any of the
 following is true:
 
-*The global state is logically constant
+*   The global state is logically constant
     ([example](https://github.com/klauspost/compress/blob/290f4cfacb3eff892555a491e3eeb569a48665e7/zstd/snappy.go#L413)).
-*The package's observable behavior is stateless. For example, a public
+*   The package's observable behavior is stateless. For example, a public
     function may use a private global variable as a cache, but so long as the
     caller can't distinguish cache hits from misses, the function is stateless.
-*The global state does not bleed into things that are external to the
+*   The global state does not bleed into things that are external to the
     program, like sidecar processes or files on a shared filesystem.
-*There is no expectation of predictable behavior
+*   There is no expectation of predictable behavior
     ([example](https://pkg.go.dev/math/rand)).
 
 > **Note:**
@@ -3533,18 +3602,18 @@ An example of one of these safe situations is
 Consider the litmus tests from above applied to a typical decoder, like the one
 for handling the [PNG](https://pkg.go.dev/image/png) format:
 
-*Multiple calls to `package image`'s APIs that use the registered decoders
+*   Multiple calls to `package image`'s APIs that use the registered decoders
     (for example, `image.Decode`) cannot interfere with one another, similarly
     for tests. The only exception is `image.RegisterFormat`, but that is
     mitigated by the points below.
-*It is extremely unlikely that a user would want to replace a decoder with a
+*   It is extremely unlikely that a user would want to replace a decoder with a
     [test double], as the PNG decoder exemplifies a case in which our codebase's
     preference for real objects applies. However, a user would be more likely to
     replace a decoder with a test double if the decoder statefully interacted
     with operating system resources (for example, the network).
-*Collisions in registration are conceivable, though they are probably rare in
+*   Collisions in registration are conceivable, though they are probably rare in
     practice.
-*The decoders are stateless, idempotent, and pure.
+*   The decoders are stateless, idempotent, and pure.
 
 <a id="globals-default-instance"></a>
 
@@ -3556,7 +3625,7 @@ package level state if you need to maximize convenience for the user.
 Follow the [litmus tests](#globals-litmus-tests) with these guidelines in such
 cases:
 
-1.The package must offer clients the ability to create isolated instances of
+1.  The package must offer clients the ability to create isolated instances of
     package types as [described above](#globals-forms).
 2.  The public APIs that use global state must be a thin proxy to the previous
     API. A good example of this is
@@ -3595,5 +3664,329 @@ cases:
 
 See also:
 
-*[Go Tip #36: Enclosing Package-Level State](https://google.github.io/styleguide/go/index.html#gotip)
-*[Go Tip #80: Dependency Injection Principles](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #36: Enclosing Package-Level State](https://google.github.io/styleguide/go/index.html#gotip)
+*   [Go Tip #80: Dependency Injection Principles](https://google.github.io/styleguide/go/index.html#gotip)
+
+<a id="interfaces"></a>
+
+## Interfaces
+
+Interfaces in Go are powerful but can be overused or misunderstood. Because Go
+interfaces are satisfied implicitly, they are a structural tool rather than a
+declarative one. The following guidance provides the best practices for how to
+design and return interfaces in Go without over-engineering your codebase.
+
+Refer to [Decisions' section on interfaces](decisions#interfaces) for a summary.
+
+<a id="avoid-unnecessary-interfaces"></a>
+
+### Avoid unnecessary interfaces
+
+The most common mistake is creating an interface before a
+[real need](guide#simplicity) exists.
+
+1.  **Don’t confuse the concept with the keyword:** Just because you are
+    designing a "service" or a "repository" or similar pattern doesn't mean you
+    need a named interface type (e.g., `type Service interface`). Focus on the
+    behavior and its concrete implementation first.
+
+2.  **Reuse existing interfaces:** If an interface already exists, especially in
+    generated code, like a RPC client or server, use it ([testing RPC]). Do not
+    wrap a generated RPC code in a new, manual interface just for the sake of
+    abstraction or testing. [Use real transports](#use-real-transports) instead.
+
+3.  **Don't define back doors only for tests:** Do not export a [test double]
+    implementation of an interface from an API that consumes it. Instead, prefer
+    to design the API so that it can be tested using the [public API] of the
+    real implementation.
+
+    Every exported type increases the cognitive load for the reader. When you
+    export a test double alongside the real implementation, you force the reader
+    to understand three entities (the interface, the real implementation, and
+    the test double) instead of one.
+
+    Export an interface for a test double when you have a
+    [material need](guide#least-mechanism) to support substitution.
+
+When it does make sense to create an interface:
+
+1.  **Multiple implementations:** When there are two or more concrete types that
+    must be handled by the same logic (e.g., something that operates with both
+    [json.Encoder](https://pkg.go.dev/encoding/json#Encoder) and
+    [gob.GobEncoder](https://pkg.go.dev/encoding/gob#GobEncoder)), the API
+    consumer could define an interface.
+
+2.  **Decoupling packages:** To break circular dependencies between two packages
+    (see an [example](#avoiding-circular-dependencies)), an API producer could
+    define an interface.
+
+    **Caution:** Carefully observe guidance on [Package Size](#package-size).
+    Introducing interfaces to break dependency cycles is often a signal of
+    improperly structured packages.
+
+3.  **Hiding complexity:** When a concrete type has a massive API surface, but a
+    specific function only needs one or two methods, an API consumer may define
+    an interface.
+
+<a id="interface-ownership-and-visibility"></a>
+
+### Interface ownership and visibility
+
+1.  **Do not export interface types unnecessarily:** If an interface is only
+    used internally within a package to satisfy a specific logic flow, keep the
+    interface unexported. Exporting an interface commits you to maintaining that
+    API for external callers.
+
+2.  **The consumer defines the interface:** In Go, interfaces generally belong
+    in the package that uses them, not the package that implements them. The
+    consumer should define only the methods they actually use
+    [GoTip #78: Minimal Viable Interfaces], adhering to the idea that
+    [the bigger the interface, the weaker the abstraction](https://go-proverbs.github.io/).
+
+    There are common scenarios where it often makes sense for the producer (the
+    package providing the logic) to export the interface:
+
+    *   **The interface is the product:** When a package’s primary purpose is to
+        provide a common protocol that many different implementations must
+        follow, the producer defines the interface. For example,
+        [io.Writer](https://pkg.go.dev/io#Writer),
+        [hash.Hash](https://pkg.go.dev/hash#Hash). The concept of "protocol"
+        includes aspects like [documentation](#documentation) about critical
+        behaviors (e.g., expected use case, edge cases, concurrency) that need
+        to be centrally and canonically explicated. Another prominent example of
+        this is generated interfaces from protobuf. It doesn't abstract a
+        specific behavior, it defines a boundary. Its purpose is to ensure that
+        your server implementation exactly matches the schema defined in the
+        `.proto` file. Here, the interface serves as a rigid legal contract
+        between the service and its clients.
+
+        For large systems, if the interface lives inside a huge implementation
+        package, every client is forced to import the entire world just to
+        reference the interface. You may define the interface in a standalone,
+        implementation-free package, avoiding unnecessary symbols and potential
+        circular dependencies. This is also the same philosophy used by
+        generated code from protobuf.
+
+    *   **Prevent interface bloat:** In large codebases, maintenance becomes
+        difficult if numerous packages utilize the same `AuthService` while each
+        defining an identical `type Authorizer interface`. While Go often favors
+        [a little copying over a little dependency](https://go-proverbs.github.io/),
+        keep in mind that maintaining perfectly mirrored interfaces (see point
+        above) across many packages can create an unnecessary burden.
+
+    *   **Resolve circular dependency:** see
+        [an example](#avoiding-circular-dependencies) below.
+
+<a id="designing-effective-interfaces"></a>
+
+### Designing effective interfaces
+
+1.  **Keep interfaces small:** The larger the interface,
+    [the harder it is to implement and to write code that takes advantage of it](https://go-proverbs.github.io/).
+    Small interfaces are easier to compose into larger ones if needed.
+
+2.  **Documentation:** Treat every interface as the "user manual" for your
+    abstraction. The depth of your documentation should be proportional to the
+    interface's cognitive load, not just the count of its methods. Whether an
+    interface has ten methods or a single `Write` of
+    [io.Writer](https://pkg.go.dev/io#Writer), if a programmer is expected to
+    interact with that type, the API must be documented thoroughly.
+
+    *   **Single-method interfaces:** documentation on the type itself is
+        usually sufficient (e.g., io.Writer). Explain its contract, edge cases,
+        and expected errors.
+    *   **Multi-method interfaces:** each individual method requires its own
+        documentation.
+    *   **Unexported interfaces:** consider documenting them anyway. They are
+        often the glue that holds complex internal logic together, and because
+        they are invisible to external users, they can easily become mystery
+        code for future maintainers (including your future self).
+
+3.  **Accept interfaces, return concrete types:** Returning a concrete type
+    allows the caller to use the full functionality of the value without being
+    locked into a specific interface abstraction
+    [GoTip #49: Accept Interfaces, Return Concrete Types].
+
+There are several common scenarios where returning an interface is the idiomatic
+choice:
+
+1.  **Encapsulation:** While interfaces cannot strictly hide exported methods
+    (as they remain accessible via type assertions), returning an interface is a
+    powerful tool for limiting the default API surface and guiding the caller's
+    behavior.. The most common example is the `error` interface; you
+    [almost never return a concrete error type](decisions#errors) like
+    `*MyCustomError`.
+
+    Consider a `ThrottledReader` that implements `io.Reader` but also has a
+    `Refill` method for internal bucket management. Returning the concrete
+    `*ThrottledReader` invites the caller to manage the bucket manually, which
+    could lead to race conditions or broken rate-limiting logic. By returning an
+    interface, you tell the caller that your only job is to consume this reader.
+    If you try to cast this back to a `ThrottledReader` to `Refill` the internal
+    bucket, you are breaking the contract.
+
+    ```go
+    // Good:
+    type ThrottledReader struct {
+        source     io.Reader
+        limit      int  // bytes per second
+        balance    int  // current allowance of bytes
+        lastRefill time.Time
+    }
+
+    // Read implements the io.Reader interface with rate-limiting logic.
+    func (t *ThrottledReader) Read(p []byte) (int, error) { ... }
+
+    // Refill manually adds tokens to the bucket.
+    // INTERNAL USE ONLY: Calling this from outside breaks the rate limit logic.
+    func (t *ThrottledReader) Refill(amount int) {
+        t.balance = min(t.balance + amount, t.limit)
+    }
+
+    // New returns the io.Reader with rate-limiting.
+    func New(r io.Reader, bytesPerSec int) io.Reader {
+        return &ThrottledReader{
+            source:     r,
+            limit:      bytesPerSec,
+            balance:    bytesPerSec, // start with a full bucket
+            lastRefill: time.Now(),
+        }
+    }
+    ```
+
+    This raises a natural question: if `Refill` is dangerous, why export it at
+    all? In complex systems, you often need internal orchestration. For example,
+    an `AggregateReader` manages multiple `ThrottledReader` values to ensure
+    total bandwidth across all streams stays under a global limit. This
+    coordinator needs to call Refill to distribute tokens, but the non-power
+    user processing the data should never see that capability.
+
+    **Caution:** Before returning an interface to hide implementation, ask:
+    "Would a user calling these extra methods actually break the system's
+    integrity or meaningfully limit maintainability?" If the extra details allow
+    the user to bypass safety checks, or if exposing the concrete type makes it
+    impossible to change the underlying provider later without a breaking
+    change, you may return an interface. Do not rotely encapsulate without
+    reason.
+
+2.  **Certain patterns:** If a function is designed to return one of several
+    different concrete types based on decisions made at runtime, it must return
+    an interface. This is commonly true with command, chaining, factory, and
+    [strategy](https://en.wikipedia.org/wiki/Strategy_pattern) patterns.
+    Consider this code that selects which encoder to use based the requested
+    format:
+
+    ```go
+    // Good:
+    func NewWriter(format string) io.Writer {
+        switch format {
+        case "json":
+            return &jsonWriter{}
+        case "xml":
+            return &xmlWriter{}
+        default:
+            return &textWriter{}
+        }
+    }
+    ```
+
+    The following example of a chaining API demonstrates how returning an
+    interface enables polymorphic behavior. By allowing callers to use either
+    `client.Do(req)` or `client.WithAuth("token").Do(req)`, you can swap
+    implementations without breaking the calling code.
+
+    ```go
+    // Good:
+    type Client interface {
+        WithAuth(token string) Client
+        Do(req *Request) error
+    }
+    ```
+
+    These patterns are guidelines, not rules. Avoid forcing an interface if a
+    single, robust concrete type can handle the abstraction internally. For
+    example, the standard [database/sql](https://pkg.go.dev/database/sql#DB)
+    library exports a single concrete `DB` type instead of forcing an interface
+    to handle types like `MySQLDB` and `OracleDB`.
+
+3.  <span id="avoiding-circular-dependencies">**Avoiding circular
+    dependencies:**</span> If returning a concrete type would require importing
+    a package that already imports your current package, you must return an
+    interface to break the circular dependency.
+
+    For example:
+
+    ```go
+    // Bad:
+    package app
+
+    import "myproject/plugin"
+
+    type Config struct {
+        APIKey string
+    }
+
+    func Start() {
+        p := plugin.New()
+    }
+    ```
+
+    ```go
+    // Bad:
+    package plugin
+
+    import "myproject/app"  // ERROR: Import cycle!
+
+    func New() *app.Config {
+        return &app.Config{APIKey: "secret"}
+    }
+    ```
+
+    In this case, `plugin`'s `New` cannot return `*app.Config` because it would
+    create a circular import. To break this, we use the fact that interfaces are
+    satisfied implicitly. We move the "contract" to a neutral place or have the
+    producer return an interface that the consumer already understands.
+
+    If `plugin`'s `New` returns an interface instead of the concrete
+    `*app.Config` struct, it no longer needs to import package `app`.
+
+    ```go
+    package plugin
+
+    type Configurer interface {
+        APIKey() string
+    }
+
+    type localConfig struct {
+        key string
+    }
+
+    func (c localConfig) APIKey() string { return c.key }
+
+    // New returns the interface Configurer instead of the concrete app.Config
+    func New() Configurer {
+        return &localConfig{key: "secret"}
+    }
+    ```
+
+    ```go
+    package app
+
+    import "myproject/plugin"
+
+    func Start() {
+        conf := plugin.New()  // 'conf' is now a Configurer interface
+        fmt.Println(conf.APIKey())
+    }
+    ```
+
+    **Caution:** Carefully observe guidance on [Package Size](#package-size).
+    Introducing interfaces to break dependency cycles is often a signal of
+    improperly structured packages. Consolidated packages are often preferred
+    over too many too small packages that fail to stand on their own.
+
+[GoTip #78: Minimal Viable Interfaces]: https://google.github.io/styleguide/go/index.html#gotip
+[GoTip #49: Accept Interfaces, Return Concrete Types]: https://google.github.io/styleguide/go/index.html#gotip
+[testing RPC]: https://codelabs.developers.google.com/grpc/getting-started-grpc-go#3
+[test double]: https://abseil.io/resources/swe-book/html/ch13.html
+[public API]: https://abseil.io/resources/swe-book/html/ch12.html#test_via_public_apis
