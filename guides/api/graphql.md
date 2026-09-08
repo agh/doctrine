@@ -506,12 +506,56 @@ Projects **MUST** validate all input data:
 ```graphql
 input CreateUserInput {
   email: String!      # Validate: email format
-  password: String!   # Validate: min length, complexity
+  password: String!   # Validate: length only (see Password Inputs)
   name: String!       # Validate: max length, no scripts
 }
 ```
 
 Validate at the GraphQL layer before business logic.
+
+### Password Inputs
+
+Projects **MUST NOT** impose character-composition rules on password inputs:
+no required mixture of upper case, lower case, digits, or symbols. Instead:
+
+- Projects **MUST** enforce a minimum length. NIST SP 800-63B-4[^3] requires
+  15 characters for a password used as a single authentication factor and 8
+  characters for one used as a factor in multi-factor authentication.
+- Projects **SHOULD** permit a maximum length of at least 64 characters and
+  accept every printing ASCII character, the space character, and Unicode.
+- Projects **MUST** reject passwords that appear on a blocklist of common,
+  expected, or compromised values.
+- Projects **MUST** rate-limit failed authentication attempts.
+
+**Why**: Composition rules produce predictable substitutions such as
+`P@ssw0rd1`, which add almost no guessing resistance while pushing people
+towards reuse and short passwords. NIST SP 800-63B-4 §3.1.1.2 states that
+verifiers "SHALL NOT impose other composition rules (e.g., requiring mixtures
+of different character types) for passwords"; length, blocklists, and
+throttling carry the security weight instead. Those guidelines govern digital
+identity services, and this guide adopts them as the baseline for any GraphQL
+API that accepts passwords.
+
+```graphql
+# Good: length is the only schema-level password constraint
+input CreateUserInput {
+  email: String!      # Validate: email format
+  password: String!   # Validate: >= 15 chars, accept >= 64
+  name: String!       # Validate: max length, no scripts
+}
+
+# Bad
+input CreateUserInput {
+  email: String!
+  password: String!   # Validate: 8-20 chars, 1 upper, 1 digit, 1 symbol
+  name: String!
+}
+```
+
+Enforce the blocklist and the failure rate limit in the authentication
+service, not in GraphQL input coercion: both need I/O and per-account state
+that scalar coercion cannot reach, and coercion errors are returned to
+unauthenticated callers before any resolver runs.
 
 ### Authentication and Authorization
 
@@ -786,7 +830,7 @@ async def test_create_user_resolver():
         variable_values={
             "input": {
                 "email": "test@example.com",
-                "password": "password123",
+                "password": "test-fixture-passphrase-01",
                 "name": "Test"
             }
         },
@@ -801,13 +845,23 @@ async def test_create_user_resolver():
 Projects **SHOULD** test full query flows:
 
 ```python
-async def test_user_with_orders_flow():
+async def test_user_with_orders_flow(context):
     # Create user
-    create_result = await create_user(...)
+    create_result = await create_user(
+        email="flow@example.com",
+        name="Flow Tester",
+        context=context,
+    )
+    assert create_result.errors is None
     user_id = create_result.data["createUser"]["user"]["id"]
 
     # Create orders
-    await create_order(user_id=user_id, ...)
+    order_result = await create_order(
+        user_id=user_id,
+        items=[{"sku": "WIDGET-1", "quantity": 2}],
+        context=context,
+    )
+    assert order_result.errors is None
 
     # Query user with orders
     query_result = await schema.execute(
@@ -822,9 +876,18 @@ async def test_user_with_orders_flow():
         }
         """,
         variable_values={"id": user_id},
+        context_value=context,
     )
+    assert query_result.errors is None
     assert len(query_result.data["user"]["orders"]) > 0
 ```
+
+`create_user` and `create_order` are test helpers that wrap `schema.execute`.
+The `context` fixture supplies one request context to every execution, so each
+step observes the state written by the previous one. Assert `errors is None`
+before dereferencing `data`: a failed execution leaves `data` as `None` or
+with `None` in the failed field, and the resulting `TypeError` hides the real
+GraphQL error.
 
 ## See Also
 
@@ -836,3 +899,4 @@ async def test_user_with_orders_flow():
 
 [^1]: [GraphQL Specification](https://spec.graphql.org/) - Official GraphQL specification
 [^2]: [Relay Connection Specification](https://relay.dev/graphql/connections.htm) - Cursor-based pagination standard
+[^3]: [NIST SP 800-63B-4 Sec. 3.1.1](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/#password) - Password requirements
