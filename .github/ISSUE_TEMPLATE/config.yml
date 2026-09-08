@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/agh/doctrine/security/advisories/new
+    about: Report privately. Do not open a public issue for a security problem.
+  - name: Contributing guide
+    url: https://github.com/agh/doctrine/blob/main/CONTRIBUTING.md
+    about: House rules, checks and workflow. Read this before opening an issue.
+  - name: Code of Conduct
+    url: https://github.com/agh/doctrine/blob/main/CODE_OF_CONDUCT.md
+    about: Community expectations and how to report a violation.
