@@ -10,12 +10,12 @@ Extends [Google Markdown Style Guide](../../reference/google/markdown.md).
 
 ## Quick Reference
 
-| Task       | Tool                    | Command                            |
-| ---------- | ----------------------- | ---------------------------------- |
-| Lint       | markdownlint[^1]        | `npx markdownlint '**/*.md'`       |
-| Format     | Prettier[^2]            | `npx prettier --write '**/*.md'`   |
-| Diagrams   | Mermaid[^3]             | via markdown code blocks           |
-| Link check | markdown-link-check[^4] | `npx markdown-link-check *.md`     |
+| Task       | Tool                    | Command                                                           |
+| ---------- | ----------------------- | ----------------------------------------------------------------- |
+| Lint       | markdownlint[^1]        | `npx markdownlint '**/*.md'`                                      |
+| Format     | Prettier[^2]            | `npx prettier --write '**/*.md'`                                  |
+| Diagrams   | Mermaid[^3]             | via markdown code blocks                                          |
+| Link check | markdown-link-check[^4] | `npx markdown-link-check --config .markdown-link-check.json *.md` |
 
 ## Linting: markdownlint
 
@@ -61,7 +61,7 @@ configuration:
 {
   "proseWrap": "always",
   "printWidth": 80,
-  "tabWidth": 4
+  "tabWidth": 2
 }
 ```
 
@@ -70,6 +70,36 @@ configuration:
 Prettier[^2] eliminates debates about formatting details by automatically enforcing
 a consistent style. It handles line wrapping, spacing, and alignment
 automatically, allowing authors to focus on content rather than formatting.
+
+### Why tabWidth 2
+
+`tabWidth` controls the indentation Prettier[^2] emits for nested list items,
+and markdownlint[^1] rule `MD007/ul-indent` defaults to an expected indent of
+two spaces. Setting `tabWidth` to 4 makes the two mandatory tools contradict
+each other: Prettier writes four-space nested items and markdownlint then
+reports `MD007/ul-indent [Expected: 2; Actual: 4]` on the file Prettier just
+formatted, so no file can satisfy both. `tabWidth: 2` keeps `MD007` at its
+default and leaves the base `.markdownlint.json` above unchanged.
+
+Projects that **MUST** use four-space indentation for portability with legacy
+Markdown parsers **MUST** relax the affected rule in `.markdownlint.json` rather
+than leaving the conflict in place:
+
+```json
+{
+  "MD007": { "indent": 4 }
+}
+```
+
+Only `MD007` needs relaxing. Prettier 3.9.6 applies `tabWidth` to continuation
+and nesting indentation only, and still emits a single space after every list
+marker, so the `MD030/list-marker-space` override shown in the upstream
+compatibility notes[^12] is unnecessary — setting it to `3` makes
+markdownlint[^1] reject Prettier's own output.
+
+The trade-off is that `MD007: { "indent": 4 }` diverges from the
+markdownlint[^1] default, so every consumer of the documentation must copy it;
+two-space indentation needs no configuration at all.
 
 ## Key Conventions
 
@@ -96,11 +126,14 @@ Headings **MUST**:
 
 ### Lists
 
+Nested list items **MUST** be indented by two spaces, matching the `tabWidth: 2`
+Prettier[^2] setting above and the markdownlint[^1] `MD007` default.
+
 ```markdown
 - Item one
 - Item two
-    - Nested item (4-space indent)
-    - Another nested item
+  - Nested item (2-space indent)
+  - Another nested item
 - Item three
 
 1. First step
@@ -272,7 +305,7 @@ Projects **SHOULD** validate links using markdown-link-check[^4]:
 
 ```bash
 npm install --save-dev markdown-link-check
-npx markdown-link-check README.md
+npx markdown-link-check --config .markdown-link-check.json README.md
 ```
 
 ### Why Link Checking
@@ -293,6 +326,20 @@ or move.
   "retryOn429": true
 }
 ```
+
+Every invocation **MUST** pass this file explicitly:
+`--config .markdown-link-check.json` on the command line and
+`config-file: .markdown-link-check.json` for the GitHub Action below.
+
+#### Why the Configuration Must Be Passed Explicitly
+
+markdown-link-check[^4] loads a configuration file only when one is named on the
+command line; it does not discover `.markdown-link-check.json` by convention.
+The GitHub Action does default a configuration path, but the default is
+`mlc_config.json`, not the filename used here. Omitting the flag therefore
+silently discards the `ignorePatterns`, `timeout`, and `retryOn429` settings,
+and a local `https://localhost` link fails the run with a connection error
+instead of being ignored.
 
 ## Pre-commit Configuration
 
@@ -317,26 +364,57 @@ See pre-commit[^8] documentation for more information on configuring hooks.
 
 ## CI Pipeline
 
-Projects **SHOULD** run Markdown linting and link checking in CI:
+Projects **SHOULD** run Markdown linting and link checking in CI. The following
+is a **complete** workflow, not a fragment: save it as
+`.github/workflows/docs.yml` and it runs as written.
 
 ```yaml
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: DavidAnson/markdownlint-cli2-action@v18
+        with:
+          globs: "**/*.md"
       - uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          config-file: .markdown-link-check.json
 ```
+
+### Why Each Key Is Required
+
+- `on` is what makes the file a workflow. Without it GitHub Actions has no
+  trigger to attach the run to, so the job never executes.
+- `globs` overrides the markdownlint-cli2-action default of `*.{md,markdown}`,
+  which matches only the repository root. Without it every nested directory —
+  `docs/`, `guides/`, and the rest — is silently unlinted.
+- `config-file` is required because the action's default is `mlc_config.json`;
+  see [Link Checking](#link-checking) above.
+- `permissions: contents: read` drops the default write scopes from the
+  `GITHUB_TOKEN`. Linting needs only to read the checkout, so a compromised
+  action or dependency cannot push commits or open releases.
 
 See GitHub Actions[^9] documentation for more CI/CD configuration options.
 
 ## See Also
 
-- [Google Markdown Style Guide](../../reference/google/markdown.md) - Base style guide
-- [EditorConfig](../../configs/editorconfig/README.md) - Editor configuration for consistent formatting
-- [CI/CD Guidelines](../process/ci.md) - Continuous integration setup
-- [Documentation Standards](../README.md) - Overall documentation practices
+- [Google Markdown Style Guide](../../reference/google/markdown.md) - Base style
+  guide
+- [EditorConfig template](../../configs/editorconfig/.editorconfig) - Editor
+  settings for consistent indentation and line endings
+- [CI/CD Guide](../process/ci.md) - Continuous integration setup
+- [Documentation Guides](README.md) - Index of documentation guides
 - CommonMark[^10] - Markdown specification
 - GitHub Flavored Markdown[^11] - Extended Markdown syntax
 
@@ -363,3 +441,5 @@ See GitHub Actions[^9] documentation for more CI/CD configuration options.
 [^10]: [CommonMark](https://commonmark.org/) - A strongly defined, highly compatible specification of Markdown
 
 [^11]: [GitHub Flavored Markdown](https://github.github.com/gfm/) - GitHub's extended Markdown syntax specification
+
+[^12]: [Using markdownlint with Prettier](https://github.com/DavidAnson/markdownlint/blob/main/doc/Prettier.md) - Upstream compatibility notes for the two tools
