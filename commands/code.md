@@ -21,7 +21,7 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
 | `api --graphql` | GraphQL API Reviewer | Sonnet | GraphQL schema design |
 | `tests` | Test Writer | Sonnet | Test generation |
 | `simplify` | Code Simplifier | Sonnet | Complexity reduction |
-| `docs` | Doc Writer | Haiku | Documentation |
+| `docs` | Documentation Writer (docs family) | Sonnet | Documentation |
 
 ## Examples
 
@@ -74,7 +74,7 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
     - `api` → Use REST API Reviewer (or GraphQL if --graphql)
     - `tests` → Use Test Writer
     - `simplify` → Use Code Simplifier
-    - `docs` → Use Doc Writer
+    - `docs` → Use the `documentation-writer` subagent from the docs family
 
     ## Output Format
 
@@ -119,3 +119,5 @@ Comprehensive code quality assessment using the Doctrine Code Agent Family.
 - [GraphQL API Reviewer](../agents/code/api-graphql.md) — GraphQL design
 - [Test Writer](../agents/code/test-writer.md) — Test generation
 - [Code Simplifier](../agents/code/simplifier.md) — Complexity reduction
+- [Documentation Writer](../agents/docs/writer.md) — Documentation generation
+  for `/code docs`
