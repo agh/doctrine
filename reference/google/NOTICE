@@ -1,0 +1,32 @@
+NOTICE — Google style guides vendored in Doctrine
+
+Upstream:      Google Style Guides
+Upstream URL:  https://github.com/google/styleguide
+Copyright:     Copyright (c) Google Inc. and the Google Style Guides authors
+Licence:       Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+Licence URL:   https://creativecommons.org/licenses/by/3.0/legalcode
+Licence text:  ./LICENSE (verbatim copy of the upstream LICENSE file)
+
+Code samples exception
+----------------------
+reference/google/json.xml carries the upstream footer statement: "Except as
+otherwise noted, the content of this page is licensed under the Creative
+Commons Attribution 3.0 License, and code samples are licensed under the
+Apache 2.0 License." Code samples inside that document are therefore under
+Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0), not CC BY 3.0.
+
+Modifications by Doctrine
+-------------------------
+The copies in this directory are NOT byte-identical to upstream. Doctrine has
+reflowed prose to the repository's 100-column limit, added markdownlint
+directives, and renamed files (for example upstream pyguide.md is vendored as
+python.md). The upstream revision from which each file was taken was not
+recorded at vendoring time, so the set of local changes cannot be separated
+from upstream drift. Treat these files as adaptations under CC BY 3.0
+section 3(b), not as authoritative upstream copies. Always consult
+https://google.github.io/styleguide/ for the current text.
+
+Required attribution
+--------------------
+"Google Style Guides, Copyright (c) Google Inc., licensed under CC BY 3.0
+(https://creativecommons.org/licenses/by/3.0/). Modified by Doctrine."
