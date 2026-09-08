@@ -1,0 +1,76 @@
+{
+  "description": "Provenance manifest for vendored third-party reference material. Every listed file is an unmodified upstream copy; verify with scripts/check_vendored.py.",
+  "schema_version": "1.0.0",
+  "files": [
+    {
+      "path": "reference/google/go-best-practices.md",
+      "upstream_repo": "https://github.com/google/styleguide",
+      "upstream_url": "https://raw.githubusercontent.com/google/styleguide/gh-pages/go/best-practices.md",
+      "upstream_path": "go/best-practices.md",
+      "upstream_ref": "gh-pages",
+      "upstream_commit": "c098353acb6d8ee2dcf995e2e2ae67cf35afe30d",
+      "upstream_commit_date": "2026-03-18",
+      "retrieved": "2026-09-08",
+      "sha256": "e44180b492c3585b4a20bd44e7cb277a55a9f264ad352f33f287b639e9e75b56",
+      "license": "CC-BY-3.0",
+      "license_url": "https://github.com/google/styleguide/blob/gh-pages/LICENSE",
+      "copyright": "Copyright Google LLC"
+    },
+    {
+      "path": "reference/google/go-decisions.md",
+      "upstream_repo": "https://github.com/google/styleguide",
+      "upstream_url": "https://raw.githubusercontent.com/google/styleguide/gh-pages/go/decisions.md",
+      "upstream_path": "go/decisions.md",
+      "upstream_ref": "gh-pages",
+      "upstream_commit": "c098353acb6d8ee2dcf995e2e2ae67cf35afe30d",
+      "upstream_commit_date": "2026-03-18",
+      "retrieved": "2026-09-08",
+      "sha256": "3a0b54ef41aca49f8bf0a4d4ce2d0b4662721b52197256d121b6cc95616f4850",
+      "license": "CC-BY-3.0",
+      "license_url": "https://github.com/google/styleguide/blob/gh-pages/LICENSE",
+      "copyright": "Copyright Google LLC"
+    },
+    {
+      "path": "reference/google/markdown.md",
+      "upstream_repo": "https://github.com/google/styleguide",
+      "upstream_url": "https://raw.githubusercontent.com/google/styleguide/gh-pages/docguide/style.md",
+      "upstream_path": "docguide/style.md",
+      "upstream_ref": "gh-pages",
+      "upstream_commit": "895579e2f7d8dedabed79e0c973f74a93dd5aad7",
+      "upstream_commit_date": "2025-04-24",
+      "retrieved": "2026-09-08",
+      "sha256": "cf6ef17b4a4c72420a61621a196e964800e166c9a13304c8ab989e7604b2ee95",
+      "license": "CC-BY-3.0",
+      "license_url": "https://github.com/google/styleguide/blob/gh-pages/LICENSE",
+      "copyright": "Copyright Google LLC"
+    },
+    {
+      "path": "reference/google/python.md",
+      "upstream_repo": "https://github.com/google/styleguide",
+      "upstream_url": "https://raw.githubusercontent.com/google/styleguide/gh-pages/pyguide.md",
+      "upstream_path": "pyguide.md",
+      "upstream_ref": "gh-pages",
+      "upstream_commit": "ff7ea9c951ebf46c691ecffcd02a6ed8a5fa9528",
+      "upstream_commit_date": "2025-02-24",
+      "retrieved": "2026-09-08",
+      "sha256": "0bd17ead9e6d60b45502399ef4341a1b1b8de4595c0b58e9c272eb73f4827ef4",
+      "license": "CC-BY-3.0",
+      "license_url": "https://github.com/google/styleguide/blob/gh-pages/LICENSE",
+      "copyright": "Copyright Google LLC"
+    },
+    {
+      "path": "reference/google/shell.md",
+      "upstream_repo": "https://github.com/google/styleguide",
+      "upstream_url": "https://raw.githubusercontent.com/google/styleguide/gh-pages/shellguide.md",
+      "upstream_path": "shellguide.md",
+      "upstream_ref": "gh-pages",
+      "upstream_commit": "8e2dc76c1b954830279d23e7ae6a457f85415479",
+      "upstream_commit_date": "2025-01-17",
+      "retrieved": "2026-09-08",
+      "sha256": "af0e99572b65d9c64da0035a7d9fbc3c32d81dc7289ca41340d1078726a464bf",
+      "license": "CC-BY-3.0",
+      "license_url": "https://github.com/google/styleguide/blob/gh-pages/LICENSE",
+      "copyright": "Copyright Google LLC"
+    }
+  ]
+}
