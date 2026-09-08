@@ -1,0 +1,79 @@
+name: Bug in a guide
+description: A rule, example, command or link in a Doctrine guide is wrong.
+title: "fix(<guide>): "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for content that is wrong: a rule that contradicts the tool,
+        an example that does not run, a command that no longer exists, a
+        broken link, or a claim that is not true.
+
+        Do not use this for a security vulnerability. See
+        [SECURITY.md](https://github.com/agh/doctrine/blob/main/SECURITY.md).
+
+  - type: input
+    id: file
+    attributes:
+      label: File
+      description: Path to the guide, config or reference file.
+      placeholder: guides/languages/python.md
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Section or line
+      description: Heading, line number, or both.
+      placeholder: "## Ruff, line 84"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: What it currently says
+      description: Quote the text, command or example exactly as written.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Why it is wrong
+      description: >
+        Explain the defect. If a command fails, paste what you ran and what
+        happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: >
+        Link to upstream documentation, a release note, an issue or a commit
+        that shows the correct behaviour. Memory is not evidence.
+      placeholder: https://docs.astral.sh/ruff/
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What it should say
+      description: Optional. Proposed replacement wording.
+      render: markdown
+
+  - type: checkboxes
+    id: houserules
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

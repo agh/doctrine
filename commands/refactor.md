@@ -65,5 +65,5 @@ Show before/after for each change with explanation and confidence.
 
 ## See Also
 
-- [Code Simplifier Agent](../agents/code-simplifier.md) - Full agent specification
-- [Code Reviewer Agent](../agents/code-reviewer.md) - Post-refactor review
+- [Code Simplifier Agent](../agents/code/simplifier.md) - Full agent specification
+- [Code Reviewer Agent](../agents/code/reviewer.md) - Post-refactor review
