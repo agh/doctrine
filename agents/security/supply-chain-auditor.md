@@ -311,35 +311,85 @@ When auditing dependencies, check their SLSA compliance:
 
 #### SLSA in CI/CD
 
+Use GitHub artifact attestations for new integrations. The `slsa-verifier`
+commands above still verify legacy `slsa-github-generator` provenance;
+attestations produced by the workflow below are verified with
+`gh attestation verify` instead.
+
 ```yaml
-# GitHub Actions with SLSA L3 provenance
-name: Release with SLSA
+# GitHub Actions with artifact attestations (SLSA v1.0 Build L2)
+name: Release with provenance
 
 on:
   push:
     tags: ['v*']
+
+permissions: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # For signing
+      id-token: write      # OIDC token used to sign the attestation
+      attestations: write  # write the attestation to the repository
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build
         run: npm run build
 
-      - name: Generate SLSA provenance
-        uses: slsa-framework/slsa-github-generator@v1
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          artifact-path: dist/
-
-      - name: Verify provenance
-        uses: slsa-framework/slsa-verifier@v2
+          subject-path: dist/*.tgz
 ```
+
+Consumers verify against an expected identity, not merely against "an
+attestation exists":
+
+```bash
+gh attestation verify ./dist/my-package.tgz \
+  --repo org/repo \
+  --signer-workflow org/repo/.github/workflows/release.yml
+```
+
+**Do not record Build L3 for this workflow.** Artifact attestations by
+themselves provide SLSA v1.0 Build **L2**: they link an artefact to the
+workflow that produced it. Build L3 additionally requires the build to run in
+a reusable workflow that isolates it from the calling workflow. Score the
+level from where the build actually runs, never from the presence of an
+attestation step.
+
+Two step forms that appear in older guidance do not work and **MUST NOT** be
+copied. `slsa-framework/slsa-github-generator` has no action at its repository
+root, so `uses: slsa-framework/slsa-github-generator@v1` inside `steps:`
+cannot resolve; the generic generator is a job-level reusable workflow keyed
+on digests, not an artefact directory:
+
+```yaml
+  # Legacy path, for repositories already on it. The project is no longer
+  # actively maintained; its most recent release is v2.1.0 (February 2025).
+  provenance:
+    needs: [build]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+```
+
+`base64-subjects` decodes to `sha256sum` output, so the `build` job must export
+`sha256sum <artifacts> | base64 -w0` as its `hashes` output. Passing a
+directory such as `dist/` is not a supported input.
+
+Likewise `slsa-framework/slsa-verifier` has no root action; the repository
+publishes `slsa-framework/slsa-verifier/actions/installer`, which installs the
+CLI so a later step can run `slsa-verifier verify-artifact` with explicit
+artefact, provenance and expected-identity arguments.
 
 ## Output Format
 
