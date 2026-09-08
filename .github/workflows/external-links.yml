@@ -41,6 +41,11 @@ jobs:
     name: External URLs
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # On the weekly schedule and on demand a dead link fails the run so the
+    # owner is notified. On a pull request that edits this workflow or its
+    # config the run is a live test of the mechanism, and third-party outages
+    # must not paint the PR red, so the result is advisory there.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
