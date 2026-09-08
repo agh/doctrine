@@ -40,12 +40,26 @@ project/
 ├── compose.database.yml           # Database services (included)
 ├── compose.cache.yml              # Cache layer (included)
 ├── compose.monitoring.yml         # Observability stack (included)
-├── .env                           # Default environment variables
-├── .env.production                # Production environment variables
-└── secrets/
-    ├── db_password                # Docker secrets (file-based)
+├── .dockerignore                  # Keeps secrets out of every build context
+├── .gitignore                     # Keeps secrets out of version control
+├── .env                           # Non-secret defaults only
+├── .env.production                # Non-secret production values only
+└── secrets/                       # Development fixtures only; ignored by
+    ├── db_password                # Git and Docker, mode 0400
     └── api_key
 ```
+
+Projects **MUST** keep secret material out of both version control and every
+build context, and **MUST** read production secrets from a path outside the
+context (for example `/etc/myapp/secrets/`) that deployment tooling
+materialises from a secret manager.
+
+**Why**: A `secrets/` directory inside the project root is inside the default
+build context, so `COPY . .` copies it into an image layer unless
+`.dockerignore` excludes it. Anything committed to Git additionally survives in
+history after deletion. The [.dockerignore](#dockerignore) section gives the
+exclusion list, and [Secrets vs Environment Variables](#secrets-vs-environment-variables)
+covers how the files are consumed at runtime.
 
 ### Per-Service Subdirectories
 
@@ -80,7 +94,7 @@ stacks/platform/
 | ------------ | ------- | ---------- |
 | `{service}/config/` | Configuration files | `:ro` bind mount |
 | `{service}/data/` | Persistent state | Read-write bind mount |
-| `{service}/secrets/` | Service-specific secrets | `:ro` bind mount |
+| `{service}/secrets/` | Service-specific secrets | `:ro` bind mount, excluded from build contexts |
 
 **Volume Mounting**:
 
@@ -434,13 +448,15 @@ services:
           memory: 128M
 ```
 
-### Docker Secrets vs Environment Variables
+### Secrets vs Environment Variables
 
-Projects **MUST** use Docker secrets for sensitive data, not environment variables.
+Projects **MUST** deliver sensitive data as secret files, not environment
+variables.
 
-**Why**: Environment variables are visible in `docker inspect`, logs, and child
-processes. Docker secrets are mounted as in-memory files, never written to
-disk, and are automatically cleaned up when the container stops.
+**Why**: Environment variables are visible in `docker inspect`, are inherited
+by every child process, and are routinely captured in crash dumps and debug
+logs. A secret file is mounted at `/run/secrets/<name>`, is readable only by
+the services granted it, and is subject to ordinary filesystem permissions.
 
 ```yaml
 # WRONG: Secrets in environment variables
@@ -449,9 +465,10 @@ services:
     environment:
       - DB_PASSWORD=supersecret  # Visible in docker inspect!
 
-# CORRECT: Use Docker secrets
+# CORRECT: Secret file, referenced by path
 secrets:
   db_password:
+    # Development fixture; production reads a path outside the build context
     file: ./secrets/db_password
 
 services:
@@ -461,6 +478,11 @@ services:
     environment:
       - DB_PASSWORD_FILE=/run/secrets/db_password
 ```
+
+`DB_PASSWORD_FILE` above is application configuration, not a Docker feature.
+The `_FILE` suffix is a convention implemented by some images (including the
+`mysql` and `postgres` Docker Official Images); every other image needs
+application code that reads the file.
 
 **Application Code**:
 
@@ -472,13 +494,101 @@ def get_db_password():
         return f.read().strip()
 ```
 
+#### Compose Secrets Are Host Files, Not Encrypted Storage
+
+Compose secrets declared with `file:` are **NOT** encrypted and are **NOT**
+held in memory. Compose bind-mounts the named host file into the container;
+`docker inspect` reports it as a bind mount whose source is the host path, and
+the plaintext stays on the host disk for as long as that file exists.
+
+Projects **MUST NOT** treat a Compose secret as protected storage. Projects
+**MUST** protect the source file (mode `0400`, owned by the account that runs
+the stack, on a directory excluded from Git and from every build context) or
+materialise it at deploy time from an external secret manager such as SOPS,
+Vault, or a cloud secrets service, and remove it when the stack stops.
+
+Compose secrets work with Linux containers only: Compose delivers each secret
+as a single-file bind mount, and Windows containers can bind-mount directories
+only.
+
+```bash
+# Verify what a Compose secret actually is
+docker inspect myapp-app-1 --format '{{json .Mounts}}' | jq '.[] | {Type, Source}'
+# {"Type": "bind", "Source": "/etc/myapp/secrets/db_password"}
+
+# Materialise it outside the build context, readable only by the deploy account
+umask 077
+mkdir -p /etc/myapp/secrets
+vault kv get -field=password secret/myapp/db > /etc/myapp/secrets/db_password
+chown deploy:deploy /etc/myapp/secrets/db_password
+chmod 0400 /etc/myapp/secrets/db_password
+```
+
+#### Swarm Secrets
+
+Only Swarm services get encrypted-at-rest secret storage. Projects that need
+that guarantee **MUST** deploy to Swarm (`docker stack deploy`) or another
+orchestrator with a secret store; standalone containers and plain
+`docker compose up` cannot use it.
+
+**Why**: A Swarm secret is sent to the manager over mutual TLS and stored in
+the encrypted Raft log. When a task starts, the decrypted secret is mounted
+into an in-memory filesystem, and it is unmounted and flushed from the node's
+memory when the task stops. On Windows containers, secrets are instead
+persisted in clear text on the container's root disk (removed when the
+container stops), so BitLocker on the volume holding the Docker root directory
+is **REQUIRED** for encryption at rest there.
+
+```bash
+# Create the secret in the swarm, not on a shared filesystem
+printf '%s' "$DB_PASSWORD" | docker secret create db_password -
+```
+
+```yaml
+# compose.production.yml, deployed with: docker stack deploy -c ... myapp
+secrets:
+  db_password:
+    external: true  # Managed by the swarm, not read from a host file
+
+services:
+  app:
+    secrets:
+      - db_password
+    environment:
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+```
+
 ## Health Checks
 
 Projects **MUST** define health checks for all services.
 
-**Why**: Health checks enable Docker to monitor container health and restart
-unhealthy containers automatically. They also ensure dependent services wait
-for upstream services to be ready before starting.
+**Why**: A health check is the only machine-readable statement of whether a
+service can serve traffic. Compose gates `depends_on` on it, orchestrators use
+it to decide where to route traffic, and operators read it from `docker ps`.
+
+Health checks **MUST NOT** be relied on for recovery. A failing check sets the
+container's health status to `unhealthy` and nothing else: the process keeps
+running, and Docker Engine restart policies act on container *exit*, not on
+health status. A container that is hung but alive stays up indefinitely under
+`restart: unless-stopped`.
+
+Projects therefore **MUST** obtain recovery from one of:
+
+- **The application**: retry with exponential back-off and jitter on
+  dependency failures, and exit non-zero on unrecoverable state so the restart
+  policy applies.
+- **An orchestrator**: Kubernetes restarts a container that fails its liveness
+  probe more times than the configured tolerance. Compose and Docker Engine
+  provide no equivalent.
+- **An explicit controller**: a supervisor that consumes
+  `docker events --filter event=health_status` and acts on it.
+
+```bash
+# An unhealthy container is not restarted: the restart count stays at 0
+docker inspect api \
+  --format '{{.State.Health.Status}} {{.State.Running}} {{.RestartCount}}'
+# unhealthy true 0
+```
 
 ### HTTP Health Check
 
@@ -765,7 +875,7 @@ FROM golang:1.22 AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
+COPY . .  # Requires a .dockerignore that excludes secrets and credentials
 RUN CGO_ENABLED=0 go build -o /app/server
 
 # Stage 2: Runtime
@@ -834,6 +944,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 ```
 
+A single-stage build ships the whole build context, so every file that
+`.dockerignore` fails to exclude is readable in the published image. Multi-stage
+builds narrow that to the intermediate stage, which is still cached and
+pushable, so the exclusions matter in both cases.
+
 ### Combining RUN Commands
 
 Projects **SHOULD** combine RUN commands to reduce layers.
@@ -853,17 +968,40 @@ RUN apt-get update && \
 
 ### .dockerignore
 
-Projects **MUST** use `.dockerignore` to exclude unnecessary files.
+Projects **MUST** use `.dockerignore` to exclude unnecessary files, and
+**MUST** exclude every path that can hold credentials.
 
-**Why**: `.dockerignore` reduces build context size, speeds up builds, and
-prevents accidentally copying secrets or build artifacts into images.
+**Why**: `.dockerignore` reduces build context size and speeds up builds, but
+it is also the only thing standing between `COPY . .` and a credential baked
+into a layer. Patterns are matched against the whole path relative to the
+context root, and `*` does not cross `/`, so `secrets/` and `*.pem` exclude
+only top-level matches: `sub/secrets/db_password` and `sub/deploy.pem` still
+enter the context. Credential patterns therefore need a `**/` prefix.
 
 ```text
 # .dockerignore
+# Credentials and secret material (never in a build context)
+**/secrets/
+**/.env*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+**/.ssh/
+**/.aws/
+**/.netrc
+**/.npmrc
+**/.pypirc
+**/*.kubeconfig
+
+# Version control and CI metadata
 .git
 .gitignore
-.env*
-*.md
+.github
+
+# Build output and caches
 node_modules
 __pycache__
 *.pyc
@@ -871,8 +1009,70 @@ __pycache__
 coverage
 dist
 build
+
+# Documentation and logs
+*.md
 *.log
 ```
+
+The matching `.gitignore` **MUST** cover the same credential paths, because a
+file removed from the working tree survives in Git history. Git applies these
+patterns at every depth, so it needs no `**/` prefix.
+
+```text
+# .gitignore
+secrets/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+```
+
+### Build-Time Credentials
+
+Projects **MUST** pass build-time credentials with BuildKit secret or SSH
+mounts, and **MUST NOT** pass them as build arguments, environment variables,
+or copied files.
+
+**Why**: A build argument persists in the image configuration and in
+`docker history`, so anyone who can pull the image can read it. A secret mount
+exposes the value only for the duration of one `RUN` instruction and writes
+nothing to the layer.
+
+```dockerfile
+# WRONG: a build argument survives in the published image
+FROM alpine:3.22
+ARG REGISTRY_TOKEN
+ENV REGISTRY_TOKEN=${REGISTRY_TOKEN}
+RUN echo "fetching dependencies with $REGISTRY_TOKEN" > /tmp/build.log
+# docker inspect myapp:1.0 --format '{{json .Config.Env}}'
+# ["PATH=...","REGISTRY_TOKEN=fixture-token-value"]
+```
+
+```dockerfile
+# syntax=docker/dockerfile:1.27
+# CORRECT: the credential is mounted for one instruction only
+FROM golang:1.27.1 AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=secret,id=netrc,target=/root/.netrc,mode=0400 \
+    go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/server ./...
+```
+
+```bash
+# Supply the secret from a file outside the build context
+docker build --secret id=netrc,src="$HOME/.netrc" -t myapp:1.0 .
+
+# Or take the value from an environment variable on the build client;
+# it is mounted at /run/secrets/npm_token unless the RUN mount sets env=
+docker build --secret id=npm_token,env=NPM_TOKEN -t myapp:1.0 .
+```
+
+Use `--mount=type=ssh` for private Git dependencies so the agent socket, not a
+key file, is forwarded into the build.
 
 ### Security Scanning
 
@@ -983,13 +1183,22 @@ Projects **MUST** use `depends_on` with `condition: service_healthy`.
 readiness. Using `service_healthy` ensures dependent services wait until
 upstream services are actually ready to accept connections.
 
+`depends_on` gates startup only. It does **NOT** provide runtime failure
+recovery: `restart: true` restarts the dependent service when an explicit
+Compose operation such as `docker compose restart` or `docker compose up`
+updates or restarts the dependency. A dependency that crashes and is brought
+back by its own restart policy does not trigger it, so applications **MUST**
+reconnect with back-off rather than assume Compose will restart them.
+
 ```yaml
 services:
   api:
     depends_on:
       database:
         condition: service_healthy
-        restart: true  # Restart if dependency fails
+        # Restarts api when an explicit Compose operation restarts or
+        # updates database; not on a crash or an automatic restart
+        restart: true
       cache:
         condition: service_healthy
         restart: true
@@ -1126,9 +1335,12 @@ networks:
     internal: true
 
 # Secrets
+# Host files bind-mounted into the container: not encrypted, not in memory.
+# Keep the source outside the build context, mode 0400, materialised by
+# deployment tooling from a secret manager.
 secrets:
   api_key:
-    file: ./secrets/api_key
+    file: ${SECRETS_DIR:-/etc/myapp/secrets}/api_key
 
 # Volumes
 volumes:
@@ -1153,6 +1365,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        # Startup gating and explicit Compose operations only; the api
+        # process reconnects with back-off if postgres restarts on its own
         restart: true
     secrets:
       - api_key
@@ -1301,6 +1515,12 @@ docker stats --format "table {{.Name}}\t{{.MemUsage}}"
 
 - [Docker Engine 27.5 Release Notes](https://docs.docker.com/engine/release-notes/27/)
 - [Docker Compose v5 Release Notes](https://docs.docker.com/compose/releases/release-notes/)
+- [Manage Secrets in Docker Compose](https://docs.docker.com/compose/how-tos/use-secrets/)
+- [Manage Sensitive Data with Docker Secrets (Swarm)](https://docs.docker.com/engine/swarm/secrets/)
+- [Build Secrets](https://docs.docker.com/build/building/secrets/)
+- [Start Containers Automatically](https://docs.docker.com/engine/containers/start-containers-automatically/)
+- [Control Startup and Shutdown Order in Compose](https://docs.docker.com/compose/how-tos/startup-order/)
+- [Kubernetes Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/)
 - [Docker Compose Include Directive](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/)
 - [OWASP Docker Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html)
 - [Docker Security Best Practices 2025](https://cloudnativenow.com/topics/cloudnativedevelopment/docker/docker-security-in-2025-best-practices-to-protect-your-containers-from-cyberthreats/)
