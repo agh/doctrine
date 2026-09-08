@@ -518,7 +518,7 @@ services:
 
   **Why**: Environment variables visible in `docker inspect`. Use a secret file
   and protect the host file it is mounted from.
-  [See: Doctrine Docker Guide - Secrets](../../../guides/infrastructure/docker.md#secrets-vs-environment-variables)
+  [See: Doctrine Docker Guide - Secrets](docker.md#secrets-vs-environment-variables)
 
 - [ ] **Security**: Running as root (`Dockerfile:15`)
 
