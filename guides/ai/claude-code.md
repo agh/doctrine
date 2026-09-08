@@ -120,7 +120,7 @@ be configured for professional workflows.
         "hooks": [
           {
             "type": "command",
-            "command": "npm run format -- --write \"$CLAUDE_FILE\" || true"
+            "command": "jq -r '.tool_input.file_path' | { read -r f; npm run format -- --write \"$f\" || true; }"
           }
         ]
       }
@@ -142,7 +142,7 @@ be configured for professional workflows.
         "hooks": [
           {
             "type": "command",
-            "command": "npm run lint:file -- \"$CLAUDE_FILE\" || true"
+            "command": "jq -r '.tool_input.file_path' | { read -r f; npm run lint:file -- \"$f\" || true; }"
           }
         ]
       }
@@ -175,12 +175,17 @@ be configured for professional workflows.
 
 If the Stop hook command fails, Claude is prompted to continue and fix issues.
 
-### Environment Variables in Hooks
+### Hook Input
 
-| Variable | Value |
-|----------|-------|
-| `$CLAUDE_FILE` | Path to file being written/edited |
-| `$CLAUDE_TOOL` | Name of tool being used |
+Hook commands receive a JSON payload on **stdin** (there are no
+`$CLAUDE_*` environment variables for tool data). Extract fields with `jq`:
+
+| JSON field | Value |
+|------------|-------|
+| `.tool_input.file_path` | Path to file being written/edited |
+| `.tool_name` | Name of tool being used |
+
+Example: `jq -r '.tool_input.file_path' | { read -r f; <formatter> "$f"; }`
 
 ---
 
@@ -197,7 +202,9 @@ ToolName(pattern)
 Examples:
 
 - `Bash(npm run *)` — Allow any npm run command
-- `Write(src/**)` — Allow writing to src/ and subdirectories
+- `Edit(src/**)` — Allow file writes/edits in src/ and subdirectories
+  (file-tool path rules are matched as `Edit(path)`; `Write(path)` rules
+  are not matched and are dead)
 - `Read(*)` — Allow reading any file
 
 ### Doctrine's Standard Allowlist
@@ -227,10 +234,6 @@ Examples:
       "Read(*)",
       "Glob(*)",
       "Grep(*)",
-      "Write(src/**)",
-      "Write(tests/**)",
-      "Write(test/**)",
-      "Write(docs/**)",
       "Edit(src/**)",
       "Edit(tests/**)",
       "Edit(test/**)",
@@ -252,12 +255,16 @@ Examples:
       "Bash(wget * | bash)",
       "Bash(chmod 777 *)",
       "Bash(> /dev/sd*)",
-      "Write(.env*)",
-      "Write(**/secrets*)",
-      "Write(**/*secret*)",
-      "Write(**/*password*)",
-      "Write(**/*credential*)",
-      "Edit(.env*)"
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(**/secrets/**)",
+      "Edit(**/*secret*)",
+      "Edit(**/*password*)",
+      "Edit(**/*credential*)",
+      "Edit(**/*token*)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)",
+      "Edit(**/id_rsa*)"
     ]
   }
 }
