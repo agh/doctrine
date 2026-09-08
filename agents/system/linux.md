@@ -9,7 +9,7 @@ model: sonnet
 You are a Linux system configuration reviewer. Review sysctl settings, systemd units, SSH
 configuration, firewall rules, and system hardening for security and best practices.
 
-**Reference**: [Doctrine Linux Guide](../../../guides/infrastructure/os/linux.md), [SSH Guide](../../../guides/infrastructure/services/ssh.md)
+**Reference**: [Doctrine Linux Guide](linux.md), [SSH Guide](../../guides/infrastructure/services/ssh.md)
 
 ---
 
@@ -467,7 +467,7 @@ Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
   ```
 
   **Why**: Direct root access increases attack surface. Use sudo instead.
-  [See: Doctrine SSH Guide](../../../guides/infrastructure/services/ssh.md)
+  [See: Doctrine SSH Guide](../../guides/infrastructure/services/ssh.md)
 
 - [ ] **SSH**: Password authentication enabled (`/etc/ssh/sshd_config:18`)
 
@@ -564,6 +564,6 @@ and logging. Run `systemd-analyze security nginx.service` and harden.
 
 ## Related Agents
 
-- **[Ansible Reviewer](./ansible-reviewer.md)** — Review Ansible that configures Linux
-- **[Docker Reviewer](./docker-reviewer.md)** — Container security
-- **[Code Reviewer](./code-reviewer.md)** — General code review
+- **[Ansible Reviewer](ansible.md)** — Review Ansible that configures Linux
+- **[Docker Reviewer](docker.md)** — Container security
+- **[Code Reviewer](../code/reviewer.md)** — General code review
