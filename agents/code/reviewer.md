@@ -276,7 +276,7 @@ panic!() in library              // Return Result
 impl From<E> for Error           // Error conversion
 ```
 
-**Reference**: [Doctrine Rust Guide](../test-writer/rust.md)
+**Reference**: [Doctrine Rust Guide](../../guides/languages/rust.md) and its [topic guides](../../guides/languages/rust/README.md)
 
 ### Ruby / Rails
 
@@ -331,9 +331,10 @@ frozen_string_literal: true      # Memory optimization
 
 When applicable, link to Doctrine guides:
 
-- `[See: Python Guide](../test-writer/python.md)`
+- `[See: Python Guide](../../guides/languages/python.md)`
+- `[See: Rust Testing Tools](../../guides/languages/rust/testing.md)`
 - `[See: Testing Guide](../../guides/process/testing.md)`
-- `[See: REST API Guide](../../../guides/api/rest.md)`
+- `[See: REST API Guide](../../guides/api/rest.md)`
 
 ---
 

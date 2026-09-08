@@ -26,6 +26,8 @@ See [versioning guide](guides/process/versioning.md) for details.
 
 ## Language Guides
 
+Every category is indexed in [guides/README.md](guides/README.md).
+
 | Language | Guide | Upstream |
 | -------- | ----- | -------- |
 | Overview | [guides/languages/README.md](guides/languages/README.md) | — |
@@ -33,6 +35,15 @@ See [versioning guide](guides/process/versioning.md) for details.
 | Ruby | [guides/languages/ruby.md](guides/languages/ruby.md) | Community |
 | Go | [guides/languages/go.md](guides/languages/go.md) | [Google](reference/google/go.md) |
 | Rust | [guides/languages/rust.md](guides/languages/rust.md) | Official |
+| Rust: topic index | [guides/languages/rust/README.md](guides/languages/rust/README.md) | Official |
+| Rust: Rust API Design | [guides/languages/rust/api-design.md](guides/languages/rust/api-design.md) | Official |
+| Rust: Async Runtimes | [guides/languages/rust/async.md](guides/languages/rust/async.md) | Official |
+| Rust: Cargo Features | [guides/languages/rust/features.md](guides/languages/rust/features.md) | Official |
+| Rust: Procedural Macros | [guides/languages/rust/macros.md](guides/languages/rust/macros.md) | Official |
+| Rust: Rust Testing Tools | [guides/languages/rust/testing.md](guides/languages/rust/testing.md) | Official |
+| Rust: Rust Testing Scenarios | [guides/languages/rust/testing-scenarios.md](guides/languages/rust/testing-scenarios.md) | Official |
+| Rust: Unsafe Rust | [guides/languages/rust/unsafe.md](guides/languages/rust/unsafe.md) | Official |
+| Rust: WebAssembly | [guides/languages/rust/wasm.md](guides/languages/rust/wasm.md) | Official |
 | TypeScript | [guides/languages/typescript.md](guides/languages/typescript.md) | [Google](reference/google/typescript.html) |
 | C# | [guides/languages/csharp.md](guides/languages/csharp.md) | [Google](reference/google/csharp.md) |
 | .NET | [guides/languages/dotnet.md](guides/languages/dotnet.md) | Microsoft |

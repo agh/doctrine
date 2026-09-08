@@ -1090,5 +1090,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 ## See Also
 
-- [Rust Style Guide](rust.md)
+- [Rust Style Guide](../../guides/languages/rust.md)
+- [Rust Testing Tools](../../guides/languages/rust/testing.md)
+- [Rust Testing Scenarios](../../guides/languages/rust/testing-scenarios.md)
 - [Testing Guide](../../guides/process/testing.md)

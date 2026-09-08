@@ -57,6 +57,7 @@ doctrine/
 │   ├── frameworks/    # Framework guides (Rails, Django, React, ...)
 │   ├── infrastructure/# Operating systems, services, Ansible, Docker
 │   ├── languages/     # Language style guides (Python, Go, Rust, ...)
+│   │   └── rust/      # Rust topic guides (async, unsafe, macros, WASM, testing, ...)
 │   └── process/       # Testing, CI, versioning, GitHub templates
 ├── reference/         # Vendored third-party guides, unmodified
 ├── scripts/           # Repository validators (gen_nav, validate_versions)
@@ -102,6 +103,9 @@ When editing or creating guides:
 - **SHOULD** use consistent heading hierarchy (H1 for title, H2 for sections)
 - **MUST** include Quick Reference table at top of language guides
 - **MUST** include navigation breadcrumb after title
+- **SHOULD** split a guide that outgrows roughly 1,000 lines into a core guide
+  plus `guides/<category>/<name>/` topic guides with a routing table, so an
+  agent loads only the material a task needs (see `guides/languages/rust.md`)
 
 ## RFC 2119 Boilerplate
 

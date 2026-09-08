@@ -224,7 +224,13 @@ def check_navigation() -> List[str]:
             problems.append(f"MISSING from README.md: {relative(readme)}")
         parent_readme = readme.parent.parent / "README.md"
         if readme.parent.parent != PROJECT_ROOT / "guides" and parent_readme.exists():
-            if readme not in category_links.get(parent_readme, set()):
+            # guides/README.md's parent index is the root README, which is not a
+            # category README; look its links up in the right set.
+            parent_links = (
+                readme_links if parent_readme == ROOT_README
+                else category_links.get(parent_readme, set())
+            )
+            if readme not in parent_links:
                 problems.append(
                     f"MISSING from {relative(parent_readme)}: {relative(readme)}"
                 )
