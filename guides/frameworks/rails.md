@@ -8,7 +8,7 @@ interpreted as described in [RFC 2119][rfc2119].
 
 [rfc2119]: https://datatracker.ietf.org/doc/html/rfc2119
 
-Extends [Ruby style guide](ruby.md) with Rails-specific conventions from
+Extends [Ruby style guide](../languages/ruby.md) with Rails-specific conventions from
 [Rails Style Guide](https://rails.rubystyle.guide/).
 
 **Target Version**: Rails 8.1+ with Ruby 3.4
@@ -2016,9 +2016,9 @@ end
 
 ## See Also
 
-- [Ruby Style Guide](../ruby.md) - Base Ruby conventions that apply to Rails
-- [Testing Guide](../testing.md) - General testing principles and patterns
-- [CI Guide](../ci.md) - Continuous integration best practices
+- [Ruby Style Guide](../languages/ruby.md) - Base Ruby conventions that apply to Rails
+- [Testing Guide](../process/testing.md) - General testing principles and patterns
+- [CI Guide](../process/ci.md) - Continuous integration best practices
 
 ## References
 

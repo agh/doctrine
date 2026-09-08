@@ -564,7 +564,7 @@ destinations **MUST NOT** hold project-local files.
 ### GitHub Action for Auto-Sync
 
 Use the maintained template at
-[`.github/workflows/sync-doctrine.yml`](../../.github/workflows/sync-doctrine.yml)
+[`.github/workflows/sync-doctrine.yml`](../../configs/github/workflows/sync-doctrine.yml)
 rather than hand-rolling a workflow. Copy it into your project's
 `.github/workflows/`, then customise `SYNC_PATHS`:
 

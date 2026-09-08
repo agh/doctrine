@@ -533,6 +533,6 @@ lighthouse https://example.com --only-categories=accessibility
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** - General code review
-- **[REST API Reviewer](./rest-api-reviewer.md)** - API design review
+- **[Code Reviewer](reviewer.md)** - General code review
+- **[REST API Reviewer](api-rest.md)** - API design review
 - **[Test Writer](./test-writer.md)** - Generate accessibility tests

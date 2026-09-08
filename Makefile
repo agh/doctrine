@@ -67,7 +67,7 @@ help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
-check: lint links secrets versions snippets ## Run every check CI runs
+check: lint links secrets versions vendored snippets ## Run every check CI runs
 
 install: node_modules ## Install the pinned documentation toolchain
 
@@ -126,3 +126,6 @@ $(GITLEAKS):
 
 clean: ## Remove downloaded tools and caches
 	rm -rf $(TMP) node_modules scripts/__pycache__
+
+vendored: ## Verify vendored third-party files match their recorded checksums
+	@python3 scripts/check_vendored.py

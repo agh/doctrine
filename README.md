@@ -224,7 +224,7 @@ Ready-to-copy configuration files:
 | EditorConfig | [configs/editorconfig/.editorconfig](configs/editorconfig/.editorconfig) | Editor settings |
 | Pre-commit | [configs/pre-commit/.pre-commit-config.yaml](configs/pre-commit/.pre-commit-config.yaml) | Git hooks |
 | Prettier | [configs/prettier/.prettierrc](configs/prettier/.prettierrc) | Code formatting |
-| **Doctrine Sync** | [.github/workflows/sync-doctrine.yml](.github/workflows/sync-doctrine.yml) | Auto-sync configs to projects |
+| **Doctrine Sync** | [.github/workflows/sync-doctrine.yml](configs/github/workflows/sync-doctrine.yml) | Auto-sync configs to projects |
 
 ---
 
