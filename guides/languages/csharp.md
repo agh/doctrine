@@ -37,20 +37,34 @@ members, and operators on existing types:
 **Do:**
 
 ```csharp
-// Extension properties and methods in a single block
-extension(IEnumerable<T> source) where T : struct
-{
-    public bool IsEmpty => !source.Any();
-    public int SafeCount => source?.Count() ?? 0;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-    public static IEnumerable<T> Empty => Enumerable.Empty<T>();
+// Extension blocks live in a top-level, non-generic static class
+public static class EnumerableExtensions
+{
+    // The block declares its own type parameters and constraints
+    extension<T>(IEnumerable<T> source) where T : struct
+    {
+        public bool IsEmpty => !source.Any();
+        public int SafeCount => source?.Count() ?? 0;
+
+        public static IEnumerable<T> Empty => Enumerable.Empty<T>();
+    }
 }
 
 // Usage
-var numbers = new[] { 1, 2, 3 };
-if (!numbers.IsEmpty)
+public static class Report
 {
-    Console.WriteLine($"Count: {numbers.SafeCount}");
+    public static void Print()
+    {
+        var numbers = new[] { 1, 2, 3 };
+        if (!numbers.IsEmpty)
+        {
+            Console.WriteLine($"Count: {numbers.SafeCount}");
+        }
+    }
 }
 ```
 
@@ -59,40 +73,57 @@ if (!numbers.IsEmpty)
 ```csharp
 // Don't use extension blocks for single simple methods
 // - use traditional extension methods instead
-extension(string s)
+public static class StringExtensions
 {
-    public bool IsNullOrEmpty => string.IsNullOrEmpty(s);
+    extension(string s)
+    {
+        public bool IsNullOrEmpty => string.IsNullOrEmpty(s);
+    }
 }
 
 // Better as traditional extension method
-public static bool IsNullOrEmpty(this string s) => string.IsNullOrEmpty(s);
+public static class StringHelpers
+{
+    public static bool IsNullOrEmpty(this string s) => string.IsNullOrEmpty(s);
+}
 ```
+
+### Why a containing static class and an explicit type parameter
+
+An extension block **MUST** be declared inside a top-level, non-generic
+static class, and **MUST** declare its own type parameters. A bare
+`extension(...)` block is a compile error: the compiler reports CS9283
+outside such a class, and CS0080 plus CS0246 when the block uses `T`
+without declaring `extension<T>`. The receiver parameter does not
+introduce type parameters.
 
 ### Field Keyword
 
-The `field` keyword provides direct access to auto-property backing fields:
+The `field` keyword provides direct access to auto-property backing fields.
+The backing field has the property's own type, so `field ??= ...` compiles
+only when that type is nullable, and a `field`-backed non-nullable property
+**MUST** be `required` or carry an initializer or the compiler reports
+CS9264.
 
 **Do:**
 
 ```csharp
-public class User
+using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+public class User : INotifyPropertyChanged
 {
     // Validate on set while keeping auto-property syntax
-    public string Email
+    public required string Email
     {
         get;
         set => field = value?.ToLowerInvariant()
             ?? throw new ArgumentNullException(nameof(value));
     }
 
-    // Lazy initialization with backing field
-    public DateTime CreatedAt
-    {
-        get => field ??= DateTime.UtcNow;
-    }
-
     // Notify on change
-    public string Name
+    public required string Name
     {
         get;
         set
@@ -104,22 +135,69 @@ public class User
             }
         }
     }
+
+    // DateTime has no null state, so seed the backing field from an
+    // initializer; `field ??= DateTime.UtcNow` does not compile
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
+
+    // Lazy initialization needs a nullable property so `??=` has a null to test
+    public string? Slug
+    {
+        get => field ??= Name.ToLowerInvariant().Replace(' ', '-');
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 ```
 
 **Don't:**
 
 ```csharp
-// Don't use field keyword for simple validation that can use init
-public string Id
+using System;
+
+// Don't trade a mutable property for an immutable one without saying so:
+// the null check below runs on every assignment, at run time
+public class MutableOrder
 {
-    get;
-    set => field = value ?? throw new ArgumentNullException(nameof(value));
+    public required string Id
+    {
+        get;
+        set => field = value ?? throw new ArgumentNullException(nameof(value));
+    }
 }
 
-// Better: use init accessor
-public required string Id { get; init; }
+// Better when the value must not change after construction: the compiler
+// enforces it at every call site instead
+public class ImmutableOrder
+{
+    public required string Id { get; init; }
+}
+
+// A member already named `field` is shadowed inside an accessor (CS9258):
+// write `this.field` or `@field` to reach it
+public class Legacy
+{
+    private readonly string field = "backing";
+
+    public string Value => this.field;
+}
 ```
+
+### Why `required` rather than an unchecked setter
+
+`required string Id { get; init; }` and a mutable property with a
+null-rejecting setter are not interchangeable. The first is checked by the
+compiler at every object initializer and cannot change afterwards; the
+second throws at run time and stays writable. Projects **MUST** choose
+`init` only where the value is genuinely set once.
+
+Projects that already declare a member named `field` **MUST** migrate it or
+qualify every accessor reference. In language version 14.0 the compiler
+reports CS9258 and binds `field` to a synthesized backing field, so
+`this.field` or `@field` is required to reach the existing member.
 
 ### Null-Conditional Assignment
 
@@ -203,22 +281,52 @@ public class MyType { }
 
 ### Simple Lambda Parameters with Modifiers
 
-Lambda parameters can now have modifiers without explicit types:
+Lambda parameters can carry modifiers without explicit types, provided the
+target delegate declares the same modifiers. A `params` parameter is the
+exception: it **MUST** be explicitly typed.
 
 **Do:**
 
 ```csharp
-// ref, out, in modifiers on lambda parameters
-Span<int> numbers = stackalloc int[] { 1, 2, 3 };
-numbers.Sort((ref x, ref y) => x.CompareTo(y));
+using System;
+using System.Linq;
 
-// scoped modifier
-ReadOnlySpan<char> Process(ReadOnlySpan<char> input) =>
-    Transform(input, (scoped text) => text.Trim());
+public delegate int RefComparer(ref int x, ref int y);
 
-// params modifier
-var sum = Aggregate((params values) => values.Sum());
+public delegate int SpanLength(scoped ReadOnlySpan<char> text);
+
+public delegate int Aggregator(params int[] values);
+
+public static class LambdaSamples
+{
+    public static void Run()
+    {
+        // ref, out and in modifiers need a delegate that declares them
+        RefComparer compare = (ref x, ref y) => x.CompareTo(y);
+        int left = 3, right = 7;
+        Console.WriteLine(compare(ref left, ref right));
+
+        // Span<T>.Sort takes Comparison<T>, whose parameters are by value
+        Span<int> numbers = stackalloc int[] { 3, 1, 2 };
+        numbers.Sort((x, y) => x.CompareTo(y));
+
+        // scoped modifier
+        SpanLength trimmedLength = (scoped text) => text.Trim().Length;
+        Console.WriteLine(trimmedLength("  hello  "));
+
+        // params modifier: the parameter type must be written out
+        Aggregator sum = (params int[] values) => values.Sum();
+        Console.WriteLine(sum(1, 2, 3));
+    }
+}
 ```
+
+### Why the delegate signature decides the modifiers
+
+A lambda parameter modifier is checked against the target delegate.
+`Span<T>.Sort` takes `Comparison<T>`, which passes both operands by value,
+so `(ref x, ref y) => ...` is rejected with CS1677. An implicitly typed
+`params` lambda parameter is rejected outright with CS9272.
 
 ## Linting: Roslynator + SonarAnalyzer
 
@@ -239,16 +347,44 @@ You **MUST** add to your project or Directory.Build.props:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Roslynator.Analyzers" Version="4.12.0">
+  <PackageReference Include="Roslynator.Analyzers" Version="5.0.0">
     <PrivateAssets>all</PrivateAssets>
     <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
   </PackageReference>
-  <PackageReference Include="SonarAnalyzer.CSharp" Version="9.32.0">
+  <PackageReference Include="SonarAnalyzer.CSharp" Version="10.33.0.1635">
     <PrivateAssets>all</PrivateAssets>
     <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
   </PackageReference>
 </ItemGroup>
 ```
+
+Both versions **MUST** be written exactly as published. SonarAnalyzer.CSharp
+uses four-part versions, so `Version="10.33.0"` resolves to the nearest
+higher build with NU1603, which `TreatWarningsAsErrors` turns into a fatal
+restore error.
+
+### Migrating to Roslynator 5.0.0
+
+Roslynator 5.0.0 (released 2026-08-21) is a breaking release. Projects
+upgrading from 4.x **MUST**:
+
+- Rename the legacy `.editorconfig` keys `roslynator.max_line_length` and
+  `roslynator.prefix_field_identifier_with_underscore` to
+  `roslynator_max_line_length` and
+  `roslynator_prefix_field_identifier_with_underscore`, and replace
+  `roslynator_suppress_unity_script_methods` with
+  `roslynator_unity_code_analysis.enabled`
+- Replace the analyzers removed in 5.0.0 with their successors, for example
+  RCS0014 with RCS0061, RCS1035 with RCS1260, and RCS1237 with RCS1254
+- Reference `Microsoft.CodeAnalysis.CSharp.Workspaces` explicitly in test
+  projects that used the Roslynator testing packages, which now floor their
+  Roslyn dependency at 3.8.0 instead of forcing 4.14.0
+- Install the Roslynator 2026 extension for Visual Studio 2026, or stay on
+  the last 4.x VSIX; the 5.0.0 extensions no longer bundle analyzers
+
+Projects **MUST** baseline the diagnostics both upgrades introduce before
+turning warnings into errors, otherwise the first build after the upgrade
+fails on pre-existing code.
 
 ### Solution-Wide (Directory.Build.props)
 
@@ -264,8 +400,14 @@ Projects **SHOULD** configure analyzers solution-wide using `Directory.Build.pro
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Roslynator.Analyzers" Version="4.12.0" />
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="9.32.0" />
+    <PackageReference Include="Roslynator.Analyzers" Version="5.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.33.0.1635">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>
 ```
@@ -344,23 +486,41 @@ C# projects **MUST** use coverlet[^4] for code coverage measurement.
 - Built-in support for excluding generated code and test assemblies
 
 ```bash
-# Run tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
+# Run tests with coverage into a known directory
+dotnet test --settings coverlet.runsettings \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./TestResults
 
 # With threshold
 dotnet test /p:CollectCoverage=true /p:Threshold=80
 
-# Generate report
-dotnet tool install -g dotnet-reportgenerator-globaltool
-reportgenerator -reports:coverage.cobertura.xml -targetdir:coverage
+# Generate report from the per-run GUID directories VSTest creates
+dotnet new tool-manifest
+dotnet tool install dotnet-reportgenerator-globaltool --version 5.5.11
+dotnet tool run reportgenerator \
+  -reports:"TestResults/**/coverage.cobertura.xml" \
+  -targetdir:coverage
 ```
 
 ReportGenerator[^6] is used to generate human-readable coverage reports.
 
+### Why the glob and the local tool
+
+The VSTest collector writes `coverage.cobertura.xml` into a freshly named
+GUID directory under `TestResults`, never at the repository root, so
+`-reports:coverage.cobertura.xml` fails with "No report files specified".
+A recursive glob matches whichever directory the run produced. Pinning
+ReportGenerator in a tool manifest **MUST** be preferred over
+`dotnet tool install -g`, which gives CI an unpinned floating version.
+
 ### Configuration
 
+The settings below belong in `coverlet.runsettings`. The XML declaration
+**MUST** be the first node in the file, so the filename cannot be written as
+a leading comment; `dotnet test` otherwise rejects the file with
+"Unexpected XML declaration".
+
 ```xml
-<!-- coverlet.runsettings -->
 <?xml version="1.0" encoding="utf-8" ?>
 <RunSettings>
   <DataCollectionRunSettings>
@@ -387,8 +547,10 @@ dotnet tool install --global SharpFuzz.CommandLine
 sharpfuzz path/to/MyLibrary.dll
 ```
 
+The fuzzing harness below uses SharpFuzz[^5]:
+
 ```csharp
-using SharpFuzz;[^5]
+using SharpFuzz;
 
 public class Program
 {
@@ -533,24 +695,48 @@ BDD projects **MAY** use SpecFlow[^11].
 
 ### Playwright for .NET
 
+Install the runner-specific integration package rather than the bare
+library, so the base class supplies `Page` and `Expect`, and install the
+browsers before the first run:
+
+```bash
+dotnet add package Microsoft.Playwright.Xunit.v3 --version 1.62.0
+dotnet build
+pwsh bin/Debug/net10.0/playwright.ps1 install
+```
+
+Tests then derive from `PageTest`, which opens a page per test and disposes
+it. The example uses Playwright for .NET[^10]:
+
 ```csharp
-using Microsoft.Playwright;[^10]
+using Microsoft.Playwright;
+using Microsoft.Playwright.Xunit.v3;
+using Xunit;
 
-[Test]
-public async Task UserCanLogin()
+public class LoginTests : PageTest
 {
-    await using var playwright = await Playwright.CreateAsync();
-    await using var browser = await playwright.Chromium.LaunchAsync();
-    var page = await browser.NewPageAsync();
+    [Fact]
+    public async Task UserCanLogin()
+    {
+        await Page.GotoAsync("https://example.com/login");
+        await Page.FillAsync("#username", "user@test.com");
+        await Page.FillAsync("#password", "password");
+        await Page.ClickAsync("button[type=submit]");
 
-    await page.GotoAsync("https://example.com/login");
-    await page.FillAsync("#username", "user@test.com");
-    await page.FillAsync("#password", "password");
-    await page.ClickAsync("button[type=submit]");
-
-    await Expect(page).ToHaveURLAsync("https://example.com/dashboard");
+        await Expect(Page).ToHaveURLAsync("https://example.com/dashboard");
+    }
 }
 ```
+
+### Why the integration package
+
+`IPlaywright` does not implement `IAsyncDisposable`, so
+`await using var playwright = await Playwright.CreateAsync()` fails with
+CS8417, and `Expect` is a member of the runner base class rather than a
+free function, so calling it without that base class fails with CS0103.
+Projects using xUnit **MUST** reference `Microsoft.Playwright.Xunit.v3` for
+xUnit v3 or `Microsoft.Playwright.Xunit` for xUnit v2; NUnit attributes such
+as `[Test]` **MUST NOT** be mixed into an xUnit suite.
 
 ### SpecFlow for BDD
 
@@ -696,12 +882,14 @@ public async Task CreateUser_IsIdempotent()
 
 ### Polly Retry Testing
 
+The retry test below builds its policy with Polly[^14]:
+
 ```csharp
 [Fact]
 public async Task RetryPolicy_HandlesTransientFailures()
 {
     var attempts = 0;
-    var policy = Policy[^14]
+    var policy = Policy
         .Handle<HttpRequestException>()
         .WaitAndRetryAsync(3, _ => TimeSpan.FromMilliseconds(100));
 
@@ -727,7 +915,7 @@ resilience patterns using Polly[^14].
 [Fact]
 public async Task CircuitBreaker_OpensAfterFailures()
 {
-    var breaker = Policy[^14]
+    var breaker = Policy
         .Handle<Exception>()
         .CircuitBreakerAsync(2, TimeSpan.FromSeconds(30));
 
@@ -741,29 +929,55 @@ public async Task CircuitBreaker_OpensAfterFailures()
 }
 ```
 
-### Simmy Chaos Engineering
+### Chaos Engineering
 
-Simmy[^15] enables chaos engineering testing:
+Polly 8.7.0 ships chaos strategies in the box, so Simmy[^15] as a separate
+package is no longer required. Injection **MUST** be made deterministic in
+tests by setting `InjectionRate` to 1.0 rather than a probability:
 
 ```csharp
-[Fact]
-public async Task Service_HandlesLatency()
+using System.Diagnostics;
+using Polly;
+using Polly.Simmy;
+using Polly.Simmy.Latency;
+
+public class ChaosTests
 {
-    var latencyPolicy = MonkeyPolicy.InjectLatencyAsync(
-        injectionRate: 0.5,
-        latency: TimeSpan.FromSeconds(2));
+    [Fact]
+    public async Task Service_HandlesLatency()
+    {
+        var pipeline = new ResiliencePipelineBuilder()
+            .AddChaosLatency(new ChaosLatencyStrategyOptions
+            {
+                InjectionRate = 1.0,
+                Latency = TimeSpan.FromMilliseconds(500)
+            })
+            .Build();
 
-    var stopwatch = Stopwatch.StartNew();
-    await latencyPolicy.ExecuteAsync(async () =>
-        await _service.GetDataAsync());
-    stopwatch.Stop();
+        var stopwatch = Stopwatch.StartNew();
+        await pipeline.ExecuteAsync(
+            async ct => await _service.GetDataAsync(ct),
+            CancellationToken.None);
+        stopwatch.Stop();
 
-    // Should handle added latency gracefully
-    stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
+        stopwatch.Elapsed.Should()
+            .BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(500));
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(5));
+    }
 }
 ```
 
+### Why not `MonkeyPolicy`
+
+`Polly.Contrib.Simmy` stopped at 0.3.0 and its `MonkeyPolicy` has no
+two-argument `InjectLatencyAsync(injectionRate, latency)` overload, so the
+legacy call fails with CS1501. A probabilistic `injectionRate: 0.5` also
+makes the assertion pass roughly half the time for the wrong reason.
+
 ### Timeout Testing
+
+The executed delegate **MUST** accept and forward the cancellation token
+Polly supplies, otherwise an optimistic timeout has nothing to cancel:
 
 ```csharp
 [Fact]
@@ -771,12 +985,20 @@ public async Task Operation_RespectsTimeout()
 {
     var timeout = Policy.TimeoutAsync(TimeSpan.FromMilliseconds(100));
 
-    await timeout.Invoking(p => p.ExecuteAsync(async () =>
-    {
-        await Task.Delay(1000);
-    })).Should().ThrowAsync<TimeoutRejectedException>();
+    await timeout.Invoking(p => p.ExecuteAsync(
+            async ct => await Task.Delay(TimeSpan.FromSeconds(1), ct),
+            CancellationToken.None))
+        .Should().ThrowAsync<TimeoutRejectedException>();
 }
 ```
+
+### Why the token must be forwarded
+
+`Policy.TimeoutAsync(TimeSpan)` uses the optimistic strategy, which cancels
+the token it passes to the delegate and reports `TimeoutRejectedException`
+only if the delegate observes it. A delegate that calls `Task.Delay(1000)`
+without a token runs to completion, the policy throws nothing, and the test
+above passes only because the assertion is never reached.
 
 ## Compatibility Testing
 
@@ -789,53 +1011,101 @@ Libraries **SHOULD** test against multiple .NET versions using multi-targeting.
 <PropertyGroup>
   <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
 </PropertyGroup>
-
-<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-  <PackageReference Include="System.Text.Json" Version="8.0.0" />
-</ItemGroup>
 ```
 
+### Why no conditional System.Text.Json reference
+
+`System.Text.Json` ships in the shared framework for every `net8.0` and
+later target, so referencing the package explicitly is redundant: NuGet
+reports NU1510 and asks for the reference to be removed. Pinning it to
+8.0.0 also drags in two high-severity denial-of-service advisories,
+GHSA-hh2w-p6rv-4g7w and GHSA-8g4q-xg66-9fp4, which restore reports as
+NU1903 and `TreatWarningsAsErrors` turns into build failures. A target that
+genuinely needs the package, such as `netstandard2.0`, **MUST** pin a
+serviced version — 8.0.6 is the last 8.x, and 10.0.11 is the current stable
+release — and CI **MUST** fail on NU1903.
+
 ### CI Matrix
+
+Each matrix leg **MUST** check out the repository and build a single target
+framework, and the job **MUST** install every runtime the matrix exercises
+alongside an SDK new enough to evaluate `net10.0`:
 
 ```yaml
 jobs:
   test:
     strategy:
       matrix:
-        dotnet: ['8.0.x', '9.0.x', '10.0.x']
+        framework: ['net8.0', 'net9.0', 'net10.0']
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - run: dotnet test
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+      - run: dotnet test --framework ${{ matrix.framework }}
 ```
+
+### Why not a matrix of SDK versions
+
+Building `net10.0` with the .NET 8 or 9 SDK fails with NETSDK1045, so a
+matrix over `dotnet-version` either fails or silently falls back to a
+preinstalled newer SDK and tests nothing it claims to. Matrixing over the
+target framework instead keeps one current SDK and asserts that each
+target framework really builds and runs.
 
 ## Internationalization Testing
 
-Applications with international users **MUST** test localization and UTF-8 handling:
+Applications with international users **MUST** test localization and UTF-8
+handling. Resource lookup reads `CultureInfo.CurrentUICulture`, not
+`CultureInfo.CurrentCulture`, so a localization test **MUST** set and
+restore both, and **MUST** run without parallelism because culture is
+ambient state:
 
 ```csharp
-[Theory]
-[InlineData("en-US", "Hello")]
-[InlineData("es-ES", "Hola")]
-[InlineData("ja-JP", "こんにちは")]
-public void Greeting_LocalizesToCulture(string culture, string expected)
+[Collection("Sequential")]
+public class GreetingTests
 {
-    var currentCulture = CultureInfo.CurrentCulture;
-    try
+    [Theory]
+    [InlineData("en-US", "Hello")]
+    [InlineData("es-ES", "Hola")]
+    [InlineData("ja-JP", "こんにちは")]
+    public void Greeting_LocalizesToCulture(string culture, string expected)
     {
-        CultureInfo.CurrentCulture = new CultureInfo(culture);
-        var greeting = _localizer["Greeting"];
-        greeting.Should().Be(expected);
-    }
-    finally
-    {
-        CultureInfo.CurrentCulture = currentCulture;
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUICulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            var target = new CultureInfo(culture);
+            CultureInfo.CurrentUICulture = target;  // resource lookup
+            CultureInfo.CurrentCulture = target;    // formatting and parsing
+
+            var greeting = _localizer["Greeting"];
+
+            greeting.Value.Should().Be(expected);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUICulture;
+        }
     }
 }
 ```
+
+### Why both cultures
+
+`IStringLocalizer` resolves satellite assemblies through
+`CultureInfo.CurrentUICulture`. Setting only `CurrentCulture` leaves the
+lookup on the neutral resources, so a correctly localized application still
+returns the fallback string and the test fails. `CurrentCulture` is still
+needed when the assertion covers number, date or currency formatting.
+Compare `LocalizedString.Value` rather than the `LocalizedString` itself,
+which does not compare equal to a `string`.
 
 ### UTF-8 Handling
 
@@ -931,9 +1201,11 @@ Applications implementing feature flags **SHOULD** use Microsoft.FeatureManageme
 
 ### Microsoft.FeatureManagement
 
+Register the filters with Microsoft.FeatureManagement[^17]:
+
 ```csharp
 // Configuration
-services.AddFeatureManagement()[^17]
+services.AddFeatureManagement()
     .AddFeatureFilter<PercentageFilter>()
     .AddFeatureFilter<TimeWindowFilter>();
 ```
@@ -955,27 +1227,46 @@ services.AddFeatureManagement()[^17]
 
 ### Testing Feature Filters
 
+Tests **MUST** pin the filter inputs so the outcome is decided, not
+sampled:
+
 ```csharp
 [Fact]
-public async Task FeatureFilter_RespectsPercentage()
+public async Task FeatureFilter_AtZeroPercent_IsDisabled()
+{
+    var featureManager = CreatePercentageFeatureManager(0);
+
+    var enabled = await featureManager.IsEnabledAsync("NewCheckout");
+
+    enabled.Should().BeFalse();
+}
+
+[Fact]
+public async Task FeatureFilter_AtHundredPercent_IsEnabled()
+{
+    var featureManager = CreatePercentageFeatureManager(100);
+
+    var enabled = await featureManager.IsEnabledAsync("NewCheckout");
+
+    enabled.Should().BeTrue();
+}
+
+private static IFeatureManager CreatePercentageFeatureManager(int percentage)
 {
     var config = new ConfigurationBuilder()
-        .AddInMemoryCollection(new Dictionary<string, string>
+        .AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FeatureManagement:NewCheckout:EnabledFor:0:Name"] = "Percentage",
-            ["FeatureManagement:NewCheckout:EnabledFor:0:Parameters:Value"] = "50"
+            ["FeatureManagement:NewCheckout:EnabledFor:0:Parameters:Value"] =
+                percentage.ToString(CultureInfo.InvariantCulture)
         })
         .Build();
 
     var services = new ServiceCollection();
     services.AddSingleton<IConfiguration>(config);
-    services.AddFeatureManagement();
+    services.AddFeatureManagement().AddFeatureFilter<PercentageFilter>();
 
-    var provider = services.BuildServiceProvider();
-    var featureManager = provider.GetRequiredService<IFeatureManager>();
-
-    var enabled = await featureManager.IsEnabledAsync("NewCheckout");
-    enabled.Should().BeOneOf(true, false); // Non-deterministic at 50%
+    return services.BuildServiceProvider().GetRequiredService<IFeatureManager>();
 }
 
 [Fact]
@@ -988,6 +1279,14 @@ public async Task Feature_IsDisabledByDefault()
     enabled.Should().BeFalse();
 }
 ```
+
+### Why the bounds rather than the midpoint
+
+A 50% filter is non-deterministic, so no single assertion can describe it.
+`BooleanAssertions` has no `BeOneOf` member in FluentAssertions[^13] 8.10.0
+either, so `enabled.Should().BeOneOf(true, false)` fails to compile with
+CS1061 — and would assert nothing if it did. The 0% and 100% cases pin both
+outcomes and still exercise the real `PercentageFilter`.
 
 ## References
 
