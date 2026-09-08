@@ -930,14 +930,14 @@ version.
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: rev:
+    rev: v0.16.6
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: rev:
+    rev: v2.3.1
     hooks:
       - id: mypy
         additional_dependencies: [strawberry-graphql]
