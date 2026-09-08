@@ -1,0 +1,98 @@
+# Gitleaks configuration for Doctrine
+#
+# Doctrine is a style-guide repository: it deliberately contains "never do
+# this" examples with secret-shaped placeholder strings. A naive scan flags
+# them, which is exactly what broke the previous grep-based check in
+# .github/workflows/doc-lint.yml.
+#
+# This configuration keeps the full upstream ruleset and adds a *reviewed*
+# allowlist. Every entry below names the file and the reason it is safe.
+# Adding a new secret-shaped string to a guide MUST be accompanied by a
+# reviewed entry here — the check is blocking.
+#
+# Pinned tool: gitleaks 8.30.1 (see .github/workflows/doc-lint.yml and Makefile).
+# Schema reference: https://github.com/gitleaks/gitleaks#configuration
+
+title = "Doctrine"
+
+[extend]
+# Inherit every upstream detection rule. Do not narrow this.
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# 1. Paths that are never scanned.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "Generated and tool-managed directories"
+targets = ["file"]
+paths = [
+  '''^node_modules/''',
+  '''(^|/)\.git/''',
+  '''(^|/)package-lock\.json$''',
+]
+
+# ---------------------------------------------------------------------------
+# 2. Placeholder idioms inside documentation.
+#
+# Scoped with condition = "AND" so these relaxations apply *only* to Markdown
+# under the documentation trees. Source, configuration and vendored data are
+# still scanned with the unmodified upstream ruleset.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "Obvious placeholder idioms in Doctrine's own Markdown guides"
+targets = ["secret"]
+condition = "AND"
+paths = [
+  '''^(guides|agents|commands|configs|scripts)/.*\.md$''',
+  '''^[A-Z0-9_-]+\.md$''',
+]
+regexes = [
+  # Sequential / keyboard-walk filler: abc123, 1234567890abcdef, deadbeef.
+  '''(?i)(abc123|abcdef0?123|0?123456789|deadbeef|cafebabe|foobar)''',
+  # Redaction markers: sk_test_xxxxxxxx, AKIA...XXXX.
+  '''[xX]{5,}''',
+  # Truncated with an ellipsis: age1ql3z7hjy54pw3hyww5..., sk-proj-abc123...
+  '''\.\.\.''',
+  # Self-describing placeholders: your_api_key_here, <YOUR-TOKEN>, ${API_KEY}.
+  '''(?i)(your[_-]|<[a-z0-9_-]+>|\$\{[a-z0-9_]+\}|changeme|replace[_-]?me)''',
+  # AWS's own published documentation key material.
+  '''(?i)EXAMPLE(KEY)?$''',
+]
+
+# ---------------------------------------------------------------------------
+# 3. Individually reviewed strings that do not fit a generic idiom.
+#
+# Each was inspected in context on 2026-09-08 and is a fabricated teaching
+# example, not a credential.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "Reviewed literal examples in Doctrine guides"
+targets = ["secret"]
+regexes = [
+  # guides/ai/security.md — fabricated "leaked .env" example. Keyboard walk.
+  '''ak_live_9j2k4n5m6l7k8j9h0g1f2d3s4a5s6d7f''',
+  # guides/ai/security.md — fabricated Stripe key; body is a1b2c3... sequence.
+  '''sk_live_51Hx7y8z9A0b1C2d3E4f5G6h7I8j9K0l1M2n3O4p5Q6r7S8t9U0v1W2x3Y4z5''',
+  # agents/system/messaging.md — an ActiveMQ authorisation flag, not a secret.
+  '''allow\.everyone\.if\.no\.acl\.found''',
+  # guides/api/rest.md — an Idempotency-Key header example (sequential nibbles).
+  '''a1b2c3d4-e5f6-7890-abcd-ef1234567890''',
+  # guides/ai/security.md — deliberately weak example DSN password.
+  '''kJ#9mL\$2pQw''',
+]
+
+# ---------------------------------------------------------------------------
+# 4. Stopwords applied to the generic-api-key heuristic.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "Documentation vocabulary that trips the generic entropy rule"
+targets = ["secret"]
+stopwords = [
+  "example",
+  "placeholder",
+  "redacted",
+  "sample",
+  "dummy",
+  "fake",
+  "notreal",
+]

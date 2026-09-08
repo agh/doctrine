@@ -1,0 +1,91 @@
+name: Outdated version
+description: A pinned tool, action or reference version in Doctrine has moved on.
+title: "chore(<scope>): update <tool> to <version>"
+labels: ["outdated-version"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Doctrine pins every tool version. When a pin goes stale, report it
+        here with the source you checked. Version claims made from memory are
+        not accepted.
+
+  - type: input
+    id: tool
+    attributes:
+      label: Tool, action or reference
+      placeholder: markdownlint-cli2
+    validations:
+      required: true
+
+  - type: input
+    id: current
+    attributes:
+      label: Version pinned in Doctrine
+      placeholder: 0.18.1
+    validations:
+      required: true
+
+  - type: input
+    id: latest
+    attributes:
+      label: Current version
+      placeholder: 0.23.2
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Source URL for the current version
+      description: >
+        Registry page, releases page or changelog that shows the version and
+        its release date.
+      placeholder: https://www.npmjs.com/package/markdownlint-cli2
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to update
+      description: >
+        Every place the old version appears — guides, configs, CI snippets,
+        pre-commit hooks.
+      placeholder: |
+        CONTRIBUTING.md
+        configs/pre-commit/.pre-commit-config.yaml
+        .github/workflows/doc-lint.yml
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of change
+      options:
+        - Patch or minor bump, no behaviour change
+        - Major bump, breaking changes
+        - Tool deprecated or replaced
+        - Security release
+    validations:
+      required: true
+
+  - type: textarea
+    id: breaking
+    attributes:
+      label: Breaking changes or migration notes
+      description: >
+        Required if this is a major bump, a deprecation or a replacement.
+        Doctrine MUST NOT recommend a deprecated tool without a migration
+        path.
+
+  - type: checkboxes
+    id: houserules
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the current version today against the source URL above.
+          required: true
+        - label: I searched existing issues and this is not a duplicate.
+          required: true

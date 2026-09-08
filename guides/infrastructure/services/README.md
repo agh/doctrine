@@ -7,14 +7,26 @@ cross-platform setup with platform-specific sections where needed.
 
 ## Service Guides
 
-| Service | Guide | Description |
-| ------- | ----- | ----------- |
-| SSH | [ssh.md](ssh.md) | SSH server hardening and configuration |
-| NTP | *Coming soon* | Time synchronization (chrony, systemd-timesyncd) |
-| DNS | *Coming soon* | Resolver configuration, local DNS |
-| Firewall | *Coming soon* | nftables, pf, Windows Firewall |
-| Logging | *Coming soon* | Centralized logging, log rotation |
-| Certificates | *Coming soon* | TLS certificates, ACME/Let's Encrypt |
+| Service | Guide | Status | Description |
+| ------- | ----- | ------ | ----------- |
+| SSH | [ssh.md](ssh.md) | Complete | SSH server hardening and configuration |
+| NTP | [ntp.md](ntp.md) | Draft | Time synchronisation with chrony |
+| DNS | [dns.md](dns.md) | Draft | Resolver configuration, local DNS |
+| Firewall | [nftables.md](nftables.md) | Draft | nftables firewall configuration |
+| Logging | [logging.md](logging.md) | Draft | Centralised logging and log rotation |
+
+**Draft** means the guide has a Quick Reference table and section headings but
+unwritten bodies marked `TODO`. Draft guides **MUST NOT** be treated as
+normative until the TODOs are resolved.
+
+TLS certificates (ACME/Let's Encrypt) have no guide and none is drafted; see
+[Roadmap](#roadmap).
+
+## Roadmap
+
+| Service | Planned coverage |
+| ------- | ---------------- |
+| Certificates | TLS certificate issuance and renewal, ACME/Let's Encrypt, internal CAs |
 
 ## Common Patterns
 

@@ -7,7 +7,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 document are to be interpreted as described in
 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [Google C# Style Guide](google/csharp.md) and
+Extends [Google C# Style Guide](../../reference/google/csharp.md) and
 [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions).
 
 ## Quick Reference
@@ -1011,6 +1011,6 @@ public async Task Feature_IsDisabledByDefault()
 
 ## See Also
 
-- [Testing Guide](../testing.md) - General testing practices and patterns
-- [CI Guide](../ci.md) - Continuous integration best practices
-- [EditorConfig Guide](../editorconfig.md) - Editor configuration standards
+- [Testing Guide](../process/testing.md) - General testing practices and patterns
+- [CI Guide](../process/ci.md) - Continuous integration best practices
+- [EditorConfig Guide](../../configs/editorconfig/README.md) - Editor configuration standards
