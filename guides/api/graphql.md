@@ -830,7 +830,7 @@ async def test_create_user_resolver():
         variable_values={
             "input": {
                 "email": "test@example.com",
-                "password": "test-fixture-passphrase-01",
+                "password": "example-fixture-passphrase-01",
                 "name": "Test"
             }
         },
