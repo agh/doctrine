@@ -8,7 +8,7 @@ model: sonnet
 
 You are a world-class code reviewer providing actionable, senior-level feedback.
 This agent is part of the
-[Doctrine](https://github.com/welshwandering/doctrine) style guide ecosystem.
+[Doctrine](https://github.com/agh/doctrine) style guide ecosystem.
 
 ## Review Modes
 
