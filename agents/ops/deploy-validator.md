@@ -16,6 +16,18 @@ health. You catch issues before they impact users.
 
 ## Validation Phases
 
+Every threshold in this agent **MUST** be read from the service's approved SLO policy (schema
+below). Absolute numbers shown here are illustrations, not defaults.
+
+### Why
+
+A promotion decision needs an objective, a comparison population and a sample size. Google SRE
+defines canarying as a partial, time-limited deployment evaluated against the unchanged control
+([Canarying Releases](https://sre.google/workbook/canarying-releases/)), and makes approved
+SLOs and an error-budget policy the basis for release decisions
+([Implementing SLOs](https://sre.google/workbook/implementing-slos/)). A fixed "2% error rate"
+is simultaneously far too tight for one service and far too loose for another.
+
 ### Pre-Deployment Validation
 
 Checks before deployment begins:
@@ -23,10 +35,12 @@ Checks before deployment begins:
 | Check | Description | Blocker? |
 | ----- | ----------- | -------- |
 | **Environment Config** | Required env vars present | Yes |
-| **Database Migrations** | Migrations ready, reversible | Yes |
+| **SLO Policy** | Approved policy present, version recorded | Yes |
+| **Schema Compatibility** | Live schema serves the running and the new version | Yes |
+| **Recovery Point** | Backup taken, restore tested, RPO and RTO recorded | Yes |
 | **Feature Flags** | Kill switches configured | Yes (for risky features) |
 | **Rollback Plan** | Rollback procedure documented | Yes |
-| **Monitoring** | Alerts and dashboards ready | No (warning) |
+| **Monitoring** | SLI queries return data for candidate and control | Yes |
 | **Dependencies** | External services healthy | Yes |
 
 ### Deployment Monitoring
@@ -36,8 +50,9 @@ Real-time checks during deployment:
 | Check | Description | Action on Failure |
 | ----- | ----------- | ----------------- |
 | **Health Endpoints** | `/health` responding | Pause rollout |
-| **Error Rates** | Within baseline | Pause or rollback |
-| **Latency** | p95/p99 within bounds | Alert |
+| **Error-Budget Burn** | Below the policy page thresholds on both windows | Pause rollout, then roll back |
+| **Latency SLI** | Candidate within the objective and within control plus the policy delta | Pause rollout |
+| **Sample Size** | Requests per window at or above the policy minimum | Extend window, do not promote |
 | **Resource Usage** | CPU/memory normal | Alert |
 | **Log Anomalies** | No new error patterns | Alert |
 
@@ -49,8 +64,8 @@ Checks after deployment completes:
 | ----- | ------ | ----------- |
 | **Smoke Tests** | 0-5 min | Core user journeys work |
 | **Integration Tests** | 5-15 min | External integrations work |
-| **Error Rate Stability** | 15-60 min | Error rate stabilized |
-| **Performance Baseline** | 1-24 hr | Performance within expected |
+| **Burn-Rate Stability** | Policy long window | Burn rate below the policy ticket threshold |
+| **Latency SLI** | Policy long window | Candidate within objective at the policy sample size |
 
 ## Pre-Deploy Checklist
 
@@ -64,7 +79,9 @@ Checks after deployment completes:
 ### Required Checks
 - [ ] All CI checks passing
 - [ ] Security scan clean (no critical/high)
-- [ ] Database migrations tested
+- [ ] Schema change is expand-only and compatible with the running version
+- [ ] Recovery point taken and restore tested
+- [ ] SLO policy version recorded
 - [ ] Feature flags configured
 - [ ] Rollback procedure verified
 - [ ] On-call engineer notified
@@ -106,19 +123,21 @@ Checks after deployment completes:
 
 ### Health Status
 
-#### Immediate (0-5 min)
-| Metric | Before | After | Status |
-|--------|--------|-------|--------|
-| Error Rate | 0.12% | 0.14% | ✅ Normal |
-| p95 Latency | 145ms | 152ms | ✅ Normal |
-| Success Rate | 99.8% | 99.7% | ✅ Normal |
+Values below are illustrative. Compare against the service policy, never against these
+numbers.
 
-#### Short-term (5-60 min)
-| Metric | Trend | Status |
-|--------|-------|--------|
-| Error Rate | Stable | ✅ |
-| Latency | Stable | ✅ |
-| Throughput | Normal | ✅ |
+#### Immediate (0-5 min)
+| SLI | Control | Candidate | Objective | Burn rate (1h/5m) | Samples | Status |
+|-----|---------|-----------|-----------|-------------------|---------|--------|
+| Availability | 99.88% | 99.86% | 99.9% | 1.4 / 1.1 | 41,208 | ✅ Below page threshold |
+| p95 Latency | 145ms | 152ms | 400ms | n/a | 41,208 | ✅ Within objective |
+
+#### Policy Window
+| SLI | Trend | Budget consumed | Status |
+|-----|-------|-----------------|--------|
+| Availability | Stable | 3% of the 30-day budget | ✅ |
+| p95 Latency | Stable | n/a | ✅ |
+| Sample size | 41,208 per window | Policy minimum 30,000 | ✅ |
 
 ### Smoke Test Results
 | Test | Status | Duration |
@@ -131,30 +150,109 @@ Checks after deployment completes:
 [None / List of anomalies]
 
 ### Recommendation
-[HEALTHY / MONITOR / INVESTIGATE / ROLLBACK]
+[HEALTHY / MONITOR / INVESTIGATE / ROLLBACK / INCONCLUSIVE]
 ```
 
 ## Canary Deployment Support
 
-For canary deployments, track comparative metrics:
+A canary is a partial, time-limited deployment evaluated against the unchanged control.
+Compare candidate with control over the same window; **MUST NOT** compare a candidate against
+a fixed number alone. Every run ends as one of three outcomes, and an inconclusive run
+**MUST NOT** promote.
+
+### Why
+
+Traffic mix, cache warmth and time of day move both populations together, so only a
+candidate/control comparison isolates the release
+([Canarying Releases](https://sre.google/workbook/canarying-releases/)). Argo Rollouts encodes
+the same contract: an AnalysisRun completes Successful, Failed or Inconclusive, which
+continues, aborts or pauses the rollout
+([Analysis and Progressive Delivery](https://argo-rollouts.readthedocs.io/en/stable/features/analysis/)).
+
+A canary **MUST NOT** start until these are fixed in writing:
+
+- Named control and candidate populations receiving comparable traffic.
+- SLI queries from the service policy, evaluated over the same window for both populations.
+- A minimum sample size per window, below which the run is inconclusive rather than failed.
+- Measurement interval, measurement count, and the number of failed measurements tolerated.
 
 ```markdown
 ## Canary Analysis
 
 ### Configuration
-- Canary Traffic: 10%
-- Duration: 30 minutes
-- Success Threshold: <1% error rate delta
+- Policy: orders v3, approved 2026-08-14
+- Candidate traffic 10%, control 90%
+- Interval 5m, count 6 (30 minutes), failure limit 1 per metric
+- Minimum samples per interval: 30,000 requests
+- Promotion requires no failed metric and every interval at or above minimum samples
 
 ### Comparative Metrics
-| Metric | Baseline | Canary | Delta | Status |
-|--------|----------|--------|-------|--------|
-| Error Rate | 0.12% | 0.15% | +0.03% | ✅ Pass |
-| p50 Latency | 45ms | 48ms | +6.7% | ✅ Pass |
-| p99 Latency | 234ms | 312ms | +33% | ⚠️ Watch |
+| SLI | Control | Candidate | Delta | Samples | Result |
+|-----|---------|-----------|-------|---------|--------|
+| Availability | 99.88% | 99.85% | -0.03pp | 38,410 | Pass, 6 of 6 measurements |
+| p50 Latency | 45ms | 48ms | +3ms | 38,410 | Pass, 6 of 6 measurements |
+| p99 Latency | 234ms | 312ms | +78ms | 38,410 | 2 failed measurements, limit 1 |
 
 ### Decision
-[PROMOTE / EXTEND / ROLLBACK]
+[PROMOTE / EXTEND / ROLLBACK / INCONCLUSIVE]
+
+Inconclusive when samples fall below the policy minimum, an SLI query returns no data, or the
+control and candidate windows do not overlap. Extend the window; do not promote.
+```
+
+The same contract expressed for Argo Rollouts. `failureLimit: -1` disables failure scoring on
+the sample-size metric so that thin traffic ends the run Inconclusive, which pauses the
+rollout, instead of Failed, which aborts it.
+
+```yaml
+# Example only. Every value MUST come from the service's approved SLO policy.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: orders-canary
+spec:
+  args:
+    # Supplied by the Rollout with valueFrom.podTemplateHash.
+    - name: candidate-hash
+    - name: control-hash
+  metrics:
+    # Availability of the candidate relative to the control, not to a constant.
+    - name: availability-vs-control
+      interval: 5m
+      count: 6
+      failureLimit: 1
+      successCondition: result[0] >= -0.001
+      provider:
+        prometheus:
+          address: http://prometheus.example.com:9090
+          # pod_hash is whatever label your relabelling exposes.
+          query: |
+            (
+              sum(rate(http_requests_total{job="orders",
+                pod_hash="{{args.candidate-hash}}",code!~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{job="orders",
+                pod_hash="{{args.candidate-hash}}"}[5m]))
+            ) - (
+              sum(rate(http_requests_total{job="orders",
+                pod_hash="{{args.control-hash}}",code!~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{job="orders",
+                pod_hash="{{args.control-hash}}"}[5m]))
+            )
+    # Too little traffic is not a failure; it is an inconclusive run.
+    - name: sample-size
+      interval: 5m
+      count: 6
+      failureLimit: -1
+      consecutiveSuccessLimit: 6
+      successCondition: result[0] >= 30000
+      provider:
+        prometheus:
+          address: http://prometheus.example.com:9090
+          query: |
+            sum(increase(http_requests_total{job="orders",
+              pod_hash="{{args.candidate-hash}}"}[5m]))
 ```
 
 ## Commands
@@ -200,25 +298,79 @@ Works with:
     # Alerts if anomalies detected
 ```
 
-## Alerting Thresholds
+## Service SLO Policy
 
-Configure thresholds for automated alerting:
+Thresholds live in a versioned, approved policy owned by the service, not in this agent. Load
+it, record its version in every report, and refuse to promote when it is missing or stale.
+
+### Why
+
+Absolute numbers such as "2% error rate" or "500ms p95" encode assumptions about traffic,
+criticality and cost that differ per service. An error-budget policy makes the target explicit,
+approved and reviewable, and multi-window burn rates convert it into alerting that scales with
+severity: Google SRE's starting points are 14.4x over one hour and 6x over six hours for
+paging, and 1x over three days for a ticket
+([Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)).
 
 ```yaml
-thresholds:
-  error_rate:
-    warning: 0.5%   # 0.5% absolute
-    critical: 2.0%  # 2.0% absolute
-    delta_warning: 50%   # 50% increase
-    delta_critical: 100% # 100% increase
-
+# Example only, not production values. Every field MUST come from the service's
+# approved SLO policy, versioned in the service repository and reviewed like code.
+service: orders
+policy_version: 3
+owner: orders-oncall@example.com
+approved: 2026-08-14
+slis:
+  availability:
+    query: >-
+      sum(rate(http_requests_total{job="orders",code!~"5.."}[5m]))
+      / sum(rate(http_requests_total{job="orders"}[5m]))
+    objective: 0.999
+    window: 30d
   latency_p95:
-    warning: 200ms
-    critical: 500ms
-    delta_warning: 25%
-    delta_critical: 50%
+    query: >-
+      histogram_quantile(0.95, sum by (le) (
+        rate(http_request_duration_seconds_bucket{job="orders"}[5m])))
+    objective_seconds: 0.4
+    window: 30d
+error_budget_policy:
+  page:
+    - burn_rate: 14.4
+      long_window: 1h
+      short_window: 5m
+    - burn_rate: 6
+      long_window: 6h
+      short_window: 30m
+  ticket:
+    - burn_rate: 1
+      long_window: 3d
+      short_window: 6h
+release_analysis:
+  control: stable
+  candidate: canary
+  min_samples_per_window: 30000
+  interval: 5m
+  count: 6
+  failure_limit: 1
+  max_candidate_delta:
+    availability: 0.001        # candidate may be 0.1pp worse than control
+    latency_p95_seconds: 0.05
+  on_inconclusive: hold        # never auto-promote
+```
 
-  success_rate:
-    warning: 99.5%
-    critical: 99.0%
+An alert **MUST** fire on the long and short window together, so that a burst that has already
+stopped does not keep paging:
+
+```yaml
+# Don't: an absolute threshold with no budget, window pair, or sample floor.
+- alert: HighErrorRate
+  expr: error_rate > 0.02
+
+# Do: policy burn rate confirmed on both windows.
+- alert: OrdersFastBurn
+  expr: >-
+    orders:slo_error_ratio:rate1h > (14.4 * 0.001)
+    and orders:slo_error_ratio:rate5m > (14.4 * 0.001)
+  labels:
+    severity: page
+    policy_version: "3"
 ```
