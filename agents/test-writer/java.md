@@ -293,9 +293,18 @@ class AssertJExampleTest {
 
 ### Controller Tests
 
+Spring Boot 4 removed `@MockBean` and moved `@WebMvcTest`. Tests **MUST** import
+`@WebMvcTest` from `org.springframework.boot.webmvc.test.autoconfigure` and replace
+`@MockBean` with Spring Framework's `@MockitoBean`.
+
+**Why**: `@MockBean` was annotated `@Deprecated(since = "3.4.0", forRemoval = true)` and no
+`MockBean.java` exists anywhere in the Spring Boot 4.1.1 source tree. `@WebMvcTest` moved
+out of `org.springframework.boot.test.autoconfigure.web.servlet` into the new
+`spring-boot-webmvc-test` module, which `spring-boot-starter-test` 4.1.1 does not pull in.
+
 ```java
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @WebMvcTest(UserController.class)
 class UserControllerTest {
@@ -303,7 +312,7 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
 
     @Test
@@ -331,6 +340,31 @@ class UserControllerTest {
     }
 }
 ```
+
+Add the MVC test slice explicitly on Spring Boot 4 (the `<version>` may be omitted when
+the project inherits `spring-boot-starter-parent` or imports the Spring Boot BOM):
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-webmvc-test</artifactId>
+    <version>4.1.1</version>
+    <scope>test</scope>
+</dependency>
+```
+
+Don't carry the Spring Boot 3 imports into a Spring Boot 4 project:
+
+```java
+// Don't: neither type resolves on Spring Boot 4.
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+```
+
+On Spring Boot 3.4 and later, `@MockitoBean` is already the supported replacement for
+`@MockBean`, while `@WebMvcTest` keeps its
+`org.springframework.boot.test.autoconfigure.web.servlet` package. Change only the mock
+annotation on those branches.
 
 ### Integration Tests
 

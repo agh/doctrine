@@ -12,12 +12,29 @@ understand context, assess readiness, and provide actionable recommendations.
 
 ## Model Selection
 
-| Task | Model | Rationale |
-| ---- | ----- | --------- |
-| Release decision | Opus 4.5 | High-stakes decision |
-| Changelog generation | Sonnet 4.5 | Balance of quality and cost |
-| Commit classification | Haiku 3.5 | High volume, simpler task |
-| Risk assessment | Sonnet 4.5 | Requires reasoning |
+Model IDs are exact snapshot IDs verified against the
+[Claude models overview](https://platform.claude.com/docs/en/models/overview)
+and [model deprecations](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+on 2026-09-08.
+
+| Task | Model ID | Rationale |
+| ---- | -------- | --------- |
+| Release decision | `claude-opus-5` | High-stakes decision |
+| Changelog generation | `claude-sonnet-5` | Balance of quality and cost |
+| Commit classification | `claude-haiku-4-5-20251001` | High volume, simpler task |
+| Risk assessment | `claude-sonnet-5` | Requires reasoning |
+
+Treat this table as a starting point and confirm it with your own evaluations.
+
+The agent **MUST NOT** use `claude-3-5-haiku-20241022`: it retired on
+2026-02-19 and requests to it fail. The agent **MUST** verify every configured
+ID against the [Models API](https://platform.claude.com/docs/en/api/models/list)
+before collecting signals, and **MUST** stop when an ID is absent.
+
+The agent **MUST NOT** set `temperature`, `top_p` or `top_k`. Claude 5 models
+reject non-default sampling parameters with HTTP 400; use the
+[effort parameter](https://platform.claude.com/docs/en/build-with-claude/effort)
+to control thinking depth instead.
 
 ## Core Principles
 
@@ -171,22 +188,45 @@ Use historical outcomes to predict release risk:
 | Rollback needed | X% | [High/Medium/Low] |
 ```
 
-## Commands
+## Invocation
 
-When invoked with `/release`:
+Doctrine ships this agent as a subagent definition, **not** as a slash command.
+There is no `/release` command, and `claude` parses anything after the prompt
+that starts with `--` as a CLI flag of its own, so `claude /release --analyze`
+fails with `unknown option '--analyze'` before any analysis runs.
 
-1. **Collect** signals from all sources
-2. **Analyze** changes semantically
-3. **Calculate** confidence score
-4. **Generate** changelog preview
-5. **Recommend** action with rationale
+Install the file at `.claude/agents/ops/release-manager.md` and select it with
+`--agent release-manager`. Interactively, ask for the agent by name.
+Non-interactively, use print mode:
 
-Options:
+```bash
+claude -p --agent release-manager "Assess release readiness for ${RELEASE_SHA}"
+```
 
-- `/release --analyze` - Analysis only, no actions
-- `/release --changelog` - Generate changelog preview
-- `/release --dry-run` - Full simulation without changes
-- `/release --execute` - Execute release (with confirmation)
+`--bare` skips discovery of `.claude/agents/`, so do not combine it with
+`--agent release-manager`; pass the definition with `--agents` instead if you
+need bare mode.
+
+### Request Modes
+
+Modes are described in the prompt, not passed as flags:
+
+| Mode | Prompt | Effect |
+| ---- | ------ | ------ |
+| Analyse | "Assess release readiness for `<sha>`. Do not change any files." | Assessment only |
+| Changelog | "Generate the changelog entry for `<version>`." | Returns entry text |
+| Dry run | "Simulate the release of `<version>` and report every action." | No mutation |
+| Execute | "Execute the release of `<version>` after I confirm." | Mutates on confirmation |
+
+### Steps
+
+For every mode the agent:
+
+1. **Collects** signals from all sources, each bound to the release SHA
+2. **Analyses** changes semantically
+3. **Calculates** the confidence score
+4. **Generates** a changelog preview
+5. **Recommends** an action with rationale
 
 ## Integration
 
@@ -252,14 +292,112 @@ ORDER BY r.deployed_at DESC;
 
 ## CI Integration
 
-```yaml
-- name: Release Readiness Check
-  run: |
-    claude /release --analyze
-    # Outputs confidence score and recommendation
+CI **MUST** run the agent in print mode, constrain its output with a schema,
+parse the decision explicitly, and exit non-zero on a blocking outcome. Model
+output **MUST NOT** be appended to a tracked file without validation.
 
-- name: Generate Changelog
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+```yaml
+- name: Release readiness gate
+  id: readiness
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    RELEASE_SHA: ${{ github.sha }}
   run: |
-    claude /release --changelog >> CHANGELOG.md
+    set -euo pipefail
+
+    schema='{"type":"object","additionalProperties":false,
+      "required":["decision","confidence","version","blockers"],
+      "properties":{
+        "decision":{"enum":["release","release_with_review","hold","block"]},
+        "confidence":{"type":"integer","minimum":0,"maximum":100},
+        "version":{"type":"string"},
+        "blockers":{"type":"array","items":{"type":"string"}}}}'
+
+    claude -p --agent release-manager \
+      --output-format json --json-schema "${schema}" \
+      "Assess release readiness for ${RELEASE_SHA}. Bind every signal to that
+       commit. Do not modify any files." > readiness.json
+
+    # The CLI reports run failures inside the envelope, not only via exit status.
+    jq -e '.is_error == false and .structured_output != null' readiness.json > /dev/null
+
+    decision=$(jq -r '.structured_output.decision' readiness.json)
+    {
+      echo "decision=${decision}"
+      echo "confidence=$(jq -r '.structured_output.confidence' readiness.json)"
+      echo "version=$(jq -r '.structured_output.version' readiness.json)"
+    } >> "${GITHUB_OUTPUT}"
+
+    if [ "${decision}" = "block" ] || [ "${decision}" = "hold" ]; then
+      jq -r '.structured_output.blockers[]' readiness.json >&2
+      exit 1
+    fi
+
+- name: Update changelog
+  if: |
+    github.event_name == 'push' &&
+    github.ref == 'refs/heads/main' &&
+    steps.readiness.outputs.decision == 'release'
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    VERSION: ${{ steps.readiness.outputs.version }}
+  run: |
+    set -euo pipefail
+
+    schema='{"type":"object","additionalProperties":false,
+      "required":["version","entry_markdown"],
+      "properties":{
+        "version":{"type":"string"},
+        "entry_markdown":{"type":"string"}}}'
+
+    claude -p --agent release-manager \
+      --output-format json --json-schema "${schema}" \
+      "Generate the Keep a Changelog entry for ${VERSION}. Markdown only." \
+      > changelog.json
+
+    jq -e '.is_error == false and .structured_output != null' changelog.json > /dev/null
+    jq -e --arg v "${VERSION}" '.structured_output.version == $v' changelog.json > /dev/null
+    jq -r '.structured_output.entry_markdown' changelog.json > entry.md
+
+    # Validate before touching the file.
+    first_line=$(head -n 1 entry.md)
+    case "${first_line}" in
+      "## [${VERSION}]"*) ;;
+      *)
+        echo "generated entry does not start with '## [${VERSION}]'" >&2
+        exit 1
+        ;;
+    esac
+    if grep -qF "## [${VERSION}]" CHANGELOG.md; then
+      echo "CHANGELOG.md already contains ${VERSION}" >&2
+      exit 1
+    fi
+    if ! grep -qE '^## ' CHANGELOG.md; then
+      echo "CHANGELOG.md has no release heading to insert before" >&2
+      exit 1
+    fi
+
+    # Insert above the newest release heading, atomically.
+    tmp=$(mktemp)
+    awk 'NR == FNR { entry = entry $0 ORS; next }
+         !done && /^## / { sub(/\n+$/, "\n\n", entry); printf "%s", entry; done = 1 }
+         { print }' entry.md CHANGELOG.md > "${tmp}"
+    mv "${tmp}" CHANGELOG.md
 ```
+
+### Why Not `claude /release --changelog >> CHANGELOG.md`
+
+Three separate failures:
+
+1. **The command never runs.** `--changelog` is not a `claude` flag, so the CLI
+   exits 1 with `unknown option '--changelog'` before contacting any model.
+2. **No decision is enforced.** A readiness report that says "blocked" still
+   exits 0 unless something parses the decision and fails the job.
+3. **The append is unchecked.** `>>` writes whatever the model produced —
+   conversational preamble, a wrong version, or a duplicate entry — straight
+   into a tracked file, with no way to undo it inside the same run.
+
+The steps above address each: print mode with a resolvable `--agent`, a JSON
+Schema plus `.structured_output` parsing, an explicit `exit 1` on `block` or
+`hold`, and a changelog write that is validated for heading, version and
+duplication before an atomic `mv`.

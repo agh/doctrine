@@ -157,34 +157,51 @@ def assess_compliance(target_frameworks, evidence):
 
 ### Pattern 4: Vulnerability Prioritization Agent
 
+KEV and EPSS are retrieval contracts, not vendored datasets. The reference files
+describe the feed schemas; the records **MUST** be fetched. `vulnerabilities` is
+an array of objects, so `cve in kev["vulnerabilities"]` is always `False` and
+silently misses every real KEV entry — index by `cveID` first.
+
 ```python
 def prioritize_vulnerabilities(cve_list):
-    # 1. Load prioritization data
-    kev = load_json("reference/security/kev/known-exploited-vulnerabilities.json")
-    epss = load_json("reference/security/epss/exploit-prediction.json")
+    # 1. Load the retrieval contracts, then fetch the live data they describe
+    kev_ref = load_json("reference/security/kev/known-exploited-vulnerabilities.json")
+    epss_ref = load_json("reference/security/epss/exploit-prediction.json")
     exploits = load_json("reference/security/exploits/exploit-availability.json")
+
+    kev = fetch_json(kev_ref["feed"])                 # CISA KEV catalogue
+    kev_ids = {v["cveID"] for v in kev["vulnerabilities"]}
+    epss = fetch_epss(epss_ref["api"], cve_list)      # {cve: (score, date)}
 
     # 2. Enrich each CVE
     prioritized = []
     for cve in cve_list:
+        epss_score, epss_date = epss.get(cve, (None, None))
         priority = {
             "cve_id": cve,
-            "in_kev": cve in kev["vulnerabilities"],
-            "epss_score": get_epss_score(epss, cve),
-            "exploit_available": check_exploit(exploits, cve)
+            "in_kev": cve in kev_ids,
+            "epss_score": epss_score,          # None means unscored, not zero
+            "epss_date": epss_date,
+            "exploit_available": check_exploit(exploits, cve),
         }
 
         # 3. Calculate priority score
         priority["score"] = calculate_priority(
             kev_bonus=10 if priority["in_kev"] else 0,
-            epss_weight=priority["epss_score"] * 5,
+            epss_weight=(epss_score or 0.0) * 5,
             exploit_bonus=3 if priority["exploit_available"] else 0
         )
         prioritized.append(priority)
 
-    # 4. Sort by priority
-    return sorted(prioritized, key=lambda x: x["score"], reverse=True)
+    # 4. Sort by priority, and record the data versions used
+    return {
+        "kev_catalog_version": kev["catalogVersion"],
+        "findings": sorted(prioritized, key=lambda x: x["score"], reverse=True),
+    }
 ```
+
+If a feed is unreachable, report KEV or EPSS status as unknown. **MUST NOT**
+treat an unreachable feed as a negative result.
 
 ### Pattern 5: Supply Chain Security Agent
 
@@ -228,10 +245,10 @@ The `cwe-top-25-2025.json` includes a `quick_lookup` section for fast access:
 {
   "quick_lookup": {
     "injection": ["CWE-89", "CWE-78", "CWE-77", "CWE-94"],
-    "memory": ["CWE-787", "CWE-416", "CWE-125", "CWE-119", "CWE-476", "CWE-190"],
-    "auth": ["CWE-287", "CWE-306", "CWE-862", "CWE-863", "CWE-269"],
+    "memory": ["CWE-787", "CWE-416", "CWE-125", "CWE-476", "CWE-120", "CWE-121", "CWE-122"],
+    "access_control": ["CWE-862", "CWE-863", "CWE-306", "CWE-284", "CWE-639"],
     "web": ["CWE-79", "CWE-352", "CWE-918", "CWE-22", "CWE-434"],
-    "crypto": ["CWE-798", "CWE-502"]
+    "data_handling": ["CWE-20", "CWE-200", "CWE-502", "CWE-770"]
   }
 }
 ```

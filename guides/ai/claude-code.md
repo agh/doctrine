@@ -235,7 +235,6 @@ on failure, which Claude Code treats as non-blocking. Call a script that exits
   "hooks": {
     "Stop": [
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",
@@ -339,39 +338,37 @@ ToolName(pattern)
 
 Examples:
 
-- `Bash(npm run *)` — Allow any npm run command
+- `Bash(npm run build)` — Allow exactly `npm run build`
+- `Bash(npm run *)` — Allow every script `package.json` defines
 - `Edit(src/**)` — Allow file writes/edits in src/ and subdirectories
   (file-tool path rules are matched as `Edit(path)`; `Write(path)` rules
   are not matched and are dead)
-- `Read(*)` — Allow reading any file
+- `Read(~/.ssh/**)` — Match everything under the home directory's `.ssh`
+
+Rules are evaluated deny, then ask, then allow, and the first match wins. A
+deny rule therefore cannot carry allowlist exceptions, and an ask rule prompts
+even when a narrower allow rule also matches.[^4]
 
 ### Doctrine's Standard Allowlist
+
+Allow rules **MUST** name reviewed commands. They **MUST NOT** pre-approve a
+package runner or environment runner, because those execute whatever argument
+follows them:
 
 ```json
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)",
-      "Bash(npx *)",
-      "Bash(bun run *)",
-      "Bash(pnpm *)",
-      "Bash(yarn *)",
-      "Bash(uv run *)",
-      "Bash(git status*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git branch*)",
-      "Bash(git checkout*)",
-      "Bash(git add*)",
-      "Bash(git commit*)",
-      "Bash(cat *)",
-      "Bash(ls *)",
-      "Bash(find *)",
-      "Bash(grep *)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm test *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
       "Bash(rg *)",
-      "Read(*)",
-      "Glob(*)",
-      "Grep(*)",
       "Edit(src/**)",
       "Edit(tests/**)",
       "Edit(test/**)",
@@ -381,7 +378,61 @@ Examples:
 }
 ```
 
+#### Why
+
+**No blanket `npx`.** Claude Code strips a fixed set of wrappers before
+matching a Bash rule, and environment runners such as `npx`, `docker exec`,
+and `devbox run` are deliberately not in that set: a rule matches whatever
+follows the runner, so `Bash(npx *)` pre-approves any package the registry
+will serve.[^4] Approve the inner command instead, one rule per command.
+
+**Package scripts belong to the repository.** `Bash(npm run *)` approves every
+script `package.json` defines now and every script a branch, a dependency
+bump, or a pull request adds later. Name the scripts you reviewed. A team
+**MAY** widen this to `Bash(npm run *)` for a repository whose manifest it
+owns and reviews; it **MUST NOT** do so for code it has not reviewed.
+
+**No blanket `Read`, `Glob`, or `Grep`.** Read-only tools already run without
+approval inside the working directory and additional directories,[^4] so
+`Read(*)` adds nothing there and grants the rest of the filesystem, including
+`~/.aws` and `~/.ssh`.
+
+**Narrow git mutations.** `Bash(git *)` matches every subcommand and every
+option before it, including `git -c core.fsmonitor=<script> diff`, which runs
+a program of the caller's choosing.[^4] Allow read-only subcommands; route
+`add`, `commit`, `checkout`, and `push` through ask rules.
+
+### Ask Rules for Mutation and Network
+
+Commands that change history or reach the network **SHOULD** prompt rather
+than run unattended:
+
+```json
+{
+  "permissions": {
+    "ask": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git push *)",
+      "Bash(npm install *)",
+      "Bash(npx *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(ssh *)"
+    ]
+  }
+}
+```
+
+Argument-level Bash patterns are fragile — `Bash(curl https://github.com/ *)`
+misses `curl -X GET`, a redirect, or `URL=… && curl $URL` — so gate the tool
+and use `WebFetch(domain:example.com)` for reviewed domains instead of trying
+to constrain URLs inside a shell rule.[^4]
+
 ### Doctrine's Standard Denylist
+
+Secret material **MUST** be denied for reads as well as edits:
 
 ```json
 {
@@ -393,6 +444,18 @@ Examples:
       "Bash(wget * | bash)",
       "Bash(chmod 777 *)",
       "Bash(> /dev/sd*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*secret*)",
+      "Read(**/*password*)",
+      "Read(**/*credential*)",
+      "Read(**/*token*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa*)",
+      "Read(~/.aws/**)",
+      "Read(~/.ssh/**)",
       "Edit(.env)",
       "Edit(.env.*)",
       "Edit(**/secrets/**)",
@@ -407,6 +470,20 @@ Examples:
   }
 }
 ```
+
+#### Why
+
+A `Read` deny rule blocks Claude's file tools, the file commands Claude Code
+recognises in Bash such as `cat`, `head`, and `sed`, and Bash redirection
+targets. It also blocks Edit from v2.1.208 and Write from v2.1.228, but it
+never covers NotebookEdit, so keep the paired `Edit` denies.[^4] Bare
+filenames follow gitignore semantics: `Read(.env)` and `Read(**/.env)` are
+equivalent and match at any depth under the current directory.[^4]
+
+Permission rules are not an OS boundary. They do not constrain a subprocess
+that opens a file itself — a Python or Node script Claude runs reads
+`~/.aws/credentials` regardless of any `Read` deny. Pair this policy with the
+sandbox, which enforces filesystem and network limits at the OS level.[^5]
 
 ### Managing Permissions
 
@@ -561,7 +638,7 @@ Model Context Protocol (MCP)[^2] connects Claude to external tools.
   "mcpServers": {
     "slack": {
       "type": "http",
-      "url": "https://slack.mcp.anthropic.com/mcp"
+      "url": "https://mcp.slack.com/mcp"
     },
     "playwright": {
       "type": "stdio",
@@ -571,6 +648,41 @@ Model Context Protocol (MCP)[^2] connects Claude to external tools.
   }
 }
 ```
+
+Every entry **MUST** declare a `type`. Claude Code reads an entry that has a
+`url` but no `type` as a stdio server, skips it, and reports the
+misconfiguration.[^6]
+
+### Slack
+
+Slack serves MCP over JSON-RPC 2.0 on Streamable HTTP at
+`https://mcp.slack.com/mcp`. SSE connections and Dynamic Client Registration
+are not supported.[^7] A bare URL is not an authenticated configuration:
+
+- **Registered app.** Every MCP client **MUST** be backed by a registered
+  Slack app with a fixed app ID, and only Marketplace-published or internal
+  apps may use MCP.[^7] Claude Code is one of Slack's listed partner clients,
+  so a team **MAY** connect through it without building an app of its own.
+- **Admin approval.** Workspace admins approve MCP clients through the
+  standard Slack app approval process, and an app's allowed IP ranges apply to
+  MCP traffic too.[^7]
+- **Confidential OAuth.** A client of your own authenticates with its
+  `client_id` and `client_secret` against
+  `https://slack.com/oauth/v2_user/authorize` and
+  `https://slack.com/api/oauth.v2.user.access`, or discovers them from
+  `https://mcp.slack.com/.well-known/oauth-authorization-server`. Desktop
+  clients **SHOULD** use PKCE.[^7]
+- **Least-privilege scopes.** Grant only the user-token scopes the tools you
+  actually call: `search:read.public` to search public messages,
+  `channels:history` to read a channel, `chat:write` to post.[^7] A read-only
+  workflow **MUST NOT** request write scopes.
+
+```bash
+claude mcp add --transport http slack https://mcp.slack.com/mcp
+```
+
+Then run `/mcp` inside the session: it runs the OAuth flow for remote servers
+and shows each server's connection state.[^6]
 
 ### Common MCP Servers
 
@@ -640,6 +752,23 @@ Then in conversation:
 Take a screenshot of http://localhost:3000/login
 ```
 
+#### Why
+
+**Prerequisite.** `@playwright/mcp` 0.0.80 requires Node.js 18 or newer.[^8]
+
+**Pin the version.** `@playwright/mcp@latest` re-resolves on every start, so a
+release can change agent behaviour between two runs of the same task. Pin the
+version and bump it deliberately. `--isolated` keeps the browser profile in
+memory, and `--headless` overrides the headed default.[^8]
+
+**MCP or CLI.** Microsoft notes that CLI invocations exposed as Skills are
+more token-efficient for coding agents, because they avoid loading large tool
+schemas and accessibility trees into context, and keeps MCP for work that
+benefits from persistent browser state and iterative reasoning over page
+structure, such as exploratory automation and self-healing tests.[^8] Visual
+iteration is that second case, so this guide configures MCP; a team whose
+browser work is scripted **SHOULD** compare the pinned Playwright CLI Skill.
+
 ---
 
 ## Long-Running Sessions
@@ -666,7 +795,6 @@ Code treats as non-blocking:
   "hooks": {
     "Stop": [
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",
@@ -704,19 +832,9 @@ claude plugins install ralph-wiggum
 
 ## Syncing from Doctrine
 
-Doctrine provides standard Claude Code configurations. Agents and commands live
-at the repository root in `agents/` and `commands/`; `configs/claude/` holds
-`settings.json`, skills, and infrastructure context. A sync **MUST** copy from
-those four source paths directly.
-
-### Source-to-Destination Map
-
-| Doctrine source | Project destination | Managed by Doctrine |
-| --------------- | ------------------- | ------------------- |
-| `agents/` | `.claude/agents/` | Yes — do not add project-local files |
-| `commands/` | `.claude/commands/` | Yes — do not add project-local files |
-| `configs/claude/skills/` | `.claude/skills/` | No — merged, project skills preserved |
-| `configs/claude/settings.json` | `.claude/settings.json` | Yes — overwritten |
+Doctrine provides standard Claude Code configurations. Both sync paths
+**MUST** use `scripts/sync-claude-config.sh`, the one implementation this
+guide tests.
 
 ### Manual Sync
 
@@ -754,12 +872,42 @@ test -f .claude/agents/code/architect.md
 test -f .claude/commands/code.md
 ```
 
-The trailing slash on each source path is significant: it copies the directory
-**contents** rather than nesting a second directory inside the destination.
-`-L` dereferences any symlink so the installed tree contains regular files on
-every platform, including Windows checkouts made without `core.symlinks=true`.
-`--delete` removes agents and commands withdrawn upstream, so those two
-destinations **MUST NOT** hold project-local files.
+The script replaces `.claude/agents`, `.claude/commands`, `.claude/skills`,
+and `.claude/infrastructure` from Doctrine, installs `.claude/settings.json`
+only when the project has none, and then verifies representative installed
+files. Pass `--overwrite-settings` to adopt Doctrine's settings over a
+project's own.
+
+Doctrine owns those four directories: the sync deletes each one before
+reinstalling it, so anything a project keeps there is removed. Claude Code
+loads project subagents from `.claude/agents/` and personal ones from
+`~/.claude/agents/`,[^9] so keep project-specific agents and commands in the
+user directory, contribute them to Doctrine, or install them from your own
+source directory in a step that runs after the sync.
+
+#### Why
+
+**`cp -r configs/claude/ ./.claude/` does not install a usable configuration.**
+In the Doctrine checkout, `configs/claude/agents` and
+`configs/claude/commands` are symlinks to `../../agents` and `../../commands`.
+GNU `cp -r` copies the links verbatim, so the target project gets
+`.claude/agents -> ../../agents`, which resolves outside the project and does
+not exist; `test -e .claude/agents` fails. The script passes `-L` and explicit
+per-component destinations, so both arrive as real directories of files.
+
+**The same command behaves differently when `.claude` already exists.** With
+GNU `cp`, a directory operand copied into an existing directory lands inside
+it: the tree appears at `.claude/claude/`, the project's `.claude/settings.json`
+is left untouched, and Claude Code loads none of the new configuration while
+the sync still reports success. macOS `cp` instead merges the contents and
+overwrites the project's `settings.json`. The script names every source and
+destination path explicitly, so fresh and existing projects get the same
+result on both platforms.
+
+**Verify what was installed, not what was copied.** The script exits non-zero
+unless `.claude/settings.json`, `.claude/agents/code/reviewer.md`,
+`.claude/commands/code.md`, and `.claude/skills/README.md` exist as regular
+files at the paths Claude Code loads.[^9]
 
 ### GitHub Action for Auto-Sync
 
