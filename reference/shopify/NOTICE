@@ -1,0 +1,21 @@
+NOTICE — Shopify Ruby Style Guide vendored in Doctrine
+
+Upstream:      Shopify Ruby Style Guide
+Upstream URL:  https://github.com/Shopify/ruby-style-guide
+               https://ruby-style-guide.shopify.dev/
+Copyright:     Copyright (c) 2015-2022 Shopify Inc.
+Licence:       MIT License
+Licence URL:   https://github.com/Shopify/ruby-style-guide/blob/main/LICENSE.md
+Licence text:  ./LICENSE (verbatim copy of the upstream LICENSE.md)
+
+Modifications by Doctrine
+-------------------------
+reference/shopify/ruby.md is NOT byte-identical to upstream: it has been
+renamed from README.md and reflowed. The upstream revision was not recorded at
+vendoring time. MIT imposes no modification-marking duty, but this file must
+not be treated as an authoritative upstream copy.
+
+Required attribution
+--------------------
+The MIT copyright and permission notice in ./LICENSE must be retained in
+all copies or substantial portions of this material.

@@ -1,0 +1,38 @@
+NOTICE — IETF material vendored in Doctrine
+
+Upstream:      RFC 2119, "Key words for use in RFCs to Indicate Requirement
+               Levels", S. Bradner, BCP 14, March 1997
+Upstream URL:  https://www.rfc-editor.org/rfc/rfc2119.txt
+               https://datatracker.ietf.org/doc/html/rfc2119
+Rights holder: The IETF Trust (successor to the Internet Society for IETF
+               document rights)
+
+Terms
+-----
+RFC 2119 carries no separate copyright statement. Its own Status of this Memo
+section states: "Distribution of this memo is unlimited."
+
+RFC 2119 was published before 25 March 2015 and is therefore a "Pre-Existing
+IETF Document" under section 2(c) of the IETF Trust Legal Provisions (TLP)
+5.0, which leaves it subject to the IETF copyright policy in force at
+publication (RFCs 1310, 1602, 2026, 3978 and 4748 as applicable) rather than
+to the TLP itself.
+
+  IETF Trust Legal Provisions 5.0:
+  https://trustee.ietf.org/documents/trust-legal-provisions/tlp-5/
+  IETF Trust copyright and licence information:
+  https://trustee.ietf.org/documents/trust-legal-provisions/
+
+Modifications by Doctrine
+-------------------------
+None of substance. reference/ietf/rfc2119.txt is the canonical RFC Editor text
+with form-feed page separators and some trailing whitespace stripped; verified
+on 2026-09-08 by diffing against https://www.rfc-editor.org/rfc/rfc2119.txt,
+which produced only whitespace and form-feed differences. The RFC MUST NOT be
+edited in substance; modified RFC text may not be redistributed as an RFC.
+
+Required attribution
+--------------------
+Cite as: S. Bradner, "Key words for use in RFCs to Indicate Requirement
+Levels", BCP 14, RFC 2119, March 1997,
+https://www.rfc-editor.org/info/rfc2119.

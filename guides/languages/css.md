@@ -6,7 +6,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
 interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [Google HTML/CSS Style Guide](google/htmlcss.html).
+Extends [Google HTML/CSS Style Guide](../../reference/google/htmlcss.html).
 
 ## Quick Reference
 
@@ -477,8 +477,8 @@ jobs:
 ## See Also
 
 - [TypeScript Style Guide](typescript.md) - For CSS-in-JS and styled-components
-- [Testing Guide](../testing.md) - Visual regression testing strategies
-- [CI/CD Guide](../ci.md) - Continuous integration best practices
-- [Google HTML/CSS Style Guide](google/htmlcss.html) - Base style guide
+- [Testing Guide](../process/testing.md) - Visual regression testing strategies
+- [CI/CD Guide](../process/ci.md) - Continuous integration best practices
+- [Google HTML/CSS Style Guide](../../reference/google/htmlcss.html) - Base style guide
 - [MDN CSS Reference](https://developer.mozilla.org/en-US/docs/Web/CSS)
 - [Can I Use](https://caniuse.com/) - Browser compatibility tables
