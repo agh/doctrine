@@ -266,23 +266,71 @@ repos:
 pre-commit install --hook-type commit-msg
 ```
 
-### Keep a Changelog: changelog-lint
+### Keep a Changelog: kacl-cli
 
-Validate CHANGELOG.md format using parse-a-changelog[^9] or changelog-lint[^10]:
+Validate CHANGELOG.md format using kacl-cli[^9] or changelog-lint[^10]. The
+validator image **MUST** be pinned to a released tag or digest, and the
+command CI runs **MUST** be the command developers run locally:
 
 ```bash
-# Using parse-a-changelog (Docker)
-docker run --rm -v $(pwd):/src cyberark/parse-a-changelog
+# Using kacl-cli (Docker, pinned)
+# 0.7.4 index digest: sha256:ff8ed585b95616c9c9d7a0499bf2c15192899872dadff80cc46e37dfec8717dc
+docker run --rm -v "$(pwd)":/workdir:ro -w /workdir \
+  mschmieder/kacl-cli:0.7.4 verify
 
 # Using changelog-lint (Go)
 go install github.com/chavacava/changelog-lint@latest
 changelog-lint CHANGELOG.md
 ```
 
+**Why**: `verify` exits non-zero and reports the offending line and column, so
+a single command gates a local commit and a CI job. An unpinned image lets the
+accepted grammar change between two runs of the same build.
+
+kacl-cli compares the text under the `# Changelog` heading literally, line by
+line, against `default_content`. Projects **MUST** declare their own preamble
+in `.kacl.yml`, which kacl-cli loads from the working directory, and **MUST**
+commit that file so local and CI runs apply the same rules:
+
+```yaml
+# .kacl.yml
+kacl:
+  allowed_header_titles: [Changelog]
+  allowed_version_sections: [Added, Changed, Deprecated, Removed, Fixed, Security]
+  default_content:
+    - All notable changes to this project will be documented in this file.
+    - "The format is based on Keep a Changelog,"
+    - "and this project adheres to Semantic Versioning."
+```
+
+Mount the working tree where the container reads it; a validator **MUST NOT**
+be handed a mount path it never opens:
+
+```bash
+# Do: the tool finds CHANGELOG.md and .kacl.yml in its working directory
+docker run --rm -v "$(pwd)":/workdir:ro -w /workdir mschmieder/kacl-cli:0.7.4 verify
+
+# Don't: mount elsewhere - exits 1 with "Error: CHANGELOG.md not found"
+docker run --rm -v "$(pwd)":/src mschmieder/kacl-cli:0.7.4 verify
+```
+
 ### CI Validation
+
+A workflow file **MUST** declare the events that trigger it and **SHOULD**
+declare least-privilege permissions. The following is a complete file:
 
 ```yaml
 # .github/workflows/validate.yml
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -297,8 +345,14 @@ jobs:
       # Validate changelog format
       - name: Validate CHANGELOG
         run: |
-          docker run --rm -v $(pwd):/src cyberark/parse-a-changelog
+          docker run --rm -v "$PWD":/workdir:ro -w /workdir \
+            mschmieder/kacl-cli:0.7.4 verify
 ```
+
+**Why**: without `on:`, GitHub never runs the workflow[^12], so the checks
+silently never happen. `fetch-depth: 0` gives commitlint the full commit
+range to lint, and `contents: read` denies the job write access to the
+repository.
 
 ### commitsar (Go Alternative)
 
@@ -334,14 +388,17 @@ For CI without Node.js, use commitsar[^11]:
 [^8]: conventional-pre-commit - A pre-commit hook for Conventional Commits
 <https://github.com/compilerla/conventional-pre-commit>
 
-[^9]: parse-a-changelog - Changelog parser and validator
-<https://github.com/cyberark/parse-a-changelog>
+[^9]: kacl-cli (python-kacl) - Keep a Changelog validator
+<https://gitlab.com/schmieder.matthias/python-kacl>
 
 [^10]: changelog-lint - Linter for CHANGELOG files
 <https://github.com/chavacava/changelog-lint>
 
 [^11]: commitsar - Conventional commit compliance checker
 <https://github.com/aevea/commitsar>
+
+[^12]: GitHub Actions workflow syntax - `on`
+<https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#on>
 
 ## See Also
 

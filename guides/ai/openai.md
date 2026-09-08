@@ -100,14 +100,14 @@ budget constraints.
 
 **Requirements:**
 
-```python
-# Teams MUST use GPT-4o for:
+```text
+Teams MUST use GPT-4o for:
 - Code reviews requiring deep analysis
 - Complex refactoring tasks
 - Multi-file code generation
 - Architectural decisions
 
-# Teams SHOULD use GPT-4o for:
+Teams SHOULD use GPT-4o for:
 - High-stakes production code
 - Security-sensitive operations
 - Performance-critical implementations
@@ -145,65 +145,91 @@ budget constraints.
 
 **Requirements:**
 
-```python
-# Teams MUST use GPT-4o-mini for:
+```text
+Teams MUST use GPT-4o-mini for:
 - High-volume, low-complexity tasks
 - Prototype development
 - Cost-sensitive applications
 
-# Teams SHOULD use GPT-4o-mini for:
+Teams SHOULD use GPT-4o-mini for:
 - Simple CRUD operations
 - Boilerplate generation
 - Unit test scaffolding
 ```
 
-#### o1-preview and o1-mini
+#### Reasoning Models (o-series retirement and current targets)
 
-**Use Cases:**
+Every o-series reasoning model that earlier revisions of this guide recommended
+is retired or scheduled for shutdown. Teams **MUST NOT** target them in new
+work, and **MUST** migrate existing integrations to the current reasoning
+models listed below.
 
-- Advanced reasoning tasks
-- Complex problem-solving
-- Mathematical computations
-- Research and analysis
+**Retirement timeline (checked 2026-09-08):**
 
-**Specifications (o1-preview):**
+| Model | Shutdown date | Replacement named at deprecation | Status of that replacement |
+| ----- | ------------- | -------------------------------- | -------------------------- |
+| `o1-preview` | 2025-07-28 | `o3` | Deprecated, shuts down 2026-12-11 |
+| `o1-mini` | 2025-10-27 | `o4-mini` | Deprecated, shuts down 2026-10-23 |
+| `o1` | 2026-10-23 | `gpt-5.6-sol` | Current |
+| `o1-pro` | 2026-10-23 | `gpt-5.6-sol` (`reasoning.mode: pro`) | Current |
+| `o3-mini` | 2026-10-23 | `gpt-5.6-sol` | Current |
+| `o4-mini` | 2026-10-23 | `gpt-5.6-terra` | Current |
+| `o3` | 2026-12-11 | `gpt-5.6-sol` | Current |
+| `o3-pro` | 2026-12-11 | `gpt-5.6-sol` (`reasoning.mode: pro`) | Current |
 
-- Context window: 128,000 tokens
-- Max output: 32,768 tokens
-- Reasoning tokens: Internal (not visible)
-- Training data: Up to October 2023
+##### Why the migration target is the current family
 
-**Pricing (o1-preview)[^2]:**
+Migrating a retired model to the replacement named in its own deprecation
+notice lands the integration on another deprecated model. `o1-preview` pointed
+at `o3`, which shuts down on 2026-12-11; `o1-mini` pointed at `o4-mini`, which
+shuts down on 2026-10-23. Both dates fall inside the support window of code
+written today, so the migration target **MUST** be the current family rather
+than the historical replacement.
 
-- Input: $15.00 per 1M tokens
-- Output: $60.00 per 1M tokens
+**Current reasoning models (prices and limits checked 2026-09-08):**
 
-**Pricing (o1-mini)[^2]:**
+| Model | Context window | Max output | Input / output per 1M tokens | `reasoning.effort` |
+| ----- | -------------- | ---------- | ---------------------------- | ------------------ |
+| `gpt-6-astra` | 1,050,000 | 128,000 | $10.00 / $50.00 | `low` to `max` |
+| `gpt-5.6-sol` | 1,050,000 | 128,000 | $4.00 / $20.00 | `none` to `max` |
+| `gpt-5.6-terra` | 1,050,000 | 128,000 | $2.00 / $12.00 | `none` to `max` |
+| `gpt-5.6-luna` | 1,050,000 | 128,000 | $0.20 / $1.20 | `none` to `max` |
 
-- Input: $3.00 per 1M tokens
-- Output: $12.00 per 1M tokens
-
-**Limitations:**
-
-- No system messages support
-- No streaming
-- No function calling (as of December 2025)
-- No temperature control
-- Higher latency due to reasoning process
+Prompts above 272,000 input tokens bill at 2x the input rate and 1.5x the
+output rate for the whole request. GPT-5.6 Sol's $4.00/$20.00 rate is
+promotional and holds at least until 2026-11-21.
 
 **Requirements:**
 
-```python
-# Teams SHOULD use o1-preview for:
-- Complex algorithmic challenges
-- Multi-step mathematical problems
-- Deep code analysis requiring extended reasoning
+1. Teams **MUST NOT** send requests to `o1-preview` or `o1-mini`; both
+   endpoints were shut down in 2025
+2. Teams **MUST** use `gpt-6-astra` for the hardest end-to-end reasoning,
+   coding, and research work
+3. Teams **SHOULD** use `gpt-5.6-sol` for flagship professional work,
+   `gpt-5.6-terra` where cost matters, and `gpt-5.6-luna` for the lowest cost
+   and latency
+4. Teams **MUST** call the Responses API for tool calling with `gpt-6-astra`;
+   Chat Completions does not support function calling for that model
+5. Teams **MUST NOT** set `reasoning.effort` to `none` on `gpt-6-astra`; the
+   request returns HTTP 400
+6. Teams **MUST** re-check the deprecations page before pinning any model ID
 
-# Teams MUST NOT use o1 models for:
-- Real-time applications (high latency)
-- Function calling scenarios
-- Applications requiring streaming
-```
+##### Why the old capability limitations no longer apply
+
+The earlier "no streaming, no function calling, no system messages" limitations
+no longer describe any supported model. `gpt-6-astra`, `gpt-5.6-sol`,
+`gpt-5.6-terra`, and `gpt-5.6-luna` all list streaming, structured outputs,
+function calling, image input, and prompt caching as supported features. The one
+real restriction is the API surface: GPT-6 Astra tool calling requires
+Responses.
+
+**Sources:**
+[Deprecations](https://developers.openai.com/api/docs/deprecations.md),
+[Reasoning](https://developers.openai.com/api/docs/guides/reasoning.md),
+[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra.md),
+[GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol.md),
+[GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra.md),
+[GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna.md).
 
 ### Model Selection Decision Tree
 
@@ -215,7 +241,7 @@ START
   NO                                       |
   |                                        +-- Complex reasoning? --YES--> GPT-4o
   |                                        |
-  +-- Complex reasoning/math? --YES-----> o1-preview/o1-mini
+  +-- Complex reasoning/math? --YES-----> gpt-6-astra (Responses API)
   |                                        NO
   NO                                       |
   |                                        +-- High volume? --YES--> GPT-4o-mini
@@ -232,7 +258,8 @@ START
 1. Teams MUST benchmark models against representative tasks before production deployment
 2. Teams SHOULD implement model fallback strategies (e.g., GPT-4o-mini -> GPT-4o on failure)
 3. Teams MUST monitor per-model costs and performance metrics
-4. Teams SHOULD NOT use o1 models for latency-sensitive applications
+4. Teams MUST NOT target the retired o-series models; for latency-sensitive
+   reasoning work, teams SHOULD use `gpt-5.6-luna` or a lower `reasoning.effort`
 5. Teams MUST use Batch API for non-time-sensitive workloads to reduce costs by 50%
 
 ---
@@ -452,7 +479,9 @@ response = client.chat.completions.create(
 
 1. Teams MUST set appropriate timeouts based on use case
 2. Teams SHOULD use 30-60 second timeouts for standard requests
-3. Teams MAY use longer timeouts for complex reasoning tasks with o1 models
+3. Teams MAY use longer timeouts for complex work on reasoning models such as
+   `gpt-6-astra`, which spend time on reasoning tokens before the first
+   visible output token
 4. Teams MUST handle timeout errors gracefully
 5. Teams SHOULD log timeout occurrences for monitoring
 
@@ -497,7 +526,8 @@ def stream_completion(client, messages):
 
 1. Teams SHOULD use streaming for chat interfaces and real-time applications
 2. Teams MUST handle stream interruptions gracefully
-3. Teams MUST NOT use streaming with o1 models (not supported)
+3. Teams MUST NOT target the retired `o1-preview` and `o1-mini` models; the
+   current `gpt-6-astra` and GPT-5.6 models all support streaming
 4. Teams SHOULD buffer streamed content for logging and monitoring
 
 #### Batch Requests
@@ -912,51 +942,80 @@ tools = [
 ]
 
 # Make request with function calling
+messages = [
+    {
+        "role": "user",
+        "content": "Analyze the complexity of src/utils/parser.py and run its tests"
+    }
+]
+
 response = client.chat.completions.create(
     model="gpt-4o",
-    messages=[
-        {
-            "role": "user",
-            "content": "Analyze the complexity of src/utils/parser.py and run its tests"
-        }
-    ],
+    messages=messages,
     tools=tools,
     tool_choice="auto"  # Let model decide when to call functions
 )
 
-# Handle function calls
-if response.choices[0].message.tool_calls:
-    for tool_call in response.choices[0].message.tool_calls:
+assistant_message = response.choices[0].message
+
+if not assistant_message.tool_calls:
+    print(assistant_message.content)
+else:
+    # Keep the original prompt and the assistant's tool-call message
+    messages.append(assistant_message)
+
+    # Execute every returned call and record a result for each tool_call_id
+    for tool_call in assistant_message.tool_calls:
         function_name = tool_call.function.name
         function_args = json.loads(tool_call.function.arguments)
 
         print(f"Calling {function_name} with args: {function_args}")
 
-        # Execute function and get result
-        if function_name == "get_code_metrics":
-            result = get_code_metrics(**function_args)
-        elif function_name == "run_tests":
-            result = run_tests(**function_args)
+        try:
+            if function_name == "get_code_metrics":
+                result = get_code_metrics(**function_args)
+            elif function_name == "run_tests":
+                result = run_tests(**function_args)
+            else:
+                raise ValueError(f"Unknown function: {function_name}")
+            content = json.dumps(result)
+        except (ValueError, TypeError, OSError) as exc:
+            # A failed call still owes the model a result for its ID
+            content = json.dumps({"error": type(exc).__name__})
 
-        # Send result back to model
-        messages = [
-            {"role": "user", "content": "Analyze the complexity of src/utils/parser.py"},
-            response.choices[0].message,  # Assistant's function call
-            {
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": json.dumps(result)
-            }
-        ]
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": content
+        })
 
-        # Get final response
-        final_response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages
-        )
+    # One continuation, carrying a result for every requested call
+    final_response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages
+    )
 
-        print(final_response.choices[0].message.content)
+    print(final_response.choices[0].message.content)
 ```
+
+**Requirements:**
+
+1. Teams **MUST** append exactly one tool message for every `tool_call_id`
+   present in the assistant message before requesting a continuation
+2. Teams **MUST** send a single continuation after the loop, not one request
+   per tool call
+3. Teams **MUST** preserve the original user message in the continuation
+4. Teams **MUST** convert a failed tool call into a tool result rather than
+   omitting it
+
+#### Why
+
+A model response can contain zero, one, or several tool calls, so handling code
+**MUST** assume there are several. Requesting a continuation inside the loop
+sends an assistant message that asks for two calls alongside a single answer,
+which leaves the remaining `tool_call_id` unanswered; the loop also sends one
+request per call and pays for the whole conversation again each time. See
+[handling function calls](https://developers.openai.com/api/docs/guides/function-calling#handling-function-calls).
 
 ### Function Definition Best Practices
 
@@ -1106,21 +1165,121 @@ tool_choice="none"
 1. Teams SHOULD use `tool_choice="auto"` as default
 2. Teams MAY use `tool_choice="required"` for validation/extraction tasks
 3. Teams MUST handle cases where model doesn't call expected function
-4. Teams SHOULD validate function arguments before execution
+4. Teams MUST validate and authorise function arguments before execution
 5. Teams MUST handle function execution errors gracefully
 
 ### Function Calling Error Handling
 
+Tool arguments are model output, not trusted input. Every registered function
+**MUST** be coupled to a typed validator and an authorisation policy that run
+before the callable is invoked.
+
 ```python
-def safe_function_calling(client, messages, tools):
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Literal
+
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+
+REPO_ROOT = Path("/srv/app").resolve()
+
+
+class RunTestsArgs(BaseModel):
+    """Typed, closed schema for the run_tests tool."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    test_path: str
+    verbose: bool = False
+
+    @field_validator("test_path")
+    @classmethod
+    def within_repository(cls, value: str) -> str:
+        """Constrain the tool to paths inside the repository root."""
+        candidate = (REPO_ROOT / value).resolve()
+        if not candidate.is_relative_to(REPO_ROOT):
+            raise ValueError("test_path resolves outside the repository root")
+        return str(candidate)
+
+
+class MigrationArgs(BaseModel):
+    """Typed, closed schema for the create_database_migration tool."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    migration_type: Literal["create_table", "add_column", "add_index"]
+    table_name: str
+
+
+@dataclass(frozen=True)
+class ToolPolicy:
+    """Couple one callable to its validator and authorisation rules."""
+
+    args_model: type[BaseModel]
+    handler: Callable[..., dict]
+    required_scope: str
+    needs_approval: bool = False
+
+
+TOOL_POLICIES = {
+    "run_tests": ToolPolicy(
+        args_model=RunTestsArgs,
+        handler=run_tests,
+        required_scope="ci:run_tests"
+    ),
+    "create_database_migration": ToolPolicy(
+        args_model=MigrationArgs,
+        handler=create_database_migration,
+        required_scope="db:migrate",
+        needs_approval=True
+    )
+}
+
+
+def dispatch_tool_call(tool_call, principal, approved_call_ids) -> dict:
     """
-    Robust function calling with validation and error handling.
+    Validate, authorise, and execute a single tool call.
 
     Requirements:
-    - MUST validate function arguments against schema
-    - MUST handle function execution errors
-    - SHOULD retry on validation errors with correction
-    - MUST NOT execute untrusted code
+    - MUST reject unknown tools, unknown fields, and mistyped values
+    - MUST authorise the caller before execution
+    - MUST require explicit approval for consequential actions
+    - MUST NOT return raw exception text to the model
+    """
+    policy = TOOL_POLICIES.get(tool_call.function.name)
+    if policy is None:
+        return {"tool_call_id": tool_call.id, "error": "unknown_tool"}
+
+    try:
+        raw_args = json.loads(tool_call.function.arguments)
+    except json.JSONDecodeError:
+        return {"tool_call_id": tool_call.id, "error": "invalid_json"}
+
+    try:
+        args = policy.args_model.model_validate(raw_args)
+    except ValidationError:
+        return {"tool_call_id": tool_call.id, "error": "schema_violation"}
+
+    if policy.required_scope not in principal.scopes:
+        return {"tool_call_id": tool_call.id, "error": "not_authorised"}
+
+    if policy.needs_approval and tool_call.id not in approved_call_ids:
+        return {"tool_call_id": tool_call.id, "error": "approval_required"}
+
+    try:
+        result = policy.handler(**args.model_dump())
+    except (OSError, RuntimeError, TimeoutError) as exc:
+        log_error(f"tool {tool_call.function.name} failed", exc)
+        return {"tool_call_id": tool_call.id, "error": "execution_failed"}
+
+    return {"tool_call_id": tool_call.id, "content": json.dumps(result)}
+
+
+def safe_function_calling(client, messages, tools, principal, approved_call_ids):
+    """
+    Run one function-calling turn with validation, authorisation, and
+    a result for every returned tool call.
     """
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -1129,46 +1288,43 @@ def safe_function_calling(client, messages, tools):
         tool_choice="auto"
     )
 
-    if not response.choices[0].message.tool_calls:
-        return response.choices[0].message.content
+    assistant_message = response.choices[0].message
+    if not assistant_message.tool_calls:
+        return assistant_message.content
 
-    results = []
-    for tool_call in response.choices[0].message.tool_calls:
-        function_name = tool_call.function.name
-
-        try:
-            # Validate JSON
-            function_args = json.loads(tool_call.function.arguments)
-        except json.JSONDecodeError as e:
-            results.append({
-                "tool_call_id": tool_call.id,
-                "error": f"Invalid JSON arguments: {e}"
-            })
-            continue
-
-        # Validate against available functions
-        if function_name not in AVAILABLE_FUNCTIONS:
-            results.append({
-                "tool_call_id": tool_call.id,
-                "error": f"Unknown function: {function_name}"
-            })
-            continue
-
-        # Execute function with error handling
-        try:
-            result = AVAILABLE_FUNCTIONS[function_name](**function_args)
-            results.append({
-                "tool_call_id": tool_call.id,
-                "content": json.dumps(result)
-            })
-        except Exception as e:
-            results.append({
-                "tool_call_id": tool_call.id,
-                "error": f"Function execution error: {str(e)}"
-            })
-
-    return results
+    return [
+        dispatch_tool_call(tool_call, principal, approved_call_ids)
+        for tool_call in assistant_message.tool_calls
+    ]
 ```
+
+**Requirements:**
+
+1. Teams **MUST** validate arguments against a typed model that forbids
+   unknown fields and refuses type coercion before execution
+2. Teams **MUST** authorise the calling principal for the specific tool, not
+   only for the conversation
+3. Teams **MUST** constrain filesystem, network, and database scope inside the
+   validator rather than inside the tool implementation
+4. Teams **MUST** require explicit human approval for consequential actions
+   such as migrations, refunds, deletions, and outbound messages
+5. Teams **MUST NOT** return raw exception text or stack traces to the model
+6. Teams **MUST NOT** treat `strict: true` or `additionalProperties: false` as
+   a substitute for application-side validation and authorisation
+
+#### Why
+
+Parsing JSON and finding the function name in a registry is not schema
+validation. The previous helper claimed to "validate function arguments against
+schema" while forwarding whatever the model produced straight into
+`AVAILABLE_FUNCTIONS[name](**args)`: with two harmless-looking tool definitions
+it accepted and executed
+`{"test_path": "../../secrets", "verbose": "not-a-boolean", "unexpected": true}`.
+Strict mode constrains the model's output to the declared schema, but it is a
+generation-time guarantee, not an authorisation boundary, and it says nothing
+about whether this caller may run this action on this path. See
+[strict mode](https://developers.openai.com/api/docs/guides/function-calling#strict-mode)
+and [agent safety](https://developers.openai.com/api/docs/guides/agent-builder-safety).
 
 ---
 
@@ -1214,12 +1370,24 @@ def calculate_fibonacci(n):
     response_format=CodeAnalysis
 )
 
-# Guaranteed to match schema
-analysis = response.choices[0].message.parsed
-print(f"Language: {analysis.language}")
-print(f"Functions: {analysis.functions}")
-print(f"Complexity: {analysis.complexity}")
+# A parsed model exists only when the model neither refused nor stopped early
+message = response.choices[0].message
+
+if message.refusal:
+    print(f"Request refused: {message.refusal}")
+elif message.parsed is None:
+    print("No parsed output returned")
+else:
+    analysis = message.parsed
+    print(f"Language: {analysis.language}")
+    print(f"Functions: {analysis.functions}")
+    print(f"Complexity: {analysis.complexity}")
 ```
+
+`message.parsed` is `None` whenever the model returns a refusal, so
+dereferencing it unconditionally raises
+`AttributeError: 'NoneType' object has no attribute 'language'` the first time
+a request trips the content policy.
 
 ### Complex Nested Schemas
 
@@ -1335,34 +1503,70 @@ response = client.chat.completions.create(
 ### Error Handling with Structured Outputs
 
 ```python
-from openai import OpenAI, LengthFinishReasonError
+from openai import LengthFinishReasonError
 
-try:
-    response = client.beta.chat.completions.parse(
-        model="gpt-4o",
-        messages=messages,
-        response_format=MySchema
-    )
 
-    # Check for refusal (content policy violation)
-    if response.choices[0].message.refusal:
-        print(f"Request refused: {response.choices[0].message.refusal}")
-        return None
+class IncompleteStructuredOutput(RuntimeError):
+    """Raised when a parse request produced no schema-valid result."""
 
-    # Access parsed data
-    data = response.choices[0].message.parsed
-    return data
 
-except LengthFinishReasonError as e:
-    # Output was truncated due to max_tokens
-    print("Response truncated. Increase max_tokens.")
-    partial_data = e.completion.choices[0].message.parsed
-    return partial_data
+def parse_with_schema(client, messages, schema, max_tokens=2048, retries=1):
+    """
+    Parse a completion into `schema`, or fail explicitly.
 
-except Exception as e:
-    print(f"Parsing error: {e}")
-    return None
+    Requirements:
+    - MUST return a refusal as a result rather than crashing
+    - MUST treat a length-limited completion as incomplete, never as data
+    - MUST bound the number of retries
+    """
+    for attempt in range(retries + 1):
+        try:
+            response = client.beta.chat.completions.parse(
+                model="gpt-4o",
+                messages=messages,
+                response_format=schema,
+                max_tokens=max_tokens
+            )
+        except LengthFinishReasonError as exc:
+            if attempt == retries:
+                raise IncompleteStructuredOutput(
+                    f"output truncated at max_tokens={max_tokens}"
+                ) from exc
+            max_tokens *= 2
+            continue
+
+        message = response.choices[0].message
+
+        if message.refusal:
+            return {"refusal": message.refusal}
+
+        if message.parsed is None:
+            raise IncompleteStructuredOutput("no parsed output returned")
+
+        return message.parsed
+
+    raise IncompleteStructuredOutput("retries exhausted")
 ```
+
+**Requirements:**
+
+1. Teams **MUST** check `refusal` and `parsed is None` before using a parsed
+   model
+2. Teams **MUST NOT** read `parsed` from the completion carried by
+   `LengthFinishReasonError`
+3. Teams **MUST** raise or return an explicit error when output is truncated
+4. Teams **MUST** keep `return` statements inside a function
+
+#### Why
+
+The SDK raises `LengthFinishReasonError` from the parsing helper *before* it
+builds any parsed choice, so the completion attached to the exception is a raw
+`ChatCompletion`: reading `e.completion.choices[0].message.parsed` raises
+`AttributeError: 'ChatCompletionMessage' object has no attribute 'parsed'`.
+Even with the correct attribute, a non-streaming completion cut off at
+`max_tokens` holds truncated JSON, so treating it as validated partial data
+feeds a half-written record into the caller. Retry with a larger budget, or
+surface the failure.
 
 ---
 
@@ -1428,45 +1632,55 @@ print(f"Estimated cost: ${total_tokens * 2.50 / 1_000_000:.6f}")
 4. Teams SHOULD prioritize recent messages over older ones
 
 ```python
+class ContextOverflowError(RuntimeError):
+    """Raised when mandatory context alone exceeds the input budget."""
+
+
 class ConversationManager:
     """
-    Manage conversation context within token limits.
+    Manage conversation context within an enforced token budget.
 
     Requirements:
-    - MUST maintain system message
-    - SHOULD keep recent messages
-    - MAY summarize older messages
-    - MUST NOT exceed context window
+    - MUST keep the system message and the newest message
+    - MUST drop older turns before the budget is exceeded
+    - MUST NOT return a conversation that exceeds the budget
     """
 
-    def __init__(self, model: str = "gpt-4o", max_tokens: int = 120000):
+    def __init__(
+        self,
+        model: str = "gpt-4o",
+        context_window: int = 128_000,
+        reserved_output_tokens: int = 16_384
+    ):
         self.model = model
-        self.max_tokens = max_tokens
+        self.input_budget = context_window - reserved_output_tokens
         self.system_message = None
         self.messages = []
 
     def add_message(self, role: str, content: str):
-        """Add message to conversation."""
+        """Add a message and re-establish the budget invariant."""
         self.messages.append({"role": role, "content": content})
-        self._truncate_if_needed()
+        self._enforce_budget()
 
-    def _truncate_if_needed(self):
-        """Truncate old messages if approaching token limit."""
-        while True:
-            total = count_messages_tokens(self.get_messages(), self.model)
-
-            # Keep 20% buffer for response
-            if total <= self.max_tokens * 0.8:
-                break
-
-            # Always keep system message and last 2 exchanges
-            if len(self.messages) <= 4:
-                break
+    def _enforce_budget(self):
+        """Drop the oldest turns until the conversation fits, or fail."""
+        while self.total_tokens() > self.input_budget:
+            # The system message and the newest message are mandatory
+            if len(self.messages) <= 1:
+                raise ContextOverflowError(
+                    f"{self.total_tokens()} tokens exceed the "
+                    f"{self.input_budget}-token input budget for {self.model}; "
+                    "compact or summarise the conversation before retrying"
+                )
 
             # Remove oldest user-assistant pair
             self.messages.pop(0)
             if self.messages and self.messages[0]["role"] == "assistant":
                 self.messages.pop(0)
+
+    def total_tokens(self) -> int:
+        """Count tokens across the system message and history."""
+        return count_messages_tokens(self.get_messages(), self.model)
 
     def get_messages(self):
         """Get messages with system prompt."""
@@ -1474,6 +1688,29 @@ class ConversationManager:
             return [self.system_message] + self.messages
         return self.messages
 ```
+
+**Requirements:**
+
+1. Teams **MUST** derive the input budget from the model's context window minus
+   the output tokens the request may actually generate
+2. Teams **MUST** reserve at least 25,000 tokens for reasoning models, which
+   spend reasoning tokens from the same window
+3. Teams **MUST** raise an explicit error when the mandatory content alone
+   exceeds the budget, rather than returning an oversized message list
+4. Teams **SHOULD** compact or summarise long conversations instead of
+   truncating them; the Responses API can compact server-side when the rendered
+   token count crosses `compact_threshold`
+
+##### Why
+
+A guard that stops enforcing its own limit is worse than no guard, because
+callers trust it. The previous loop broke out as soon as four messages
+remained, whatever their size: four 40,000-token messages returned a 160,000
+token conversation against a 96,000-token allowance, and a single oversized
+mandatory message was enough on its own. The request then fails at the API with
+a context-length error that the guard was meant to prevent. See
+[compaction](https://developers.openai.com/api/docs/guides/compaction.md) and
+[managing the context window](https://developers.openai.com/api/docs/guides/reasoning#managing-the-context-window).
 
 ### Model Selection for Cost
 
@@ -1817,9 +2054,10 @@ response = client.chat.completions.create(...)
 try:
     response = client.chat.completions.create(...)
 except RateLimitError:
-    # Retry with backoff
-except APIError:
-    # Log and handle gracefully
+    response = call_openai_with_backoff(client, **kwargs)
+except APIError as exc:
+    log_error("API error", exc)
+    raise
 ```
 
 ### 5. Using Wrong Model for Task
@@ -1886,11 +2124,11 @@ response = client.chat.completions.create(
 args = json.loads(tool_call.function.arguments)
 result = execute_function(**args)  # No validation
 
-# GOOD: Validate before execution
-args = json.loads(tool_call.function.arguments)
-if not validate_args(args, function_schema):
-    raise ValueError("Invalid arguments")
-result = execute_function(**args)
+# GOOD: Validate, authorise, then execute
+args = ToolArgs.model_validate_json(tool_call.function.arguments)
+if not principal.may_call(tool_call.function.name, args):
+    raise PermissionError("caller not authorised for this tool")
+result = execute_function(**args.model_dump())
 ```
 
 ### 8. Excessive System Prompts
@@ -1957,8 +2195,8 @@ response = client.chat.completions.create(...)  # May generate 16K tokens
 
 # GOOD: Set appropriate limit
 response = client.chat.completions.create(
-    max_tokens=500,  # Limit based on expected output
-    ...
+    ...,
+    max_tokens=500  # Limit based on expected output
 )
 ```
 
@@ -1974,8 +2212,8 @@ response = client.chat.completions.create(...)  # temperature=1.0 default
 
 # GOOD: temperature=0 for deterministic code
 response = client.chat.completions.create(
-    temperature=0,  # Deterministic output
-    ...
+    ...,
+    temperature=0  # Deterministic output
 )
 ```
 
@@ -2015,8 +2253,8 @@ response = client.chat.completions.create(...)
 
 # DO: Set appropriate timeout
 response = client.chat.completions.create(
-    timeout=30.0,
-    ...
+    ...,
+    timeout=30.0
 )
 ```
 
@@ -2040,16 +2278,25 @@ def process_request(prompt, complexity="simple"):
 ```
 
 ```python
-# DON'T: Use o1 for function calling
+# DON'T: Send tool calls to a retired reasoning model
 response = client.chat.completions.create(
-    model="o1-preview",
-    tools=tools  # Not supported!
+    model="o1-preview",  # Shut down on 2025-07-28
+    messages=messages,
+    tools=tools
 )
 
-# DO: Use GPT-4o for function calling
+# DO: Use a current reasoning model
 response = client.chat.completions.create(
-    model="gpt-4o",
+    model="gpt-5.6-sol",
+    messages=messages,
     tools=tools
+)
+
+# DO: Use the Responses API when the model is gpt-6-astra
+response = client.responses.create(
+    model="gpt-6-astra",  # Chat Completions cannot call tools here
+    input=messages,
+    tools=responses_tools
 )
 ```
 
@@ -2128,11 +2375,11 @@ system = """Expert TypeScript engineer. Write type-safe, modern TS code followin
 args = json.loads(tool_call.function.arguments)
 result = eval(args["code"])  # DANGEROUS!
 
-# DO: Validate and sanitize
-args = json.loads(tool_call.function.arguments)
-if not is_safe_to_execute(args):
-    raise SecurityError("Unsafe function arguments")
-result = safe_execute(args)
+# DO: Validate against a closed schema, then authorise the action
+args = RunTestsArgs.model_validate_json(tool_call.function.arguments)
+if "ci:run_tests" not in principal.scopes:
+    raise PermissionError("caller not authorised for run_tests")
+result = run_tests(**args.model_dump())
 ```
 
 ### Token Management
@@ -2156,8 +2403,8 @@ response = client.chat.completions.create(...)
 
 # DO: Set max_tokens based on use case
 response = client.chat.completions.create(
-    max_tokens=500,  # Appropriate for expected output
-    ...
+    ...,
+    max_tokens=500  # Appropriate for expected output
 )
 ```
 
@@ -2167,23 +2414,33 @@ response = client.chat.completions.create(
 # DON'T: Skip caching for repeated requests
 def get_response(prompt):
     return client.chat.completions.create(
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}]
     )
 
-# DO: Cache identical requests
+# DO: Cache on the same messages and model the request uses
 cache = ResponseCache()
 
-def get_response(prompt):
-    cached = cache.get(prompt)
+def get_response(prompt, model="gpt-4o"):
+    messages = [{"role": "user", "content": prompt}]
+
+    cached = cache.get(messages, model)
     if cached:
         return cached
 
     response = client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}]
+        model=model,
+        messages=messages
     )
-    cache.set(prompt, response)
+    cache.set(messages, model, response)
     return response
 ```
+
+`ResponseCache.get()` and `ResponseCache.set()` key on the message list and the
+model, because the same prompt returns different output from a different model.
+Passing the bare prompt raises
+`TypeError: ResponseCache.get() missing 1 required positional argument: 'model'`
+on the first call.
 
 ```python
 # DON'T: Use standard API for bulk processing
@@ -2202,7 +2459,7 @@ response = client.chat.completions.create(...)
 display(response.choices[0].message.content)
 
 # DO: Stream for better UX
-stream = client.chat.completions.create(stream=True, ...)
+stream = client.chat.completions.create(..., stream=True)
 for chunk in stream:
     if chunk.choices[0].delta.content:
         display_incremental(chunk.choices[0].delta.content)
@@ -2226,8 +2483,8 @@ class Person(BaseModel):
     age: int
 
 response = client.beta.chat.completions.parse(
-    response_format=Person,
-    ...
+    ...,
+    response_format=Person
 )
 data = response.choices[0].message.parsed  # Guaranteed valid
 ```
@@ -2237,14 +2494,14 @@ data = response.choices[0].message.parsed  # Guaranteed valid
 ```python
 # DON'T: Use high temperature for code generation
 response = client.chat.completions.create(
-    temperature=1.5,  # Too creative for code
-    ...
+    ...,
+    temperature=1.5  # Too creative for code
 )
 
 # DO: Use temperature=0 for deterministic code
 response = client.chat.completions.create(
-    temperature=0,  # Consistent, reliable code
-    ...
+    ...,
+    temperature=0  # Consistent, reliable code
 )
 ```
 

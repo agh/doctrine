@@ -27,13 +27,14 @@ At the start of each code review, load these files:
    - Use `weaknesses[]` for vulnerability classification
    - Use `detection_patterns` for language-specific patterns
    - Use `mitigations` for fix recommendations
-   - Use `quick_lookup` for category-based searches (injection, memory, auth, web, crypto)
+   - Use `quick_lookup` for category-based searches (injection, memory,
+     access_control, web, data_handling)
 
 2. **OWASP Top 10 Web**: `reference/security/owasp/top10-web-2025.json`
    - Use `risks[]` for risk categorization
    - Use `detection_patterns` for finding issues
    - Use `prevention` for remediation guidance
-   - Note: 2025 version includes new A03 (Supply Chain) and A10 (Mishandling Exceptions)
+   - Note: 2025 renumbers most categories; never carry 2021 identifiers across
 
 3. **For API code**: `reference/security/owasp/top10-api-2023.json`
 
@@ -53,7 +54,9 @@ When you find a vulnerability:
 
 1. Lookup CWE ID in `cwe-top-25-2025.json`
 2. Use `mapping_to_cwe_top_25` in OWASP file to find OWASP category
-3. Reference both in your finding (e.g., "CWE-89 / A04:2025-Injection")
+3. Reference both in your finding (e.g., "CWE-89 / A05:2025-Injection")
+4. If the CWE has no OWASP Top 10:2025 category (see `unmapped_top_25`), report the
+   CWE alone rather than inventing a category
 
 ## Coverage
 
@@ -62,16 +65,23 @@ The vendored references cover:
 ### From CWE Top 25 (use `quick_lookup` for fast access)
 
 - **Injection**: CWE-89, CWE-78, CWE-77, CWE-94
-- **Memory**: CWE-787, CWE-416, CWE-125, CWE-119, CWE-476, CWE-190
-- **Auth**: CWE-287, CWE-306, CWE-862, CWE-863, CWE-269
+- **Memory**: CWE-787, CWE-416, CWE-125, CWE-476, CWE-120, CWE-121, CWE-122
+- **Access control**: CWE-862, CWE-863, CWE-306, CWE-284, CWE-639
 - **Web**: CWE-79, CWE-352, CWE-918, CWE-22, CWE-434
-- **Crypto**: CWE-798, CWE-502
+- **Data handling**: CWE-20, CWE-200, CWE-502, CWE-770
 
 ### From OWASP Top 10 2025 (key changes from 2021)
 
-- **A03:2025** - Software Supply Chain Failures (NEW - elevated from A08)
+- **A02:2025** - Security Misconfiguration (up from A05:2021)
+- **A03:2025** - Software Supply Chain Failures (NEW - expansion of A06:2021)
+- **A04:2025** - Cryptographic Failures (down from A02:2021)
+- **A05:2025** - Injection (down from A03:2021)
+- **A06:2025** - Insecure Design (down from A04:2021)
+- **A07:2025** - Authentication Failures (renamed from Identification and Authentication Failures)
+- **A09:2025** - Security Logging and Alerting Failures (renamed from Logging and Monitoring)
 - **A10:2025** - Mishandling of Exceptional Conditions (NEW)
 - **A01:2025** - Broken Access Control (now includes SSRF)
+- Vulnerable and Outdated Components is no longer a standalone category
 
 ### Additional Checks
 

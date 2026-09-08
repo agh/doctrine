@@ -9,16 +9,32 @@
       "A03:2025 - Software Supply Chain Failures (NEW)",
       "A10:2025 - Mishandling of Exceptional Conditions (NEW)"
     ],
-    "removed": ["A10:2021 - SSRF merged into other categories"],
-    "methodology": "Community survey input + expanded data analysis"
+    "consolidated": [
+      "A06:2021 - Vulnerable and Outdated Components expanded into A03:2025 - Software Supply Chain Failures",
+      "A10:2021 - SSRF rolled into A01:2025 - Broken Access Control"
+    ],
+    "renamed": [
+      "A07:2021 - Identification and Authentication Failures is now A07:2025 - Authentication Failures",
+      "A08:2021 - Software and Data Integrity Failures is now A08:2025 - Software or Data Integrity Failures",
+      "A09:2021 - Security Logging and Monitoring Failures is now A09:2025 - Security Logging and Alerting Failures"
+    ],
+    "reordered": [
+      "A05:2021 - Security Misconfiguration moved up to A02:2025",
+      "A02:2021 - Cryptographic Failures moved down to A04:2025",
+      "A03:2021 - Injection moved down to A05:2025",
+      "A04:2021 - Insecure Design moved down to A06:2025"
+    ],
+    "methodology": "Community survey input + expanded data analysis over 589 CWEs; 248 CWEs across the 10 categories"
   },
   "risks": [
     {
       "id": "A01:2025",
       "name": "Broken Access Control",
       "rank": 1,
-      "cwes": ["CWE-200", "CWE-201", "CWE-352", "CWE-566", "CWE-639", "CWE-862", "CWE-863", "CWE-918"],
-      "description": "Access control enforces policy such that users cannot act outside of their intended permissions. Now includes SSRF.",
+      "mapped_cwe_count": 40,
+      "notable_cwes": ["CWE-200", "CWE-201", "CWE-918", "CWE-352"],
+      "cwes": ["CWE-22", "CWE-200", "CWE-201", "CWE-284", "CWE-352", "CWE-566", "CWE-601", "CWE-639", "CWE-732", "CWE-862", "CWE-863", "CWE-918"],
+      "description": "Access control enforces policy such that users cannot act outside of their intended permissions. Server-Side Request Forgery (SSRF) has been rolled into this category for 2025.",
       "detection_patterns": [
         "IDOR vulnerabilities",
         "Bypassing access control checks by modifying URL",
@@ -39,26 +55,29 @@
     },
     {
       "id": "A02:2025",
-      "name": "Cryptographic Failures",
+      "name": "Security Misconfiguration",
       "rank": 2,
-      "cwes": ["CWE-259", "CWE-327", "CWE-331", "CWE-328", "CWE-798"],
-      "description": "Failures related to cryptography which often lead to sensitive data exposure",
+      "moved_from": "A05:2021",
+      "mapped_cwe_count": 16,
+      "notable_cwes": ["CWE-16", "CWE-611"],
+      "cwes": ["CWE-5", "CWE-11", "CWE-13", "CWE-15", "CWE-16", "CWE-260", "CWE-315", "CWE-489", "CWE-526", "CWE-547", "CWE-611", "CWE-614", "CWE-776", "CWE-942", "CWE-1004", "CWE-1174"],
+      "description": "A system, application, or cloud service is set up incorrectly from a security perspective, creating vulnerabilities",
       "detection_patterns": [
-        "Data transmitted in clear text (HTTP, SMTP, FTP)",
-        "Old or weak cryptographic algorithms (MD5, SHA1, DES)",
-        "Default or weak crypto keys",
-        "Missing TLS enforcement",
-        "Certificates not validated",
-        "Hardcoded secrets and API keys"
+        "Unnecessary features enabled (ports, services)",
+        "Default accounts/passwords",
+        "Overly informative error messages",
+        "Missing security headers",
+        "Insecure application server, framework, or library settings",
+        "Cloud misconfigurations (open object storage, permissive IAM)"
       ],
       "prevention": [
-        "Classify data by sensitivity",
-        "Encrypt all sensitive data at rest",
-        "Use strong algorithms (AES-256-GCM, RSA-2048+)",
-        "Enforce TLS 1.3 with HSTS",
-        "Disable caching for sensitive data",
-        "Use authenticated encryption",
-        "Secrets management (not hardcoded)"
+        "Repeatable hardening process",
+        "Minimal platform (no unused features)",
+        "Review and update configurations",
+        "Segmented architecture",
+        "Automated verification of configurations",
+        "Infrastructure as Code scanning",
+        "Federated identity or short-lived credentials instead of embedded static keys"
       ]
     },
     {
@@ -66,14 +85,16 @@
       "name": "Software Supply Chain Failures",
       "rank": 3,
       "status": "NEW in 2025",
-      "cwes": ["CWE-502", "CWE-829", "CWE-1395"],
-      "description": "Risks from third-party components, dependencies, and build pipelines",
+      "mapped_cwe_count": 5,
+      "notable_cwes": ["CWE-477", "CWE-1104", "CWE-1329", "CWE-1395"],
+      "cwes": ["CWE-447", "CWE-477", "CWE-1104", "CWE-1329", "CWE-1395"],
+      "description": "Compromises within or across the ecosystem of software dependencies, build systems, and distribution infrastructure",
       "detection_patterns": [
         "Unsigned dependencies",
         "Compromised packages (typosquatting, dependency confusion)",
         "Insecure CI/CD pipelines",
         "Missing SBOM",
-        "Outdated components with known vulnerabilities",
+        "Outdated or unmaintained components with known vulnerabilities",
         "Auto-update without integrity verification"
       ],
       "prevention": [
@@ -87,14 +108,44 @@
       ],
       "references": {
         "slsa": "reference/security/slsa/slsa-levels.json",
-        "note": "Previously part of A08:2021 - now elevated to separate category"
+        "note": "Expansion of A06:2021 - Vulnerable and Outdated Components, which no longer exists as a separate category"
       }
     },
     {
       "id": "A04:2025",
-      "name": "Injection",
+      "name": "Cryptographic Failures",
       "rank": 4,
-      "cwes": ["CWE-77", "CWE-78", "CWE-79", "CWE-89", "CWE-94"],
+      "moved_from": "A02:2021",
+      "mapped_cwe_count": 32,
+      "notable_cwes": ["CWE-327", "CWE-331", "CWE-338", "CWE-1241"],
+      "cwes": ["CWE-319", "CWE-321", "CWE-326", "CWE-327", "CWE-328", "CWE-329", "CWE-330", "CWE-331", "CWE-338", "CWE-347", "CWE-916", "CWE-1241"],
+      "description": "Failures related to the lack of cryptography, insufficiently strong cryptography, and leaking of cryptographic keys",
+      "detection_patterns": [
+        "Data transmitted in clear text (HTTP, SMTP, FTP)",
+        "Old or weak cryptographic algorithms (MD5, SHA1, DES)",
+        "Default or weak crypto keys",
+        "Missing TLS enforcement",
+        "Certificates not validated",
+        "Cryptographically weak pseudo-random number generators"
+      ],
+      "prevention": [
+        "Classify data by sensitivity",
+        "Encrypt all sensitive data at rest",
+        "Use strong algorithms (AES-256-GCM, RSA-2048+)",
+        "Enforce TLS 1.3 with HSTS",
+        "Disable caching for sensitive data",
+        "Use authenticated encryption",
+        "Seed random values from a cryptographically secure source"
+      ]
+    },
+    {
+      "id": "A05:2025",
+      "name": "Injection",
+      "rank": 5,
+      "moved_from": "A03:2021",
+      "mapped_cwe_count": 37,
+      "notable_cwes": ["CWE-79", "CWE-89"],
+      "cwes": ["CWE-20", "CWE-74", "CWE-77", "CWE-78", "CWE-79", "CWE-88", "CWE-89", "CWE-90", "CWE-91", "CWE-94", "CWE-116", "CWE-643", "CWE-917"],
       "description": "Hostile data sent to an interpreter as part of a command or query",
       "detection_patterns": [
         "User-supplied data not validated/sanitized",
@@ -114,10 +165,13 @@
       ]
     },
     {
-      "id": "A05:2025",
+      "id": "A06:2025",
       "name": "Insecure Design",
-      "rank": 5,
-      "cwes": ["CWE-209", "CWE-256", "CWE-501", "CWE-522"],
+      "rank": 6,
+      "moved_from": "A04:2021",
+      "mapped_cwe_count": 39,
+      "notable_cwes": ["CWE-256", "CWE-269", "CWE-434", "CWE-501", "CWE-522"],
+      "cwes": ["CWE-73", "CWE-256", "CWE-269", "CWE-311", "CWE-312", "CWE-362", "CWE-434", "CWE-501", "CWE-522", "CWE-602", "CWE-653", "CWE-799"],
       "description": "Missing or ineffective control design; different from implementation bugs",
       "detection_patterns": [
         "Missing threat modeling",
@@ -136,55 +190,13 @@
       ]
     },
     {
-      "id": "A06:2025",
-      "name": "Security Misconfiguration",
-      "rank": 6,
-      "cwes": ["CWE-16", "CWE-611"],
-      "description": "Missing or misconfigured security hardening",
-      "detection_patterns": [
-        "Unnecessary features enabled (ports, services)",
-        "Default accounts/passwords",
-        "Overly informative error messages",
-        "Missing security headers",
-        "Outdated software/features",
-        "Cloud misconfigurations (open S3, IAM)"
-      ],
-      "prevention": [
-        "Repeatable hardening process",
-        "Minimal platform (no unused features)",
-        "Review and update configurations",
-        "Segmented architecture",
-        "Automated verification of configurations",
-        "Infrastructure as Code scanning"
-      ]
-    },
-    {
       "id": "A07:2025",
-      "name": "Vulnerable and Outdated Components",
+      "name": "Authentication Failures",
       "rank": 7,
-      "cwes": [],
-      "description": "Using components with known vulnerabilities",
-      "detection_patterns": [
-        "Unknown component versions",
-        "Outdated OS, web server, DBMS, APIs",
-        "No regular vulnerability scanning",
-        "Components not monitored for CVEs",
-        "Transitive dependency vulnerabilities"
-      ],
-      "prevention": [
-        "Remove unused dependencies",
-        "Inventory component versions continuously",
-        "Monitor CVE databases",
-        "Obtain components from official sources",
-        "Monitor for unmaintained libraries",
-        "Automated SCA in CI/CD"
-      ]
-    },
-    {
-      "id": "A08:2025",
-      "name": "Identification and Authentication Failures",
-      "rank": 8,
-      "cwes": ["CWE-287", "CWE-297", "CWE-384"],
+      "renamed_from": "A07:2021 - Identification and Authentication Failures",
+      "mapped_cwe_count": 36,
+      "notable_cwes": ["CWE-259", "CWE-287", "CWE-297"],
+      "cwes": ["CWE-259", "CWE-287", "CWE-290", "CWE-294", "CWE-295", "CWE-297", "CWE-306", "CWE-307", "CWE-384", "CWE-521", "CWE-613", "CWE-640", "CWE-798"],
       "description": "Confirmation of user identity, authentication, and session management",
       "detection_patterns": [
         "Permits credential stuffing/brute force",
@@ -204,11 +216,39 @@
       ]
     },
     {
+      "id": "A08:2025",
+      "name": "Software or Data Integrity Failures",
+      "rank": 8,
+      "renamed_from": "A08:2021 - Software and Data Integrity Failures",
+      "mapped_cwe_count": 14,
+      "notable_cwes": ["CWE-502", "CWE-829", "CWE-915"],
+      "cwes": ["CWE-345", "CWE-353", "CWE-426", "CWE-427", "CWE-494", "CWE-502", "CWE-506", "CWE-509", "CWE-565", "CWE-784", "CWE-829", "CWE-830", "CWE-915", "CWE-926"],
+      "description": "Failure to maintain trust boundaries and verify the integrity of software, code, and data artifacts, at a lower level than Software Supply Chain Failures",
+      "detection_patterns": [
+        "Deserialization of untrusted data",
+        "Auto-update without signature verification",
+        "Unsigned or unverified CI/CD artefacts",
+        "Untrusted client-side data trusted server-side (cookies, hidden fields)",
+        "Search path or library loading from an untrusted location"
+      ],
+      "prevention": [
+        "Verify digital signatures on software and updates",
+        "Reject native deserialization of untrusted data",
+        "Sign and verify build artefacts and configuration",
+        "Pin and verify dependency integrity",
+        "Review code and configuration changes before promotion",
+        "Enforce integrity checks on trust boundaries"
+      ]
+    },
+    {
       "id": "A09:2025",
-      "name": "Security Logging and Monitoring Failures",
+      "name": "Security Logging and Alerting Failures",
       "rank": 9,
-      "cwes": ["CWE-117", "CWE-223", "CWE-532", "CWE-778"],
-      "description": "Insufficient logging, detection, monitoring, and active response",
+      "renamed_from": "A09:2021 - Security Logging and Monitoring Failures",
+      "mapped_cwe_count": 5,
+      "notable_cwes": ["CWE-117", "CWE-532", "CWE-778"],
+      "cwes": ["CWE-117", "CWE-221", "CWE-223", "CWE-532", "CWE-778"],
+      "description": "Insufficient logging, alerting, and active response; logging without alerting has minimal value for identifying incidents",
       "detection_patterns": [
         "Auditable events not logged",
         "Warnings/errors generate no logs",
@@ -220,6 +260,7 @@
       "prevention": [
         "Log all login, access control, input validation failures",
         "Log with sufficient context for forensics",
+        "Alert on relevant logging events, not just collect them",
         "Use log management solutions (SIEM)",
         "Establish incident response plan",
         "Use tamper-evident logs",
@@ -231,8 +272,10 @@
       "name": "Mishandling of Exceptional Conditions",
       "rank": 10,
       "status": "NEW in 2025",
-      "cwes": ["CWE-755", "CWE-754", "CWE-391", "CWE-209"],
-      "description": "Improper handling of errors, exceptions, and edge cases leading to security issues",
+      "mapped_cwe_count": 24,
+      "notable_cwes": ["CWE-209", "CWE-234", "CWE-274", "CWE-476", "CWE-636"],
+      "cwes": ["CWE-209", "CWE-248", "CWE-252", "CWE-274", "CWE-391", "CWE-396", "CWE-397", "CWE-460", "CWE-476", "CWE-636", "CWE-703", "CWE-754", "CWE-755"],
+      "description": "Improper error handling, logical errors, failing open, and other scenarios stemming from abnormal conditions",
       "detection_patterns": [
         "Unhandled exceptions expose stack traces",
         "Error messages reveal sensitive information",
@@ -251,16 +294,21 @@
     }
   ],
   "mapping_to_cwe_top_25": {
-    "A01": ["CWE-862", "CWE-863", "CWE-352", "CWE-918"],
-    "A02": ["CWE-798"],
-    "A03": ["CWE-502", "CWE-829"],
-    "A04": ["CWE-79", "CWE-89", "CWE-78", "CWE-77", "CWE-94"],
-    "A05": [],
-    "A06": ["CWE-276"],
-    "A07": [],
-    "A08": ["CWE-287", "CWE-306"],
+    "note": "CWE Top 25 (2025) members that fall in each OWASP Top 10:2025 category",
+    "A01": ["CWE-22", "CWE-200", "CWE-284", "CWE-352", "CWE-639", "CWE-862", "CWE-863", "CWE-918"],
+    "A02": [],
+    "A03": [],
+    "A04": [],
+    "A05": ["CWE-20", "CWE-77", "CWE-78", "CWE-79", "CWE-89", "CWE-94"],
+    "A06": ["CWE-434"],
+    "A07": ["CWE-306"],
+    "A08": ["CWE-502"],
     "A09": [],
-    "A10": []
+    "A10": ["CWE-476"],
+    "unmapped_top_25": {
+      "ids": ["CWE-120", "CWE-121", "CWE-122", "CWE-125", "CWE-416", "CWE-770", "CWE-787"],
+      "reason": "Memory-safety and resource-exhaustion weaknesses are not mapped into any OWASP Top 10:2025 category; agents MUST report these against the CWE Top 25 alone"
+    }
   },
   "cross_references": {
     "owasp_api_2023": "reference/security/owasp/top10-api-2023.json",

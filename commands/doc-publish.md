@@ -8,7 +8,7 @@ Generate documentation in multiple output formats.
 /doc-publish [source]
 /doc-publish docs/               # Publish all docs
 /doc-publish --llms              # Generate llms.txt only
-/doc-publish --mcp               # Generate MCP config only
+/doc-publish --mcp              # Generate MCP tool declarations only
 /doc-publish --diagrams          # Generate Mermaid diagrams only
 /doc-publish --all               # Generate all formats
 ```
@@ -34,11 +34,60 @@ Optimized for AI assistant consumption:
 
 ### MCP (Model Context Protocol)
 
-Structured JSON for AI tool integration:
+Tool declarations for MCP protocol revision **2026-07-28**, the current
+revision. Each declaration **MUST** contain:
 
-- Function signatures
-- Parameter schemas
-- Tool descriptions
+- `name` — unique tool identifier
+- `inputSchema` — a valid JSON Schema object, never `null`
+- `description` — human-readable summary of what the tool does
+
+`title`, `outputSchema`, `annotations`, and `icons` are **OPTIONAL**.
+
+#### Why
+
+`inputSchema` is a required property of `Tool` in the published schema. A tool
+object that carries a bare `parameters` map instead fails validation, so the
+declaration cannot be consumed as an integration schema.
+
+#### Do
+
+```json
+{
+  "name": "login",
+  "description": "Authenticate a user and return a token pair.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {"email": {"type": "string"}},
+    "required": ["email"]
+  }
+}
+```
+
+#### Don't
+
+```json
+{
+  "name": "login",
+  "description": "Authenticate a user and return a token pair.",
+  "parameters": {"email": {"type": "string"}}
+}
+```
+
+#### Artefact boundaries
+
+This command emits tool declarations only. It **MUST NOT** label its output an
+"MCP config", because three distinct artefacts exist:
+
+| Artefact | Shape | Produced by |
+| -------- | ----- | ----------- |
+| Tool declaration | `Tool` object | `/doc-publish --mcp` |
+| `tools/list` result | `resultType`, `tools`, `ttlMs`, `cacheScope` | MCP server |
+| Server configuration | `mcpServers` entry naming a command or URL | MCP host |
+
+Every generated declaration **MUST** be validated against
+[`schema/2026-07-28/schema.json`][mcp-schema] before publication.
+
+[mcp-schema]: https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2026-07-28/schema.json
 
 ### Mermaid Diagrams
 
@@ -58,10 +107,12 @@ $ARGUMENTS
 
 Generate documentation in requested formats:
 1. llms.txt - AI-optimized, token-efficient
-2. MCP - Tool integration schemas
+2. MCP - Tool declarations for protocol revision 2026-07-28, each with a
+   valid `inputSchema` JSON Schema object
 3. Mermaid - Visual diagrams
 
-Validate each output format and include all in response.
+Validate each output format before returning it. Validate MCP declarations
+against schema/2026-07-28/schema.json and include all formats in response.
 ```
 
 ## Example
@@ -88,18 +139,35 @@ Validate each output format and include all in response.
 
     ### MCP Tools
 
+    Tool declaration, MCP protocol revision 2026-07-28:
+
         {
-          "tools": [
-            {
-              "name": "login",
-              "description": "Authenticate user with credentials",
-              "parameters": {
-                "email": {"type": "string"},
-                "password": {"type": "string"}
-              }
-            }
-          ]
+          "name": "login",
+          "title": "Log In",
+          "description": "Authenticate a user and return an access/refresh token pair.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "email": {"type": "string", "format": "email"},
+              "password": {"type": "string", "minLength": 1}
+            },
+            "required": ["email", "password"],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "accessToken": {"type": "string"},
+              "refreshToken": {"type": "string"},
+              "expiresIn": {"type": "integer"}
+            },
+            "required": ["accessToken", "refreshToken", "expiresIn"]
+          }
         }
+
+    Validated against schema/2026-07-28/schema.json #/$defs/Tool.
+    A server returns these inside a tools/list result, which additionally
+    requires resultType, ttlMs, and cacheScope.
 
     ### Architecture Diagram
 
