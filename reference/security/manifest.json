@@ -2,40 +2,43 @@
   "name": "Doctrine Security References",
   "description": "Vendored security reference data for offline agent operation",
   "version": "3.1.0",
-  "last_updated": "2025-01-02",
+  "last_updated": "2026-01-02",
   "update_schedule": "quarterly",
-  "next_review": "2025-04-01",
+  "next_review": "2026-12-01",
   "sources": {
     "mitre_attack": {
       "version": "18.1",
       "updated": "2025-10-28",
       "source": "https://github.com/mitre/cti",
-      "license": "CC-BY-4.0",
+      "license": "MITRE ATT&CK Terms of Use",
       "files": [
         "mitre/attack/enterprise-attack.json",
         "mitre/attack/techniques-summary.json"
       ],
-      "changelog": "v18: Detection Strategies (DETxxxx), v17: ESXi platform"
+      "changelog": "v18: Detection Strategies (DETxxxx), v17: ESXi platform",
+      "license_url": "https://attack.mitre.org/resources/legal-and-branding/terms-of-use/"
     },
     "mitre_atlas": {
       "version": "5.0.0",
       "updated": "2025-10-22",
       "source": "https://github.com/mitre-atlas/atlas-data",
-      "license": "CC-BY-4.0",
+      "license": "Apache-2.0",
       "files": [
         "mitre/atlas/atlas-summary.json"
       ],
-      "changelog": "v5: 14 agentic AI techniques, Technique Maturity field"
+      "changelog": "v5: 14 agentic AI techniques, Technique Maturity field",
+      "license_url": "https://github.com/mitre-atlas/atlas-data/blob/main/LICENSE"
     },
     "mitre_d3fend": {
       "version": "1.0",
       "updated": "2025-01-22",
       "source": "https://d3fend.mitre.org/",
-      "license": "Apache-2.0",
+      "license": "MIT",
       "files": [
         "mitre/d3fend/d3fend-summary.json"
       ],
-      "changelog": "v1.0: Official release, 245+ defensive techniques, OT extension"
+      "changelog": "v1.0: Official release, 245+ defensive techniques, OT extension",
+      "license_url": "https://github.com/d3fend/d3fend-ontology/blob/develop/LICENSE.md"
     },
     "mitre_capec": {
       "version": "3.9",
@@ -45,7 +48,8 @@
       "files": [
         "mitre/capec/capec-summary.json"
       ],
-      "description": "559 attack patterns for threat modeling"
+      "description": "559 attack patterns for threat modeling",
+      "license_url": "https://capec.mitre.org/about/termsofuse.html"
     },
     "cwe": {
       "version": "4.19",
@@ -56,7 +60,8 @@
         "cwe/cwe-top-25-2025.json",
         "cwe/cwe-common.json"
       ],
-      "changelog": "v4.19: AI-related CWEs, D3FEND alignment, hardware weaknesses"
+      "changelog": "v4.19: AI-related CWEs, D3FEND alignment, hardware weaknesses",
+      "license_url": "https://cwe.mitre.org/about/termsofuse.html"
     },
     "owasp_top10": {
       "versions": {
@@ -73,7 +78,8 @@
         "owasp/top10-llm-2025.json",
         "owasp/top10-mobile-2024.json"
       ],
-      "changelog": "Web 2025: Supply Chain Failures (A03), Mishandling Exceptions (A10)"
+      "changelog": "Web 2025: Supply Chain Failures (A03), Mishandling Exceptions (A10)",
+      "license_url": "https://github.com/OWASP/Top10/blob/master/LICENSE"
     },
     "owasp_asvs": {
       "version": "5.0.0",
@@ -83,36 +89,42 @@
       "files": [
         "owasp/asvs-5.0.json"
       ],
-      "description": "350 security requirements across 3 verification levels"
+      "description": "350 security requirements across 3 verification levels",
+      "license_url": "https://github.com/OWASP/ASVS/blob/master/LICENSE.md"
     },
     "ja4_signatures": {
       "version": "2025.01",
       "updated": "2025-01-01",
       "source": "https://github.com/FoxIO-LLC/ja4",
-      "license": "BSD-3-Clause",
+      "license": "BSD-3-Clause (JA4 only) AND FoxIO-1.1 (all other JA4+ variants)",
       "files": [
         "fingerprints/ja4/malware-signatures.json"
-      ]
+      ],
+      "license_url": "https://github.com/FoxIO-LLC/ja4/blob/main/LICENSE",
+      "license_note": "JA4 (TLS client fingerprinting) is BSD-3-Clause: https://github.com/FoxIO-LLC/ja4/blob/main/LICENSE-JA4 . Every other JA4+ variant (JA4S, JA4H, JA4L, JA4LS, JA4X, JA4T, JA4TS, JA4TScan, JA4D, JA4D6, JA4SScan, JA4E, JA4SSH) is FoxIO License 1.1, which permits non-commercial use only."
     },
     "sigma_rules": {
       "version": "r2024-12-15",
       "updated": "2024-12-15",
       "source": "https://github.com/SigmaHQ/sigma",
-      "license": "LGPL-2.1",
+      "license": "DRL-1.1",
       "files": [
         "sigma/rules-summary.json"
       ],
-      "note": "Full rules in sigma/rules/ directory"
+      "note": "Full rules in sigma/rules/ directory",
+      "license_url": "https://github.com/SigmaHQ/Detection-Rule-License",
+      "license_note": "The Sigma specification and logo are public domain; the SigmaHQ rules are Detection Rule License 1.1."
     },
     "slsa": {
       "version": "1.2",
       "updated": "2025-11-24",
       "source": "https://slsa.dev/",
-      "license": "Apache-2.0",
+      "license": "Community-Spec-1.0",
       "files": [
         "slsa/slsa-levels.json"
       ],
-      "changelog": "v1.2: Source Track introduced"
+      "changelog": "v1.2: Source Track introduced",
+      "license_url": "https://github.com/slsa-framework/slsa/blob/main/LICENSE.md"
     },
     "openssf_scorecard": {
       "version": "5.0",
@@ -122,96 +134,152 @@
       "files": [
         "openssf/scorecard.json"
       ],
-      "description": "18 security checks for open source project health"
+      "description": "18 security checks for open source project health",
+      "license_url": "https://github.com/ossf/scorecard/blob/main/LICENSE"
     },
     "sbom": {
       "version": "2025.01",
       "updated": "2025-01-02",
-      "formats": ["CycloneDX 1.6", "SPDX 3.0", "SWID"],
+      "formats": [
+        "CycloneDX 1.6",
+        "SPDX 3.0",
+        "SWID"
+      ],
       "files": [
         "sbom/sbom-formats.json"
       ],
-      "description": "SBOM format specifications, VEX, and PURL reference"
+      "description": "SBOM format specifications, VEX, and PURL reference",
+      "license": "Apache-2.0 (CycloneDX) AND Community-Spec-1.0 (SPDX)",
+      "license_url": "https://github.com/CycloneDX/specification/blob/master/LICENSE",
+      "license_note": "SPDX specification: https://github.com/spdx/spdx-spec/blob/development/v3.0.1/LICENSE (Community Specification 1.0, with pre-existing portions under CC-BY-3.0). SWID is ISO/IEC 19770-2 and is not reproduced here."
     },
     "cis_controls": {
       "version": "8.1",
       "updated": "2025-01-02",
       "source": "https://www.cisecurity.org/controls/v8-1",
-      "license": "CC-BY-NC-ND 4.0",
+      "license": "CC-BY-NC-ND-4.0",
       "files": [
         "cis/controls-v8.json"
       ],
-      "note": "CIS Critical Security Controls - referenced in control-mappings.json"
+      "note": "CIS Critical Security Controls - referenced in control-mappings.json",
+      "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode",
+      "license_note": "NonCommercial and NoDerivatives. cis/controls-v8.json MUST NOT be modified or redistributed in modified form, and MUST be excluded from commercial use absent prior CIS approval. See reference/security/cis/NOTICE."
     },
     "nist": {
-      "frameworks": ["CSF 2.0", "SP 800-53 r5", "SP 800-207"],
+      "frameworks": [
+        "CSF 2.0",
+        "SP 800-53 r5",
+        "SP 800-207"
+      ],
       "source": "https://csrc.nist.gov/",
-      "license": "Public Domain",
+      "license": "Public Domain (US Government work, 17 U.S.C. 105)",
       "files": [
         "nist/csf-2.0-summary.json",
         "nist/sp800-53-controls.json"
-      ]
+      ],
+      "license_url": "https://www.nist.gov/copyrights-disclaimers"
     },
     "cisa_kev": {
       "version": "live",
       "updated": "2025-01-02",
       "source": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
-      "license": "Public Domain",
+      "license": "Public Domain (US Government work, 17 U.S.C. 105)",
       "update_frequency": "daily",
       "files": [
         "kev/known-exploited-vulnerabilities.json"
-      ]
+      ],
+      "license_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
     },
     "epss": {
       "version": "3.0",
       "updated": "2025-01-02",
       "source": "https://www.first.org/epss/",
-      "license": "CC-BY-SA-4.0",
+      "license": "Free to use; attribution requested by FIRST",
       "update_frequency": "daily",
       "files": [
         "epss/exploit-prediction.json"
-      ]
+      ],
+      "license_url": "https://www.first.org/epss/faq"
     },
     "exploit_availability": {
       "version": "2025.01",
       "updated": "2025-01-02",
-      "sources": ["Exploit-DB", "GitHub PoCs", "Metasploit", "Nuclei"],
+      "sources": [
+        "Exploit-DB",
+        "GitHub PoCs",
+        "Metasploit",
+        "Nuclei"
+      ],
       "files": [
         "exploits/exploit-availability.json"
-      ]
+      ],
+      "license": "MIT (Doctrine-authored summary)",
+      "license_url": "https://github.com/agh/doctrine/blob/main/LICENSE",
+      "license_note": "Names Exploit-DB, GitHub PoCs, Metasploit and Nuclei as sources; no content from those projects is reproduced here."
     },
     "cryptographic_standards": {
       "version": "2025.01",
       "updated": "2025-01-02",
-      "sources": ["NIST SP 800-131A", "NIST SP 800-57", "NIST PQC"],
+      "sources": [
+        "NIST SP 800-131A",
+        "NIST SP 800-57",
+        "NIST PQC"
+      ],
       "files": [
         "crypto/cryptographic-standards.json"
-      ]
+      ],
+      "license": "Public Domain (US Government work, 17 U.S.C. 105)",
+      "license_url": "https://www.nist.gov/copyrights-disclaimers"
     },
     "container_security": {
       "version": "2025.01",
       "updated": "2025-01-02",
-      "sources": ["CIS Docker Benchmark", "CIS Kubernetes Benchmark", "NSA K8s Guide"],
+      "sources": [
+        "CIS Docker Benchmark",
+        "CIS Kubernetes Benchmark",
+        "NSA K8s Guide"
+      ],
       "files": [
         "containers/container-security.json"
-      ]
+      ],
+      "license": "MIT (Doctrine-authored summary)",
+      "license_url": "https://github.com/agh/doctrine/blob/main/LICENSE",
+      "license_note": "Summarises CIS Docker/Kubernetes Benchmarks and the NSA/CISA Kubernetes Hardening Guidance. CIS Benchmark text is published under its own terms and is not reproduced here."
     },
     "compliance": {
       "version": "2.0.0",
       "updated": "2025-01-02",
       "frameworks_covered": 20,
       "frameworks": [
-        "GDPR", "HIPAA", "PCI-DSS 4.0", "SOC 2", "ISO 27001",
-        "FedRAMP", "DORA", "NIS2", "C5", "CSA STAR",
-        "CCPA/CPRA", "IRAP", "TISAX", "SOC 1", "CMMC",
-        "SOX", "GLBA", "LGPD", "DPDPA"
+        "GDPR",
+        "HIPAA",
+        "PCI-DSS 4.0",
+        "SOC 2",
+        "ISO 27001",
+        "FedRAMP",
+        "DORA",
+        "NIS2",
+        "C5",
+        "CSA STAR",
+        "CCPA/CPRA",
+        "IRAP",
+        "TISAX",
+        "SOC 1",
+        "CMMC",
+        "SOX",
+        "GLBA",
+        "LGPD",
+        "DPDPA"
       ],
       "files": [
         "compliance/frameworks.json",
         "compliance/control-mappings.json",
         "compliance/technical-requirements.json"
       ],
-      "note": "Consolidated compliance reference with cross-framework mappings and actionable technical checks"
+      "note": "Consolidated compliance reference with cross-framework mappings and actionable technical checks",
+      "license": "MIT (Doctrine-authored summary)",
+      "license_url": "https://github.com/agh/doctrine/blob/main/LICENSE",
+      "license_note": "Cross-framework mappings authored by Doctrine. The underlying standards (ISO 27001, PCI DSS, SOC 2 and others) remain under their publishers own terms and are not reproduced here."
     }
   },
   "update_automation": {
