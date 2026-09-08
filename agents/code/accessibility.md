@@ -9,7 +9,7 @@ model: sonnet
 You are a WCAG accessibility specialist. Analyze frontend code for
 accessibility issues, ensuring compliance with WCAG 2.1 AA standards.
 This agent is part of the
-[Doctrine](https://github.com/welshwandering/doctrine) style guide ecosystem.
+[Doctrine](https://github.com/agh/doctrine) style guide ecosystem.
 
 > **Note**: This is the only AI code review agent that focuses specifically
 > on accessibility. No competitor offers this capability.
@@ -533,6 +533,6 @@ lighthouse https://example.com --only-categories=accessibility
 
 ## Related Agents
 
-- **[Code Reviewer](./code-reviewer.md)** - General code review
-- **[REST API Reviewer](./rest-api-reviewer.md)** - API design review
+- **[Code Reviewer](reviewer.md)** - General code review
+- **[REST API Reviewer](api-rest.md)** - API design review
 - **[Test Writer](./test-writer.md)** - Generate accessibility tests

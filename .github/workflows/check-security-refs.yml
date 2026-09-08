@@ -1,137 +1,311 @@
 # Security Reference Staleness Check
 #
-# Runs monthly to detect outdated security references and creates an issue
-# when updates are needed. Prevents the situation we encountered where
-# multiple references became significantly outdated.
+# reference/security/manifest.json records the version of every security
+# corpus Doctrine's guidance is built on. This job compares the recorded
+# version against upstream for each source that has a machine-checkable
+# release channel, writes a step summary, and opens (or updates) a tracking
+# issue when something has drifted.
 #
-# References checked:
-# - MITRE ATT&CK (via GitHub API)
-# - MITRE ATLAS (via GitHub API)
-# - CWE Top 25 (annual, via MITRE CWE site)
-# - OWASP Top 10 (periodic, via OWASP site)
-# - SLSA (via GitHub API)
+# Sources checked here:
+#   MITRE ATT&CK   github.com/mitre/cti releases
+#   MITRE ATLAS    github.com/mitre-atlas/atlas-data releases
+#   MITRE D3FEND   github.com/d3fend/d3fend-ontology tags
+#   CWE            cwe-api.mitre.org content version
+#   SLSA           github.com/slsa-framework/slsa *tags* — the project
+#                  publishes no GitHub Releases, so the previous
+#                  releases/latest call 404'd and reported a null version
+#   OpenSSF        github.com/ossf/scorecard releases
+#   Sigma          github.com/SigmaHQ/sigma releases
+#
+# CWE Top 25 rankings and the OWASP Top 10 families have no stable machine
+# endpoint and remain manual items in the issue body.
+#
+# Any transport, HTTP or parse failure fails the job. A missing or null
+# version is never reported as drift.
 
 name: Check Security References
 
 on:
   schedule:
-    # Monthly on the 1st at midnight UTC
-    - cron: '0 0 1 * *'
+    # Monthly on the 1st at 03:17 UTC. An off-peak minute reduces the chance
+    # of a scheduling backlog silently dropping the run.
+    - cron: '17 3 1 * *'
+  pull_request:
+    paths:
+      - '.github/workflows/check-security-refs.yml'
+      - 'reference/security/manifest.json'
   workflow_dispatch:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   check-versions:
+    name: Compare manifest against upstream
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed only to open the drift tracking issue.
+      issues: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Read current manifest
-        id: manifest
-        run: |
-          echo "mitre_attack=$(jq -r '.sources.mitre_attack.version' reference/security/manifest.json)" >> $GITHUB_OUTPUT
-          echo "mitre_atlas=$(jq -r '.sources.mitre_atlas.version' reference/security/manifest.json)" >> $GITHUB_OUTPUT
-          echo "slsa=$(jq -r '.sources.slsa.version' reference/security/manifest.json)" >> $GITHUB_OUTPUT
-          echo "cwe=$(jq -r '.sources.cwe.version' reference/security/manifest.json)" >> $GITHUB_OUTPUT
-          echo "owasp_web=$(jq -r '.sources.owasp_top10.versions.web' reference/security/manifest.json)" >> $GITHUB_OUTPUT
-
-      - name: Check MITRE ATT&CK latest
-        id: attack
-        run: |
-          LATEST=$(curl -s https://api.github.com/repos/mitre/cti/releases/latest | jq -r '.tag_name' | sed 's/ATT&CK-v//')
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          if [ "${{ steps.manifest.outputs.mitre_attack }}" != "$LATEST" ]; then
-            echo "outdated=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check MITRE ATLAS latest
-        id: atlas
-        run: |
-          LATEST=$(curl -s https://api.github.com/repos/mitre-atlas/atlas-data/releases/latest | jq -r '.tag_name' | sed 's/v//')
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          if [ "${{ steps.manifest.outputs.mitre_atlas }}" != "$LATEST" ]; then
-            echo "outdated=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check SLSA latest
-        id: slsa
-        run: |
-          LATEST=$(curl -s https://api.github.com/repos/slsa-framework/slsa/releases/latest | jq -r '.tag_name' | sed 's/v//')
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          if [ "${{ steps.manifest.outputs.slsa }}" != "$LATEST" ]; then
-            echo "outdated=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Calculate staleness
-        id: staleness
-        run: |
-          UPDATES_NEEDED=""
-
-          if [ "${{ steps.attack.outputs.outdated }}" == "true" ]; then
-            UPDATES_NEEDED="${UPDATES_NEEDED}- **MITRE ATT&CK**: ${{ steps.manifest.outputs.mitre_attack }} → ${{ steps.attack.outputs.latest }}\n"
-          fi
-
-          if [ "${{ steps.atlas.outputs.outdated }}" == "true" ]; then
-            UPDATES_NEEDED="${UPDATES_NEEDED}- **MITRE ATLAS**: ${{ steps.manifest.outputs.mitre_atlas }} → ${{ steps.atlas.outputs.latest }}\n"
-          fi
-
-          if [ "${{ steps.slsa.outputs.outdated }}" == "true" ]; then
-            UPDATES_NEEDED="${UPDATES_NEEDED}- **SLSA**: ${{ steps.manifest.outputs.slsa }} → ${{ steps.slsa.outputs.latest }}\n"
-          fi
-
-          if [ -n "$UPDATES_NEEDED" ]; then
-            echo "has_updates=true" >> $GITHUB_OUTPUT
-            echo "updates<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$UPDATES_NEEDED" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create issue if updates needed
-        if: steps.staleness.outputs.has_updates == 'true'
-        uses: actions/github-script@v8
+      - name: Compare versions and report
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const title = '🔄 Security References Need Updates';
-            const body = `## Outdated Security References Detected
+            const fs = require('fs');
 
-            The following security references in \`reference/security/\` are outdated:
+            const manifest = JSON.parse(
+              fs.readFileSync('reference/security/manifest.json', 'utf8')
+            );
 
-            ${{ steps.staleness.outputs.updates }}
+            const recorded = (key, path = ['version']) => {
+              let node = manifest.sources?.[key];
+              for (const step of path) {
+                if (node === undefined || node === null) return null;
+                node = node[step];
+              }
+              return node ?? null;
+            };
 
-            ### Manual Checks Needed
-            - [ ] CWE Top 25 (check https://cwe.mitre.org/top25/)
-            - [ ] OWASP Top 10 Web (check https://owasp.org/Top10/)
-            - [ ] OWASP Top 10 API (check https://owasp.org/API-Security/)
-            - [ ] OWASP Top 10 LLM (check https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+            // --- upstream adapters -------------------------------------------------
 
-            ### How to Update
-            1. Update the JSON files in \`reference/security/\`
-            2. Update version numbers in \`reference/security/manifest.json\`
-            3. Update cross-references in related files
+            const strip = (tag) => String(tag).replace(/^(ATT&CK-)?v/i, '');
 
-            See \`manifest.json\` for file locations and update URLs.
+            // Every adapter throws on transport, HTTP or parse failure. A null
+            // or empty result is a failure, never "up to date".
+            const latestRelease = async (owner, repo) => {
+              const { data } = await github.rest.repos.getLatestRelease({ owner, repo });
+              if (!data?.tag_name) {
+                throw new Error(`${owner}/${repo}: release carried no tag_name`);
+              }
+              return strip(data.tag_name);
+            };
 
-            ---
-            *This issue was automatically created by the security reference staleness check.*`;
+            // Semver-ordered newest stable tag. Date-style and pre-release tags
+            // are excluded so v2021-04-21 and v1.2-rc1 cannot win.
+            const latestSemverTag = async (owner, repo) => {
+              const tags = await github.paginate(github.rest.repos.listTags, {
+                owner,
+                repo,
+                per_page: 100,
+              });
+              const parsed = tags
+                .map((tag) => /^v?(\d+)\.(\d+)(?:\.(\d+))?$/.exec(tag.name))
+                .filter(Boolean)
+                .map((m) => ({
+                  raw: m[0],
+                  parts: [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)],
+                }));
+              if (parsed.length === 0) {
+                throw new Error(`${owner}/${repo}: no semver tags found`);
+              }
+              parsed.sort((a, b) => {
+                for (let i = 0; i < 3; i += 1) {
+                  if (a.parts[i] !== b.parts[i]) return a.parts[i] - b.parts[i];
+                }
+                return 0;
+              });
+              return strip(parsed[parsed.length - 1].raw);
+            };
 
-            // Check for existing open issue
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: 'security-refs',
-              state: 'open'
-            });
+            const cweContentVersion = async () => {
+              const response = await fetch('https://cwe-api.mitre.org/api/v1/cwe/version', {
+                headers: { Accept: 'application/json' },
+              });
+              if (!response.ok) {
+                throw new Error(`CWE API returned HTTP ${response.status}`);
+              }
+              const body = await response.json();
+              if (!body?.ContentVersion) {
+                throw new Error('CWE API response carried no ContentVersion');
+              }
+              return String(body.ContentVersion);
+            };
 
-            if (issues.data.length === 0) {
-              await github.rest.issues.create({
+            const CHECKS = [
+              {
+                key: 'mitre_attack',
+                label: 'MITRE ATT&CK',
+                source: 'github.com/mitre/cti releases',
+                current: () => recorded('mitre_attack'),
+                latest: () => latestRelease('mitre', 'cti'),
+              },
+              {
+                key: 'mitre_atlas',
+                label: 'MITRE ATLAS',
+                source: 'github.com/mitre-atlas/atlas-data releases',
+                current: () => recorded('mitre_atlas'),
+                latest: () => latestRelease('mitre-atlas', 'atlas-data'),
+              },
+              {
+                key: 'mitre_d3fend',
+                label: 'MITRE D3FEND',
+                source: 'github.com/d3fend/d3fend-ontology tags',
+                current: () => recorded('mitre_d3fend'),
+                latest: () => latestSemverTag('d3fend', 'd3fend-ontology'),
+              },
+              {
+                key: 'cwe',
+                label: 'CWE',
+                source: 'cwe-api.mitre.org content version',
+                current: () => recorded('cwe'),
+                latest: cweContentVersion,
+              },
+              {
+                key: 'slsa',
+                label: 'SLSA',
+                source: 'github.com/slsa-framework/slsa tags (no releases published)',
+                current: () => recorded('slsa'),
+                latest: () => latestSemverTag('slsa-framework', 'slsa'),
+              },
+              {
+                key: 'openssf_scorecard',
+                label: 'OpenSSF Scorecard',
+                source: 'github.com/ossf/scorecard releases',
+                current: () => recorded('openssf_scorecard'),
+                latest: () => latestRelease('ossf', 'scorecard'),
+              },
+              {
+                key: 'sigma_rules',
+                label: 'Sigma rules',
+                source: 'github.com/SigmaHQ/sigma releases',
+                current: () => recorded('sigma_rules'),
+                latest: async () => {
+                  const { data } = await github.rest.repos.getLatestRelease({
+                    owner: 'SigmaHQ',
+                    repo: 'sigma',
+                  });
+                  if (!data?.tag_name) {
+                    throw new Error('SigmaHQ/sigma: release carried no tag_name');
+                  }
+                  // Sigma tags are dated (r2026-07-01), not semantic.
+                  return String(data.tag_name);
+                },
+              },
+            ];
+
+            // --- run ---------------------------------------------------------------
+
+            const rows = [];
+            const drift = [];
+            const errors = [];
+
+            for (const check of CHECKS) {
+              const current = check.current();
+              if (current === null || current === undefined || current === '') {
+                errors.push(`${check.label}: manifest has no recorded version for '${check.key}'`);
+                rows.push([check.label, '—', '—', 'manifest error']);
+                continue;
+              }
+
+              let latest;
+              try {
+                latest = await check.latest();
+              } catch (error) {
+                errors.push(`${check.label}: ${error.message}`);
+                rows.push([check.label, String(current), '—', 'check failed']);
+                continue;
+              }
+
+              if (!latest) {
+                errors.push(`${check.label}: upstream returned an empty version`);
+                rows.push([check.label, String(current), '—', 'check failed']);
+                continue;
+              }
+
+              const stale = String(current) !== String(latest);
+              if (stale) {
+                drift.push({ ...check, current: String(current), latest: String(latest) });
+              }
+              rows.push([check.label, String(current), String(latest), stale ? 'outdated' : 'current']);
+            }
+
+            // --- report ------------------------------------------------------------
+
+            await core.summary
+              .addHeading('Security reference staleness', 2)
+              .addTable([
+                [
+                  { data: 'Source', header: true },
+                  { data: 'Manifest', header: true },
+                  { data: 'Upstream', header: true },
+                  { data: 'Status', header: true },
+                ],
+                ...rows,
+              ])
+              .addRaw(
+                errors.length
+                  ? `\n**${errors.length} check(s) failed:**\n\n` +
+                      errors.map((e) => `- ${e}`).join('\n') + '\n'
+                  : '\nAll checks completed.\n'
+              )
+              .write();
+
+            if (drift.length > 0 && context.eventName !== 'pull_request') {
+              const marker = '<!-- security-refs-staleness -->';
+              const body = [
+                marker,
+                '## Outdated security references',
+                '',
+                'The versions recorded in `reference/security/manifest.json` no longer match upstream:',
+                '',
+                ...drift.map(
+                  (d) => `- **${d.label}**: \`${d.current}\` → \`${d.latest}\`  \n  _source: ${d.source}_`
+                ),
+                '',
+                '### Manual checks (no machine-readable endpoint)',
+                '',
+                '- [ ] CWE Top 25 — https://cwe.mitre.org/top25/',
+                '- [ ] OWASP Top 10 (Web) — https://owasp.org/Top10/',
+                '- [ ] OWASP Top 10 (API) — https://owasp.org/API-Security/',
+                '- [ ] OWASP Top 10 (LLM) — https://genai.owasp.org/llm-top-10/',
+                '',
+                '### How to update',
+                '',
+                '1. Refresh the affected JSON under `reference/security/`.',
+                '2. Update `version` and `updated` in `reference/security/manifest.json`.',
+                '3. Update `last_updated` and `next_review` at the top of the manifest.',
+                '4. Update any cross-references in `guides/ai/security.md`.',
+                '',
+                `_Last checked: ${new Date().toISOString().slice(0, 10)} by ${context.workflow}._`,
+              ].join('\n');
+
+              const existing = await github.paginate(github.rest.issues.listForRepo, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: title,
-                body: body,
-                labels: ['security-refs', 'maintenance']
+                labels: 'security-refs',
+                state: 'open',
+                per_page: 100,
               });
+              const tracked = existing.find((issue) => (issue.body ?? '').includes(marker));
+
+              if (tracked) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: tracked.number,
+                  body,
+                });
+                core.notice(`Updated tracking issue #${tracked.number}`);
+              } else {
+                const created = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: 'Security references need updates',
+                  body,
+                  labels: ['security-refs', 'maintenance'],
+                });
+                core.notice(`Opened tracking issue #${created.data.number}`);
+              }
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(
+                `${errors.length} security-reference check(s) could not complete: ${errors.join('; ')}`
+              );
+            } else if (drift.length > 0) {
+              core.notice(`${drift.length} security reference(s) are outdated.`);
             }
