@@ -1,12 +1,12 @@
 # TypeScript Style Guide
 
-> [Doctrine](../../README.md) > [Languages](../README.md) > TypeScript
+> [Doctrine](../../README.md) > [Languages](README.md) > TypeScript
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
 interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [Google TypeScript Style Guide](google/typescript.html).
+Extends [Google TypeScript Style Guide](../../reference/google/typescript.html).
 
 ## Quick Reference
 
@@ -1658,5 +1658,5 @@ test.each([
 
 ## See Also
 
-- [Testing Guide](../testing.md) - Comprehensive testing strategies and best practices
-- [CI Guide](../ci.md) - Continuous integration configuration and workflows
+- [Testing Guide](../process/testing.md) - Comprehensive testing strategies and best practices
+- [CI Guide](../process/ci.md) - Continuous integration configuration and workflows
