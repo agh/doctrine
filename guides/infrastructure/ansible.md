@@ -18,12 +18,12 @@ document are to be interpreted as described in
 | Lint | ansible-lint[^1] | `ansible-lint` |
 | YAML lint | yamllint[^2] | `yamllint .` |
 | Test roles | Molecule[^3] | `molecule test` |
-| Syntax check | ansible-playbook | `ansible-playbook --syntax-check` |
+| Syntax check | ansible-playbook | `ansible-playbook --syntax-check playbook.yml` |
 | Dry run | ansible-playbook | `ansible-playbook --check playbook.yml` |
 | List tasks | ansible-playbook | `ansible-playbook --list-tasks playbook.yml` |
 | Vault encrypt | ansible-vault | `ansible-vault encrypt vars/secrets.yml` |
 | SOPS encrypt | sops[^4] | `sops -e vars/secrets.yml` |
-| Galaxy install | ansible-galaxy | `ansible-galaxy collection install` |
+| Galaxy install | ansible-galaxy | `ansible-galaxy collection install -r requirements.yml` |
 
 ## Why Ansible
 
