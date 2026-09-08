@@ -6,7 +6,7 @@ model: sonnet
 
 # Test Writer: Python Module
 
-> [Test Writer Agent](../test-writer.md) > Python
+> [Test Writer Agent](../code/test-writer.md) > Python
 
 Python-specific guidance for test generation.
 
@@ -234,5 +234,5 @@ def test_create_user_requires_auth(client: TestClient):
 
 ## See Also
 
-- [Python Style Guide](../../../../guides/languages/python.md)
-- [Testing Guide](../../../../guides/process/testing.md)
+- [Python Style Guide](python.md)
+- [Testing Guide](../../guides/process/testing.md)
