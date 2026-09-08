@@ -10,7 +10,14 @@ interpreted as described in [RFC 2119][rfc2119].
 
 Extends [TypeScript style guide](../languages/typescript.md) with React-specific conventions.
 
-**Target Version**: React 19+ with TypeScript
+**Target Version**: React 19.2.8 and React DOM 19.2.8 with TypeScript — the current stable
+release as of 2026-09-08[^react-npm].
+
+New projects **MUST** install `react@19.2.8` and `react-dom@19.2.8`. Projects already on an
+older 19.x line **MUST** track the newest patch of that line. Projects that render React Server
+Components **MUST** also satisfy the patch floors in
+[Server Component Security](#server-component-security), which apply to the
+`react-server-dom-*` packages rather than to `react` itself.
 
 ## Quick Reference
 
@@ -81,9 +88,12 @@ maintainability by keeping feature logic together. Shared components are promote
 
 ## Components
 
-### Functional Components Only
+### Functional Components by Default
 
-Projects **MUST** use functional components. Class components **MUST NOT** be used in new code.
+Projects **MUST** use functional components for ordinary UI. Class components are still supported
+by React and are not deprecated[^react-component], but they **MUST NOT** be used for new
+components — with one exception: error boundaries, which have no function-component equivalent.
+See [Error Boundaries](#error-boundaries).
 
 ```tsx
 // GOOD: Functional component
@@ -101,7 +111,7 @@ export function Button({ children, onClick, variant = 'primary' }: ButtonProps) 
   );
 }
 
-// BAD: Class component (deprecated)
+// BAD: Class component for ordinary UI (supported, but not recommended for new code)
 class Button extends React.Component<ButtonProps> {
   render() {
     return <button onClick={this.props.onClick}>{this.props.children}</button>;
@@ -110,7 +120,93 @@ class Button extends React.Component<ButtonProps> {
 ```
 
 **Why functional components**: Simpler syntax, better TypeScript inference, access to hooks,
-and improved performance with React Compiler.
+and improved performance with React Compiler. Because classes are supported rather than
+deprecated, existing class components **MUST NOT** be rewritten purely to satisfy this rule;
+convert them when the surrounding code changes for another reason.
+
+### Error Boundaries
+
+Error boundaries are the sole exception to the rule above. `static getDerivedStateFromError` and
+`componentDidCatch` have no function-component equivalent, so React's own guidance is to write one
+`ErrorBoundary` class and reuse it, or to take that behaviour from a library[^react-component].
+
+Applications **MUST** render at least one error boundary above the route tree and **SHOULD** add
+one per route so that a failure in a single view does not blank the whole application. Every
+boundary **MUST** provide a fallback UI, a reset path, and error logging.
+
+Projects **SHOULD** satisfy this with a framework-provided boundary (for example the Next.js
+`error.tsx` convention[^nextjs-error]) or with `react-error-boundary`[^react-error-boundary],
+which exports the same class plus a `useErrorBoundary` hook for forwarding event-handler and
+asynchronous errors to the nearest boundary:
+
+```bash
+npm install react-error-boundary@6.1.5
+```
+
+Projects that take neither **MUST** write exactly one boundary class and reuse it:
+
+```tsx
+// components/ErrorBoundary.tsx
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+
+type ErrorBoundaryProps = {
+  children: ReactNode;
+  fallback: (error: Error, reset: () => void) => ReactNode;
+  onError?: (error: Error, componentStack: string) => void;
+};
+
+type ErrorBoundaryState = {
+  error: Error | null;
+};
+
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    this.props.onError?.(error, info.componentStack ?? '');
+  }
+
+  reset = () => {
+    this.setState({ error: null });
+  };
+
+  render() {
+    const { error } = this.state;
+
+    if (error) return this.props.fallback(error, this.reset);
+
+    return this.props.children;
+  }
+}
+```
+
+```tsx
+// GOOD: fallback, reset, and logging supplied at the boundary
+function App() {
+  return (
+    <ErrorBoundary
+      fallback={(error, reset) => <ErrorPanel message={error.message} onRetry={reset} />}
+      onError={(error, componentStack) => logger.error(error, { componentStack })}
+    >
+      <Dashboard />
+    </ErrorBoundary>
+  );
+}
+```
+
+**Why fallback, reset, and logging together**: A boundary without a fallback renders nothing and
+looks like a crash; one without a reset traps the user until a full page reload; one without
+logging silently discards the only record of the failure. `getDerivedStateFromError` **MUST**
+stay pure — side effects such as reporting belong in `componentDidCatch`[^react-component].
+
+Error boundaries do not catch errors thrown in event handlers, in the boundary itself, during
+server-side rendering, or in asynchronous callbacks such as `setTimeout` — the one asynchronous
+exception being the function passed to `startTransition`[^react-component]. Those paths **MUST**
+be handled with ordinary `try`/`catch` and explicit error state.
 
 ### Naming Conventions
 
@@ -480,10 +576,25 @@ function ThemedButton() {
 
 // Can also be called conditionally with context
 function ConditionalTheme({ useTheme }: { useTheme: boolean }) {
+  // GOOD: the context value is nullable, so the fallback is applied after the conditional read
+  const contextTheme = useTheme ? use(ThemeContext) : null;
+  const theme = contextTheme ?? defaultTheme;
+
+  return <div style={{ color: theme.text }}>Content</div>;
+}
+
+// BAD: `use(ThemeContext)` returns `Theme | null`, so `theme.text` throws without a provider
+function BrokenConditionalTheme({ useTheme }: { useTheme: boolean }) {
   const theme = useTheme ? use(ThemeContext) : defaultTheme;
+
   return <div style={{ color: theme.text }}>Content</div>;
 }
 ```
+
+**Why narrow before reading**: `createContext<Theme | null>(null)` makes `null` the value React
+returns when no provider is mounted, so the ternary widens the result to `Theme | null` rather
+than narrowing it. Either fall back explicitly, as above, or throw as `ThemedButton` does — the
+choice **MUST** be deliberate rather than left to a runtime `TypeError`.
 
 **Why React 19 hooks**: These hooks simplify form handling patterns that previously required
 manual loading states, optimistic update logic, and third-party libraries.
@@ -556,24 +667,51 @@ type CartState = {
   items: CartItem[];
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
-  total: number;
 };
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartState>((set) => ({
   items: [],
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   removeItem: (id) => set((state) => ({
     items: state.items.filter((item) => item.id !== id),
   })),
-  total: () => get().items.reduce((sum, item) => sum + item.price, 0),
 }));
 
+// GOOD: derived values are selectors over the stored state, not fields in it
+export const selectCartTotal = (state: CartState) =>
+  state.items.reduce((sum, item) => sum + item.price, 0);
+
 // Usage in any component
-function CartButton() {
+function CartSummary() {
   const itemCount = useCartStore((state) => state.items.length);
-  return <button>Cart ({itemCount})</button>;
+  const total = useCartStore(selectCartTotal);
+
+  return <button>Cart ({itemCount}) — {formatCurrency(total)}</button>;
 }
 ```
+
+Derived values **MUST NOT** be declared as state fields:
+
+```tsx
+// BAD: `total` is declared as a number but initialised with a function.
+// tsc rejects this with TS2322: Type '() => number' is not assignable to type 'number'.
+type CartState = {
+  items: CartItem[];
+  total: number;
+};
+
+export const useCartStore = create<CartState>((set, get) => ({
+  items: [],
+  total: () => get().items.reduce((sum, item) => sum + item.price, 0),
+}));
+```
+
+**Why derive rather than store**: A `total` typed as `number` has to be recomputed by every action
+that touches `items`, and one missed update leaves the store internally inconsistent. Typing it as
+`() => number` compiles, but then `useCartStore((state) => state.total)` selects a stable function
+reference: the component never re-renders when `items` changes, so it keeps displaying the
+previous total even though calling `total()` would return the new one. A selector is recomputed
+from `items` and re-subscribes on every change, so it cannot drift.
 
 **Why Zustand**: Minimal boilerplate, TypeScript-first API, no providers needed, excellent
 performance with automatic re-render optimization.
@@ -859,6 +997,19 @@ afterAll(() => server.close());
 // mocks/handlers.ts
 import { http, HttpResponse } from 'msw';
 
+type LoginBody = {
+  email: string;
+  password: string;
+};
+
+function isLoginBody(body: unknown): body is LoginBody {
+  if (typeof body !== 'object' || body === null) return false;
+
+  const { email, password } = body as Record<string, unknown>;
+
+  return typeof email === 'string' && typeof password === 'string';
+}
+
 export const handlers = [
   http.get('/api/users/:id', ({ params }) => {
     return HttpResponse.json({
@@ -869,9 +1020,14 @@ export const handlers = [
   }),
 
   http.post('/api/login', async ({ request }) => {
-    const { email, password } = await request.json();
+    const body: unknown = await request.json();
 
-    if (email === 'user@example.com' && password === 'password123') {
+    // GOOD: reject a malformed body explicitly instead of destructuring blind
+    if (!isLoginBody(body)) {
+      return HttpResponse.json({ error: 'Malformed request body' }, { status: 400 });
+    }
+
+    if (body.email === 'user@example.com' && body.password === 'password123') {
       return HttpResponse.json({ token: 'fake-token' });
     }
 
@@ -879,6 +1035,23 @@ export const handlers = [
   }),
 ];
 ```
+
+Handlers **MUST NOT** destructure a decoded body without narrowing it first:
+
+```tsx
+// BAD: `request.json()` resolves to MSW's `DefaultBodyType`.
+// tsc rejects this with TS2339: Property 'email' does not exist on type 'DefaultBodyType'.
+http.post('/api/login', async ({ request }) => {
+  const { email, password } = await request.json();
+  // ...
+});
+```
+
+MSW's request-body generic (`http.post<PathParams, LoginBody>`) documents the contract and makes
+the handler compile, but it is an unchecked assertion: it does not validate the payload, so a
+test that posts the wrong shape still reaches the handler body. Handlers **SHOULD** validate
+instead, so that a test sending a malformed request gets a 400 rather than `undefined`
+comparisons that silently fall through to the 401 branch.
 
 **Why MSW**: Intercepts requests at the network level, works in both tests and browser,
 provides realistic API mocking without coupling tests to implementation details like
@@ -1127,6 +1300,38 @@ Essential for large applications with many routes.
 
 ## Server Components (React 19)
 
+### Server Component Security
+
+React Server Components are the subject of a continuing advisory series that opened with remote
+code execution (CVE-2025-55182[^rsc-rce]) and has since produced repeated denial-of-service and
+source-code-exposure disclosures[^rsc-dos]. Every patch floor published so far has been
+superseded by a later one: the December 2025 patches were re-issued twice, the versions React
+published as safe on 26 January 2026 (19.0.4, 19.1.5, 19.2.4) were superseded in April and again
+in May 2026, and those in turn by CVE-2026-44907[^rsc-dos-2026] in July 2026.
+
+Projects that render Server Components **MUST** satisfy all of the following:
+
+- `react-server-dom-webpack`, `react-server-dom-parcel`, and `react-server-dom-turbopack`
+  **MUST** be at least **19.2.8**, or at least **19.1.9** or **19.0.8** on the older maintained
+  lines. These are the floors for CVE-2026-44907[^rsc-dos-2026], the most recent disclosure as
+  of 2026-09-08.
+- The owning framework or bundler plugin — `next`, `react-router`, `waku`, `@parcel/rsc`,
+  `@vitejs/plugin-rsc`, or `rwsdk` — **MUST** be upgraded to its own patched release. Every
+  advisory in this series names only the `react-server-dom-*` packages, so upgrading `react` and
+  `react-dom` alone does **not** remediate: the vulnerable code reaches the application through
+  the framework's own pinned or bundled copy.
+- The floors above **MUST** be re-checked against the GitHub Advisory Database[^rsc-advisories]
+  before pinning, because this series has repeatedly superseded its own published floors.
+- Hosting-provider mitigations **MUST NOT** be treated as a substitute for upgrading[^rsc-dos].
+
+Applications that use no framework, bundler, or bundler plugin with Server Component support are
+not affected by this series.
+
+**Why a named floor plus a re-check rule**: A version number alone goes stale — several of the
+floors React itself published were later declared unsafe. Naming the current floor gives readers
+something actionable today; requiring the advisory-database check stops the guide from becoming
+the reason an application ships a known-vulnerable RSC runtime.
+
 ### When to Use Server Components
 
 Server Components **SHOULD** be used for:
@@ -1208,25 +1413,61 @@ export default async function Dashboard() {
 // app/dashboard/InteractiveChart.tsx (Client Component)
 'use client';
 
+import { useState } from 'react';
+
+const CHART_VIEWS = ['day', 'week', 'month'] as const;
+
+type ChartView = (typeof CHART_VIEWS)[number];
+
+function isChartView(value: string): value is ChartView {
+  return (CHART_VIEWS as readonly string[]).includes(value);
+}
+
 type ChartProps = {
   data: Metric[];
 };
 
 export function InteractiveChart({ data }: ChartProps) {
-  const [view, setView] = useState<'day' | 'week' | 'month'>('day');
+  const [view, setView] = useState<ChartView>('day');
+
+  function handleViewChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const value = event.currentTarget.value;
+
+    // GOOD: reject anything outside the union before it reaches state
+    if (!isChartView(value)) {
+      throw new Error(`Unsupported chart view: ${value}`);
+    }
+
+    setView(value);
+  }
 
   return (
     <div>
-      <select value={view} onChange={(e) => setView(e.target.value)}>
-        <option value="day">Day</option>
-        <option value="week">Week</option>
-        <option value="month">Month</option>
+      <select value={view} onChange={handleViewChange}>
+        {CHART_VIEWS.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
       </select>
       <Chart data={filterDataByView(data, view)} />
     </div>
   );
 }
 ```
+
+Event values **MUST NOT** be passed straight into a union-typed setter:
+
+```tsx
+// BAD: `event.target.value` is `string`, not the state union.
+// tsc rejects this with TS2345: Argument of type 'string' is not assignable to
+// parameter of type 'SetStateAction<"day" | "month" | "week">'.
+<select value={view} onChange={(e) => setView(e.target.value)}>
+```
+
+**Why narrow explicitly**: The DOM types `HTMLSelectElement.value` as `string` regardless of
+which `<option>` elements are rendered, so TypeScript cannot infer the union from the markup.
+Deriving both the options and the type from a single `as const` tuple keeps the rendered choices
+and the state type in step, and the guard converts a silently invalid value — from a stale cached
+bundle or a browser extension rewriting the DOM — into a visible failure.
 
 **Why this pattern**: Server Components fetch data with zero client JavaScript, Client Components
 provide interactivity where needed, and props create a clean boundary between server and client.
@@ -1463,3 +1704,19 @@ jobs:
 [^13]: [React Compiler](https://react.dev/learn/react-compiler) - Automatic optimization compiler that memoizes components and values in React 19+
 
 [^react19]: [React 19 New Hooks](https://react.dev/blog/2024/12/05/react-19) - Official React 19 release notes covering useActionState, useFormStatus, useOptimistic, and the use API
+
+[^react-npm]: [react on npm](https://registry.npmjs.org/react/latest) - Registry metadata for the `latest` dist-tag; 19.2.8 as of 2026-09-08
+
+[^react-component]: [React `Component` reference](https://react.dev/reference/react/Component) - Confirms class components remain supported, documents `getDerivedStateFromError` and `componentDidCatch`, and lists what error boundaries do not catch
+
+[^react-error-boundary]: [react-error-boundary](https://github.com/bvaughn/react-error-boundary) - Maintained error boundary abstraction recommended by the React documentation
+
+[^nextjs-error]: [Next.js `error.js` convention](https://nextjs.org/docs/app/api-reference/file-conventions/error) - Framework-provided error boundary for App Router segments
+
+[^rsc-rce]: [Critical Security Vulnerability in React Server Components](https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components) - CVE-2025-55182, remote code execution in React Server Components
+
+[^rsc-dos]: [Denial of Service and Source Code Exposure in React Server Components](https://react.dev/blog/2025/12/11/denial-of-service-and-source-code-exposure-in-react-server-components) - CVE-2025-55183, CVE-2025-55184, CVE-2025-67779, and CVE-2026-23864; also records that earlier patches were incomplete
+
+[^rsc-dos-2026]: [GHSA-wx67-qw84-cm4g](https://github.com/advisories/GHSA-wx67-qw84-cm4g) - CVE-2026-44907, denial of service in Server Functions; patched in react-server-dom-\* 19.0.8, 19.1.9, and 19.2.8
+
+[^rsc-advisories]: [GitHub Advisory Database: react-server-dom-webpack](https://github.com/advisories?query=react-server-dom-webpack) - Authoritative, continuously updated list of React Server Component advisories and their patched versions

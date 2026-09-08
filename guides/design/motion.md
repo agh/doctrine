@@ -308,8 +308,8 @@ Focus transitions SHOULD be instant or very fast:
   transition: box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.input:focus {
-  box-shadow: 0 0 0 3px var(--interactive-default / 0.2);
+.input:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-default) 20%, transparent);
 }
 ```
 

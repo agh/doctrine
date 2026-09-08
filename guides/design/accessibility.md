@@ -83,12 +83,32 @@ Content structure MUST be programmatically determinable:
 
 **Color Contrast Requirements:**
 
-| Content Type                         | Minimum Ratio |
-| ------------------------------------ | ------------- |
-| Normal text (< 18px)                 | 4.5:1         |
-| Large text (>= 18px or >= 14px bold) | 3:1           |
-| UI components                        | 3:1           |
-| Focus indicators                     | 3:1           |
+WCAG defines large-scale text in points, not CSS pixels. The point sizes below
+are the thresholds that **MUST** be applied; the CSS pixel figures are the
+conversion at `1pt = 1.333px` and are approximate.
+
+| Content Type                                                 | Minimum Ratio |
+| ------------------------------------------------------------ | ------------- |
+| Normal text: below 18pt regular, or below 14pt bold          | 4.5:1         |
+| Large text: 18pt or larger regular (approximately 24 CSS px) | 3:1           |
+| Large text: 14pt or larger bold (approximately 18.66 CSS px) | 3:1           |
+| UI components                                                | 3:1           |
+| Focus indicators                                             | 3:1           |
+
+W3C rounds 14pt to approximately 18.5 CSS px and WebAIM to 18.66 CSS px; both
+are roundings of 14pt at 1.333px per point. For any size between those figures,
+evaluate the point size rather than the rounded pixel value.
+
+Contrast ratios are thresholds and **MUST NOT** be rounded before the
+comparison: a computed 4.499:1 fails the 4.5:1 requirement, and 2.995:1 fails
+the 3:1 requirement. Round for display only, never for the pass or fail
+decision.
+
+**Why**: 18 CSS px regular text is 13.5pt, far below the 18pt large-scale
+boundary, so a `>= 18px` rule certifies failing text as passing. `#949494` on
+white computes 3.03:1, which meets 3:1 for 18pt regular or 14pt bold text but
+fails the 4.5:1 that 18 CSS px body text requires. `#959595` on white computes
+2.9953:1, which displays as 3.0:1 yet fails the 3:1 threshold outright.
 
 **Color Independence:**
 

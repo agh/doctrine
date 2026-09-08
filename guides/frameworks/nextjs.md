@@ -10,7 +10,11 @@ interpreted as described in [RFC 2119][rfc2119].
 
 Extends [TypeScript style guide](../languages/typescript.md) with Next.js-specific conventions.
 
-**Target Version**: Next.js 15+ with App Router and React 19
+**Target Version**: Next.js 15+ with App Router and React 19. Code examples are
+written for and verified against Next.js 16.3.4 with React 19.2.8; APIs
+introduced in 16 are marked where they appear. Projects **MUST** run at least
+16.3.3 or 15.5.24, the releases that fix the August 2026 critical
+vulnerabilities[^avifadvisory].
 
 ## Quick Reference
 
@@ -24,7 +28,82 @@ All TypeScript tooling applies. Additional Next.js-specific tools:
 | Bundler | Turbopack[^1] | `next dev --turbo` |
 | Test | Vitest[^2] + Testing Library[^3] | `vitest` |
 | E2E | Playwright[^4] | `playwright test` |
-| Lint | ESLint + next plugin[^5] | `next lint` |
+| Lint | ESLint + `eslint-config-next`[^5] | `npx eslint .` |
+
+## Linting
+
+Next.js 16 removed the `next lint` command, and `next build` no longer runs
+linting. Projects **MUST** invoke the linter directly and **MUST** run it as a
+separate CI step.
+
+### Why
+
+Linting is no longer part of the Next.js lifecycle. A project that relies on
+`next lint` has no linting at all on Next.js 16: the command exits non-zero
+because `lint` is parsed as a project directory. A project that relies on
+`next build` to lint has silently unlinted code.
+
+### Configuration
+
+`@next/eslint-plugin-next` ships flat config by default in Next.js 16.
+
+```bash
+npm install --save-dev eslint@9.39.5 eslint-config-next@16.3.4
+```
+
+ESLint **MUST** be pinned to the 9.x line. `eslint-config-next@16.3.4` bundles
+`eslint-plugin-react@^7.37.0`, which uses the pre-ESLint-10 rule context API;
+under `eslint@10.10.0` every lint run aborts with
+`TypeError: Error while loading rule 'react/display-name':
+contextOrFilename.getFilename is not a function`.
+
+```js
+// eslint.config.mjs
+import { defineConfig, globalIgnores } from 'eslint/config';
+import nextVitals from 'eslint-config-next/core-web-vitals';
+
+export default defineConfig([
+  ...nextVitals,
+  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+]);
+```
+
+```json
+// package.json
+{
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  }
+}
+```
+
+**Don't** — removed in Next.js 16, and no substitute runs during `next build`:
+
+```json
+{
+  "scripts": {
+    "lint": "next lint"
+  }
+}
+```
+
+**Do** — the linter runs on its own, in its own CI step:
+
+```json
+{
+  "scripts": {
+    "lint": "eslint ."
+  }
+}
+```
+
+Projects that use Biome as their linter **MUST** run `biome check .` instead
+and **MUST NOT** expect Next.js-specific rules from it;
+`@next/eslint-plugin-next` has no Biome equivalent.
+
+The `eslint` key in `next.config.ts` was removed alongside the command and
+**MUST** be deleted during upgrades.
 
 ## Why Next.js?
 
@@ -105,6 +184,36 @@ export default function BlogPage() {
 }
 
 // app/blog/[slug]/page.tsx - Dynamic route at /blog/:slug
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  return <h1>Post: {slug}</h1>;
+}
+
+// app/blog/[...slug]/page.tsx - Catch-all route at /blog/*
+export default async function BlogCatchAll({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}) {
+  const { slug } = await params;
+  return <h1>Path: {slug.join('/')}</h1>;
+}
+```
+
+### Asynchronous Request APIs
+
+`params`, `searchParams`, `cookies()`, `headers()`, and `draftMode()` are
+promises. Next.js 15 accepted synchronous access with a deprecation warning;
+Next.js 16 removed that compatibility layer. Every consumer **MUST** await
+them.
+
+**Don't** — `params` is a promise, so `params.slug` is `undefined`:
+
+```tsx
 export default function BlogPostPage({
   params,
 }: {
@@ -112,14 +221,54 @@ export default function BlogPostPage({
 }) {
   return <h1>Post: {params.slug}</h1>;
 }
+```
 
-// app/blog/[...slug]/page.tsx - Catch-all route at /blog/*
-export default function BlogCatchAll({
+**Do**:
+
+```tsx
+export default async function BlogPostPage({
   params,
 }: {
-  params: { slug: string[] };
+  params: Promise<{ slug: string }>;
 }) {
-  return <h1>Path: {params.slug.join('/')}</h1>;
+  const { slug } = await params;
+  return <h1>Post: {slug}</h1>;
+}
+```
+
+**Why**: A Route Handler with a synchronous `params` type fails the build with
+`TS2344`. A page does not: it compiles, renders, and silently substitutes
+`undefined` for every dynamic segment. The failure is invisible until
+production output is inspected.
+
+Client Components cannot be `async`. They **MUST** unwrap the promise with
+React's `use` hook:
+
+```tsx
+// app/blog/[slug]/tag-filter.tsx
+'use client';
+
+import { use } from 'react';
+
+export function TagFilter({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>;
+}) {
+  const { tag } = use(searchParams);
+  return <span>Filtering by: {tag ?? 'all'}</span>;
+}
+```
+
+Projects **SHOULD** run `npx next typegen` and use the generated `PageProps`,
+`LayoutProps`, and `RouteContext` helpers instead of hand-writing the promise
+types:
+
+```tsx
+// app/blog/[slug]/page.tsx
+export default async function BlogPostPage(props: PageProps<'/blog/[slug]'>) {
+  const { slug } = await props.params;
+  return <h1>Post: {slug}</h1>;
 }
 ```
 
@@ -218,30 +367,42 @@ export default function Counter() {
 improve initial page load. Client Components provide interactivity where needed without forcing
 the entire app client-side.
 
-## Partial Prerendering (PPR)
+## Partial Prerendering and Cache Components
 
-Next.js 15 introduces Partial Prerendering[^ppr], which combines static and dynamic rendering in
-a single route. Projects **SHOULD** enable PPR for optimal performance:
+Next.js 16 removed the experimental Partial Prerendering[^ppr] controls.
+Projects **MUST NOT** set `experimental.ppr` and **MUST NOT** export
+`experimental_ppr` from a route segment. Partial Prerendering is now the
+default App Router behaviour once Cache Components is enabled, which projects
+**SHOULD** do:
 
 ```typescript
 // next.config.ts
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  experimental: {
-    ppr: 'incremental',  // Enable per-route
-  },
+  cacheComponents: true,
 };
 
 export default nextConfig;
 ```
 
-Mark individual routes for PPR:
+**Don't** — `next build` aborts on Next.js 16 with
+``experimental.ppr` has been merged into `cacheComponents``:
+
+```typescript
+const nextConfig: NextConfig = {
+  experimental: {
+    ppr: 'incremental',
+  },
+};
+```
+
+There is no per-route opt-in any more. With `cacheComponents` enabled, data
+fetching is dynamic by default, every route gets a prerendered static shell,
+and you choose what to cache:
 
 ```tsx
 // app/dashboard/page.tsx
-export const experimental_ppr = true;
-
 import { Suspense } from 'react';
 import { UserGreeting } from './user-greeting';
 import { RecentActivity } from './recent-activity';
@@ -250,23 +411,87 @@ import { RecentActivity } from './recent-activity';
 export default function Dashboard() {
   return (
     <div>
-      <h1>Dashboard</h1>  {/* Static - instant */}
+      <h1>Dashboard</h1>  {/* Static - part of the prerendered shell */}
 
       <Suspense fallback={<div>Loading user...</div>}>
-        <UserGreeting />  {/* Dynamic - streams in */}
+        <UserGreeting />  {/* Request-time data - streams in */}
       </Suspense>
 
       <Suspense fallback={<div>Loading activity...</div>}>
-        <RecentActivity />  {/* Dynamic - streams in */}
+        <RecentActivity />  {/* Request-time data - streams in */}
       </Suspense>
     </div>
   );
 }
 ```
 
-**Why PPR**: Traditional SSR waits for all data before sending HTML. PPR sends a static shell
-instantly (best TTFB) while streaming dynamic content as it resolves. This provides the speed
-of static sites with the personalization of dynamic pages.
+Cache a component or function with the `use cache` directive, and give it a
+lifetime and invalidation tags:
+
+```tsx
+// app/dashboard/popular-posts.tsx
+import { cacheLife, cacheTag } from 'next/cache';
+import { getPopularPosts } from '@/lib/db';
+
+export async function PopularPosts() {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('posts');
+
+  const posts = await getPopularPosts();
+
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+A `use cache` scope **MUST NOT** read `cookies()`, `headers()`, `params`, or
+`searchParams`; doing so throws `next-request-in-use-cache`. Read those
+outside the cached scope and pass the values in as arguments, which also makes
+them part of the cache key.
+
+`cacheLife` and `cacheTag` are stable in Next.js 16 and **MUST** be imported
+without the `unstable_` prefix.
+
+### Enabling Cache Components Is a Breaking Change
+
+Once `cacheComponents` is on, every route that reads request data at the top
+level fails the build:
+
+```text
+Error: Route "/dashboard": Next.js encountered uncached or runtime data during
+prerendering. `fetch(...)`, `cookies()`, `headers()`, `params`, `searchParams`,
+or `connection()` accessed outside of <Suspense> prevents the route from being
+prerendered.
+```
+
+Each such route **MUST** take one of three options:
+
+| Option | How | Use when |
+| ------ | --- | -------- |
+| Stream | Move the read into a child inside `<Suspense fallback={...}>` | The shell is useful without that data |
+| Cache | Wrap the read in `use cache` and pass request values as arguments | The result is shareable between requests |
+| Block | `export const instant = false` | The whole page is meaningless without the data |
+
+The route-segment exports `dynamic`, `revalidate`, and `dynamicParams` are
+rejected outright: `Route segment config "dynamicParams" is not compatible with
+nextConfig.cacheComponents`.
+
+**Why**: Traditional SSR waits for all data before sending HTML. Partial
+Prerendering sends a static shell instantly (best TTFB) while streaming
+dynamic content as it resolves, giving the speed of static sites with the
+personalisation of dynamic pages. Cache Components replaces the removed
+per-route flag with an explicit, composable choice of what is cached and for
+how long.
+
+Projects that have not adopted Cache Components **MAY** continue to use the
+route-segment caching model described under [Static Site Generation (SSG) and
+ISR](#static-site-generation-ssg-and-isr); it remains supported.
 
 ## Data Fetching in Server Components
 
@@ -280,9 +505,10 @@ import { getPost } from '@/lib/db';
 export default async function BlogPost({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const post = await getPost(params.slug);
+  const { slug } = await params;
+  const post = await getPost(slug);
 
   if (!post) {
     notFound(); // Renders 404 page
@@ -356,11 +582,11 @@ const response = await fetch('https://api.example.com/data', {
 // app/actions.ts - Revalidate tagged data
 'use server';
 
-import { revalidateTag, revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 
 export async function updatePost(id: string) {
   await db.posts.update({ id });
-  revalidateTag('posts'); // Revalidate all fetches tagged 'posts'
+  updateTag('posts'); // Expire now and refresh in the same request
   revalidatePath('/blog'); // Revalidate /blog route
 }
 ```
@@ -368,9 +594,58 @@ export async function updatePost(id: string) {
 **Why**: Explicit cache control balances performance with data freshness. Tag-based revalidation
 enables surgical cache invalidation without rebuilding the entire site.
 
+### Tag Invalidation APIs
+
+Next.js 16 made the `profile` argument of `revalidateTag` mandatory. Calls
+**MUST** select the API that matches the consistency the caller needs:
+
+| API | Semantics | Use when |
+| --- | --------- | -------- |
+| `updateTag(tag)` | Expires and refreshes in the same request | A Server Action whose user must see their own write |
+| `revalidateTag(tag, 'max')` | Stale-while-revalidate for up to a year | Content where a short delay is acceptable |
+| `revalidateTag(tag, { expire: 0 })` | Next read blocks on a cache miss | A Route Handler or webhook that needs the data gone now |
+
+`updateTag` is available only inside Server Actions. Route Handlers **MUST**
+use `revalidateTag` with an explicit profile.
+
+**Don't** — fails to compile with `TS2554: Expected 2 arguments, but got 1`:
+
+```ts
+revalidateTag('posts');
+```
+
+**Do**:
+
+```ts
+// Server Action: the editor sees their own change immediately
+updateTag('posts');
+
+// Anywhere: readers get stale content while the refresh runs
+revalidateTag('posts', 'max');
+
+// Webhook Route Handler: drop the entry, next reader waits for fresh data
+revalidateTag('posts', { expire: 0 });
+```
+
+**Why**: The single-argument form still runs if the TypeScript error is
+suppressed, but the vendor documents that behaviour as deprecated and subject
+to removal. Choosing explicitly also forces the decision that the old call hid:
+whether a reader may be served stale data after a mutation.
+
 ## Server Actions
 
-Projects **SHOULD** use Server Actions for mutations:
+Projects **SHOULD** use Server Actions for mutations. Every Server Action
+**MUST** authenticate the caller, **MUST** authorise the specific operation,
+**MUST** validate its input, and **MUST** return only the data the client
+needs.
+
+### Why
+
+Next.js compiles each Server Action into a public HTTP endpoint with a stable
+action ID. Anyone who can send that POST can invoke the action directly: the
+surrounding form, the page that renders it, and the file's location under
+`app/` are not access controls. A `<form>` that only an administrator can see
+is still an endpoint that an anonymous client can call.
 
 ```tsx
 // app/actions.ts
@@ -378,6 +653,7 @@ Projects **SHOULD** use Server Actions for mutations:
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth-utils';
 import { z } from 'zod';
 
 const createPostSchema = z.object({
@@ -385,35 +661,94 @@ const createPostSchema = z.object({
   content: z.string().min(1),
 });
 
+type CreatePostResult =
+  | { ok: true; postId: string }
+  | { ok: false; error: string };
+
+export async function createPost(
+  _previous: CreatePostResult | null,
+  formData: FormData
+): Promise<CreatePostResult> {
+  // 1. Authenticate - the action is reachable without the form
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, error: 'Unauthorized' };
+  }
+
+  // 2. Authorise this specific operation
+  if (!user.permissions.includes('post:create')) {
+    return { ok: false, error: 'Forbidden' };
+  }
+
+  // 3. Validate; never forward the raw payload
+  const parsed = createPostSchema.safeParse({
+    title: formData.get('title'),
+    content: formData.get('content'),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: 'Invalid input' };
+  }
+
+  // 4. Derive ownership on the server, not from the payload
+  const post = await db.posts.create({
+    data: { ...parsed.data, authorId: user.id },
+  });
+
+  revalidatePath('/blog');
+
+  // 5. Return the minimum the client needs
+  return { ok: true, postId: post.id };
+}
+```
+
+**Don't** — no identity check, no permission check, `parse` throws an
+unhandled error, and the client is trusted to supply well-formed fields:
+
+```ts
 export async function createPost(formData: FormData) {
   const parsed = createPostSchema.parse({
     title: formData.get('title'),
     content: formData.get('content'),
   });
-
-  const post = await db.posts.create({
-    data: parsed,
-  });
-
+  const post = await db.posts.create({ data: parsed });
   revalidatePath('/blog');
   return { success: true, postId: post.id };
 }
 ```
 
 ```tsx
-// app/blog/new/page.tsx
+// app/blog/new/post-form.tsx
+'use client';
+
+import { useActionState } from 'react';
 import { createPost } from '@/app/actions';
 
-export default function NewPostPage() {
+export function NewPostForm() {
+  const [state, formAction] = useActionState(createPost, null);
+
   return (
-    <form action={createPost}>
+    <form action={formAction}>
       <input name="title" required />
       <textarea name="content" required />
+      {state?.ok === false && <p role="alert">{state.error}</p>}
       <button type="submit">Create Post</button>
     </form>
   );
 }
 ```
+
+```tsx
+// app/blog/new/page.tsx
+import { NewPostForm } from './post-form';
+
+export default function NewPostPage() {
+  return <NewPostForm />;
+}
+```
+
+`useActionState` keeps the form progressively enhanced: without JavaScript the
+browser posts the form and the server re-renders the page with the returned
+state.
 
 ### Progressive Enhancement
 
@@ -503,15 +838,33 @@ solution designed for serverless environments (Vercel, AWS Lambda, Cloudflare Wo
 
 ### Edge Middleware Implementation
 
+`NextRequest.ip` was removed in Next.js 15. Limiters **MUST** key on a
+verified identity where one exists, and otherwise on a client address supplied
+by the hosting platform. They **MUST NOT** read a client-supplied
+`x-forwarded-for` header directly unless every proxy in front of the
+application is known to overwrite it, and **MUST NOT** collapse unidentifiable
+callers into a single shared bucket.
+
+**Don't** — `request.ip` no longer exists (`TS2339`), the header fallback is
+attacker-controlled on an untrusted chain, and every unknown client shares one
+`127.0.0.1` bucket:
+
+```ts
+const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? '127.0.0.1';
+const { success } = await ratelimit.limit(ip);
+```
+
 ```bash
-npm install @upstash/ratelimit @upstash/redis
+npm install @upstash/ratelimit@2.0.8 @upstash/redis@1.38.4 @vercel/functions@3.9.5
 ```
 
 ```ts
 // middleware.ts
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { ipAddress } from '@vercel/functions';
 import { NextRequest, NextResponse } from 'next/server';
+import { getVerifiedSubject } from '@/lib/auth-utils';
 
 const ratelimit = new Ratelimit({
   redis: Redis.fromEnv(),
@@ -520,10 +873,35 @@ const ratelimit = new Ratelimit({
   prefix: '@upstash/ratelimit',
 });
 
+async function identify(request: NextRequest): Promise<string | null> {
+  // Authenticated callers are limited per account, not per network address:
+  // one office NAT must not share a bucket with unrelated users.
+  const subject = await getVerifiedSubject(request);
+  if (subject) {
+    return `user:${subject}`;
+  }
+
+  // Anonymous callers: the platform's client address, never a raw header.
+  const ip = ipAddress(request);
+  return ip ? `ip:${ip}` : null;
+}
+
 export async function middleware(request: NextRequest) {
-  // Use IP address or authenticated user ID
-  const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? '127.0.0.1';
-  const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+  const identifier = await identify(request);
+
+  if (identifier === null) {
+    // No trustworthy identity: reject rather than share one global bucket.
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
+  const { success, limit, reset, remaining } = await ratelimit.limit(
+    identifier,
+    {
+      ip: ipAddress(request),
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      country: request.headers.get('x-vercel-ip-country') ?? undefined,
+    }
+  );
 
   if (!success) {
     return NextResponse.json(
@@ -550,6 +928,15 @@ export const config = {
 };
 ```
 
+**Why**: `ipAddress()` reads `x-real-ip`, which the Vercel edge network sets on
+every inbound request; the platform, not the client, controls its value.
+Projects on other hosts **MUST** substitute that host's equivalent helper and
+**MUST** confirm the edge overwrites rather than appends the forwarding
+header — an appended value is caller-controlled and lets one attacker mint an
+unlimited number of buckets. Keying authenticated traffic on the account
+identifier also keeps a shared corporate address from throttling legitimate
+users.
+
 ### Rate Limiting Algorithms
 
 | Algorithm | Use Case |
@@ -571,23 +958,78 @@ const ratelimit = new Ratelimit({
 });
 ```
 
+With `enableProtection` enabled, callers **MUST** pass the request metadata
+shown above (`ip`, `userAgent`, `country`) to `limit()`. Upstash's deny lists
+match on those fields, and an omitted field cannot be matched.
+
 **Why**: Edge middleware blocks traffic before it reaches your backend, reducing costs and
 protecting against abuse. Multi-region Redis minimizes latency globally.
 
 ## API Routes (Route Handlers)
 
-Projects **MAY** use Route Handlers for API endpoints:
+Projects **MAY** use Route Handlers for API endpoints. A Route Handler is a
+public endpoint: it **MUST** authenticate the caller, **MUST** authorise the
+specific resource and operation, **MUST** validate its body, and **MUST**
+return a projection rather than a whole database row.
 
 ```ts
 // app/api/users/route.ts
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth-utils';
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.email(),
+});
+
+// Return only fields the caller is allowed to see
+const publicUser = (user: { id: string; name: string; email: string }) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+});
 
 export async function GET() {
+  const actor = await getCurrentUser();
+  if (!actor) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!actor.permissions.includes('user:list')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const users = await db.users.findMany();
-  return NextResponse.json(users);
+  return NextResponse.json(users.map(publicUser));
 }
 
+export async function POST(request: Request) {
+  const actor = await getCurrentUser();
+  if (!actor) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!actor.permissions.includes('user:create')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const parsed = createUserSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  }
+
+  // Role is assigned by the server; it is never read from the request
+  const user = await db.users.create({
+    data: { ...parsed.data, role: 'user' },
+  });
+  return NextResponse.json(publicUser(user), { status: 201 });
+}
+```
+
+**Don't** — an anonymous caller can create a user, and the raw body reaches the
+database, so any extra field (`role: 'admin'`) is written verbatim:
+
+```ts
 export async function POST(request: Request) {
   const body = await request.json();
   const user = await db.users.create({ data: body });
@@ -599,28 +1041,59 @@ export async function POST(request: Request) {
 // app/api/users/[id]/route.ts
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await db.users.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+
+  const actor = await getCurrentUser();
+  if (!actor) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Resource-level check: reading yourself differs from reading anyone
+  if (actor.id !== id && !actor.permissions.includes('user:read')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const user = await db.users.findUnique({ where: { id } });
 
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  return NextResponse.json(user);
+  return NextResponse.json(publicUser(user));
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  await db.users.delete({ where: { id: params.id } });
+  const { id } = await params;
+
+  const actor = await getCurrentUser();
+  if (!actor) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!actor.permissions.includes('user:delete')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  await db.users.delete({ where: { id } });
   return new NextResponse(null, { status: 204 });
 }
 ```
 
 **Why**: Route Handlers provide REST API endpoints when needed. For form submissions and
 mutations, prefer Server Actions for better type safety and progressive enhancement.
+
+**Why these checks**: An authorisation check performed in a page, a layout, or
+middleware protects only that render path. `DELETE /api/users/:id` is reachable
+directly with `curl`, so the identity and permission checks **MUST** live in
+the handler body. Returning `db.users.findUnique(...)` verbatim also leaks
+every column added to the table later — including password hashes and tokens —
+which is why the handler returns an explicit projection.
+
+Route Handler `params` is a promise. A synchronous `{ params: { id: string } }`
+context type fails `next build` with `TS2344`.
 
 ## Testing
 
@@ -701,19 +1174,103 @@ recording.
 
 ## Authentication
 
-Projects **SHOULD** use Auth.js[^authjs] (NextAuth.js v5) for authentication:
+New projects **SHOULD** use Better Auth[^betterauth]. Projects with a working
+Auth.js[^authjs] deployment **MAY** stay on it; Auth.js v5 remains a prerelease
+and **MUST** be pinned to a tested version.
 
 ### Why
 
-Auth.js is the standard open-source authentication library for Next.js. Version 5 is a complete
-rewrite with edge-first design, App Router support, and a universal `auth()` function that
-works across all Next.js contexts.
+The Auth.js project itself now recommends Better Auth for new projects, while
+committing to security patches and critical fixes for Auth.js. Auth.js v5 has
+been in beta since 2023 and its `latest` npm tag still points at v4; Better
+Auth publishes a stable line. Migrating a working Auth.js deployment is not
+urgent, so this guide keeps both paths rather than mandating a rewrite.
 
-### Installation and Setup
+| Situation | Library |
+| --------- | ------- |
+| New project | Better Auth 1.7.3 |
+| Existing Auth.js v5 deployment that works | Auth.js, pinned to 5.0.0-beta.32 |
+| Existing Auth.js v4 deployment | Migrate to Better Auth rather than to v5 beta |
+
+### Shared Role Definitions
+
+Both paths need one canonical role list. Define it once and import it
+everywhere, including type declarations:
+
+```ts
+// lib/roles.ts
+export const ROLES = ['user', 'moderator', 'admin'] as const;
+
+export type Role = (typeof ROLES)[number];
+
+export function isRole(value: unknown): value is Role {
+  return typeof value === 'string' && (ROLES as readonly string[]).includes(value);
+}
+
+export const PERMISSIONS: Record<Role, readonly string[]> = {
+  user: ['post:create'],
+  moderator: ['post:create', 'user:list', 'user:read'],
+  admin: ['post:create', 'user:list', 'user:read', 'user:create', 'user:delete'],
+};
+```
+
+### Better Auth (New Projects)
 
 ```bash
-npm install next-auth@beta @auth/core
+npm install better-auth@1.7.3
 ```
+
+```ts
+// lib/auth.ts
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { nextCookies } from 'better-auth/next-js';
+import { prisma } from '@/lib/db';
+
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, { provider: 'postgresql' }),
+  emailAndPassword: { enabled: true },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        required: true,
+        defaultValue: 'user',
+        input: false, // Clients MUST NOT be able to set their own role
+      },
+    },
+  },
+  plugins: [nextCookies()], // MUST be last in the array
+});
+```
+
+```ts
+// app/api/auth/[...all]/route.ts
+import { auth } from '@/lib/auth';
+import { toNextJsHandler } from 'better-auth/next-js';
+
+export const { GET, POST } = toNextJsHandler(auth);
+```
+
+**Why `input: false`**: without it, `role` is part of the sign-up payload and
+any anonymous caller can register as an administrator.
+
+### Auth.js (Existing Projects)
+
+```bash
+npm install next-auth@5.0.0-beta.32
+```
+
+`@auth/core` **MUST NOT** be installed at a version other than the one
+`next-auth` depends on (5.0.0-beta.32 pins `@auth/core@0.41.3`). A second copy
+at a different version splits the shared interfaces and silently breaks the
+type augmentation below.
 
 ```ts
 // auth.ts
@@ -769,6 +1326,78 @@ import { handlers } from '@/auth';
 export const { GET, POST } = handlers;
 ```
 
+#### Type Augmentation for Custom Fields
+
+Auth.js types custom session and token fields through module augmentation.
+Projects that add a field such as `role` **MUST** declare it, and **MUST**
+include the declaration file in `tsconfig.json`.
+
+**Don't** — `user.role` and `session.user.role` fail with
+`TS2339: Property 'role' does not exist`, and `token.role` is typed
+`unknown` because `JWT` only carries an index signature:
+
+```ts
+jwt({ token, user }) {
+  if (user) {
+    token.role = user.role;
+  }
+  return token;
+},
+```
+
+**Do**:
+
+```ts
+// types/next-auth.d.ts
+import type { DefaultSession } from 'next-auth';
+import type { Role } from '@/lib/roles';
+
+declare module 'next-auth' {
+  interface User {
+    role: Role;
+  }
+
+  interface Session {
+    user: { role: Role } & DefaultSession['user'];
+  }
+}
+
+// The JWT interface is declared in @auth/core/jwt; next-auth only re-exports it
+declare module '@auth/core/jwt' {
+  interface JWT {
+    role: Role;
+  }
+}
+
+export {};
+```
+
+Augmenting `next-auth/jwt` **MUST NOT** be used: that module is a bare
+`export * from '@auth/core/jwt'`, so a `declare module 'next-auth/jwt'` block
+creates a new interface instead of merging into the original. `JWT` keeps its
+`Record<string, unknown>` index signature, `token.role` stays `unknown`, and
+the session callback fails with
+`TS2322: Type 'unknown' is not assignable to type '"user" | "moderator" | "admin"'`.
+
+```json
+// tsconfig.json
+{
+  "include": ["next-env.d.ts", "types/**/*.d.ts", "**/*.ts", "**/*.tsx"]
+}
+```
+
+The database model **MUST** supply the same field, or the adapter returns a
+`User` without `role` and the augmentation is a lie:
+
+```prisma
+// prisma/schema.prisma
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  role  String @default("user")
+}
+```
+
 ### Middleware-Based Protection
 
 ```ts
@@ -797,20 +1426,20 @@ export const config = {
 
 ```tsx
 // app/dashboard/page.tsx
-import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const user = await getCurrentUser();
 
-  if (!session) {
+  if (!user) {
     redirect('/login');
   }
 
   return (
     <div>
-      <h1>Welcome, {session.user.name}</h1>
-      <p>Role: {session.user.role}</p>
+      <h1>Welcome, {user.name}</h1>
+      <p>Role: {user.role}</p>
     </div>
   );
 }
@@ -818,24 +1447,60 @@ export default async function DashboardPage() {
 
 ### Role-Based Access Control (RBAC)
 
+One module resolves the session for pages, Server Actions, Route Handlers, and
+the rate limiter, so every entry point enforces the same rules:
+
 ```ts
 // lib/auth-utils.ts
-import { auth } from '@/auth';
+import { headers } from 'next/headers';
+import type { NextRequest } from 'next/server';
+import { auth } from '@/lib/auth';
+import { isRole, PERMISSIONS, type Role } from '@/lib/roles';
 
-type Role = 'user' | 'admin' | 'moderator';
+export type AppUser = {
+  id: string;
+  name: string;
+  role: Role;
+  permissions: readonly string[];
+};
 
-export async function requireRole(allowedRoles: Role[]) {
-  const session = await auth();
-
+export async function getCurrentUser(): Promise<AppUser | null> {
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
+    return null;
+  }
+
+  // Narrow at the boundary: the column is a string in the database
+  const role: Role = isRole(session.user.role) ? session.user.role : 'user';
+
+  return {
+    id: session.user.id,
+    name: session.user.name,
+    role,
+    permissions: PERMISSIONS[role],
+  };
+}
+
+export async function requireRole(allowedRoles: Role[]): Promise<AppUser> {
+  const user = await getCurrentUser();
+
+  if (!user) {
     throw new Error('Unauthorized');
   }
 
-  if (!allowedRoles.includes(session.user.role as Role)) {
+  if (!allowedRoles.includes(user.role)) {
     throw new Error('Forbidden');
   }
 
-  return session;
+  return user;
+}
+
+// Rate limiting runs before the page renders and has no `headers()` scope
+export async function getVerifiedSubject(
+  request: NextRequest
+): Promise<string | null> {
+  const session = await auth.api.getSession({ headers: request.headers });
+  return session?.user.id ?? null;
 }
 ```
 
@@ -844,9 +1509,9 @@ export async function requireRole(allowedRoles: Role[]) {
 import { requireRole } from '@/lib/auth-utils';
 
 export default async function AdminPage() {
-  const session = await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
-  return <AdminDashboard user={session.user} />;
+  return <AdminDashboard user={user} />;
 }
 ```
 
@@ -860,9 +1525,9 @@ export default async function AdminPage() {
 Projects **MUST** use JWT strategy when using middleware auth checks (Edge Runtime cannot access
 databases directly).
 
-**Why**: Auth.js provides type-safe authentication with zero vendor lock-in. JWT sessions work
-in Edge Runtime while database sessions enable immediate session revocation for
-security-critical applications.
+**Why**: Better Auth and Auth.js both provide type-safe authentication with zero vendor
+lock-in. JWT sessions work in Edge Runtime while database sessions enable immediate session
+revocation for security-critical applications.
 
 ## Deployment
 
@@ -887,7 +1552,8 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   // Vercel-specific optimizations are automatic
   images: {
-    formats: ['image/avif', 'image/webp'],
+    // AVIF omitted deliberately - see Image Format Security
+    formats: ['image/webp'],
   },
 };
 
@@ -1034,19 +1700,49 @@ export function Avatar({ src }: { src: string }) {
 // next.config.ts
 const config: NextConfig = {
   images: {
-    formats: ['image/avif', 'image/webp'],
+    // AVIF omitted deliberately - see Image Format Security below
+    formats: ['image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'cdn.example.com',
+        pathname: '/images/**',
       },
     ],
   },
 };
 ```
 
-**Why**: Next.js Image automatically optimizes images, serves modern formats (AVIF/WebP),
-generates responsive sizes, and lazy loads by default.
+**Why**: Next.js Image automatically optimizes images, serves modern formats (WebP),
+generates responsive sizes, and lazy loads by default. `remotePatterns` is scoped to a
+single host and path prefix so the optimiser cannot be pointed at arbitrary URLs.
+
+#### Image Format Security
+
+Projects **MUST** run Next.js 16.3.3 or later on the 16.x line, or 15.5.24 or
+later on the 15.x line. Projects **MUST NOT** list `image/avif` in
+`images.formats` until a Next.js release re-enables AVIF optimisation with the
+fixed upstream `libheif`.
+
+**Why**: The August 2026 security release[^avifadvisory] documents an
+unauthenticated remote code execution (GHSA-2xp9-vwfh-vxw4 /
+GHSA-g89c-p67h-r497): a flaw in the `libheif` library used by `sharp` is
+reachable whenever Next.js optimises an attacker-controlled AVIF image. Any
+remote image the optimiser accepts is attacker-controlled input.
+
+Removing `image/avif` from `formats` is **not** a substitute for the patch.
+`formats` governs the output format the optimiser prefers, not the input
+formats it will decode; only the patched releases disable AVIF optimisation.
+Upgrade first, then treat the format list as defence in depth.
+
+```json
+// package.json - pin at or above the patched release
+{
+  "dependencies": {
+    "next": "16.3.4"
+  }
+}
+```
 
 ### Font Optimization
 
@@ -1120,9 +1816,10 @@ import type { Metadata } from 'next';
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const post = await getPost(params.slug);
+  const { slug } = await params;
+  const post = await getPost(slug);
 
   return {
     title: post.title,
@@ -1586,6 +2283,13 @@ edge.
 
 ## Static Site Generation (SSG) and ISR
 
+This section describes the **route-segment caching model**, the model that
+applies when `cacheComponents` is **not** enabled. It remains supported in
+Next.js 16. Projects that have enabled [Cache
+Components](#partial-prerendering-and-cache-components) **MUST NOT** mix the
+two: use `use cache`, `cacheLife`, and `cacheTag` instead of the
+`dynamic`, `revalidate`, and `dynamicParams` segment exports.
+
 Projects **SHOULD** use Static Site Generation (SSG) and Incremental Static Regeneration (ISR)
 for content that doesn't change frequently.
 
@@ -1602,7 +2306,7 @@ for content that doesn't change frequently.
 |----------|------------|-----------|----------------|----------|
 | SSG | Pre-render | None | Build-time | Marketing pages, docs |
 | ISR | Pre-render + revalidate | None (cache hit) | Configurable | Blogs, product pages |
-| PPR | Partial pre-render | Streaming | Real-time | Dashboards, personalized |
+| Cache Components | Static shell + `use cache` | Streaming | Per-tag/lifetime | Dashboards, personalized |
 | Dynamic | On request | Full | Real-time | Auth-required, search |
 
 ### Full Static Generation
@@ -1680,9 +2384,9 @@ export async function POST(request: NextRequest) {
     return Response.json({ revalidated: true, path });
   }
 
-  // Revalidate by tag
+  // Revalidate by tag: a webhook cannot use updateTag, so expire immediately
   if (tag) {
-    revalidateTag(tag);
+    revalidateTag(tag, { expire: 0 });
     return Response.json({ revalidated: true, tag });
   }
 
@@ -1811,6 +2515,25 @@ app/
 └── middleware.ts
 ```
 
+### Locale Configuration
+
+One module **MUST** own the supported locale list, and every other file
+**MUST** import it. Duplicated lists drift, and a locale that exists in the
+middleware but not in the dictionary map becomes a runtime crash.
+
+```ts
+// lib/i18n-config.ts
+export const LOCALES = ['en', 'fr', 'de', 'es'] as const;
+
+export type Locale = (typeof LOCALES)[number];
+
+export const DEFAULT_LOCALE: Locale = 'en';
+
+export function isLocale(value: string): value is Locale {
+  return (LOCALES as readonly string[]).includes(value);
+}
+```
+
 ### Middleware for Language Detection
 
 ```ts
@@ -1819,21 +2542,19 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
-
-const locales = ['en', 'fr', 'de', 'es'];
-const defaultLocale = 'en';
+import { DEFAULT_LOCALE, LOCALES } from '@/lib/i18n-config';
 
 function getLocale(request: NextRequest): string {
   const headers = { 'accept-language': request.headers.get('accept-language') || '' };
   const languages = new Negotiator({ headers }).languages();
-  return match(languages, locales, defaultLocale);
+  return match(languages, [...LOCALES], DEFAULT_LOCALE);
 }
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if pathname already has locale
-  const pathnameHasLocale = locales.some(
+  const pathnameHasLocale = LOCALES.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   );
 
@@ -1855,6 +2576,7 @@ export const config = {
 ```ts
 // lib/dictionaries.ts
 import 'server-only';
+import type { Locale } from '@/lib/i18n-config';
 
 const dictionaries = {
   en: () => import('@/dictionaries/en.json').then((m) => m.default),
@@ -1863,13 +2585,17 @@ const dictionaries = {
   es: () => import('@/dictionaries/es.json').then((m) => m.default),
 };
 
-export type Locale = keyof typeof dictionaries;
 export type Dictionary = Awaited<ReturnType<typeof dictionaries.en>>;
 
+// Indexing by Locale makes a locale without a dictionary a compile error
 export async function getDictionary(locale: Locale): Promise<Dictionary> {
   return dictionaries[locale]();
 }
 ```
+
+Typing the parameter as `Locale` rather than `string` means a locale added to
+`LOCALES` without a matching dictionary fails to compile
+(`TS7053: Property 'it' does not exist`) instead of crashing in production.
 
 ```json
 // dictionaries/en.json
@@ -1903,16 +2629,31 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
 
 ### Using Dictionaries in Components
 
+The `[lang]` segment is an arbitrary URL string. Pages **MUST** validate it at
+runtime before using it as a dictionary key, and **SHOULD** set
+`dynamicParams = false` when only the generated locales are valid.
+
 ```tsx
 // app/[lang]/page.tsx
-import { getDictionary, type Locale } from '@/lib/dictionaries';
+import { notFound } from 'next/navigation';
+import { getDictionary } from '@/lib/dictionaries';
+import { isLocale, LOCALES } from '@/lib/i18n-config';
+
+// Route-segment model only: anything outside generateStaticParams is a 404.
+// Omit this line when cacheComponents is enabled - the two are incompatible.
+export const dynamicParams = false;
 
 export default async function Home({
   params,
 }: {
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
+
+  if (!isLocale(lang)) {
+    notFound();
+  }
+
   const dict = await getDictionary(lang);
 
   return (
@@ -1923,10 +2664,38 @@ export default async function Home({
   );
 }
 
-export async function generateStaticParams() {
-  return [{ lang: 'en' }, { lang: 'fr' }, { lang: 'de' }, { lang: 'es' }];
+export function generateStaticParams() {
+  return LOCALES.map((lang) => ({ lang }));
 }
 ```
+
+**Don't** — the annotation is erased at build time, so an unsupported segment
+reaches the lookup and throws `TypeError: dictionaries[locale] is not a
+function`, producing a 500 instead of a 404:
+
+```tsx
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ lang: Locale }>;
+}) {
+  const { lang } = await params;
+  const dict = await getDictionary(lang);
+  // ...
+}
+```
+
+**Why**: The language-detection middleware redirects unprefixed paths, but it
+does not police the segment. Its own `matcher` excludes `/api`, `/_next/*`,
+and `favicon.ico`, so a request such as `/api-docs` is never rewritten and
+still matches `app/[lang]/page.tsx` with `lang = 'api-docs'`. Without the
+guard, Next.js 16.3.4 returns HTTP 500 with `TypeError: dictionaries[locale]
+is not a function`; with it, the same request returns 404. Never rely on a
+TypeScript annotation to constrain a value that arrives from a URL.
+
+Applications needing message extraction, pluralisation, ICU formatting, or
+typed navigation helpers **SHOULD** use next-intl[^nextintl] instead of
+extending this hand-rolled catalogue.
 
 ### Language Switcher
 
@@ -1935,19 +2704,20 @@ export async function generateStaticParams() {
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { LOCALES, type Locale } from '@/lib/i18n-config';
 
-const locales = [
-  { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'es', label: 'Español' },
-];
+const LOCALE_LABELS: Record<Locale, string> = {
+  en: 'English',
+  fr: 'Français',
+  de: 'Deutsch',
+  es: 'Español',
+};
 
-export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {
+export function LanguageSwitcher({ currentLocale }: { currentLocale: Locale }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const switchLocale = (locale: string) => {
+  const switchLocale = (locale: Locale) => {
     // Replace current locale in pathname
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     router.push(newPath);
@@ -1956,12 +2726,12 @@ export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {
   return (
     <select
       value={currentLocale}
-      onChange={(e) => switchLocale(e.target.value)}
+      onChange={(e) => switchLocale(e.target.value as Locale)}
       aria-label="Select language"
     >
-      {locales.map((locale) => (
-        <option key={locale.code} value={locale.code}>
-          {locale.label}
+      {LOCALES.map((locale) => (
+        <option key={locale} value={locale}>
+          {LOCALE_LABELS[locale]}
         </option>
       ))}
     </select>
@@ -1974,8 +2744,9 @@ export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {
 ```tsx
 // app/[lang]/layout.tsx
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { isLocale, LOCALES } from '@/lib/i18n-config';
 
-const locales = ['en', 'fr', 'de', 'es'];
 const baseUrl = 'https://example.com';
 
 export async function generateMetadata({
@@ -1989,7 +2760,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `${baseUrl}/${lang}`,
       languages: Object.fromEntries(
-        locales.map((locale) => [locale, `${baseUrl}/${locale}`])
+        LOCALES.map((locale) => [locale, `${baseUrl}/${locale}`])
       ),
     },
   };
@@ -2016,7 +2787,7 @@ export default async function LocaleLayout({
 
 ```tsx
 // lib/formatters.ts
-import { type Locale } from './dictionaries';
+import { type Locale } from './i18n-config';
 
 export function formatDate(date: Date, locale: Locale): string {
   return new Intl.DateTimeFormat(locale, {
@@ -2042,14 +2813,21 @@ export function formatNumber(number: number, locale: Locale): string {
 
 ```tsx
 // Usage in component
+import { notFound } from 'next/navigation';
 import { formatDate, formatCurrency } from '@/lib/formatters';
+import { isLocale } from '@/lib/i18n-config';
 
 export default async function ProductPage({
   params,
 }: {
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
+
+  if (!isLocale(lang)) {
+    notFound();
+  }
+
   const product = await getProduct();
 
   return (
@@ -2078,15 +2856,18 @@ bundle impact.
 [^2]: [Vitest](https://vitest.dev/) - Blazing fast unit test framework powered by Vite
 [^3]: [React Testing Library](https://testing-library.com/react) - Simple and complete React DOM testing utilities
 [^4]: [Playwright](https://playwright.dev/) - End-to-end testing for modern web apps
-[^5]: [eslint-config-next](https://nextjs.org/docs/app/building-your-application/configuring/eslint) - Next.js ESLint configuration with framework-specific rules
+[^5]: [eslint-config-next](https://nextjs.org/docs/app/api-reference/config/eslint) - Next.js ESLint configuration with framework-specific rules
 [^6]: [Next.js](https://nextjs.org/) - The React Framework for the Web
 [^7]: [Vercel](https://vercel.com/) - Platform for deploying Next.js applications with zero configuration
-[^ppr]: [Partial Prerendering](https://nextjs.org/docs/app/building-your-application/rendering/partial-prerendering) - Combine static and dynamic rendering in a single route
+[^avifadvisory]: [August 2026 Security Release](https://nextjs.org/blog/august-2026-security-release) - Critical AVIF image-optimisation and Windows RCE fixes in 16.3.3 and 15.5.24
+[^ppr]: [Cache Components](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents) - Enables Partial Prerendering and the `use cache` directive
 [^ratelimit]: [Upstash Ratelimit](https://github.com/upstash/ratelimit-js) - Rate limiting library for serverless runtimes using HTTP-based Redis
 [^authjs]: [Auth.js](https://authjs.dev/) - Authentication for the Web, formerly NextAuth.js
+[^betterauth]: [Better Auth](https://www.better-auth.com/) - Framework-agnostic TypeScript authentication library, recommended by Auth.js for new projects
 [^pusher]: [Pusher](https://pusher.com/) - Managed real-time messaging service with pub/sub channels
 [^ably]: [Ably](https://ably.com/) - Enterprise real-time messaging platform with presence and history
 [^socketio]: [Socket.IO](https://socket.io/) - Bidirectional event-based communication library (requires persistent server)
+[^nextintl]: [next-intl](https://next-intl.dev/docs/getting-started/app-router) - App Router internationalisation with typed messages, ICU formatting, and locale-aware navigation
 [^inngest]: [Inngest](https://www.inngest.com/) - Workflow orchestration platform for background jobs and AI pipelines
 [^triggerdev]: [Trigger.dev](https://trigger.dev/) - Open-source platform for background jobs and long-running tasks
 [^vercelcron]: [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) - Native scheduled tasks for Vercel deployments
