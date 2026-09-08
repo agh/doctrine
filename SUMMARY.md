@@ -75,6 +75,8 @@
 
 ## Reference Material
 
+- [CHECKSUMS.sha256](reference/CHECKSUMS.sha256)
+- [Vendored Reference Errata](reference/ERRATA.md)
 - [UPSTREAM.json](reference/UPSTREAM.json)
 - airbnb/
   - [LICENSE](reference/airbnb/LICENSE)

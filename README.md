@@ -272,12 +272,14 @@ style guides are licensed under CC-BY 3.0.
 | [reference/shopify/ruby.md](reference/shopify/ruby.md) | [Shopify/ruby-style-guide](https://github.com/Shopify/ruby-style-guide) |
 | [reference/uber/go.md](reference/uber/go.md) | [uber-go/guide](https://github.com/uber-go/guide) |
 
-Two directories are indexed rather than listed file by file:
-
-| Directory | Contents | Provenance |
-| --------- | -------- | ---------- |
-| [reference/ietf/](reference/ietf/) | RFC 2119 plus a Doctrine-written index | [reference/ietf/README.md](reference/ietf/README.md) |
-| [reference/security/](reference/security/) | Security corpora (MITRE, OWASP, NIST, CIS, CWE, KEV) | [reference/security/manifest.json](reference/security/manifest.json) records the upstream, version and licence of every source |
+- [Airbnb](reference/airbnb/) - JavaScript, CSS-in-JS, Ruby; the
+  [React snapshot](reference/airbnb/react.md) is historical (2021) and superseded by the
+  [React style guide](guides/frameworks/react.md)
+- [Uber](reference/uber/) - Go
+- [RuboCop](reference/rubocop/) - Ruby, Rails
+- [Shopify](reference/shopify/) - Ruby
+- [Holywell](reference/holywell/) - SQL
+- [Rust API Guidelines](reference/rust/) - Rust
 
 ---
 

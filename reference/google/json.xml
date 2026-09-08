@@ -574,7 +574,7 @@ Property Value Type: string<br />Parent: <code>data</code>
 <BODY>
 <p>Represents the etag for the response.  Details about ETags in the GData APIs can be found here: <a href="https://code.google.com/apis/gdata/docs/2.0/reference.html#ResourceVersioning">https://code.google.com/apis/gdata/docs/2.0/reference.html#ResourceVersioning</a></p><p>Example:</p>
 <CODE_SNIPPET>
-{"data": {"etag": "W/"C0QBRXcycSp7ImA9WxRVFUk.""}}
+{"data": {"etag": "W/\"C0QBRXcycSp7ImA9WxRVFUk.\""}}
 
 </CODE_SNIPPET>
 </BODY>
