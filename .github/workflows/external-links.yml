@@ -56,9 +56,6 @@ jobs:
 
       - name: Check external URLs
         run: |
-          # The $1 inside the single-quoted sh -c script is expanded by the
-          # child shell, on purpose.
-          # shellcheck disable=SC2016
           set -uo pipefail
 
           # Four files at a time. .markdown-link-check.json keeps the
@@ -67,6 +64,7 @@ jobs:
           # alive there. Each failing file is tagged so the summary can count
           # them after the parallel output is merged.
           report="$(mktemp)"
+          # shellcheck disable=SC2016  # $1 is expanded by the child sh, on purpose
           git ls-files -z '*.md' ':!:reference/**' \
             | xargs -0 -P 4 -I{} sh -c '
                 npx --no-install markdown-link-check \
