@@ -1,0 +1,44 @@
+NOTICE — third-party terms for reference/security/
+
+The JSON files under reference/security/ are Doctrine-authored summaries,
+indexes and cross-mappings derived from third-party security publications.
+They are not verbatim upstream data dumps, but most of them are derived works
+and the upstream terms below govern them. Doctrine's MIT licence covers only
+Doctrine's own expression in the files marked "Doctrine-authored summary" in
+manifest.json; it does NOT override any upstream term listed below.
+
+The full per-source record — upstream name, URL, licence, licence URL, what
+Doctrine changed, and the required attribution text — is in
+../../THIRD_PARTY_NOTICES.md. Licence texts that must travel with the material
+are in ./LICENSES/. Machine-readable licence fields are in ./manifest.json.
+
+Summary of terms in force
+-------------------------
+  mitre/attack/    MITRE ATT&CK Terms of Use   LICENSES/MITRE-ATTACK-Terms-of-Use.txt
+  mitre/atlas/     Apache-2.0                  LICENSES/Apache-2.0.txt
+  mitre/d3fend/    MIT                         LICENSES/MIT-D3FEND.md
+  mitre/capec/     CAPEC Terms of Use          LICENSES/MITRE-CAPEC-Terms-of-Use.txt
+  cwe/             CWE Terms of Use            LICENSES/MITRE-CWE-Terms-of-Use.txt
+  owasp/           CC BY-SA 4.0                LICENSES/CC-BY-SA-4.0.txt
+  sigma/           Detection Rule License 1.1  LICENSES/DRL-1.1.md
+  fingerprints/    BSD-3-Clause (JA4) and      LICENSES/BSD-3-Clause-JA4.txt
+                   FoxIO License 1.1 (JA4+)    LICENSES/FoxIO-License-1.1.txt
+  slsa/            Community Specification 1.0 LICENSES/Community-Specification-1.0.md
+  openssf/         Apache-2.0                  LICENSES/Apache-2.0.txt
+  sbom/            Apache-2.0 (CycloneDX) and  LICENSES/Apache-2.0.txt
+                   Community Specification 1.0 / CC BY 3.0 (SPDX)
+  cis/             CC BY-NC-ND 4.0 — SEE cis/NOTICE, DO NOT MODIFY
+  nist/, kev/,     US Government work, not subject to domestic copyright
+  crypto/          protection (17 U.S.C. 105); attribution requested
+  epss/            Free to use, attribution requested by FIRST
+  compliance/,     Doctrine-authored summaries that name third-party
+  containers/,     frameworks; the underlying standards (ISO, PCI DSS, CIS
+  exploits/        Benchmarks and others) remain under their own terms and
+                   are NOT reproduced here
+
+Non-commercial restrictions
+---------------------------
+Two sources restrict commercial use. Anyone using this directory commercially
+MUST exclude, or obtain permission for, cis/controls-v8.json (CC BY-NC-ND 4.0)
+and any JA4+ variant material under the FoxIO License 1.1. JA4 itself (TLS
+client fingerprinting) is BSD-3-Clause and carries no such restriction.

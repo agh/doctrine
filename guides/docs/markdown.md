@@ -1,12 +1,12 @@
 # Markdown Style Guide
 
-> [Doctrine](../../README.md) > [Documentation](../README.md) > Markdown
+> [Doctrine](../../README.md) > [Documentation](README.md) > Markdown
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
 interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-Extends [Google Markdown Style Guide](google/markdown.md).
+Extends [Google Markdown Style Guide](../../reference/google/markdown.md).
 
 ## Quick Reference
 
@@ -333,9 +333,9 @@ See GitHub Actions[^9] documentation for more CI/CD configuration options.
 
 ## See Also
 
-- [Google Markdown Style Guide](google/markdown.md) - Base style guide
-- [EditorConfig](editorconfig.md) - Editor configuration for consistent formatting
-- [CI/CD Guidelines](../ci.md) - Continuous integration setup
+- [Google Markdown Style Guide](../../reference/google/markdown.md) - Base style guide
+- [EditorConfig](../../configs/editorconfig/README.md) - Editor configuration for consistent formatting
+- [CI/CD Guidelines](../process/ci.md) - Continuous integration setup
 - [Documentation Standards](../README.md) - Overall documentation practices
 - CommonMark[^10] - Markdown specification
 - GitHub Flavored Markdown[^11] - Extended Markdown syntax
