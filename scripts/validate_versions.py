@@ -56,7 +56,8 @@ KNOWN_UNPINNED: dict[str, str] = {
     "compilerla/conventional-pre-commit": "commit-message guide illustration",
     "dnephin/pre-commit-golang": "superseded by golangci-lint in the canonical config",
     "jendrikseipp/vulture": "optional Python dead-code hook",
-    "returntocorp/semgrep": "security guide illustration",
+    "returntocorp/semgrep": "security guide illustration (former organisation name)",
+    "semgrep/semgrep": "security guide illustration",
     "thibaudcolas/pre-commit-stylelint": "optional CSS hook",
 }
 
