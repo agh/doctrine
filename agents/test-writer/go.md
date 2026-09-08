@@ -6,7 +6,7 @@ model: sonnet
 
 # Test Writer: Go Module
 
-> [Test Writer Agent](../test-writer.md) > Go
+> [Test Writer Agent](../code/test-writer.md) > Go
 
 Go-specific guidance for test generation.
 
@@ -338,5 +338,5 @@ func BenchmarkCalculateParallel(b *testing.B) {
 
 ## See Also
 
-- [Go Style Guide](../../../../guides/languages/go.md)
-- [Testing Guide](../../../../guides/process/testing.md)
+- [Go Style Guide](go.md)
+- [Testing Guide](../../guides/process/testing.md)
