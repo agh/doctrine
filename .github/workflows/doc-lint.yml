@@ -209,7 +209,9 @@ jobs:
             gitleaks git . --config .gitleaks.toml --no-banner --redact \
               --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
           else
-            gitleaks git . --config .gitleaks.toml --no-banner --redact
+            # On pushes scan the history of the pushed branch only; the checkout
+            # fetches every ref, and unmerged branches are not this push's concern.
+            gitleaks git . --config .gitleaks.toml --no-banner --redact --log-opts="HEAD"
           fi
 
   versions:

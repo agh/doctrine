@@ -178,25 +178,71 @@ pytest -m "not slow"
 go test -run TestUnit
 go test -short
 
-# JavaScript
-vitest --grep "unit"
+# JavaScript (Vitest): filter by test name
+vitest run -t "unit"
+
+# JavaScript (Vitest): filter by named project
+vitest run --project unit
+```
+
+Vitest has no marker system and rejects `--grep`, so a category filter needs a
+naming or configuration convention. You **MUST** choose one of these:
+
+- Encode the category in the test name and filter with `-t`
+  (`--testNamePattern`), which matches the full name as a regular expression.
+- Declare named projects in `vitest.config.ts` and filter with `--project`,
+  which binds the category to a file glob and leaves the test name free to
+  describe behaviour.
+
+```ts
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    projects: [
+      { test: { name: 'unit', include: ['tests/unit/**/*.test.ts'] } },
+      { test: { name: 'integration', include: ['tests/integration/**/*.test.ts'] } },
+    ],
+  },
+});
 ```
 
 ## CI Strategy
 
+Every job **MUST** select a runner, check out the repository, install a pinned
+runtime, and install locked dependencies before it runs a test command.
+
 ```yaml
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 jobs:
   # Fast feedback first
   lint:
     runs-on: ubuntu-latest
     steps:
-      - run: ruff check .
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      - run: uv run ruff check .
 
   unit:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - run: pytest -m unit -n auto
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      - run: uv run pytest -m unit -n auto
 
   integration:
     needs: unit
@@ -204,22 +250,65 @@ jobs:
     services:
       postgres:
         image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - run: pytest -m integration
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      - run: uv run pytest -m integration
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
 
   e2e:
     needs: integration
     runs-on: ubuntu-latest
     steps:
-      - run: playwright test
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run pytest tests/e2e/ --tracing retain-on-failure --output test-results
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-traces
+          path: test-results/
 
   # Slow tests on main only
   performance:
     if: github.ref == 'refs/heads/main'
     needs: e2e
+    runs-on: ubuntu-latest
     steps:
-      - run: pytest tests/performance/
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+      - run: uv sync --locked
+      - run: uv run pytest tests/performance/
 ```
+
+The `postgres` service **MUST** set `POSTGRES_PASSWORD`: the official image
+refuses to initialise without it, so the job has no database to reach. The
+service **MUST** declare a health check, which is what makes the runner wait
+until PostgreSQL accepts connections instead of merely until the container
+starts. Because these jobs run directly on the runner rather than in a job
+container, the service **MUST** map `5432:5432` and clients **MUST** connect
+via `localhost`. The `e2e` job uploads Playwright traces on failure so a red
+run is diagnosable without a rerun.
 
 ## Coverage Goals
 
@@ -264,7 +353,7 @@ fixtures for complex scenarios that need exact reproduction.
 
 [^2]: **Unit Testing** - [Unit Testing - Martin Fowler](https://martinfowler.com/bliki/UnitTest.html)
 
-[^3]: **Integration Testing** - [Integration Testing - Software Testing Fundamentals](https://softwaretestingfundamentals.com/integration-testing/)
+[^3]: **Integration Testing** - [Integration Test - Martin Fowler](https://martinfowler.com/bliki/IntegrationTest.html) - Narrow versus broad integration scope, real dependencies, and test doubles
 
 [^4]: **Testcontainers** - [Testcontainers](https://testcontainers.com/) - Docker containers for integration testing
 

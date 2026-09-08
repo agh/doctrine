@@ -19,7 +19,7 @@ interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc
 | `/code api --graphql` | GraphQL API Reviewer | Sonnet | GraphQL schema design |
 | `/code tests` | Test Writer | Sonnet | Test generation |
 | `/code simplify` | Code Simplifier | Sonnet | Complexity reduction |
-| `/code docs` | Doc Writer | Haiku | Documentation |
+| `/code docs` | Documentation Writer (docs family) | Sonnet | Documentation |
 
 ## Overview
 
@@ -57,8 +57,8 @@ this family provides:
 │ │                        SUPPORTING AGENTS                               │  │
 │ │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │  │
 │ │  │  DOC WRITER  │  │   VERIFY     │  │   (Future)   │                 │  │
-│ │  │   (Haiku)    │  │    BUILD     │  │              │                 │  │
-│ │  │              │  │  (Sonnet)    │  │              │                 │  │
+│ │  │   (Sonnet)   │  │    BUILD     │  │              │                 │  │
+│ │  │ docs family  │  │  (Sonnet)    │  │              │                 │  │
 │ │  └──────────────┘  └──────────────┘  └──────────────┘                 │  │
 │ └────────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -251,22 +251,32 @@ Complexity reduction specialist.
 
 ### Tier 3: Supporting Agents
 
-#### Doc Writer
+#### Documentation Writer
 
-Documentation generation.
+Documentation generation. `/code docs` **MUST** route to the documentation
+family's `documentation-writer` subagent: the code family defines no
+documentation agent of its own.
 
 | Attribute | Value |
 |-----------|-------|
-| **Model** | Haiku 3.5 |
+| **Agent name** | `documentation-writer` |
+| **Model** | Sonnet (frontmatter `model: sonnet`) |
 | **Command** | `/code docs` |
-| **File** | `configs/claude/agents/code/doc-writer.md` |
+| **File** | `configs/claude/agents/docs/writer.md` |
 
 **Output**:
 
 - API documentation
 - README sections
 - Code comments
-- Architecture diagrams
+- Architecture diagrams (Mermaid)
+
+**Why**: documentation already has a dedicated agent family, so the code family
+delegates instead of carrying a second definition that would drift from it. The
+code family therefore holds exactly eight agents, and `/code docs` is a
+cross-family route: an installation that omits `agents/docs/writer.md` leaves
+the subcommand with no agent to invoke, so installers **MUST** copy that file
+alongside the eight code agents.
 
 ---
 
@@ -429,7 +439,13 @@ All code agents **MUST** use this output format:
 | API Reviewers | Sonnet | $0.20 | API changes |
 | Test Writer | Sonnet | $0.30 | On request |
 | Code Simplifier | Sonnet | $0.25 | Post-feature |
-| Doc Writer | Haiku | $0.02 | On request |
+| Documentation Writer | Sonnet | $0.20 | On request |
+
+Estimates assume Claude API list prices — Opus 4.5 at $5/$25, Sonnet 4.5 at
+$3/$15 and Haiku 4.5 at $1/$5 per million input/output tokens — over a
+PR-sized context: roughly 10K in and 2K out for quick mode, 20K in and 8K out
+for one specialist, 40K in and 12K out for the Opus coordinator. Teams **MUST**
+re-derive them from their own provider's price list.
 
 **Cost by Mode**:
 
@@ -438,6 +454,33 @@ All code agents **MUST** use this output format:
 | `/code quick` | ~$0.02 | Every commit |
 | `/code review` | ~$0.20 | PR review |
 | `/code` | ~$0.80 | Full assessment |
+
+### Model Lifecycle
+
+Every route **MUST** name an exact API model ID in the frontmatter of the
+subagent or skill that runs it, and that ID **MUST** be active on the provider
+the team bills through.
+
+- The Haiku route used by `/code quick` **MUST** pin
+  `claude-haiku-4-5-20251001`. It is active on the Claude API, with a
+  tentative retirement not sooner than 15 October 2026.
+- `claude-3-5-haiku-20241022` (Haiku 3.5) **MUST NOT** be used. It was
+  deprecated on 19 December 2025 and retired on the Claude API on 19 February
+  2026; requests to retired models fail.
+- Those dates cover Anthropic-operated platforms only — the Claude API, Claude
+  Platform on AWS and Microsoft Foundry. Amazon Bedrock and Google Cloud set
+  their own retirement schedules and still serve Haiku 3.5, so teams on a
+  partner platform **MUST** take the lifecycle date from that platform's own
+  model table.
+- Changing a model changes what the agent reports and what it costs. Teams
+  **MUST** re-run the role's evaluation and re-derive the estimates above
+  before adopting a replacement.
+
+**Why**: a retired ID is not a quality trade-off, it is an outage. The
+[model deprecations table](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+gives current status and replacement IDs, and
+[pricing](https://platform.claude.com/docs/en/about-claude/pricing) marks
+Haiku 3.5 as retired except on Bedrock and Google Cloud.
 
 ## Workflow Examples
 
@@ -486,22 +529,145 @@ sequenceDiagram
 
 ## Configuration
 
-### Enable Code Agents
+### Install the Code Agent Family
 
-Add to your project's `.claude/settings.json`:
+Claude Code discovers subagents and slash commands by **file location**, not by
+a settings key. Installing the family means copying the definitions into a
+directory Claude Code scans; there is nothing to switch on afterwards.
+
+A project install **SHOULD** be preferred, because the definitions are then
+version-controlled with the code they review:
+
+```bash
+# Run from the root of the project that will be reviewed.
+# DOCTRINE points at a clone or unpacked release of this repository.
+DOCTRINE="${DOCTRINE:-$HOME/src/doctrine}"
+
+mkdir -p .claude/agents/code .claude/agents/docs .claude/commands
+cp "$DOCTRINE"/agents/code/*.md .claude/agents/code/
+cp "$DOCTRINE"/agents/docs/writer.md .claude/agents/docs/
+cp "$DOCTRINE"/commands/code.md .claude/commands/code.md
+```
+
+The result:
+
+```text
+project/
+├── .claude/
+│   ├── agents/
+│   │   ├── code/
+│   │   │   ├── accessibility.md   # accessibility-reviewer
+│   │   │   ├── api-graphql.md     # graphql-api-reviewer
+│   │   │   ├── api-rest.md        # rest-api-reviewer
+│   │   │   ├── architect.md       # code-architect
+│   │   │   ├── performance.md     # performance-reviewer
+│   │   │   ├── reviewer.md        # code-reviewer
+│   │   │   ├── simplifier.md      # code-simplifier
+│   │   │   └── test-writer.md     # test-writer
+│   │   └── docs/
+│   │       └── writer.md          # documentation-writer, for /code docs
+│   └── commands/
+│       └── code.md                # /code
+└── AGENTS.md
+```
+
+Copy the eight code agents **and** `agents/docs/writer.md`: `/code docs`
+delegates to the documentation family, so an install that skips that file
+advertises a subcommand with no agent behind it.
+
+**Why the subdirectories are safe**: Claude Code scans `.claude/agents/`
+recursively and takes a subagent's identity from its `name` frontmatter field,
+not from its path, so `code/` and `docs/` are organisation only and do not
+change how an agent is invoked.[^subagents]
+
+### Installation Scopes
+
+| Scope | Location | Use when |
+|-------|----------|----------|
+| Project | `.claude/agents/`, `.claude/commands/` | The team shares the family |
+| Personal | `~/.claude/agents/`, `~/.claude/commands/` | Every project on one machine |
+| Session | `claude --agents '<json>'` | One-off trials and CI scripts |
+| Plugin | The plugin's `agents/` and `skills/` directories | Fleet-wide distribution |
+
+Project definitions win over personal ones of the same name, and managed
+settings or `--agents` outrank both. Skills resolve the other way: a personal
+skill overrides a project skill of the same name. Plugin agents are namespaced
+as `plugin-name:agent-name`, so an explicit invocation **MUST** use the scoped
+identifier.[^subagents] [^skills]
+
+A session-scoped install saves nothing to disk and is **RECOMMENDED** for
+trying a definition before committing it:
+
+```bash
+claude --agents '{
+  "code-reviewer": {
+    "description": "Doctrine standard code review. Use after code changes.",
+    "prompt": "You are the Doctrine code-reviewer agent. Report findings by severity.",
+    "tools": ["Read", "Grep", "Glob", "Bash"],
+    "model": "sonnet"
+  }
+}'
+```
+
+For new work, a skill **SHOULD** be preferred over a command file: custom
+commands have been merged into skills, `.claude/skills/code/SKILL.md` and
+`.claude/commands/code.md` both provide `/code`, and the skill wins when both
+exist. A skill directory also carries supporting files and controls whether
+Claude may invoke it without being asked.[^skills]
+
+### Verify, Update and Remove
+
+Restart Claude Code after creating `.claude/agents/` for the first time: a
+running session does not pick up an agents directory that did not exist when it
+started. Then confirm the install:
+
+```bash
+ls .claude/agents/code .claude/agents/docs .claude/commands
+grep -h '^name:' .claude/agents/code/*.md .claude/agents/docs/writer.md
+```
+
+Nine `name:` lines **MUST** appear — the eight code agents and
+`documentation-writer`. Duplicate names in one directory are resolved by
+filesystem read order rather than a documented precedence, so keep them unique;
+`/doctor` reports duplicates.[^subagents]
+
+Update by re-running the copy against a newer pinned release, and remove by
+deleting the same paths:
+
+```bash
+# Update: pin an explicit release tag, then re-copy over the installed files.
+git -C "$DOCTRINE" fetch --tags
+git -C "$DOCTRINE" tag --list          # pick the release to pin
+git -C "$DOCTRINE" checkout v2.9.0
+cp "$DOCTRINE"/agents/code/*.md .claude/agents/code/
+cp "$DOCTRINE"/agents/docs/writer.md .claude/agents/docs/
+cp "$DOCTRINE"/commands/code.md .claude/commands/code.md
+
+# Remove.
+rm -rf .claude/agents/code .claude/agents/docs/writer.md .claude/commands/code.md
+```
+
+### What `settings.json` Does Not Do
+
+`.claude/settings.json` **MUST NOT** be used to enable or install this family.
+The settings schema has no `agents` key: the top-level `agent` key it does
+define selects one agent for the main thread and does not register anything.
+Settings change runtime behaviour — permissions, hooks, sandboxing, plugin
+enablement — for definitions that are already installed:
 
 ```json
 {
-  "agents": {
-    "code": {
-      "enabled": true,
-      "autoReview": true,
-      "defaultMode": "standard",
-      "a11yForFrontend": true
-    }
+  "permissions": {
+    "deny": ["Agent(Explore)"]
   }
 }
 ```
+
+**Why**: the schema accepts additional properties, so an invented block such as
+`"agents": {"code": {"enabled": true}}` validates, is silently ignored, and
+leaves a team believing review is switched on when no agent or command has been
+installed at all. Deny the `Agent` tool outright to stop delegation entirely,
+or name a subagent to block just that one.[^subagents]
 
 ## Best Practices
 
@@ -526,6 +692,13 @@ Add to your project's `.claude/settings.json`:
 - [Security Agent Family](./security-agents.md) — Security-focused agents
 - [System Agent Family](./system-agents.md) — Infrastructure review agents
 - [Claude Code CLI](./claude-code.md) — CLI configuration
+
+## References
+
+[^subagents]: [Create custom subagents](https://code.claude.com/docs/en/sub-agents)
+    — discovery locations, scopes, frontmatter fields and permission rules.
+[^skills]: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
+    — skill locations and the merge of custom commands into skills.
 
 ---
 

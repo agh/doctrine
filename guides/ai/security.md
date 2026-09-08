@@ -303,63 +303,135 @@ def sanitize_prompt(prompt: str) -> str:
 
 #### 2. Context Filtering
 
-Teams MUST filter sensitive content from LLM context:
+Teams **MUST** admit files into LLM context from an explicit policy that fails
+closed, and **MUST** delegate secret detection to a maintained, pinned scanner
+rather than a handwritten pattern list.
+
+##### Why
+
+A basename comparison cannot express a multi-component exclusion such as
+`.aws/credentials` or `.ssh/config`, so those files are admitted by any filter
+that only inspects `Path.name`. A short local pattern list also misses current
+provider token formats, and case-folding content before applying a case-sensitive
+pattern defeats the pattern outright. Path policy therefore excludes whole
+directories and glob classes, and content detection is delegated to the scanner
+configured in [Secret Detection](#secret-detection), which is updated
+independently of this guide.
+
+Every branch that cannot reach a confident answer — a failed `stat`, a file that
+is not a regular file, an undecodable file, an unavailable scanner — **MUST**
+exclude the candidate.
 
 ```python
-import os
+import fnmatch
+import stat
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Set
+from typing import Iterable
 
-SENSITIVE_FILES = {
-    '.env',
-    '.env.local',
-    '.env.production',
-    'credentials.json',
-    'secrets.yaml',
-    'id_rsa',
-    'id_ed25519',
-    '.aws/credentials',
-    '.ssh/config',
-}
+# See "Secret Detection" for scan_path() and SecretScanError.
+from secret_scanning import SecretScanError, scan_path
 
-SENSITIVE_PATTERNS = [
-    r'api[_-]?key\s*[:=]\s*["\']?[a-zA-Z0-9]{20,}',
-    r'password\s*[:=]\s*["\'][^"\']+["\']',
-    r'secret\s*[:=]\s*["\'][^"\']+["\']',
-    r'token\s*[:=]\s*["\'][^"\']+["\']',
-    r'-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----',
-]
+MAX_CONTEXT_FILE_BYTES = 256 * 1024
 
-def should_include_in_context(file_path: Path) -> bool:
-    """
-    Determine if file should be included in LLM context.
+EXCLUDED_DIRECTORIES = frozenset({
+    ".aws", ".azure", ".gcloud", ".git", ".gnupg", ".kube", ".ssh",
+    ".terraform", "node_modules", "vendor",
+})
 
-    Returns:
-        False if file contains sensitive data
-    """
-    # Check filename
-    if file_path.name in SENSITIVE_FILES:
-        return False
+EXCLUDED_PATTERNS = (
+    ".env", ".env.*", "*.env",
+    "*.pem", "*.key", "*.p12", "*.pfx", "*.crt", "*.jks", "*.keystore",
+    "id_rsa*", "id_ecdsa*", "id_ed25519*", "*.ppk",
+    "credentials", "credentials.*", "*secrets.yaml", "*secrets.yml",
+    ".netrc", ".npmrc", ".pypirc", ".htpasswd", "*.kdbx",
+)
 
-    # Check file extension
-    if file_path.suffix in {'.key', '.pem', '.crt', '.p12', '.pfx'}:
-        return False
 
-    # Scan content for sensitive patterns
+@dataclass(frozen=True)
+class Admission:
+    """Audit record for one candidate. Holds a decision, never file content."""
+
+    path: str
+    admitted: bool
+    reason: str
+
+
+def classify(candidate: Path, root: Path) -> Admission:
+    """Apply path policy to one candidate. Any uncertainty excludes the file."""
     try:
-        content = file_path.read_text()
-        content_lower = content.lower()
+        info = candidate.lstat()
+    except OSError as error:
+        return Admission(str(candidate), False, f"stat-failed: {error.strerror}")
 
-        for pattern in SENSITIVE_PATTERNS:
-            if re.search(pattern, content_lower):
-                return False
+    if stat.S_ISLNK(info.st_mode):
+        return Admission(str(candidate), False, "symlink")
+    if not stat.S_ISREG(info.st_mode):
+        return Admission(str(candidate), False, "not-a-regular-file")
+    if info.st_size > MAX_CONTEXT_FILE_BYTES:
+        return Admission(str(candidate), False, f"exceeds-{MAX_CONTEXT_FILE_BYTES}-bytes")
 
-    except (UnicodeDecodeError, PermissionError):
-        # Binary or inaccessible files - exclude by default
-        return False
+    try:
+        relative = candidate.resolve(strict=True).relative_to(root)
+    except (OSError, ValueError):
+        return Admission(str(candidate), False, "outside-approved-root")
 
-    return True
+    if any(part in EXCLUDED_DIRECTORIES for part in relative.parts[:-1]):
+        return Admission(str(candidate), False, "excluded-directory")
+
+    posix = relative.as_posix()
+    for pattern in EXCLUDED_PATTERNS:
+        if fnmatch.fnmatch(posix, pattern) or fnmatch.fnmatch(relative.name, pattern):
+            return Admission(str(candidate), False, f"excluded-pattern: {pattern}")
+
+    try:
+        candidate.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        return Admission(str(candidate), False, f"unreadable-as-text: {type(error).__name__}")
+
+    return Admission(str(candidate), True, "path-policy-allowed")
+
+
+def collect_context(root: Path, candidates: Iterable[Path]) -> tuple[list[Path], list[Admission]]:
+    """Return the admitted files and the full decision log.
+
+    Path policy runs first, then one scan of the whole tree with the maintained
+    engine removes anything holding a detected secret. A scan that cannot run
+    admits nothing.
+    """
+    resolved_root = root.resolve(strict=True)
+    decisions = [classify(Path(candidate), resolved_root) for candidate in candidates]
+
+    try:
+        flagged = {
+            (resolved_root / finding.path).resolve()
+            for finding in scan_path(resolved_root)
+        }
+    except SecretScanError as error:
+        return [], [
+            Admission(decision.path, False, f"scan-unavailable: {error}")
+            for decision in decisions
+        ]
+
+    admitted: list[Path] = []
+    final: list[Admission] = []
+    for decision in decisions:
+        if not decision.admitted:
+            final.append(decision)
+            continue
+        path = Path(decision.path).resolve()
+        if path in flagged:
+            final.append(Admission(decision.path, False, "secret-detected"))
+            continue
+        admitted.append(path)
+        final.append(decision)
+
+    return admitted, final
 ```
+
+Admission is a filter, not a proof. Teams **MUST NOT** treat an admitted file as
+evidence that it contains no secret, and **MUST** keep the decision log free of
+file content so that the audit trail does not become the disclosure.
 
 #### 3. System Prompt Hardening
 
@@ -583,103 +655,253 @@ class SecretRotationPolicy:
 
 ### Secret Detection
 
-Organizations MUST scan code for accidentally committed secrets:
+Organizations **MUST** scan code for accidentally committed secrets with a
+maintained detection engine, pinned to an exact version, and **MUST NOT** rely on
+a handwritten pattern list.
+
+#### Why
+
+Provider token formats change without notice: a case-sensitive regex for
+`api_key` misses `API_KEY`, and a fixed-length rule written for classic
+`ghp_`-prefixed tokens misses fine-grained `github_pat_` tokens. GitHub publishes
+the current partner catalogue,[^11] and engines such as Gitleaks track it. Two
+further properties matter as much as coverage: a finding **MUST NOT** carry the
+secret itself, because findings are logged and forwarded; and a scan that fails
+**MUST** be distinguishable from a scan that found nothing.
+
+The example below shells out to Gitleaks 8.30.1,[^12] verifies the pinned
+version before trusting a result, raises on any failure, and returns findings
+that identify a location and a rule but never the matched value.
 
 ```python
-import re
+import json
+import shutil
+import subprocess
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict
 
-class SecretScanner:
-    """Scan code for potential secrets."""
+GITLEAKS_VERSION = "8.30.1"
+SCAN_TIMEOUT_SECONDS = 300
 
-    PATTERNS = {
-        'aws_key': r'AKIA[0-9A-Z]{16}',
-        'github_token': r'ghp_[a-zA-Z0-9]{36}',
-        'generic_api_key': r'api[_-]?key["\']?\s*[:=]\s*["\']([a-zA-Z0-9]{20,})["\']',
-        'private_key': r'-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----',
-        'jwt': r'eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}',
-        'stripe_key': r'sk_(live|test)_[a-zA-Z0-9]{24,}',
-        'slack_token': r'xox[baprs]-[a-zA-Z0-9-]{10,}',
-    }
 
-    def scan_file(self, file_path: Path) -> List[Dict]:
-        """
-        Scan file for potential secrets.
+class SecretScanError(RuntimeError):
+    """Raised when a scan cannot complete. A failed scan is never a clean scan."""
 
-        Returns:
-            List of findings with type, line number, and context
-        """
-        findings = []
 
-        try:
-            content = file_path.read_text()
-            lines = content.split('\n')
+@dataclass(frozen=True)
+class SecretFinding:
+    """A potential secret. Deliberately carries no secret material."""
 
-            for line_num, line in enumerate(lines, 1):
-                for secret_type, pattern in self.PATTERNS.items():
-                    matches = re.finditer(pattern, line)
-                    for match in matches:
-                        findings.append({
-                            'type': secret_type,
-                            'file': str(file_path),
-                            'line': line_num,
-                            'matched': match.group(0),
-                            'severity': 'critical',
-                        })
+    rule_id: str
+    path: str
+    line: int
+    start_column: int
+    end_column: int
+    fingerprint: str
 
-        except (UnicodeDecodeError, PermissionError):
-            pass
 
-        return findings
+def _gitleaks_executable(name: str = "gitleaks") -> str:
+    path = shutil.which(name)
+    if path is None:
+        raise SecretScanError(f"gitleaks {GITLEAKS_VERSION} is not on PATH")
+    proc = subprocess.run(
+        [path, "version"], capture_output=True, text=True, timeout=30, check=False
+    )
+    installed = proc.stdout.strip()
+    if proc.returncode != 0 or installed != GITLEAKS_VERSION:
+        raise SecretScanError(
+            f"expected gitleaks {GITLEAKS_VERSION}, found {installed or 'unknown'}"
+        )
+    return path
+
+
+def scan_path(target: Path, *, gitleaks: str = "gitleaks") -> list[SecretFinding]:
+    """Scan a file or directory with the pinned maintained engine.
+
+    Raises:
+        SecretScanError: the scan could not run to completion.
+    """
+    executable = _gitleaks_executable(gitleaks)
+    with tempfile.TemporaryDirectory() as workdir:
+        report = Path(workdir) / "gitleaks.json"
+        proc = subprocess.run(
+            [
+                executable, "dir", str(target),
+                "--report-format", "json",
+                "--report-path", str(report),
+                "--exit-code", "0",
+                "--no-banner",
+                "--log-level", "error",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=SCAN_TIMEOUT_SECONDS,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise SecretScanError(
+                f"gitleaks failed ({proc.returncode}): {proc.stderr.strip()}"
+            )
+        raw = json.loads(report.read_text(encoding="utf-8") or "[]")
+
+    return [
+        SecretFinding(
+            rule_id=item["RuleID"],
+            path=item["File"],
+            line=item["StartLine"],
+            start_column=item["StartColumn"],
+            end_column=item["EndColumn"],
+            fingerprint=item["Fingerprint"],
+        )
+        for item in raw
+    ]
+
+
+def scan_text(text: str, *, suffix: str = ".txt") -> list[SecretFinding]:
+    """Scan an in-memory snippet without persisting it outside a temporary file."""
+    with tempfile.TemporaryDirectory() as workdir:
+        probe = Path(workdir) / f"snippet{suffix}"
+        probe.write_text(text, encoding="utf-8")
+        return scan_path(probe)
 ```
+
+`--exit-code 0` makes findings exit zero, so any non-zero exit is a genuine
+failure and is raised rather than reported as a clean tree. Teams **SHOULD** also
+run the engine over history (`gitleaks git`) and enable GitHub secret scanning
+with push protection, because a working-tree scan says nothing about earlier
+commits. A clean scan means no configured rule matched; it **MUST NOT** be
+recorded as proof that no secret is present.
 
 ### Redaction
 
-When sharing code snippets with LLMs, developers MUST redact sensitive values:
+When sharing code snippets with LLMs, developers **MUST** redact sensitive values
+before transmission and **MUST** verify the redacted result with the maintained
+scanner before it leaves the machine.
+
+#### Why
+
+Redaction driven only by a few assignment patterns fails on the shapes that
+actually occur. A closing quote in JSON (`"api_key": "..."`) defeats a pattern
+that expects the key name to be followed directly by the separator; authorization
+headers, cookies and connection strings are not assignments at all; and
+shape-only provider tokens carry no key name to anchor on. The masker below
+covers each of those classes, keeps surrounding structure so the snippet stays
+useful for debugging, and then re-scans its own output so that anything it missed
+blocks transmission instead of leaking silently.
+
+**Do**: mask, then verify, then transmit.
 
 ```python
-def redact_secrets(code: str) -> str:
-    """
-    Redact secrets from code before sending to LLM.
+import hashlib
+import hmac
+import os
+import re
 
-    Returns:
-        Code with secrets replaced by placeholders
-    """
-    # Redact API keys
-    code = re.sub(
-        r'(api[_-]?key\s*[:=]\s*["\'])([^"\']+)(["\'])',
-        r'\1REDACTED\3',
-        code,
-        flags=re.IGNORECASE
+# See "Secret Detection" for scan_text() and SecretFinding.
+from secret_scanning import SecretFinding, scan_text
+
+_REDACTION_KEY = os.environ.get("LLM_REDACTION_KEY", "").encode()
+
+_KEY_NAMES = (
+    r"(?:client[-_]?secret|private[-_]?key|access[-_]?key|secret[-_]?key"
+    r"|api[-_]?key|apikey|auth[-_]?token|refresh[-_]?token|session[-_]?token"
+    r"|bearer[-_]?token|passphrase|password|passwd|credential|secret|token|pwd)"
+)
+
+_ASSIGNMENT = re.compile(
+    rf"""(?P<prefix>["']?(?:[A-Za-z0-9]{{1,32}}[-_])*{_KEY_NAMES}["']?(?![A-Za-z0-9_])
+         \s*(?::=|=>|[:=])\s*)
+         (?P<quote>["']?)(?P<value>[^"'\s,;)\]}}]+)(?P=quote)""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+_AUTH_HEADER = re.compile(
+    r"(?im)^(?P<prefix>(?:proxy-)?authorization\s*:\s*"
+    r"(?:bearer|basic|digest|token)?\s*)(?P<value>\S+)"
+)
+
+_COOKIE_HEADER = re.compile(r"(?im)^(?P<prefix>(?:set-)?cookie\s*:\s*)(?P<value>.+?)\s*$")
+
+_URL_CREDENTIALS = re.compile(
+    r"(?i)(?P<prefix>[a-z][a-z0-9+.\-]*://[^\s:/@]+:)(?P<value>[^\s/@]+)(?P<suffix>@)"
+)
+
+_PEM_BLOCK = re.compile(
+    r"(?s)(?P<begin>-----BEGIN [A-Z ]*PRIVATE KEY-----)"
+    r".*?(?P<end>-----END [A-Z ]*PRIVATE KEY-----)"
+)
+
+_TOKEN_SHAPES = (
+    ("github-pat", re.compile(r"github_pat_[A-Za-z0-9_]{70,}")),
+    ("github-token", re.compile(r"gh[pousr]_[A-Za-z0-9]{30,}")),
+    ("aws-access-key-id", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
+    ("google-api-key", re.compile(r"\bAIza[A-Za-z0-9_\-]{35}\b")),
+    ("slack-token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}")),
+    ("stripe-key", re.compile(r"\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}\b")),
+    ("openai-key", re.compile(r"\bsk-[A-Za-z0-9_\-]{20,}\b")),
+    ("jwt", re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}")),
+)
+
+
+class SecretsRemainError(RuntimeError):
+    """Raised when redacted text still trips the maintained scanner."""
+
+
+def placeholder(label: str, value: str) -> str:
+    """Deterministic, non-reversible marker. Set LLM_REDACTION_KEY to correlate."""
+    if _REDACTION_KEY:
+        digest = hmac.new(_REDACTION_KEY, value.encode(), hashlib.sha256).hexdigest()
+        return f"<redacted {label} {digest[:12]}>"
+    return f"<redacted {label}>"
+
+
+def redact(text: str) -> str:
+    """Mask known secret classes while preserving surrounding structure."""
+    text = _PEM_BLOCK.sub(
+        lambda m: f"{m.group('begin')}\n{placeholder('private-key', m.group(0))}\n"
+        f"{m.group('end')}",
+        text,
     )
-
-    # Redact passwords
-    code = re.sub(
-        r'(password\s*[:=]\s*["\'])([^"\']+)(["\'])',
-        r'\1REDACTED\3',
-        code,
-        flags=re.IGNORECASE
+    text = _AUTH_HEADER.sub(
+        lambda m: m.group("prefix") + placeholder("authorization", m.group("value")), text
     )
-
-    # Redact tokens
-    code = re.sub(
-        r'(token\s*[:=]\s*["\'])([^"\']+)(["\'])',
-        r'\1REDACTED\3',
-        code,
-        flags=re.IGNORECASE
+    text = _COOKIE_HEADER.sub(
+        lambda m: m.group("prefix") + placeholder("cookie", m.group("value")), text
     )
-
-    # Redact private keys
-    code = re.sub(
-        r'(-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----).*?(-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----)',
-        r'\1\nREDACTED\n\2',
-        code,
-        flags=re.DOTALL
+    text = _URL_CREDENTIALS.sub(
+        lambda m: m.group("prefix")
+        + placeholder("url-password", m.group("value"))
+        + m.group("suffix"),
+        text,
     )
+    text = _ASSIGNMENT.sub(
+        lambda m: m.group("prefix")
+        + m.group("quote")
+        + placeholder("secret", m.group("value"))
+        + m.group("quote"),
+        text,
+    )
+    for label, pattern in _TOKEN_SHAPES:
+        text = pattern.sub(lambda m, label=label: placeholder(label, m.group(0)), text)
+    return text
 
-    return code
+
+def prepare_for_llm(text: str, *, suffix: str = ".txt") -> str:
+    """Redact, then verify with the maintained scanner. Fails closed."""
+    redacted = redact(text)
+    remaining: list[SecretFinding] = scan_text(redacted, suffix=suffix)
+    if remaining:
+        rules = ", ".join(sorted({f.rule_id for f in remaining}))
+        raise SecretsRemainError(f"secrets still present after redaction: {rules}")
+    return redacted
 ```
+
+**Don't**: transmit the output of `redact()` directly, and don't describe it as
+sanitised. Redaction reduces disclosure risk; it never demonstrates that the
+remaining text is free of sensitive data. Teams **MUST** treat
+`SecretsRemainError` as a hard stop rather than a warning, and **MUST** re-test
+this masker whenever a new secret class enters the codebase.
 
 ---
 
@@ -864,37 +1086,119 @@ def query_users():
 
 Organizations SHOULD integrate automated security scanning into CI/CD:[^9]
 
+#### Why
+
+Each scanner in the workflow below has a distinct, non-interchangeable interface.
+CodeQL cannot analyse a repository it has not first initialised: `languages` and
+`build-mode` are inputs to `init`, which builds the database that `analyze`
+consumes, so a workflow that calls `analyze` alone never scans anything.
+`returntocorp/semgrep-action` is deprecated in favour of the maintained Semgrep
+CLI image.[^13] The Semgrep image and the Trivy action are pinned to exact
+releases so that a result corresponds to a known scanner version, and permissions
+are declared per job so that each job holds only what it needs.
+
 ```yaml
 # .github/workflows/security.yml
 name: Security Scan
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
-  security:
+  semgrep:
+    name: Semgrep SAST
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/secrets
-            p/owasp-top-ten[^6]
+        run: |
+          docker run --rm --volume "$PWD:/src" --workdir /src \
+            semgrep/semgrep:1.176.0 semgrep scan \
+              --config p/security-audit \
+              --config p/secrets \
+              --config p/owasp-top-ten \
+              --sarif --output semgrep.sarif
 
-      - name: Run Trivy vulnerability scanner[^11]
-        uses: aquasecurity/trivy-action@master
+      - name: Upload Semgrep results
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          scan-type: 'fs'
-          severity: 'CRITICAL,HIGH'
+          sarif_file: semgrep.sarif
+          category: semgrep
 
-      - name: Run SAST with CodeQL[^12]
-        uses: github/codeql-action/analyze@v2
+  trivy:
+    name: Trivy dependency scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          languages: python,javascript,typescript
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy.sarif
+          exit-code: '0'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Analyse with CodeQL
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
 ```
+
+`semgrep scan` and the Trivy `exit-code: '0'` setting both exit zero when they
+find something, so results reach the code scanning dashboard through the SARIF
+uploads instead of aborting the run at the first finding. Teams that want a
+blocking gate **SHOULD** add `--error` to the Semgrep command, or set the Trivy
+`exit-code` to `1`, once the existing backlog is triaged. Compiled languages
+**MUST** use `build-mode: autobuild` or `manual` with explicit build steps between
+`init` and `analyze`; `none` is only valid for languages CodeQL can analyse
+without a build.[^14]
 
 ### Manual Review Process
 
@@ -1169,44 +1473,209 @@ ENTRYPOINT ["python"]
 
 #### VM-Based Isolation
 
-For higher security requirements, use VM-based sandboxes:
+For higher security requirements, use VM-based sandboxes. Firecracker has no
+command-line interface for running a program: it boots a microVM from a kernel
+and a root filesystem, and is driven through its API socket or a configuration
+file.[^15] Production deployments **MUST** wrap it in the `jailer`, which builds
+the chroot, drops to an unprivileged uid/gid and applies resource limits.[^16]
+
+##### Why
+
+There is no `--exec` or `--destroy` flag, and writing untrusted code to a host
+path does not place it inside the guest: the guest can only see what is attached
+to it as a block device or passed over a defined channel. The example below uses
+a per-run identifier and jail directory, a private copy of the root filesystem
+mounted read-only, no network interface, and a virtio-vsock channel to a guest
+agent for input and output.[^17] Every run is reaped and its jail removed in a
+`finally` block, including on timeout.
 
 ```python
+import http.client
+import json
+import os
+import shutil
+import signal
+import socket
 import subprocess
+import time
+import uuid
 from pathlib import Path
 
-def execute_in_vm(code: str, timeout: int = 30) -> str:
-    """
-    Execute code in isolated VM.
+FIRECRACKER_VERSION = "1.16.1"
+JAILER_BINARY = "/usr/bin/jailer"
+FIRECRACKER_BINARY = "/usr/bin/firecracker"
+JAIL_BASE = Path("/srv/jailer")
+KERNEL_IMAGE = Path("/var/lib/sandbox/vmlinux")
+ROOT_FILESYSTEM = Path("/var/lib/sandbox/rootfs.ext4")
+SANDBOX_UID = 30000
+SANDBOX_GID = 30000
+AGENT_VSOCK_PORT = 5000
+MAX_OUTPUT_BYTES = 1 << 20
 
-    Requires:
-    - firecracker or similar microVM technology
-    - Pre-configured VM image with minimal attack surface
 
-    Returns:
-        Execution output or error
-    """
-    # Write code to temporary file
-    code_file = Path("/tmp/code.py")
-    code_file.write_text(code)
+class SandboxError(RuntimeError):
+    """Raised when the microVM cannot be created, driven, or reaped."""
 
-    # Execute in microVM
-    result = subprocess.run(
-        [
-            "firecracker",
-            "--config", "/etc/firecracker/config.json",
-            "--exec", f"python {code_file}",
+
+class _UnixSocketConnection(http.client.HTTPConnection):
+    """HTTP/1.1 over the Firecracker API socket."""
+
+    def __init__(self, socket_path: str, timeout: float = 5.0) -> None:
+        super().__init__("localhost", timeout=timeout)
+        self.socket_path = socket_path
+
+    def connect(self) -> None:
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(self.timeout)
+        self.sock.connect(self.socket_path)
+
+
+def _api_put(api_socket: Path, path: str, body: dict) -> None:
+    connection = _UnixSocketConnection(str(api_socket))
+    try:
+        connection.request(
+            "PUT", path, json.dumps(body), {"Content-Type": "application/json"}
+        )
+        response = connection.getresponse()
+        payload = response.read().decode("utf-8", errors="replace")
+        if response.status >= 300:
+            raise SandboxError(f"PUT {path} returned {response.status}: {payload}")
+    except OSError as error:
+        raise SandboxError(f"PUT {path} failed: {error}") from error
+    finally:
+        connection.close()
+
+
+def _wait_for_socket(path: Path, timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if path.exists():
+            return
+        time.sleep(0.02)
+    raise SandboxError(f"{path.name} did not appear within {timeout}s")
+
+
+def _machine_configuration() -> dict:
+    """Paths are relative to the jail root, not the host filesystem."""
+    return {
+        "boot-source": {
+            "kernel_image_path": "/vmlinux",
+            "boot_args": "console=ttyS0 reboot=k panic=1 pci=off",
+        },
+        "drives": [
+            {
+                "drive_id": "rootfs",
+                "path_on_host": "/rootfs.ext4",
+                "is_root_device": True,
+                "is_read_only": True,
+            }
         ],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
+        "machine-config": {"vcpu_count": 1, "mem_size_mib": 256, "smt": False},
+        "vsock": {"guest_cid": 3, "uds_path": "/run/agent.vsock"},
+    }
+
+
+def _stage_jail(jail_root: Path) -> None:
+    """Copy every resource the guest may touch into a per-run jail directory."""
+    (jail_root / "run").mkdir(parents=True)
+    shutil.copy(KERNEL_IMAGE, jail_root / "vmlinux")
+    shutil.copy(ROOT_FILESYSTEM, jail_root / "rootfs.ext4")
+    (jail_root / "vm-config.json").write_text(
+        json.dumps(_machine_configuration()), encoding="utf-8"
     )
+    for name in ("run", "vmlinux", "rootfs.ext4", "vm-config.json"):
+        os.chown(jail_root / name, SANDBOX_UID, SANDBOX_GID)
 
-    # Destroy VM after execution
-    subprocess.run(["firecracker", "--destroy"])
 
-    return result.stdout
+def _exchange_with_agent(vsock_path: Path, source: str, deadline: float) -> str:
+    """Host-initiated vsock connection: CONNECT <port>, then stream code and results."""
+    _wait_for_socket(vsock_path, timeout=max(deadline - time.monotonic(), 0.0))
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+        try:
+            channel.settimeout(max(deadline - time.monotonic(), 0.0))
+            channel.connect(str(vsock_path))
+            channel.sendall(f"CONNECT {AGENT_VSOCK_PORT}\n".encode())
+
+            acknowledgement = b""
+            while not acknowledgement.endswith(b"\n"):
+                byte = channel.recv(1)
+                if not byte:
+                    raise SandboxError("guest agent is not listening")
+                acknowledgement += byte
+            if not acknowledgement.startswith(b"OK "):
+                raise SandboxError(f"unexpected vsock reply: {acknowledgement!r}")
+
+            channel.sendall(source.encode("utf-8"))
+            channel.shutdown(socket.SHUT_WR)
+
+            chunks: list[bytes] = []
+            received = 0
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise SandboxError("guest execution exceeded its deadline")
+                channel.settimeout(remaining)
+                chunk = channel.recv(65536)
+                if not chunk:
+                    break
+                received += len(chunk)
+                if received > MAX_OUTPUT_BYTES:
+                    raise SandboxError(f"guest output exceeded {MAX_OUTPUT_BYTES} bytes")
+                chunks.append(chunk)
+        except (TimeoutError, OSError) as error:
+            raise SandboxError(f"guest channel failed: {error}") from error
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
+def run_untrusted_code(source: str, *, timeout: float = 30.0) -> str:
+    """Execute untrusted code in a single-use jailed microVM and return its output.
+
+    Every run gets a fresh identifier, jail directory, root filesystem copy and
+    API socket. The microVM is destroyed and the jail removed before returning,
+    including on failure.
+    """
+    vm_id = uuid.uuid4().hex[:16]
+    jail_directory = JAIL_BASE / Path(FIRECRACKER_BINARY).name / vm_id
+    jail_root = jail_directory / "root"
+    deadline = time.monotonic() + timeout
+    process = None
+    try:
+        _stage_jail(jail_root)
+        process = subprocess.Popen(
+            [
+                JAILER_BINARY,
+                "--id", vm_id,
+                "--exec-file", FIRECRACKER_BINARY,
+                "--uid", str(SANDBOX_UID),
+                "--gid", str(SANDBOX_GID),
+                "--chroot-base-dir", str(JAIL_BASE),
+                "--new-pid-ns",
+                "--resource-limit", "no-file=256",
+                "--resource-limit", "fsize=67108864",
+                "--",
+                "--api-sock", "/run/firecracker.socket",
+                "--config-file", "/vm-config.json",
+            ],
+            start_new_session=True,
+        )
+        api_socket = jail_root / "run" / "firecracker.socket"
+        _wait_for_socket(api_socket, timeout=min(10.0, max(deadline - time.monotonic(), 0.0)))
+        _api_put(api_socket, "/actions", {"action_type": "InstanceStart"})
+        return _exchange_with_agent(jail_root / "run" / "agent.vsock", source, deadline)
+    finally:
+        if process is not None and process.poll() is None:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            process.wait(timeout=5)
+        shutil.rmtree(jail_directory, ignore_errors=True)
 ```
+
+The jailer creates `<chroot-base-dir>/<exec-file-name>/<id>/root`, so resources
+staged there before launch are visible to the guest at the paths named in the
+configuration file.[^16] The root filesystem **MUST** ship the guest agent that
+listens on the vsock port; the host never gains a shell in the guest. Teams
+without capacity to operate kernels, root filesystems and guest agents **SHOULD**
+use a maintained sandbox service or a container runtime with a syscall boundary
+such as gVisor or Kata Containers instead of building this themselves.
 
 ### Network Isolation
 
@@ -2262,6 +2731,38 @@ appropriate safeguards at every layer.
     defines the meaning of requirement level keywords (MUST, SHOULD, MAY, etc.)
     used throughout this document.
     [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
+
+[^11]: **GitHub supported secret scanning patterns**: the maintained catalogue of
+    partner and generic secret formats, including fine-grained `github_pat_`
+    tokens.
+    [Supported secret scanning patterns](https://docs.github.com/en/code-security/reference/secret-security/supported-secret-scanning-patterns)
+
+[^12]: **Gitleaks 8.30.1**: maintained secret-detection engine used by the
+    scanning and redaction examples in this guide.
+    [Gitleaks v8.30.1 release](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1)
+
+[^13]: **Semgrep CI integration**: `returntocorp/semgrep-action` is deprecated in
+    favour of running the maintained Semgrep CLI image.
+    [Sample CI configurations](https://docs.semgrep.dev/semgrep-ci/sample-ci-configs)
+
+[^14]: **CodeQL build modes**: `languages` and `build-mode` are inputs to
+    `github/codeql-action/init`, which creates the database that `analyze`
+    consumes.
+    [CodeQL action README](https://github.com/github/codeql-action/blob/main/README.md)
+
+[^15]: **Firecracker getting started**: documents the API socket and
+    configuration-file startup flow, and the kernel and root filesystem a microVM
+    requires.
+    [Getting started](https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md)
+
+[^16]: **Firecracker jailer**: chroot layout, uid/gid drop, resource limits and
+    the `--` convention for forwarding arguments to Firecracker.
+    [Jailer documentation](https://github.com/firecracker-microvm/firecracker/blob/main/docs/jailer.md)
+
+[^17]: **Firecracker virtio-vsock**: host-initiated connections use `CONNECT
+    <port>\n` on the configured Unix socket and are acknowledged with
+    `OK <port>\n`.
+    [Using the Firecracker virtio-vsock device](https://github.com/firecracker-microvm/firecracker/blob/main/docs/vsock.md)
 
 ---
 

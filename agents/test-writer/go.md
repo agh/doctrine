@@ -209,11 +209,21 @@ func TestWithTestifyMock(t *testing.T) {
 
 ## HTTP Handler Testing
 
+Each test function **MUST** construct its own handler, and the import block **MUST** list
+every package the file uses.
+
+**Why**: imports are file-scoped, and a variable declared inside `TestGetUserHandler` is
+invisible to `TestCreateUserHandler`. Copying a test that borrows either from a neighbour
+fails to build with `undefined: strings` and `undefined: handler`.
+
 ```go
 import (
     "net/http"
     "net/http/httptest"
+    "strings"
     "testing"
+
+    "github.com/stretchr/testify/assert"
 )
 
 func TestGetUserHandler(t *testing.T) {
@@ -233,9 +243,20 @@ func TestCreateUserHandler(t *testing.T) {
     req.Header.Set("Content-Type", "application/json")
     rec := httptest.NewRecorder()
 
+    handler := NewUserHandler(mockService)
     handler.ServeHTTP(rec, req)
 
     assert.Equal(t, http.StatusCreated, rec.Code)
+}
+```
+
+Don't reuse a handler across test functions:
+
+```go
+// Don't: reuse a neighbour's local variable — the build fails with `undefined: handler`.
+func TestCreateUserHandler(t *testing.T) {
+    // ... request and recorder set up as above
+    handler.ServeHTTP(rec, req)
 }
 ```
 

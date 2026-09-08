@@ -10,7 +10,7 @@ interpreted as described in [RFC 2119][rfc2119].
 
 Extends [Python style guide](../languages/python.md) with Strawberry GraphQL-specific conventions.
 
-**Target Version**: Strawberry 0.287+ with Python 3.14
+**Target Version**: Strawberry 0.327.7 on Python 3.14.7
 
 ## Quick Reference
 
@@ -18,10 +18,112 @@ All Python tooling applies. Additional considerations:
 
 | Task | Tool | Command |
 | ---- | ---- | ------- |
-| Install | uv | `uv add strawberry-graphql[fastapi]` |
-| Run dev | Strawberry CLI | `strawberry server schema` |
+| Install | uv | `uv add "strawberry-graphql[fastapi,cli]>=0.327.7,<0.328"` |
+| Run dev | Strawberry CLI | `uv run strawberry dev schema` |
 | Test | pytest | `pytest` |
 | Docs | Built-in | GraphiQL at `/graphql` |
+
+## Version Baseline
+
+Projects **MUST** target Strawberry 0.327.7[^6] on Python 3.14.7[^7] and **MUST**
+declare a bounded version range instead of an open-ended floor:
+
+```toml
+# pyproject.toml
+[project]
+requires-python = ">=3.14"
+dependencies = [
+    "strawberry-graphql[fastapi,cli]>=0.327.7,<0.328",
+]
+```
+
+Projects **MUST** commit the resolved lock file (`uv.lock`) alongside `pyproject.toml`
+so developer machines, CI, and production install identical versions.
+
+**Why**: Strawberry publishes patch releases several times a week and five security
+advisories have been filed against versions that an open-ended `0.287+` floor still
+admits. A bounded range stops a resolver selecting an affected release, and the
+committed lock file makes the installed version reproducible and auditable.
+
+Python 3.14 is in bugfix support and reaches end of life in October 2030[^8], so it
+remains a valid runtime target; 3.14.7 is the audited patch level.
+
+### Security Floor
+
+Every advisory below is fixed at or before 0.327.7:
+
+| Advisory | Affected versions | Fixed in | Impact |
+| -------- | ----------------- | -------- | ------ |
+| [GHSA-vpwc-v33q-mq89][ghsa-ws-auth] | `<= 0.312.2` | 0.312.3 | Authentication bypass via the legacy `graphql-ws` WebSocket subprotocol |
+| [GHSA-hv3w-m4g2-5x77][ghsa-ws-dos] | `<= 0.312.2` | 0.312.3 | Denial of service via unbounded WebSocket subscriptions |
+| [GHSA-x97m-qp5c-w9xj][ghsa-graphiql] | `>= 0.288.4, <= 0.315.3` | 0.315.4 | Default GraphiQL may expose HTTP headers in URLs |
+| [GHSA-qfwv-87qj-98xq][ghsa-fragment] | `>= 0.71.0, <= 0.315.6` | 0.315.7 | Circular fragment reference denial of service |
+| [GHSA-fr49-mhgj-crfc][ghsa-alias] | `>= 0.172.0, <= 0.315.6` | 0.315.7 | `MaxAliasesLimiter` bypass via fragment spreads |
+
+Projects **MUST NOT** deploy Strawberry below 0.315.7, which is the lowest release that
+carries all five advisory fixes. Projects **MUST NOT** deploy below 0.323.2 where any
+operation may execute synchronously, because `MaskErrors` leaked parsing and validation
+error text during synchronous execution until that release[^9].
+
+Projects **MUST** apply Strawberry patch releases within one working week of
+publication and **MUST** audit the resolved dependency set in CI so a known-vulnerable
+version inside the pinned range fails the build:
+
+```bash
+uv export --frozen --no-emit-project --no-hashes -o requirements.txt
+uvx pip-audit==2.10.1 --strict --no-deps --requirement requirements.txt
+```
+
+**Why**: The advertised support floor is what an operator reads as safe. `0.287+`
+promises support for releases carrying WebSocket authentication bypass, GraphiQL header
+leakage, and the alias and fragment denial-of-service defects, while this guide
+prescribes the very extensions and subscription endpoints those advisories target.
+
+[ghsa-ws-auth]: https://github.com/advisories/GHSA-vpwc-v33q-mq89
+[ghsa-ws-dos]: https://github.com/advisories/GHSA-hv3w-m4g2-5x77
+[ghsa-graphiql]: https://github.com/advisories/GHSA-x97m-qp5c-w9xj
+[ghsa-fragment]: https://github.com/advisories/GHSA-qfwv-87qj-98xq
+[ghsa-alias]: https://github.com/advisories/GHSA-fr49-mhgj-crfc
+
+### Bootstrapping a Project
+
+The `cli` extra supplies the `strawberry` executable's dependencies; the `fastapi`
+extra alone raises `MissingOptionalDependenciesError`. The `server` subcommand has been
+removed, so the dev server is started with `strawberry dev`:
+
+```bash
+# Don't: the FastAPI extra omits the CLI, and `server` is no longer a subcommand
+uv add "strawberry-graphql[fastapi]"
+strawberry server schema
+
+# Do: install both extras at a bounded version and start the dev server
+uv add "strawberry-graphql[fastapi,cli]>=0.327.7,<0.328"
+uv run strawberry dev schema
+```
+
+`strawberry dev schema` imports the module named `schema` from the working directory
+and serves the `schema` object defined in it, so the argument **MUST** match a module
+that exposes a `strawberry.Schema`:
+
+```python
+# schema.py
+import strawberry
+
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    def hello(self) -> str:
+        return "world"
+
+
+schema = strawberry.Schema(query=Query)
+```
+
+**Why**: The dev server is the documented entry point for exploring a schema, so a
+quick start that cannot install or start is worse than no quick start at all. Naming
+the module explicitly avoids the common failure where `strawberry dev` cannot import
+the argument it was given.
 
 ## Why Strawberry?
 
@@ -425,8 +527,8 @@ schema = strawberry.Schema(
     query=Query,
     mutation=Mutation,
     extensions=[
-        QueryDepthLimiter(max_depth=10),
-        MaxTokensLimiter(max_token_count=1000),
+        lambda: QueryDepthLimiter(max_depth=10),
+        lambda: MaxTokensLimiter(max_token_count=1000),
     ],
 )
 ```
@@ -450,10 +552,10 @@ schema = strawberry.Schema(
     query=Query,
     mutation=Mutation,
     extensions=[
-        QueryDepthLimiter(max_depth=10),
-        MaxTokensLimiter(max_token_count=1000),
-        MaxAliasesLimiter(max_alias_count=15),
-        MaskErrors(),  # Hide internal error details in production
+        lambda: QueryDepthLimiter(max_depth=10),
+        lambda: MaxTokensLimiter(max_token_count=1000),
+        lambda: MaxAliasesLimiter(max_alias_count=15),
+        MaskErrors,  # Hide internal error details in production
     ],
 )
 ```
@@ -468,6 +570,59 @@ schema = strawberry.Schema(
 **Why**: GraphQL's flexibility can be exploited for denial-of-service attacks. These extensions
 prevent abuse while allowing legitimate queries.
 
+### Extension Behaviour Depends on the Version
+
+These extensions **MUST NOT** be treated as effective on their own, because three of
+them were themselves defective in releases the old `0.287+` floor admitted:
+
+- `MaxAliasesLimiter` counted aliases statically and so could be bypassed by fragment
+  spread amplification up to 0.315.6 ([GHSA-fr49-mhgj-crfc][ghsa-alias]).
+- `QueryDepthLimiter` recursed without cycle detection, so circular fragment references
+  crashed validation with a `RecursionError` up to 0.315.6
+  ([GHSA-qfwv-87qj-98xq][ghsa-fragment]).
+- `MaskErrors` leaked parsing and validation error text during synchronous execution up
+  to 0.323.1[^9].
+
+Projects **MUST** pass extension classes or zero-argument factories to
+`Schema(extensions=...)` rather than instances. From 0.316.0 an instance is deprecated,
+is rejected by the `extensions` type signature, and is reused for every request, so
+concurrent requests can observe each other's `ExecutionContext`[^11].
+
+```python
+# Don't: one shared instance per schema, and a DeprecationWarning from 0.316.0
+extensions=[QueryDepthLimiter(max_depth=10), MaskErrors()]
+
+# Do: a fresh extension per request
+extensions=[lambda: QueryDepthLimiter(max_depth=10), MaskErrors]
+```
+
+Projects **MUST** cover the masking behaviour with a test that pushes a malformed and an
+invalid operation through the synchronous entry point:
+
+```python
+# tests/graphql/test_masking.py
+import pytest
+
+from myapp.graphql.schema import schema
+
+@pytest.mark.parametrize(
+    "query",
+    ["{ users ", "{ notAField }"],
+    ids=["malformed", "unknown-field"],
+)
+def test_sync_execution_masks_pre_execution_errors(query: str) -> None:
+    result = schema.execute_sync(query)
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == ["Unexpected error."]
+```
+
+**Why**: `execute_sync` takes a different code path from `execute`, so masking has to be
+asserted separately. On 0.323.1 the same assertions return
+`Syntax Error: Expected Name, found <EOF>.` and `Cannot query field 'notAField' on type
+'Query'.`, handing an attacker the schema shape. The test pins the fixed behaviour so a
+downgrade inside the pinned range fails CI.
+
 ### Disabling Introspection
 
 Projects **SHOULD** disable introspection in production:
@@ -477,11 +632,11 @@ from strawberry.extensions import DisableIntrospection
 from myapp.config import settings
 
 extensions = [
-    QueryDepthLimiter(max_depth=10),
+    lambda: QueryDepthLimiter(max_depth=10),
 ]
 
 if not settings.DEBUG:
-    extensions.append(DisableIntrospection())
+    extensions.append(DisableIntrospection)
 
 schema = strawberry.Schema(query=Query, mutation=Mutation, extensions=extensions)
 ```
@@ -665,7 +820,11 @@ Projects **SHOULD** use custom error types for domain errors:
 
 ```python
 # src/myapp/graphql/errors.py
+from typing import Annotated
+
 import strawberry
+
+from myapp.graphql.types.user import User
 
 @strawberry.type
 class ValidationError:
@@ -677,8 +836,36 @@ class NotFoundError:
     message: str = "Resource not found"
 
 # Union type for mutation responses
-UserResult = strawberry.union("UserResult", types=[User, ValidationError, NotFoundError])
+UserResult = Annotated[
+    User | ValidationError | NotFoundError,
+    strawberry.union("UserResult"),
+]
 ```
+
+Projects **MUST** declare unions with `typing.Annotated`. The `types` keyword argument
+to `strawberry.union()` was deprecated in 0.191.0 and removed in 0.298.0, where it now
+raises `TypeError: union() got an unexpected keyword argument 'types'` at import
+time[^10].
+
+```python
+# Don't: removed in 0.298.0, fails when the module is imported
+UserResult = strawberry.union("UserResult", types=[User, ValidationError, NotFoundError])
+
+# Do: declare the members in the annotation
+UserResult = Annotated[User | ValidationError | NotFoundError, strawberry.union("UserResult")]
+```
+
+Projects migrating from the removed form **SHOULD** run Strawberry's codemod rather
+than editing declarations by hand:
+
+```bash
+uv run strawberry upgrade annotated-union src/myapp
+```
+
+**Why**: The union alias is evaluated while the module is imported, so a removed
+argument breaks the whole schema rather than a single field. The codemod rewrites every
+call site and adds the `Annotated` import, which avoids missed declarations in large
+schemas.
 
 ```python
 @strawberry.type
@@ -725,6 +912,19 @@ class Subscription:
 
 For production subscriptions, use Redis pub/sub or similar message brokers.
 
+Projects exposing subscriptions **MUST** run at least 0.312.3, which fixes an
+authentication bypass via the legacy `graphql-ws` WebSocket subprotocol
+([GHSA-vpwc-v33q-mq89][ghsa-ws-auth]) and a denial of service from unbounded WebSocket
+subscriptions ([GHSA-hv3w-m4g2-5x77][ghsa-ws-dos]). The 0.327.7 baseline carries both
+fixes.
+
+**Why**: The legacy `graphql-ws` handler did not require a completed `connection_init`
+handshake before processing subscription messages, so a client could skip the
+`on_ws_connect` authentication hook entirely. Both subprotocols are enabled by default
+in every integration that supports WebSockets and the client selects one through the
+`Sec-WebSocket-Protocol` header, so the endpoint is only as safe as the installed
+version.
+
 ## Pre-commit Configuration
 
 ```yaml
@@ -758,3 +958,9 @@ repos:
 [^3]: [Strawberry DataLoaders](https://strawberry.rocks/docs/guides/dataloaders) - N+1 query solution
 [^4]: [Strawberry Permissions](https://strawberry.rocks/docs/guides/permissions) - Authorization patterns
 [^5]: [Strawberry Extensions](https://strawberry.rocks/docs/extensions) - Security and performance extensions
+[^6]: [strawberry-graphql 0.327.7 on PyPI](https://pypi.org/project/strawberry-graphql/0.327.7/) - Audited baseline release
+[^7]: [Python 3.14.7](https://www.python.org/downloads/release/python-3147/) - Current 3.14 maintenance release
+[^8]: [Status of Python versions](https://devguide.python.org/versions/) - Python 3.14 support window
+[^9]: [Strawberry 0.323.2 release notes](https://github.com/strawberry-graphql/strawberry/releases/tag/0.323.2) - Synchronous `MaskErrors` fix
+[^10]: [Strawberry 0.298.0 release notes](https://github.com/strawberry-graphql/strawberry/releases/tag/0.298.0) - Removal of the `types` union argument
+[^11]: [Strawberry 0.316.0 release notes](https://github.com/strawberry-graphql/strawberry/releases/tag/0.316.0) - Per-request extension construction

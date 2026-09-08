@@ -51,22 +51,29 @@ computing, and privacy-enhancing technologies.
 
 #### MITRE ATLAS Framework
 
-Adversarial Threat Landscape for AI Systems:
+Adversarial Threat Landscape for AI Systems. Load
+`reference/security/mitre/atlas/atlas-summary.json` for the current tactic and
+technique identifiers; that file is generated from a named ATLAS release. ATLAS
+2026.08 defines 16 tactics, including AI Model Access, AI Attack Adaptation,
+Reconnaissance, Resource Development, Initial Access, Execution, Persistence,
+Privilege Escalation, Defense Evasion, Credential Access, Discovery, Collection,
+Lateral Movement, Command and Control, Exfiltration and Impact.
 
-```text
-Reconnaissance → Resource Development → Initial Access →
-ML Attack Staging → ML Attack → Impact
-```
+**MUST NOT** cite an ATLAS identifier from memory: names have been reassigned
+between releases (for example AML.TA0001 is AI Attack Adaptation, not
+Reconnaissance).
 
-**Key Techniques to Detect**:
+**Key Techniques to Detect** (ATLAS 2026.08):
 
-- AML.T0000: Acquire ML Artifacts
-- AML.T0010: ML Supply Chain Compromise
-- AML.T0015: Evade ML Model
-- AML.T0020: Poison Training Data
-- AML.T0025: Exfiltration via ML API
-- AML.T0040: Model Inversion
+- AML.T0010: AI Supply Chain Compromise
+- AML.T0015: Evade AI Model
+- AML.T0020: Training Data Poisoning
 - AML.T0043: Craft Adversarial Data
+- AML.T0051: LLM Prompt Injection
+- AML.T0054: LLM Jailbreak
+- AML.T0057: LLM Data Leakage
+- AML.T0070: RAG Poisoning
+- AML.T0110: AI Agent Tool Poisoning
 
 #### AI/ML Security Checks
 

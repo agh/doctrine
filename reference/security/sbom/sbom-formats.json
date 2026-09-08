@@ -45,7 +45,11 @@
         "machine-learning",
         "services"
       ],
-      "serialization": ["JSON", "XML", "Protocol Buffers"],
+      "serialization": [
+        "JSON",
+        "XML",
+        "Protocol Buffers"
+      ],
       "example_structure": {
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
@@ -61,7 +65,12 @@
             "name": "example-lib",
             "version": "1.0.0",
             "purl": "pkg:npm/example-lib@1.0.0",
-            "hashes": [{"alg": "SHA-256", "content": "..."}]
+            "hashes": [
+              {
+                "alg": "SHA-256",
+                "content": "..."
+              }
+            ]
           }
         ],
         "vulnerabilities": [],
@@ -69,9 +78,21 @@
       },
       "tools": {
         "generation": [
-          {"name": "cdxgen", "languages": "Multi-language", "url": "https://github.com/CycloneDX/cdxgen"},
-          {"name": "cyclonedx-cli", "purpose": "Conversion, validation", "url": "https://github.com/CycloneDX/cyclonedx-cli"},
-          {"name": "syft", "purpose": "Container scanning", "url": "https://github.com/anchore/syft"}
+          {
+            "name": "cdxgen",
+            "languages": "Multi-language",
+            "url": "https://github.com/CycloneDX/cdxgen"
+          },
+          {
+            "name": "cyclonedx-cli",
+            "purpose": "Conversion, validation",
+            "url": "https://github.com/CycloneDX/cyclonedx-cli"
+          },
+          {
+            "name": "syft",
+            "purpose": "Container scanning",
+            "url": "https://github.com/anchore/syft"
+          }
         ],
         "validation": {
           "schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
@@ -80,7 +101,12 @@
       },
       "vex_support": {
         "description": "Vulnerability Exploitability eXchange embedded in SBOM",
-        "status_values": ["not_affected", "affected", "fixed", "under_investigation"],
+        "status_values": [
+          "not_affected",
+          "affected",
+          "fixed",
+          "under_investigation"
+        ],
         "justification": "Explains why vulnerability does not affect this deployment"
       }
     },
@@ -111,7 +137,12 @@
         "Build profile for provenance",
         "Licensing profile for legal"
       ],
-      "serialization": ["JSON-LD", "RDF/XML", "Tag-Value", "Spreadsheet"],
+      "serialization": [
+        "JSON-LD",
+        "RDF/XML",
+        "Tag-Value",
+        "Spreadsheet"
+      ],
       "example_structure": {
         "@context": "https://spdx.org/rdf/3.0.0/spdx-context.jsonld",
         "@graph": [
@@ -119,7 +150,9 @@
             "type": "SpdxDocument",
             "spdxId": "SPDXRef-DOCUMENT",
             "name": "example-sbom",
-            "element": ["SPDXRef-Package-1"]
+            "element": [
+              "SPDXRef-Package-1"
+            ]
           },
           {
             "type": "software_Package",
@@ -132,9 +165,19 @@
       },
       "tools": {
         "generation": [
-          {"name": "spdx-sbom-generator", "url": "https://github.com/opensbom-generator/spdx-sbom-generator"},
-          {"name": "syft", "url": "https://github.com/anchore/syft"},
-          {"name": "ort", "name_full": "OSS Review Toolkit", "url": "https://github.com/oss-review-toolkit/ort"}
+          {
+            "name": "spdx-sbom-generator",
+            "url": "https://github.com/opensbom-generator/spdx-sbom-generator"
+          },
+          {
+            "name": "syft",
+            "url": "https://github.com/anchore/syft"
+          },
+          {
+            "name": "ort",
+            "name_full": "OSS Review Toolkit",
+            "url": "https://github.com/oss-review-toolkit/ort"
+          }
         ],
         "validation": {
           "tool": "spdx-tools",
@@ -158,12 +201,26 @@
         "Integration with configuration management"
       ],
       "tag_types": [
-        {"type": "Primary", "description": "Created by software publisher"},
-        {"type": "Corpus", "description": "Pre-installation reference"},
-        {"type": "Patch", "description": "For software patches"},
-        {"type": "Supplemental", "description": "Additional metadata from third parties"}
+        {
+          "type": "Primary",
+          "description": "Created by software publisher"
+        },
+        {
+          "type": "Corpus",
+          "description": "Pre-installation reference"
+        },
+        {
+          "type": "Patch",
+          "description": "For software patches"
+        },
+        {
+          "type": "Supplemental",
+          "description": "Additional metadata from third parties"
+        }
       ],
-      "serialization": ["XML"],
+      "serialization": [
+        "XML"
+      ],
       "example_structure": {
         "SoftwareIdentity": {
           "name": "example-software",
@@ -177,8 +234,15 @@
       },
       "tools": {
         "generation": [
-          {"name": "swid-generator", "url": "https://github.com/labs64/swid-generator"},
-          {"name": "swidval", "purpose": "Validation", "url": "https://github.com/usnistgov/swid-tools"}
+          {
+            "name": "swid-generator",
+            "url": "https://github.com/labs64/swid-generator"
+          },
+          {
+            "name": "swidval",
+            "purpose": "Validation",
+            "url": "https://github.com/usnistgov/swid-tools"
+          }
         ]
       },
       "nist_guidance": "https://csrc.nist.gov/projects/Software-Identification-SWID"
@@ -187,25 +251,63 @@
   "comparison": {
     "summary": {
       "cyclonedx": {
-        "strengths": ["Security focus", "VEX support", "Lightweight", "Active development"],
+        "strengths": [
+          "Security focus",
+          "VEX support",
+          "Lightweight",
+          "Active development"
+        ],
         "best_for": "Application security, vulnerability management"
       },
       "spdx": {
-        "strengths": ["ISO standard", "License compliance", "Comprehensive", "Legal acceptance"],
+        "strengths": [
+          "ISO standard",
+          "License compliance",
+          "Comprehensive",
+          "Legal acceptance"
+        ],
         "best_for": "License compliance, legal requirements, enterprise"
       },
       "swid": {
-        "strengths": ["Asset management", "Enterprise tooling", "ISO standard"],
+        "strengths": [
+          "Asset management",
+          "Enterprise tooling",
+          "ISO standard"
+        ],
         "best_for": "Software asset management, enterprise inventory"
       }
     },
     "feature_matrix": {
-      "license_tracking": {"cyclonedx": true, "spdx": true, "swid": true},
-      "vulnerability_tracking": {"cyclonedx": true, "spdx": true, "swid": false},
-      "vex_support": {"cyclonedx": true, "spdx": true, "swid": false},
-      "ai_ml_support": {"cyclonedx": true, "spdx": true, "swid": false},
-      "build_provenance": {"cyclonedx": true, "spdx": true, "swid": false},
-      "iso_standard": {"cyclonedx": false, "spdx": true, "swid": true}
+      "license_tracking": {
+        "cyclonedx": true,
+        "spdx": true,
+        "swid": true
+      },
+      "vulnerability_tracking": {
+        "cyclonedx": true,
+        "spdx": true,
+        "swid": false
+      },
+      "vex_support": {
+        "cyclonedx": true,
+        "spdx": true,
+        "swid": false
+      },
+      "ai_ml_support": {
+        "cyclonedx": true,
+        "spdx": true,
+        "swid": false
+      },
+      "build_provenance": {
+        "cyclonedx": true,
+        "spdx": true,
+        "swid": false
+      },
+      "iso_standard": {
+        "cyclonedx": false,
+        "spdx": true,
+        "swid": true
+      }
     }
   },
   "purl": {
@@ -220,16 +322,36 @@
       "pkg:docker/library/nginx@1.25.0",
       "pkg:github/owner/repo@v1.0.0"
     ],
-    "ecosystems": ["npm", "pypi", "maven", "nuget", "cargo", "gem", "golang", "docker", "oci", "github"]
+    "ecosystems": [
+      "npm",
+      "pypi",
+      "maven",
+      "nuget",
+      "cargo",
+      "gem",
+      "golang",
+      "docker",
+      "oci",
+      "github"
+    ]
   },
   "vex": {
     "name": "Vulnerability Exploitability eXchange (VEX)",
     "description": "Machine-readable statement about vulnerability applicability",
     "purpose": "Reduce noise by indicating when vulnerabilities don't apply",
     "formats": [
-      {"name": "CycloneDX VEX", "embedded": true},
-      {"name": "CSAF VEX", "standard": "OASIS CSAF"},
-      {"name": "OpenVEX", "url": "https://github.com/openvex/spec"}
+      {
+        "name": "CycloneDX VEX",
+        "embedded": true
+      },
+      {
+        "name": "CSAF VEX",
+        "standard": "OASIS CSAF"
+      },
+      {
+        "name": "OpenVEX",
+        "url": "https://github.com/openvex/spec"
+      }
     ],
     "status_values": {
       "not_affected": "Vulnerability does not affect this product",
@@ -250,18 +372,31 @@
       {
         "name": "Syft",
         "url": "https://github.com/anchore/syft",
-        "formats": ["CycloneDX", "SPDX"],
-        "sources": ["containers", "filesystems", "archives"]
+        "formats": [
+          "CycloneDX",
+          "SPDX"
+        ],
+        "sources": [
+          "containers",
+          "filesystems",
+          "archives"
+        ]
       },
       {
         "name": "Trivy",
         "url": "https://github.com/aquasecurity/trivy",
-        "formats": ["CycloneDX", "SPDX"],
-        "features": ["SBOM generation", "Vulnerability scanning"]
+        "formats": [
+          "CycloneDX",
+          "SPDX"
+        ],
+        "features": [
+          "SBOM generation",
+          "Vulnerability scanning"
+        ]
       }
     ],
     "by_ecosystem": {
-      "npm": "npm sbom --format cyclonedx",
+      "npm": "npm sbom --sbom-format cyclonedx  (or --sbom-format spdx; --format is a different flag and exits EUSAGE)",
       "python": "cyclonedx-py, pip-audit",
       "java": "cyclonedx-maven-plugin, spdx-maven-plugin",
       "go": "cyclonedx-gomod, spdx-sbom-generator",
@@ -271,8 +406,20 @@
   },
   "ci_cd_integration": {
     "github_actions": {
-      "generate": "uses: anchore/sbom-action@v0\nwith:\n  format: cyclonedx-json",
-      "attest": "uses: actions/attest-sbom@v1\nwith:\n  subject-path: ./my-artifact"
+      "note": "The SBOM must be written to a file and that file passed to sbom-path; the attestation action requires sbom-path and fails with ENOENT when it is unset",
+      "permissions": {
+        "id-token": "write",
+        "contents": "read",
+        "attestations": "write"
+      },
+      "workflow": "permissions:\n  id-token: write\n  contents: read\n  attestations: write\n\nsteps:\n  - name: Generate SBOM\n    run: npm sbom --sbom-format cyclonedx > sbom.cdx.json\n\n  - name: Attest SBOM\n    uses: actions/attest-sbom@v4.1.0\n    with:\n      subject-path: ./dist/my-artifact.tgz\n      sbom-path: ./sbom.cdx.json",
+      "alternative_generator": "uses: anchore/sbom-action@v0.24.2\nwith:\n  format: cyclonedx-json\n  output-file: sbom.cdx.json",
+      "deprecation": "actions/attest-sbom v4 is a wrapper over actions/attest and is being deprecated; migrate to actions/attest@v4.2.2, which accepts the same inputs",
+      "references": [
+        "https://docs.npmjs.com/cli/v11/commands/npm-sbom/",
+        "https://github.com/actions/attest-sbom/blob/v4.1.0/action.yml",
+        "https://github.com/actions/attest"
+      ]
     },
     "gitlab_ci": {
       "feature": "Built-in SBOM generation for container scanning"
