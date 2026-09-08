@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "Policy for the blocking link check in .github/workflows/doc-lint.yml.",
+    "ignorePatterns cover URLs that are placeholders or unreachable by design.",
+    "aliveStatusCodes treats 403 and 429 as alive: they prove the host answered,",
+    "and several sites Doctrine cites (HHS, OpenAI, Stack Overflow, MySQL docs,",
+    "lib.rs, docs.ansible.com) refuse or throttle CI user agents. Failing on them",
+    "would make the gate a coin toss rather than a signal about Doctrine."
+  ],
+  "ignorePatterns": [
+    { "pattern": "^https?://localhost" },
+    { "pattern": "^https?://127\\.0\\.0\\.1" },
+    { "pattern": "^https?://0\\.0\\.0\\.0" },
+    { "pattern": "^https?://[^/]*\\.internal(/|$|:)" },
+    { "pattern": "^https?://[^/]*\\.local(/|$|:)" },
+    { "pattern": "^https?://(www\\.)?example\\.(com|org|net)" },
+    { "pattern": "^https?://[^/]*\\.example\\.(com|org|net)" },
+    { "pattern": "^https?://your-" },
+    { "pattern": "^https?://.*\\{\\{" },
+    { "pattern": "^https?://.*<[A-Za-z_-]+>" },
+    { "pattern": "^https?://.*\\$\\{" },
+    { "pattern": "^mailto:" }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://"],
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (compatible; doctrine-link-check/1.0; +https://github.com/agh/doctrine)"
+      }
+    }
+  ],
+  "timeout": "30s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206, 401, 403, 429, 999]
+}
