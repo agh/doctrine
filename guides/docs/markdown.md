@@ -1,6 +1,6 @@
 # Markdown Style Guide
 
-> [Doctrine](../../README.md) > [Documentation](../README.md) > Markdown
+> [Doctrine](../../README.md) > [Documentation](README.md) > Markdown
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
