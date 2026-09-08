@@ -687,9 +687,10 @@ error as the source, so `tracing::error!(error = ?self)` records the whole
 chain while the caller sees a fixed string.
 
 For general guidance on designing error types with `thiserror` and `anyhow`, see
-the [Rust style guide](../languages/rust.md#error-types). The rule specific to
-Axum is that handler return types **MUST NOT** be `anyhow::Error`: it has no
-`IntoResponse`, so there is nowhere to decide the status code.
+the [Rust API design guide](../languages/rust/api-design.md#error-types). The
+rule specific to Axum is that handler return types **MUST NOT** be
+`anyhow::Error`: it has no `IntoResponse`, so there is nowhere to decide the
+status code.
 
 ### Problem Details (RFC 9457)
 
@@ -1385,10 +1386,11 @@ route matched rather than merely existing.
 ## Database Integration
 
 SQLx itself — `query_as!`, offline mode, connection tuning, type mapping — is
-covered in the [Rust style guide](../languages/rust.md#sqlx-compile-time-checked-queries). This
-section covers only what Axum adds: reaching the pool through `State`, turning
-`sqlx::Error` into an HTTP response, and the transaction rules that handlers get
-wrong.
+covered in the [Rust testing scenarios
+guide](../languages/rust/testing-scenarios.md#sqlx-compile-time-checked-queries).
+This section covers only what Axum adds: reaching the pool through `State`,
+turning `sqlx::Error` into an HTTP response, and the transaction rules that
+handlers get wrong.
 
 ### Pool Access from Handlers
 

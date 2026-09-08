@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Rust guide: API design and documentation, dependency policy and supply
+  chain (cargo-deny, cargo-vet), property, mutation, SemVer and benchmark
+  testing, and a tested version matrix. Axum guide: HTTP hardening, WebSocket
+  controls, RFC 9457 problem details, negative and lifecycle tests.
 - `LICENSE` (MIT) for Doctrine-authored content and `THIRD_PARTY_NOTICES.md`
   recording the licence, upstream and required attribution of every vendored
   source, with licence texts and NOTICE files placed next to the material
@@ -29,6 +33,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `guides/languages/rust.md` retargeted to Rust 1.98.1 and Edition 2024 with
+  the MSRV (1.94.0) declared and CI-verified; async-std replaced by smol, unic
+  by unicode-normalization and ICU4X, syn 2 by syn 3, SQLx 0.7 by 0.9,
+  cargo-tarpaulin by cargo-llvm-cov; the Cargo.lock rule replaced by a
+  decision table; every action SHA-pinned.
+- `guides/languages/rust.md` split into a core guide plus
+  `guides/languages/rust/` topic guides (API design, async, features, macros,
+  testing tools, testing scenarios, unsafe, WebAssembly) with a routing
+  table, so an agent loads only the material a task needs.
+- `guides/frameworks/axum.md`: one pinned dependency matrix at Axum 0.8.9;
+  the 0.8 migration completed (`Utf8Bytes`, no `async_trait`, a graceful
+  shutdown that coordinates background tasks); the extractor-order and
+  `ServiceBuilder` layer-order rules corrected.
 - The repository moved to `agh/doctrine`; all references updated (the old
   URL redirects).
 - `CLAUDE.md` and `GEMINI.md` are real files importing `AGENTS.md` instead
@@ -53,6 +70,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Rust guide: `[lints.clippy]` priority, rustfmt options ignored on stable,
+  the orphan-rule rationale, Loom activation, `cargo audit fix` shown before
+  its dry run, and a write-capable token handed to a third-party audit
+  action. Axum guide: one `AppError` across every example, Casbin, cache and
+  upstream failures propagated, password minimum and RSA key size enforced
+  in code, circuit-breaker status classification, Sidekiq queue argument.
 - The five vendored Google style guides were corrupted by the January
   formatter run (404 list markers glued to their text); re-vendored
   byte-for-byte from upstream, and formatters now skip `reference/**`.

@@ -276,7 +276,7 @@ panic!() in library              // Return Result
 impl From<E> for Error           // Error conversion
 ```
 
-**Reference**: [Doctrine Rust Guide](../test-writer/rust.md)
+**Reference**: [Doctrine Rust Guide](../../guides/languages/rust.md) and its [topic guides](../../guides/languages/rust/README.md)
 
 ### Ruby / Rails
 
