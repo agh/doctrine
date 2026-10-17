@@ -279,7 +279,7 @@ render_html(t"<p>Hello {user_input}</p>")
 # '<p>Hello &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</p>'
 ```
 
-SQL **MUST** stay parameterised. A t-string processor **MUST** emit a placeholder
+SQL **MUST** stay parameterized. A t-string processor **MUST** emit a placeholder
 per interpolation and bind the values; it **MUST NOT** splice them into the
 statement text.
 
@@ -564,7 +564,7 @@ repos:
 
 ### Migrating to These Pins
 
-Read this before bumping an older configuration; each item changes behaviour
+Read this before bumping an older configuration; each item changes behavior
 rather than just version numbers.
 
 | Change | Effect |
@@ -728,7 +728,7 @@ The test **MUST** await every future before asserting. Reading `counter.value`
 immediately after `submit` observes an arbitrary intermediate count — a
 correctly locked counter measured between 31 and 47 of 100 increments across 20
 runs — so the test fails for reasons that have nothing to do with thread safety.
-The object under test **MUST** also be synchronised; without the lock above, the
+The object under test **MUST** also be synchronized; without the lock above, the
 same test fails for the real reason.
 
 ```bash
@@ -737,7 +737,7 @@ same test fails for the real reason.
 uv run pytest -n 4
 ```
 
-`-n 4` parallelises the suite, not the threads inside a single test. It speeds
+`-n 4` parallelizes the suite, not the threads inside a single test. It speeds
 up the run; the thread concurrency being verified still comes from the
 `ThreadPoolExecutor` in the test body.
 

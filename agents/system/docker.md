@@ -67,7 +67,7 @@ copied from the builder. `pip install --target` plus `PYTHONPATH` is the
 smallest form of this; a virtual environment also works, but its `bin/python`
 is a symlink to the builder's interpreter, so the container still has to be
 started through the runtime image's own interpreter. Wheels containing compiled
-extensions **MUST** be built for the same interpreter version, libc and
+extensions **MUST** be built for the same interpreter version, libc, and
 architecture as the runtime image, which is why both stages use Debian 13.
 
 **Severity**:

@@ -1074,7 +1074,7 @@ enabled at all — so it stays off unless a measured requirement and a throttle
 exist. `SIGNING_KEY` defaults to `SECRET_KEY`, which the vendor recommends
 changing "to a value that is independent from the django project secret key" so
 that a compromised token key can be rotated without invalidating sessions,
-password-reset links and signed cookies. An independent key is what the
+password-reset links, and signed cookies. An independent key is what the
 original comment asked for; naming `SECRET_KEY` in the example did the
 opposite.
 
@@ -1151,13 +1151,13 @@ class Project(models.Model):
             assign_perm("manage_members", self.owner, self)
 ```
 
-**Why**: Django creates `add`, `change`, `delete` and `view` permissions for
+**Why**: Django creates `add`, `change`, `delete`, and `view` permissions for
 every model unless `Meta.default_permissions` is narrowed. Declaring
 `("view_project", "Can view project")` alongside them makes
 `manage.py check` fail with
 `(auth.E005) The permission codenamed 'view_project' clashes with a builtin
 permission for model 'projects.Project'`, which blocks `makemigrations`,
-`migrate` and `runserver`. Removing the duplicate changes nothing else:
+`migrate`, and `runserver`. Removing the duplicate changes nothing else:
 `assign_perm("view_project", ...)` and
 `permission_required = "projects.view_project"` resolve to the built-in
 permission. Projects **MUST** run `manage.py check` before generating
@@ -1202,7 +1202,7 @@ class HasObjectPermission(permissions.BasePermission):
 ## Background Tasks (Django 6.0+)
 
 Projects **MAY** use Django's built-in task framework for simple background
-jobs. Django defines, validates, queues and stores results for tasks, but it
+jobs. Django defines, validates, queues, and stores results for tasks, but it
 ships **no worker and no durable backend**: the built-in `ImmediateBackend` and
 `DummyBackend` are for development and testing only. Production **MUST**
 install a third-party backend and run its worker process.
@@ -1648,7 +1648,7 @@ Django 5.2+ provides native async variants for all authentication operations.
 `request.user` resolves the session user synchronously, so touching it inside a
 coroutine either blocks the loop or raises `SynchronousOnlyOperation`;
 `await request.auser()` returns the same user without either. `JsonResponse`
-serialises with `DjangoJSONEncoder`, which handles dates, `Decimal` and `UUID`
+serializes with `DjangoJSONEncoder`, which handles dates, `Decimal`, and `UUID`
 but not model instances — passing a `QuerySet` result straight through raises
 `TypeError: Object of type Order is not JSON serializable`. Every model
 **MUST** be converted to a dict or serializer output before it reaches the
@@ -1902,7 +1902,7 @@ rejects handshakes whose `Origin` is outside `ALLOWED_HOSTS`; use
 `OriginValidator` with an explicit list when the socket origins differ from the
 site's hosts. `AuthMiddlewareStack` only populates `scope["user"]` — it never
 rejects anyone, so an unguarded `self.accept()` admits `AnonymousUser` and any
-`\w+` room name the URL pattern matches. Authentication and authorisation are
+`\w+` room name the URL pattern matches. Authentication and authorization are
 separate decisions and both **MUST** be made before `group_add()`: once a
 channel is in a group it receives everything broadcast to that room. Public
 anonymous rooms are a legitimate policy, but they **MUST** be written as an
@@ -2217,7 +2217,7 @@ def cache_with_stale(key: str, timeout: int, stale_timeout: int = 60):
 
 Application throttles are **business-policy and overuse controls**. They
 **MUST NOT** be relied on as denial-of-service protection: abuse mitigation
-belongs at the edge (CDN, WAF, load balancer or reverse proxy), which sees
+belongs at the edge (CDN, WAF, load balancer, or reverse proxy), which sees
 traffic before it reaches a Python worker and before a database connection is
 taken.
 
@@ -2370,7 +2370,7 @@ vendor documents it as used "in conjunction with `RatelimitMiddleware`", so
 without that middleware a blocked request raises `Ratelimited` and returns a
 plain 403 instead of the custom handler. Credential-derived cache keys **MUST**
 be hashed: an unhashed bearer token in a cache key is a secret stored in
-plaintext in a system that is routinely dumped, logged and inspected.
+plaintext in a system that is routinely dumped, logged, and inspected.
 
 ## Circuit Breakers with pybreaker
 
@@ -2896,7 +2896,7 @@ def test_missing_translation_falls_back_to_source():
 the next `_("Order created")` raises
 `TypeError: 'str' object is not callable`. Loop variables **MUST NOT** be named
 `_` in a module that imports `gettext` under that alias. Asserting expected
-catalogue values instead of "translation differs from source" also removes the
+catalog values instead of "translation differs from source" also removes the
 second fault: identical translations are legitimate, and the original test
 would have failed on them.
 
@@ -2986,9 +2986,9 @@ WAFFLE_CACHE_PREFIX = "waffle:"
 
 | Type | Use Case | Example |
 | ---- | -------- | ------- |
-| Flag | Gradual rollout, user targeting | "new_checkout_flow" |
-| Switch | Global on/off toggle | "maintenance_mode" |
-| Sample | Random percentage of requests | "analytics_sampling" |
+| Flag | Gradual rollout, user targeting | `new_checkout_flow` |
+| Switch | Global on/off toggle | `maintenance_mode` |
+| Sample | Random percentage of requests | `analytics_sampling` |
 
 ### Using Flags in Views and Templates
 

@@ -99,7 +99,7 @@ def all_category_readmes() -> List[Path]:
 def link_targets(source: Path) -> List[Tuple[str, Optional[Path]]]:
     """Local link targets in a markdown file as (raw, resolved-or-None) pairs.
 
-    External links, anchors and paths escaping the repository resolve to None.
+    External links, anchors, and paths escaping the repository resolve to None.
     """
     try:
         content = source.read_text(encoding="utf-8")

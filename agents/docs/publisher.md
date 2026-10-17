@@ -88,7 +88,7 @@ capability, and results come back in a fixed envelope. An object carrying
 project-level `name` and `description` with a `parameters` map has no place in
 that exchange: `mcp==2.2.0` rejects it as a `ListToolsResult`, so nothing
 downstream can load it. Emitting `inputSchema` against a named, pinned server
-is what makes the artefact usable rather than merely MCP-shaped.
+is what makes the artifact usable rather than merely MCP-shaped.
 
 **Don't** — `parameters` is not a protocol field, and the envelope is absent:
 

@@ -2,7 +2,7 @@
 #
 # crefft's own CI. Every check here is blocking except the snippet syntax
 # check, which is advisory until the guides' fenced examples are corrected.
-# External URLs are not checked here: that is slow, network-bound and
+# External URLs are not checked here: that is slow, network-bound, and
 # advisory, so it runs weekly in external-links.yml instead.
 #
 # Runtimes: Node.js 24 (Active LTS until 2026-10-20, EOL 2028-04-30) and

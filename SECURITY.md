@@ -8,14 +8,14 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 ## What This Policy Covers
 
-crefft is documentation. It ships no service, no library and no binary, so
+crefft is documentation. It ships no service, no library, and no binary, so
 there is nothing here to compromise at runtime. The security surface is the
 material crefft tells people to copy into their own projects:
 
 - configuration files under `configs/`
 - GitHub Actions workflows under `.github/workflows/`
 - agent definitions under `agents/` and `commands/`
-- shell commands, install instructions and pinned versions inside the guides
+- shell commands, install instructions, and pinned versions inside the guides
 - the vendored security reference data under `reference/security/`
 
 A dangerous default, an insecure command, a workflow that leaks a token, a
@@ -61,7 +61,7 @@ crefft has one maintainer working on it in their own time. Handling is best
 effort:
 
 - Reports are acknowledged when the maintainer next picks up the repository.
-- There is no service level agreement, no fixed response window and no
+- There is no service level agreement, no fixed response window, and no
   guaranteed fix date. Anyone who needs one of those needs a commercial
   vendor, not this repository.
 - Progress is communicated in the private advisory thread.
@@ -74,15 +74,15 @@ against anyone reporting in good faith.
 
 ## Using crefft Safely
 
-- **MUST** review any configuration, workflow or command before copying it
+- **MUST** review any configuration, workflow, or command before copying it
   into a project. crefft's material is a starting point, not an audited
-  artefact.
+  artifact.
 - **MUST** re-pin GitHub Actions to a commit SHA you have verified yourself
   rather than trusting a tag.
 - **MUST NOT** treat `reference/security/` as live threat intelligence. It is
   a periodically refreshed snapshot; check `reference/security/manifest.json`
   for `last_updated` and `next_review` before relying on it.
-- **MUST NOT** commit secrets, tokens or credentials to this repository. Some
+- **MUST NOT** commit secrets, tokens, or credentials to this repository. Some
   guides contain deliberate "never do this" examples that look like
   credentials; they are illustrative and contain no real values.
 

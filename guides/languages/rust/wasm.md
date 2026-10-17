@@ -10,8 +10,8 @@ BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
 when, they appear in all capitals, as shown here.
 
 This guide covers building Rust for WebAssembly: target selection, wasm-bindgen
-and web-sys manifests, wasm-pack, browser testing and size control. The
-toolchain, lint, formatting and pre-commit rules in the
+and web-sys manifests, wasm-pack, browser testing, and size control. The
+toolchain, lint, formatting, and pre-commit rules in the
 [Rust Style Guide](../rust.md) apply and are not repeated here, and so do the
 [dependency](dependencies.md) and [CI](ci.md) rules; every version quoted is
 listed in the [Tested Version Matrix](versions.md#tested-version-matrix) and was
@@ -39,7 +39,7 @@ deployment. wasm-pack[^19] **SHOULD** be used for building WASM packages.
 | `wasm32-wasip2` | Component-model runtimes | WASI preview 2 interfaces |
 
 **Why**: `wasm32-unknown-unknown` has no operating system behind it. `std::fs`,
-`std::net` and `std::time::SystemTime::now` compile and then fail or panic at
+`std::net`, and `std::time::SystemTime::now` compile and then fail or panic at
 run time, and `wasm-bindgen` is unavailable on WASI targets because there is no
 JavaScript host to bind to. Code shared between the two **MUST** be gated on
 `target_os`, not merely on `target_arch = "wasm32"`.
@@ -66,7 +66,7 @@ uses.
 compile times and binary size down, so an unlisted feature is a
 `error[E0432]: unresolved import 'web_sys::Document'`, not a smaller binary.
 The same applies to the crates that examples reach for without declaring:
-`console_error_panic_hook`, `serde` and `serde-wasm-bindgen`.
+`console_error_panic_hook`, `serde`, and `serde-wasm-bindgen`.
 
 ```toml
 # Cargo.toml
@@ -324,7 +324,7 @@ let window = web_sys::window().unwrap();
 `#[wasm_bindgen(start)]` so that any panic that does occur prints a Rust stack
 trace to the browser console instead of "unreachable executed".
 
-## WASM Size Optimisation
+## WASM Size Optimization
 
 The release profile in [Project Structure](#project-structure) is the size
 configuration; the settings **MUST** be at the workspace root when the crate is
@@ -348,5 +348,5 @@ twiggy paths pkg/app_bg.wasm
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies and CI
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies, and CI
 - [Rust topic guides](README.md) - The other Rust topic guides

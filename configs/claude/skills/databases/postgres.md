@@ -62,7 +62,7 @@ Error: Error validating query: DELETE FROM public.users
 ```
 
 **Why**: the access mode is the only server-side control over what the tool will
-execute. A pinned image tag keeps that behaviour reproducible; `latest` can
+execute. A pinned image tag keeps that behavior reproducible; `latest` can
 change the default under you.
 
 ### Multiple Databases
@@ -180,8 +180,8 @@ live `tools/list` response, not from prose:
 | ---------- | ----------- |
 | `execute_sql` | Run SQL; read-only under `--access-mode=restricted` |
 | `list_schemas` | List all schemas in the database |
-| `list_objects` | List tables, views, sequences or extensions in a schema |
-| `get_object_details` | Column, constraint and index detail for one object |
+| `list_objects` | List tables, views, sequences, or extensions in a schema |
+| `get_object_details` | Column, constraint, and index detail for one object |
 | `explain_query` | Return an execution plan, optionally with `ANALYZE` |
 | `analyze_db_health` | Health checks (bloat, connections, vacuum, indexes) |
 | `analyze_workload_indexes` | Recommend indexes from `pg_stat_statements` |
@@ -292,7 +292,7 @@ ORDER BY occurred_at;
 
 The `execute_sql` tool accepts a single `sql` string and no parameter array, so
 there is no bind channel through the MCP server. Agents **MUST** run
-parameterised statements through a client that binds values — `psql` with
+parameterized statements through a client that binds values — `psql` with
 `PREPARE`/`EXECUTE`, or a driver — and **MUST NOT** build the statement by
 interpolating an incident timestamp into the SQL text.
 

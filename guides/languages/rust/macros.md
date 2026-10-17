@@ -9,9 +9,9 @@ BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
 [RFC 8174](https://datatracker.ietf.org/doc/html/rfc8174) when, and only
 when, they appear in all capitals, as shown here.
 
-This guide covers derive, attribute and function-like procedural macros: crate
-layout, parsing with syn, code generation with quote, spanned errors and
-compile-fail testing with trybuild. The toolchain, lint, formatting and
+This guide covers derive, attribute, and function-like procedural macros: crate
+layout, parsing with syn, code generation with quote, spanned errors, and
+compile-fail testing with trybuild. The toolchain, lint, formatting, and
 pre-commit rules in the [Rust Style Guide](../rust.md) apply and are not
 repeated here, and so do the [dependency](dependencies.md) and [CI](ci.md)
 rules; every version quoted is listed in the
@@ -115,7 +115,7 @@ error naming the unsupported construct instead of silently ignoring it.[^42]
 ## Derive Macro Example
 
 A derive macro **MUST** handle every shape of the item it accepts — named,
-tuple and unit structs, and generics — or reject the rest with a spanned
+tuple, and unit structs, and generics — or reject the rest with a spanned
 error. It **MUST NOT** `panic!`.
 
 **Why**: `panic!` in a proc macro surfaces as
@@ -281,7 +281,7 @@ fn expand_builder(input: &DeriveInput) -> Result<proc_macro2::TokenStream> {
 ## Attribute Macro Example
 
 An attribute macro **MUST** preserve the item it decorates: attributes,
-visibility, generics, `async` and `where` clauses. Wrapping a body in a
+visibility, generics, `async`, and `where` clauses. Wrapping a body in a
 closure **MUST NOT** be used.
 
 **Why**: `let result = (|| { #body })();` changes the meaning of the function.
@@ -529,9 +529,9 @@ darling = "0.24.1"  # darling[^25]
 ```
 
 **Why**: darling derives the parser from a struct definition, so unknown keys,
-missing required keys and wrong value types all produce spanned errors for
+missing required keys, and wrong value types all produce spanned errors for
 free. Hand-written `Meta` traversal typically accumulates one `if` per key and
-degrades to ignoring anything unrecognised.
+degrades to ignoring anything unrecognized.
 
 ## References
 
@@ -545,5 +545,5 @@ degrades to ignoring anything unrecognised.
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies and CI
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies, and CI
 - [Rust topic guides](README.md) - The other Rust topic guides

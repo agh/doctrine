@@ -2,7 +2,7 @@
 #
 # crefft cites about 1,200 distinct external URLs across its first-party
 # Markdown. Checking them is slow and network-bound (about twenty minutes per
-# run while it lived in doc-lint.yml, and cancelled by the next push more often
+# run while it lived in doc-lint.yml, and canceled by the next push more often
 # than not) and the result is advisory: several hosts crefft cites throttle
 # or refuse CI clients by design, so a failure is a report to read, not a gate.
 # It therefore runs weekly and on demand, never on pull requests or pushes.

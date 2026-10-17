@@ -61,7 +61,7 @@ Assistant" switch. Community servers such as PyPI `mcp-homeassistant` 0.1.0 wrap
 the raw REST API, so they inherit the token's full authority with no filtering.
 
 The MCP server serves the Assist API, which covers entity state and control.
-It does **not** cover history, logbook, template rendering or configuration
+It does **not** cover history, logbook, template rendering, or configuration
 inspection. Use the REST endpoints below for those, and keep the two paths
 distinct so the access model of each stays clear.
 
@@ -73,7 +73,7 @@ distinct so the access model of each stays clear.
 3. Store the token in secret management (SOPS, Vault, etc.)
 
 The token's name is a label with no effect on authority. A token called
-"Claude Agent - Read Only" created by an administrator can call every service
+`Claude Agent - Read Only` created by an administrator can call every service
 that administrator can call. Authority comes from the **user**, so the
 restriction **MUST** be applied to the user account.
 
@@ -146,7 +146,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST \
 ```
 
 **Why**: a long-lived access token inherits the authority of the user who
-created it, for as long as it exists. Naming it "Read Only" changes nothing,
+created it, for as long as it exists. Naming it `Read Only` changes nothing,
 and neither does declaring `auth_providers` in `configuration.yaml` — that
 setting selects *how* users log in, not *what* they may do.
 
@@ -434,7 +434,7 @@ action_approval:
 
 `automation.trigger` runs the automation's action block, and a script runs
 whatever it contains. Either can call `lock.unlock` or
-`alarm_control_panel.disarm`, so auto-approving them re-authorises exactly the
+`alarm_control_panel.disarm`, so auto-approving them re-authorizes exactly the
 actions the list above restricts.
 
 **Why**: the guard has to sit on the effect, not on the entry point. A rule
@@ -538,11 +538,11 @@ curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
 
 A documented subset is reachable without `hassio_api: true`: `/core/api`,
 `/core/api/stream`, `/core/websocket`, `/addons/self/*`, `/services*`,
-`/discovery*` and `/info`. `/addons` is not in that subset, so the middle call
+`/discovery*`, and `/info`. `/addons` is not in that subset, so the middle call
 above needs the grant.
 
 **Why**: naming the grants makes the app's authority auditable. `hassio_api`
-opens the Supervisor control plane, which can start, stop and reconfigure every
+opens the Supervisor control plane, which can start, stop, and reconfigure every
 app on the system — a much larger surface than reading entity states.
 
 ## Template Examples
@@ -603,7 +603,7 @@ Lights on: {{ lights_on | length }}
 ```
 
 Both templates above were rendered against fixtures covering `9`, `15`, `100`,
-`unknown`, `unavailable` and an empty state. The original string comparison
+`unknown`, `unavailable`, and an empty state. The original string comparison
 selected `100` and `15` as low while excluding `9`; the corrected version
 selects `9` and `15` and reports the three unreadable sensors separately.
 The original brightness line printed `128%` and `255%`; the corrected version

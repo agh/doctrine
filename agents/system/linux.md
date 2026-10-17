@@ -55,7 +55,7 @@ ReadWritePaths=/var/lib/app
 
 **Security score**: `systemd-analyze security <service>` reports an *exposure
 level* from 0.0 to 10.0, where **low is safer** — a high value means little
-sandboxing is applied. Set an organisation-wide **maximum** (for example
+sandboxing is applied. Set an organization-wide **maximum** (for example
 ≤ 3.0 for network-facing units) rather than a minimum. The score rates only the
 systemd settings of the unit: it ignores hardening the service applies itself,
 and a low exposure level does not prove the service is not vulnerable, nor does
@@ -219,16 +219,16 @@ table inet filter {
 ```
 
 An `inet` table sees both address families, so a default-drop input chain that
-only accepts `ip protocol icmp` breaks IPv6: neighbour discovery, router
-advertisements and `packet-too-big` are dropped, which costs the host its IPv6
-neighbour cache and path-MTU discovery. Hosts that carry IPv6 traffic **MUST**
+only accepts `ip protocol icmp` breaks IPv6: neighbor discovery, router
+advertisements, and `packet-too-big` are dropped, which costs the host its IPv6
+neighbor cache and path-MTU discovery. Hosts that carry IPv6 traffic **MUST**
 permit the ICMPv6 types above (RFC 4890); hosts that genuinely have no IPv6
 **MUST** disable it explicitly instead of relying on the firewall.
 
 **Severity**:
 
 - 🔴 **Critical**: Default accept policy on input
-- 🔴 **Critical**: IPv6-enabled host dropping neighbour discovery or
+- 🔴 **Critical**: IPv6-enabled host dropping neighbor discovery or
   `packet-too-big`
 - 🟡 **Warning**: No rate limiting, missing stateful tracking
 - 🔵 **Suggestion**: Add logging for dropped packets

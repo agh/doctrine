@@ -570,7 +570,7 @@ schema = strawberry.Schema(
 **Why**: GraphQL's flexibility can be exploited for denial-of-service attacks. These extensions
 prevent abuse while allowing legitimate queries.
 
-### Extension Behaviour Depends on the Version
+### Extension Behavior Depends on the Version
 
 These extensions **MUST NOT** be treated as effective on their own, because three of
 them were themselves defective in releases the old `0.287+` floor admitted:
@@ -596,7 +596,7 @@ extensions=[QueryDepthLimiter(max_depth=10), MaskErrors()]
 extensions=[lambda: QueryDepthLimiter(max_depth=10), MaskErrors]
 ```
 
-Projects **MUST** cover the masking behaviour with a test that pushes a malformed and an
+Projects **MUST** cover the masking behavior with a test that pushes a malformed and an
 invalid operation through the synchronous entry point:
 
 ```python
@@ -620,7 +620,7 @@ def test_sync_execution_masks_pre_execution_errors(query: str) -> None:
 **Why**: `execute_sync` takes a different code path from `execute`, so masking has to be
 asserted separately. On 0.323.1 the same assertions return
 `Syntax Error: Expected Name, found <EOF>.` and `Cannot query field 'notAField' on type
-'Query'.`, handing an attacker the schema shape. The test pins the fixed behaviour so a
+'Query'.`, handing an attacker the schema shape. The test pins the fixed behavior so a
 downgrade inside the pinned range fails CI.
 
 ### Disabling Introspection

@@ -1,5 +1,5 @@
 name: Bug in a guide
-description: A rule, example, command or link in a crefft guide is wrong.
+description: A rule, example, command, or link in a crefft guide is wrong.
 title: "fix(<guide>): "
 labels: ["bug"]
 body:
@@ -17,7 +17,7 @@ body:
     id: file
     attributes:
       label: File
-      description: Path to the guide, config or reference file.
+      description: Path to the guide, config, or reference file.
       placeholder: guides/languages/python.md
     validations:
       required: true
@@ -35,7 +35,7 @@ body:
     id: current
     attributes:
       label: What it currently says
-      description: Quote the text, command or example exactly as written.
+      description: Quote the text, command, or example exactly as written.
       render: markdown
     validations:
       required: true
@@ -55,8 +55,8 @@ body:
     attributes:
       label: Evidence
       description: >
-        Link to upstream documentation, a release note, an issue or a commit
-        that shows the correct behaviour. Memory is not evidence.
+        Link to upstream documentation, a release note, an issue, or a commit
+        that shows the correct behavior. Memory is not evidence.
       placeholder: https://docs.astral.sh/ruff/
     validations:
       required: true

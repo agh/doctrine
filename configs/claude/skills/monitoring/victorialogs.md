@@ -354,7 +354,7 @@ Logs often contain sensitive information:
 
 ### Access Control
 
-VictoriaLogs itself does not authenticate or authorise queries. Enforce
+VictoriaLogs itself does not authenticate or authorize queries. Enforce
 separation with `vmauth` in front of it:
 
 ```yaml

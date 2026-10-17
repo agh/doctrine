@@ -228,7 +228,7 @@ NIST SP 800-63B-4[^22] §3.1.1.2:
 | Composition rules | **MUST NOT** require mixed case, digits, or symbols |
 | Breach screening | **MUST** compare the whole password against a blocklist of commonly used, expected, or compromised values and **MUST** give the reason for rejection |
 | Periodic rotation | **MUST NOT** be required without evidence of compromise |
-| Normalisation | **SHOULD** apply Unicode NFC before hashing when Unicode is accepted |
+| Normalization | **SHOULD** apply Unicode NFC before hashing when Unicode is accepted |
 
 ```python
 # src/myapp/security/passwords.py
@@ -871,7 +871,7 @@ Query strings carry all of them in practice — this guide's own WebSocket examp
 passes a bearer token as `?token=`, and password-reset and invitation links
 routinely put single-use secrets there. Application logs are replicated to
 aggregators, retained far longer than the tokens they contain, and readable by
-staff who are not authorised to see the underlying data, so a raw
+staff who are not authorized to see the underlying data, so a raw
 `str(request.query_params)` at INFO turns every such request into a durable
 credential disclosure. An allowlist fails safe when new parameters appear;
 a denylist does not. Stripping control characters stops an attacker-supplied
@@ -1878,7 +1878,7 @@ tiers while protecting against anonymous abuse. Wiring `get_rate_limit_key` into
 `Limiter(key_func=...)` is what makes the tier reachable: SlowAPI derives the
 counter bucket and the dynamic limit from the same key, so two customers behind
 one NAT gateway no longer share a budget, and a paid tier cannot be exhausted by
-an anonymous neighbour.
+an anonymous neighbor.
 
 Resolve the identity in middleware rather than an endpoint dependency.
 `SlowAPIMiddleware` evaluates the default limits before routing, so a dependency

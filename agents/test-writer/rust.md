@@ -13,7 +13,7 @@ Rust-specific guidance for test generation.
 Sections headed **Complete example** contain whole files that compile and pass
 as printed, against the versions pinned in
 [Toolchain and Dev-Dependencies](#toolchain-and-dev-dependencies). Every other
-code block is a fragment: it assumes the surrounding crate, its imports and
+code block is a fragment: it assumes the surrounding crate, its imports, and
 its fixtures, and **MUST NOT** be copied out on its own.
 
 ## Quick Reference
@@ -33,7 +33,7 @@ on 2026-09-08.
 
 ## Toolchain and Dev-Dependencies
 
-Generated suites **MUST** pin the compiler, every test crate and every
+Generated suites **MUST** pin the compiler, every test crate, and every
 coverage tool, and **MUST** be run with `--locked` against a committed
 `Cargo.lock`.
 
@@ -41,7 +41,7 @@ coverage tool, and **MUST** be run with `--locked` against a committed
 
 A floating requirement resolves to whatever is newest when the command runs.
 A suite that passed yesterday can then fail today because a generator, a mock
-expectation or a report format changed, not because the code under test
+expectation, or a report format changed, not because the code under test
 changed. Pinning makes a red run mean exactly one thing.
 
 ### Configuration
@@ -296,7 +296,7 @@ Time-dependent tests **MUST** drive a paused clock rather than sleeping.
 
 ### Why
 
-A unit test that dials `https://api.example.com` fails on an aeroplane, leaks
+A unit test that dials `https://api.example.com` fails on an airplane, leaks
 its result to whoever runs it, and turns an unrelated outage into a red build.
 A test that waits five real seconds is both slow and flaky: the deadline it
 asserts on depends on load. Tokio's `start_paused = true` auto-advances the
@@ -592,7 +592,7 @@ be installed with an explicit `--version` and `--locked`.
 Two reasons, one per rule.
 
 cargo-llvm-cov wraps rustc's `-C instrument-coverage`, so it reports line,
-region and function coverage from the same instrumentation the compiler
+region, and function coverage from the same instrumentation the compiler
 emits, and it exports stable JSON. cargo-tarpaulin's own help text lists
 `-b, --branch  Branch coverage: NOT IMPLEMENTED` in 0.37.2, and on Linux its
 default backend is ptrace, restricted to `x86_64`. Tarpaulin remains useful
@@ -648,10 +648,10 @@ back to source. It **MUST NOT** infer coverage from a rendered summary.
 
 ### Why
 
-A pasted report fragment cannot be validated, cannot be diffed and cannot be
+A pasted report fragment cannot be validated, cannot be diffed, and cannot be
 turned into a list of files that need tests. The `llvm-cov export` JSON has a
-documented schema, a `type` discriminator and absolute filenames, so a parser
-can reject the wrong file, normalise paths against the workspace root and
+documented schema, a `type` discriminator, and absolute filenames, so a parser
+can reject the wrong file, normalize paths against the workspace root, and
 rank targets deterministically.
 
 ### Schema
@@ -664,7 +664,7 @@ version `3.1.0`:
 | ---- | ------- |
 | `type` | Always `llvm.coverage.json.export`; reject anything else |
 | `data[].totals` | Workspace counters |
-| `data[].files[].filename` | Absolute path; normalise against the workspace root |
+| `data[].files[].filename` | Absolute path; normalize against the workspace root |
 | `data[].files[].summary.lines` | `{count, covered, percent}` |
 | `data[].files[].summary.regions` | `{count, covered, notcovered, percent}` |
 | `data[].files[].summary.branches` | All zero unless built with nightly `--branch` |
@@ -1049,7 +1049,7 @@ pub fn black_box<T>(dummy: T) -> T {
 Importing it produces a deprecation warning that fails any build using
 `-D warnings`. `std::hint::black_box` has been the stable primitive since Rust
 1.66, so nothing here needs a nightly toolchain: Criterion runs on stable and
-supplies only the harness, registration and statistics.
+supplies only the harness, registration, and statistics.
 
 ### Configuration
 

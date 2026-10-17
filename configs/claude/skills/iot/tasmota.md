@@ -122,7 +122,7 @@ sensor telemetry" — telemetry is controlled by `TelePeriod`. Setting
 `SetOption19 1` selects the deprecated MQTT discovery, which is not compiled
 into release binaries at all.
 
-There are no `LwtTopic`, `LwtOnline` or `LwtOffline` commands. Tasmota
+There are no `LwtTopic`, `LwtOnline`, or `LwtOffline` commands. Tasmota
 publishes availability to `tele/%topic%/LWT` with the retained payloads
 `Online` and `Offline`. The full topic is derived from `FullTopic` and
 `Topic`, so it changes only if `FullTopic` is changed:
@@ -241,7 +241,7 @@ cmnd/{device}/Status 0
 | `Status 10` | Connected sensors (replaces `Status 8`) |
 | `Status 11` | Same payload as the `TelePeriod` STATE message |
 
-`Status 11` returns the STATE message: uptime, Wi-Fi and relay state. It does
+`Status 11` returns the STATE message: uptime, Wi-Fi, and relay state. It does
 **not** return energy readings. Live power and energy come from `Status 10`, or
 from the `tele/{device}/SENSOR` telemetry message. `Status 9` returns the
 configured thresholds, not a measurement.
@@ -508,7 +508,7 @@ Status 2           # firmware build, to confirm TLS support
 ```
 
 Where a device is reachable only over the network, a serial console or a
-physical reset button **MUST** be available before applying Wi-Fi, MQTT or web
+physical reset button **MUST** be available before applying Wi-Fi, MQTT, or web
 server changes.
 
 ### Agent Restrictions

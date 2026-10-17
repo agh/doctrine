@@ -214,7 +214,7 @@ permissions.
 
 ### Invocation Rules
 
-- `--pr`, `--fix`, `--versions` and any path argument are agent arguments,
+- `--pr`, `--fix`, `--versions`, and any path argument are agent arguments,
   not CLI options, so they **MUST** sit inside the quoted prompt.
 - The job **MUST** install a pinned release. Claude Code 2.1.263 is the
   current published version.
@@ -236,7 +236,7 @@ skipping repository discovery, which is the wrong trade when the workflow
 depends on a repository command. And an unresolved slash command is not an
 error condition: the run exits 0 with `"is_error": false` and
 `"result": "Unknown command: /doc-sync"`, so a gate that reads only the exit
-status reports success on a run that analysed nothing. Requiring a
+status reports success on a run that analyzed nothing. Requiring a
 schema-conforming `structured_output` is what proves the agent ran.
 
 **Don't:**
@@ -394,6 +394,6 @@ The gate maps that result onto a CI status:
 | Result | CI status |
 | ------ | --------- |
 | `is_error` is `true` | Fail: the run itself broke, for example on authentication |
-| `structured_output` absent | Fail: `/doc-sync` never resolved, so nothing was analysed |
+| `structured_output` absent | Fail: `/doc-sync` never resolved, so nothing was analyzed |
 | `high` greater than 0 | Fail: high-confidence staleness |
 | `high` is 0 | Pass: `medium` and `low` are emitted as workflow warnings |

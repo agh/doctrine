@@ -71,7 +71,7 @@ Before simplifying, **MUST** analyze:
 
 **Go:**
 
-- Error wrapping with fmt.Errorf("%w", err)
+- Error wrapping with `fmt.Errorf("%w", err)`
 - Defer for cleanup patterns
 - Interface satisfaction checks
 - Table-driven tests

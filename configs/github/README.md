@@ -14,8 +14,13 @@ cannot schedule them inside crefft itself.
 
 | Template | Purpose | Trigger | Needs |
 | -------- | ------- | ------- | ----- |
-| [`workflows/sync-crefft.yml`](workflows/sync-crefft.yml) | Mirror crefft's agents, commands and Claude settings into your project | Weekly cron, manual | `contents: write`, `pull-requests: write` |
+| [`workflows/sync-crefft.yml`][sync] | Agents, commands, and config | Weekly, manual | [^scopes] |
 | [`workflows/doc-sync.yml`](workflows/doc-sync.yml) | Remind pull-request authors which documents a source change touches | Pull requests touching `src/`, `lib/`, `app/` | `pull-requests: write` |
+
+[sync]: workflows/sync-crefft.yml
+
+[^scopes]: Requires `contents: write` and `pull-requests: write` to mirror
+    crefft's agents, commands, and Claude settings into your project.
 
 ## Why these are templates, not live workflows
 
@@ -23,7 +28,7 @@ A workflow placed in `.github/workflows/` runs in the repository that holds
 it. `sync-crefft.yml` previously sat in crefft's own workflow directory
 and therefore ran against crefft every Monday, copying `configs/claude/*`
 into a second `.claude/` tree and attempting a self-referential pull request.
-`doc-sync.yml` triggers on `src/**`, `lib/**` and `app/**`, none of which
+`doc-sync.yml` triggers on `src/**`, `lib/**`, and `app/**`, none of which
 exist in a documentation repository.
 
 Templates **MUST NOT** be placed in `.github/workflows/` of the repository

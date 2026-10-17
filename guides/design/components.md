@@ -227,7 +227,7 @@ Focus styling MUST be valid CSS, not merely intended CSS:
 - Translucent rings MUST use `color-mix()` or a dedicated ring token; alpha
   MUST NOT be appended inside `var()`
 - The focus indicator MUST reach 3:1 contrast against both the adjacent
-  component colour and the background it sits on
+  component color and the background it sits on
 
 ```css
 /* ✗ DON'T: invalid var() grammar. The declaration is discarded, so the

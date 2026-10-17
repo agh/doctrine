@@ -1165,13 +1165,13 @@ tool_choice="none"
 1. Teams SHOULD use `tool_choice="auto"` as default
 2. Teams MAY use `tool_choice="required"` for validation/extraction tasks
 3. Teams MUST handle cases where model doesn't call expected function
-4. Teams MUST validate and authorise function arguments before execution
+4. Teams MUST validate and authorize function arguments before execution
 5. Teams MUST handle function execution errors gracefully
 
 ### Function Calling Error Handling
 
 Tool arguments are model output, not trusted input. Every registered function
-**MUST** be coupled to a typed validator and an authorisation policy that run
+**MUST** be coupled to a typed validator and an authorization policy that run
 before the callable is invoked.
 
 ```python
@@ -1302,7 +1302,7 @@ def safe_function_calling(client, messages, tools, principal, approved_call_ids)
 
 1. Teams **MUST** validate arguments against a typed model that forbids
    unknown fields and refuses type coercion before execution
-2. Teams **MUST** authorise the calling principal for the specific tool, not
+2. Teams **MUST** authorize the calling principal for the specific tool, not
    only for the conversation
 3. Teams **MUST** constrain filesystem, network, and database scope inside the
    validator rather than inside the tool implementation
@@ -1310,7 +1310,7 @@ def safe_function_calling(client, messages, tools, principal, approved_call_ids)
    such as migrations, refunds, deletions, and outbound messages
 5. Teams **MUST NOT** return raw exception text or stack traces to the model
 6. Teams **MUST NOT** treat `strict: true` or `additionalProperties: false` as
-   a substitute for application-side validation and authorisation
+   a substitute for application-side validation and authorization
 
 #### Why
 
@@ -1321,7 +1321,7 @@ schema" while forwarding whatever the model produced straight into
 it accepted and executed
 `{"test_path": "../../secrets", "verbose": "not-a-boolean", "unexpected": true}`.
 Strict mode constrains the model's output to the declared schema, but it is a
-generation-time guarantee, not an authorisation boundary, and it says nothing
+generation-time guarantee, not an authorization boundary, and it says nothing
 about whether this caller may run this action on this path. See
 [strict mode](https://developers.openai.com/api/docs/guides/function-calling#strict-mode)
 and [agent safety](https://developers.openai.com/api/docs/guides/agent-builder-safety).
@@ -1697,7 +1697,7 @@ class ConversationManager:
    spend reasoning tokens from the same window
 3. Teams **MUST** raise an explicit error when the mandatory content alone
    exceeds the budget, rather than returning an oversized message list
-4. Teams **SHOULD** compact or summarise long conversations instead of
+4. Teams **SHOULD** compact or summarize long conversations instead of
    truncating them; the Responses API can compact server-side when the rendered
    token count crosses `compact_threshold`
 

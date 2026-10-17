@@ -6,21 +6,21 @@ What this changes, in one or two sentences.
 
 ## Motivation
 
-What was wrong, missing or out of date. Link the issue if there is one:
+What was wrong, missing, or out of date. Link the issue if there is one:
 `Fixes #`.
 
 ## Type of Change
 
-- [ ] Fix — a rule, example, command or link that was wrong
-- [ ] Version update — a pinned tool, action or reference version
+- [ ] Fix — a rule, example, command, or link that was wrong
+- [ ] Version update — a pinned tool, action, or reference version
 - [ ] New guide or new section
-- [ ] Provenance — licence, attribution or notice for vendored material
+- [ ] Provenance — license, attribution, or notice for vendored material
 - [ ] Repository maintenance — CI, templates, tooling
 
 ## Sources
 
-Every version number, release date and time-sensitive claim in this PR, with
-the URL it was verified against and the date checked. Write "none" if the
+Every version number, release date, and time-sensitive claim in this PR, with
+the URL it was verified against and the date checked. Write `none` if the
 change makes no such claim.
 
 | Claim | Source URL | Checked on |
@@ -34,22 +34,32 @@ change makes no such claim.
 - [ ] Every major recommendation has a "Why"
 - [ ] Style rules have Do/Don't examples
 - [ ] Every tool reference is version-pinned
-- [ ] New guides have a Quick Reference table, a navigation breadcrumb and a
+- [ ] New guides have a Quick Reference table, a navigation breadcrumb, and a
       "See Also" section
-- [ ] No vague language ("consider", "you might want to")
+- [ ] No vague language ("consider," "you might want to")
 - [ ] No deprecated tool recommended without a migration path
 - [ ] Lines are at or below 100 characters
 - [ ] Content is linked, not duplicated across guides
-- [ ] British English in prose
+- [ ] US English spelling in prose, including Welsh-named projects; Welsh
+      names, proper nouns, quotations, and upstream tool and code spellings
+      stay unchanged
+- [ ] Serial commas in lists of three or more items joined by "and" or "or";
+      no serial commas in two-item phrases
+- [ ] Commas and periods inside closing quotation marks; colons and
+      semicolons outside; question and exclamation marks inside only when
+      they belong to the quoted text
+- [ ] Literals in code spans, not quotation marks, including commands,
+      flags, file names, paths, configuration values, and text to type or
+      search for; surrounding punctuation outside code spans
 
 ## Vendored Material
 
 Tick if this PR touches anything under `reference/`, then confirm:
 
 - [ ] Not applicable
-- [ ] Upstream URL, licence, licence URL and required attribution are recorded
+- [ ] Upstream URL, license, license URL, and required attribution are recorded
       in `THIRD_PARTY_NOTICES.md`
-- [ ] Licence text is present in the vendor directory where the licence
+- [ ] License text is present in the vendor directory where the license
       requires it
 - [ ] Modifications are recorded in the vendor directory's `NOTICE`
 - [ ] `reference/security/cis/` is untouched (CC BY-NC-ND 4.0, no derivatives)

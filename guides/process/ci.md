@@ -232,7 +232,7 @@ jobs:
 
 ## Rust
 
-Rust-specific lanes — MSRV, feature matrix, cross-target checks and fuzzing —
+Rust-specific lanes — MSRV, feature matrix, cross-target checks, and fuzzing —
 are in the [Rust Style Guide](../languages/rust.md). Actions are pinned to full
 commit SHAs; see [Pinning Actions](../languages/rust/ci.md#pinning-actions).
 
@@ -367,7 +367,7 @@ jobs:
 ```
 
 SimpleCov's default output is `coverage/.resultset.json`, which Codecov's
-uploader does not recognise as a coverage report. RSpec jobs **MUST**
+uploader does not recognize as a coverage report. RSpec jobs **MUST**
 therefore add the `simplecov-cobertura` gem[^5] and register its formatter so
 the run also writes `coverage/coverage.xml`.
 
@@ -546,17 +546,20 @@ jobs:
 
 ## Release Workflow
 
-Release automation **MUST** compute the next `YYYY.M.N` from the release
-date and released versions, not commit types. Breaking changes **MUST**
+Release automation **MUST** classify the project first. Libraries in every
+ecosystem use Semantic Versioning 2.0.0 bumps from breaking, feature, or fix
+changes. Everything else uses the next `YYYY.M.N` from the release date
+and released versions, not commit types. Breaking changes **MUST**
 be flagged under `### Breaking`, first in the changelog release section.
-The [Versioning Guide](versioning.md) defines the calculation and imported
-Go-module exception. The workflow below checks an already prepared release;
+The [Versioning Guide](versioning.md) defines both calculations and treats
+projects with commands and importable packages as libraries.
+The workflow below checks an already prepared release;
 it does not select a version or publish anything.
 
 ### Why
 
-A default commit-driven release action would infer compatibility bumps,
-which no longer determine project release numbers.
+A default commit-driven release action infers compatibility bumps for
+libraries but does not implement calendar numbering for other projects.
 
 ```yaml
 # .github/workflows/release.yml
@@ -579,9 +582,9 @@ jobs:
         run: printf 'Release candidate v%s\n' "$(cat VERSION)"
 ```
 
-**Do**: calculate the calendar version first, then validate the prepared
-release. **Don't**: let `feat`, `fix` or a breaking marker select a numeric
-component to bump.
+**Do**: select SemVer for libraries or CalVer for anything else, then
+validate the prepared release. **Don't**: use a calendar number for a
+library or let commit types select a numeric component for an application.
 
 ## Dependabot
 
@@ -616,7 +619,7 @@ Configure in repository settings:
 ## See Also
 
 - [Testing Guide](testing.md) - Testing strategy and best practices
-- [Versioning Guide](versioning.md) - CalVer, Go exception and release automation
+- [Versioning Guide](versioning.md) - Library SemVer, CalVer, and release automation
 - [GitHub Templates](github-templates.md) - Issue and PR templates
 
 ## References

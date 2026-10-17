@@ -420,7 +420,7 @@ end
 
 **Why**: A resumed job replays `perform` from the top and skips steps that already finished, so
 `@records` is `nil` on the second attempt. Only the cursor and the completed-step list are
-serialised with the job.
+serialized with the job.
 
 **Checkpoints are not progress**: `step.advance!` and `step.set!` record the cursor *and* create
 a checkpoint; `checkpoint!` alone only offers an interruption point. A checkpoint interrupts the
@@ -1081,10 +1081,10 @@ parameters. An attacker controls the whole body, so `req.params["user"]` may be 
 string, or an array. `req.params["user"]["email"]` raises `NoMethodError` on an empty POST and
 `TypeError` on `user[]=a`, turning a throttle into a 500. `dig` alone is not enough either:
 `String` and `Array` do not respond to `dig` the way `Hash` does. Returning `nil` — via `next` —
-means "do not throttle this request", which is the correct outcome for a request that carries no
+means "do not throttle this request," which is the correct outcome for a request that carries no
 email to throttle.
 
-**Why hash the email?** The discriminator becomes part of the cache key. Hashing a canonicalised
+**Why hash the email?** The discriminator becomes part of the cache key. Hashing a canonicalized
 address keeps plaintext addresses out of Redis while still bucketing `" Alex@Example.COM "` and
 `"alex@example.com"` together.
 
@@ -1265,7 +1265,7 @@ end
 ```
 
 Applications that switch the signed-in user mid-request — impersonation, sign-in after sign-up —
-**MUST** call `pundit_reset!` after changing the session, because Pundit memoises `pundit_user`
+**MUST** call `pundit_reset!` after changing the session, because Pundit memoizes `pundit_user`
 for the request.
 
 ```ruby
@@ -2085,7 +2085,7 @@ IdempotentRequest.create!(key: idempotency_key, response: order)
 ```
 
 Nothing prevents two requests from passing the `find_by` check together, the service is called
-without the `user:` it requires, an Active Record object is stored where a serialised body
+without the `user:` it requires, an Active Record object is stored where a serialized body
 belongs, and a key from one customer collides with the same key from another. Reserving the row
 inside the transaction that does the work fixes all four: the unique index rejects the second
 reservation, a failure rolls the reservation back so the client can retry, and the persisted

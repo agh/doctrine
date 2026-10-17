@@ -137,13 +137,13 @@ decisions. Each collector MUST implement the `SignalCollector` interface.
 
 ### Evidence Binding
 
-Every signal **MUST** be bound to the exact artefact being released. A signal
+Every signal **MUST** be bound to the exact artifact being released. A signal
 that cannot be bound **MUST** be treated as missing, never as passing.
 
 #### Why
 
 Release readiness is a claim about one specific commit and one specific
-artefact. "Recent workflow runs are green" is not that claim: the green run
+artifact. "Recent workflow runs are green" is not that claim: the green run
 may have tested an earlier tree, an approval may predate the last force-push,
 and the scanned container may not be the one about to be published. GitHub's
 own protected-branch controls encode the same invariant — required status
@@ -161,10 +161,10 @@ Every collected signal record **MUST** carry:
 | `target_sha` | `string` | Full 40-character SHA of the commit being released |
 | `evidence_sha` | `string` | Full SHA the evidence was actually produced from |
 | `source` | `string` | Concrete producer, e.g. `github_actions`, `trivy`, `codeowners` |
-| `run_id` | `string` | Workflow run, job or scan ID that produced the evidence |
+| `run_id` | `string` | Workflow run, job, or scan ID that produced the evidence |
 | `event` | `string` | Trigger that produced it, e.g. `push`, `pull_request` |
 | `lockfile_digest` | `string` | SHA-256 of the resolved dependency lockfile |
-| `artifact_digest` | `string` | SHA-256 digest of the artefact the evidence covers |
+| `artifact_digest` | `string` | SHA-256 digest of the artifact the evidence covers |
 | `collected_at` | `timestamp` | When the collector read the evidence |
 | `expires_at` | `timestamp` | When the evidence stops counting |
 
@@ -175,14 +175,14 @@ Collectors **MUST**:
 - Reject any signal whose `evidence_sha` differs from `target_sha`.
 - Reject any signal read after its `expires_at`.
 - Reject any signal whose `artifact_digest` differs from the digest of the
-  artefact that will be promoted and published.
+  artifact that will be promoted and published.
 - Reject any dependency signal whose `lockfile_digest` differs from the
   lockfile at `target_sha`.
 - Record a rejection as a missing signal with its reason, so the confidence
   score and the report show the gap rather than silently omitting it.
 
 Collectors **MUST NOT** substitute evidence from a parent commit, a sibling
-branch, a rebuilt artefact, or a re-run whose inputs were not the target tree.
+branch, a rebuilt artifact, or a re-run whose inputs were not the target tree.
 
 ```yaml
 evidence_binding:
@@ -649,12 +649,12 @@ ID and is used to build submission endpoints such as
 it purely as a
 [transport credential for submitting events](https://develop.sentry.dev/sdk/foundations/transport/authentication/).
 
-Outcome tracking does the opposite: it **reads** organisation and project
+Outcome tracking does the opposite: it **reads** organization and project
 data. Those endpoints — for example
 `GET /api/0/organizations/{organization_id_or_slug}/stats_v2/`, which returns
 event counts by outcome — authenticate with
 [auth tokens](https://github.com/getsentry/sentry-docs/blob/master/docs/api/auth.mdx)
-passed as `Authorization: Bearer <token>`, and require an organisation
+passed as `Authorization: Bearer <token>`, and require an organization
 identifier that a DSN does not carry. Configuring only a DSN produces 401
 responses, so the entire outcome-tracking loop silently yields no data.
 
@@ -665,16 +665,16 @@ Collectors **MUST**:
   not a personal token tied to one engineer's account.
 - Request only the read
   [scopes](https://github.com/getsentry/sentry-docs/blob/master/docs/api/permissions.mdx)
-  the queries need — `org:read` for organisation statistics, `project:read`
+  the queries need — `org:read` for organization statistics, `project:read`
   for project metadata, `event:read` for issues and events.
-- Send the organisation slug or ID and the project slugs explicitly.
+- Send the organization slug or ID and the project slugs explicitly.
 - Follow [Link-header pagination](https://github.com/getsentry/sentry-docs/blob/master/docs/api/pagination.mdx)
   until the `rel="next"` link reports `results="false"`, rather than reading
   only the first page.
-- Honour the `X-Sentry-Rate-Limit-*` response
+- Honor the `X-Sentry-Rate-Limit-*` response
   [headers](https://github.com/getsentry/sentry-docs/blob/master/docs/api/ratelimits.mdx)
   and back off on 429. `stats_v2` is rate limited to 20 requests per second
-  per IP, user and organisation.
+  per IP, user, and organization.
 
 Collectors **MUST NOT** put a DSN in a read configuration. A DSN belongs in a
 configuration block only where the agent itself emits telemetry to Sentry.
@@ -1160,16 +1160,24 @@ blockers:
 
 ### Version Calculation
 
-The engine **MUST** calculate the next calendar version (`YYYY.M.N`) from
-the release date and release history, following the
-[Versioning Guide](../process/versioning.md).
-Imported Go modules retain Semantic Versioning (`v0.x.y` or `v1.x.y`);
-they **MUST NOT** use the CalVer calculation below. A command-only Go tool
-with calendar tags **MUST** be built from its checkout or shipped as release
-artefacts, not installed with `go install module@vYYYY.M.N`.
+The engine **MUST** classify the project using the
+[Versioning Guide](../process/versioning.md). A library is a package
+published for other code to depend on through a package manager or module
+system. A project with both a command and importable packages is a library.
+Libraries in every ecosystem **MUST** use Semantic Versioning 2.0.0:
+MAJOR for breaking changes, MINOR for compatible features, and PATCH for
+fixes. Breaking changes take precedence over features, then fixes.
+
+Anything else **MUST** use the next calendar version (`YYYY.M.N`) from
+the release date and release history. Go libraries use SemVer tags such
+as `v0.x.y` or `v1.x.y`, with `/vN` module paths at major version 2 or
+higher. Command-only Go tools use calendar tags and **MUST** be built from
+checkouts or shipped as release artifacts, not installed with
+`go install module@vYYYY.M.N`.
 
 #### Why
 
+Dependency resolvers assume SemVer compatibility ranges for libraries.
 Commit types and compatibility do not determine a calendar release number.
 The monthly counter starts at 0 and increments beyond the highest release
 already made that month; breaking changes remain an independent flag and
@@ -1177,8 +1185,13 @@ the first `### Breaking` changelog section.
 
 #### Version Logic
 
-This example accepts released numeric versions, including historical
-SemVer releases, and does not define pre-release suffix policy:
+This example accepts stable numeric versions without tag prefixes, including
+historical SemVer releases before a non-library project's CalVer migration.
+The caller supplies the project classification and classified changes.
+For a library with no releases, bumps start from `0.0.0`; a release needs
+breaking, feature, or fix changes. SemVer defines library pre-releases;
+CalVer pre-release suffix policy remains undecided and is outside this
+example:
 
 ```python
 import re
@@ -1197,11 +1210,13 @@ def calculate_version(
     released_versions: list[str],
     release_date: date,
     breaking_changes: list[str],
+    *,
+    is_library: bool,
+    feature_changes: list[str],
+    fix_changes: list[str],
 ) -> VersionRecommendation:
-    """Calculate calendar order and report breaking changes independently."""
-    if release_date.year < 1000:
-        raise ValueError("release year must have four digits")
-    counters = []
+    """Select a library's SemVer bump or anything else's next CalVer number."""
+    versions = []
     for version in released_versions:
         match = re.fullmatch(
             r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)",
@@ -1209,9 +1224,29 @@ def calculate_version(
         )
         if match is None:
             raise ValueError(f"invalid numeric release version: {version}")
-        year, month, counter = map(int, match.groups())
+        versions.append(tuple(map(int, match.groups())))
+
+    if is_library:
+        major, minor, patch = max(versions, default=(0, 0, 0))
+        if breaking_changes:
+            version = f"{major + 1}.0.0"
+            reason = "Breaking library changes require a MAJOR bump"
+        elif feature_changes:
+            version = f"{major}.{minor + 1}.0"
+            reason = "Compatible library features require a MINOR bump"
+        elif fix_changes:
+            version = f"{major}.{minor}.{patch + 1}"
+            reason = "Library fixes require a PATCH bump"
+        else:
+            raise ValueError("library release needs breaking, feature or fix changes")
+        return VersionRecommendation(version, reason, tuple(breaking_changes))
+
+    if release_date.year < 1000:
+        raise ValueError("release year must have four digits")
+    counters = []
+    for year, month, counter in versions:
         if year >= 1000 and (year > 9999 or not 1 <= month <= 12):
-            raise ValueError(f"invalid calendar release version: {version}")
+            raise ValueError(f"invalid calendar release version: {year}.{month}.{counter}")
         if (year, month) == (release_date.year, release_date.month):
             counters.append(counter)
 
@@ -1223,9 +1258,11 @@ def calculate_version(
     )
 ```
 
-**Do**: compute `2026.10.1` after `2026.10.0`, whether the change is a fix,
-feature or breaking removal. **Don't**: derive major/minor/patch bumps from
-commit types.
+**Do**: bump a library from `1.4.2` to `2.0.0` for breaking changes,
+`1.5.0` for compatible features, or `1.4.3` for fixes. For anything else,
+compute `2026.10.1` after `2026.10.0` regardless of change type.
+**Don't**: use the monthly counter for a library or a compatibility bump
+for an application.
 
 ---
 
@@ -1236,6 +1273,10 @@ The agent MUST generate human-quality changelogs using LLM understanding.
 ### Changelog Format
 
 #### Keep a Changelog Format (Default)
+
+This is a CalVer example. For libraries, the agent **MUST** declare
+Semantic Versioning 2.0.0 and use SemVer release headings and comparison
+links instead, keeping `### Breaking` first when present.
 
 ```markdown
 # Changelog
@@ -1424,9 +1465,9 @@ actions:
 
 Human-triggered release with AI assistance.
 
-A supplied version override **MUST** match the number calculated from the
-release date and release history, or the release **MUST** stop with an
-error. An override is not a way to bypass calendar numbering.
+A supplied version override **MUST** match the calculated library SemVer
+bump or non-library CalVer number, or the release **MUST** stop with an
+error. An override is not a way to bypass the project's versioning policy.
 
 ```yaml
 workflow: manual
@@ -1538,7 +1579,7 @@ jobs:
 ```
 
 A full-history checkout supplies commits, not evidence identity. `fetch-depth:
-0` says nothing about which tree the tests ran against or which artefact was
+0` says nothing about which tree the tests ran against or which artifact was
 scanned, so `release_sha` **MUST** be resolved once and passed to every
 collector, and the collectors **MUST** apply the rules in
 [Evidence Binding](#evidence-binding).
@@ -1753,7 +1794,7 @@ advanced:
 Configured model IDs **MUST** be exact, currently available snapshot IDs from
 the provider. The agent **MUST** validate every configured ID against the
 provider's model list before collecting signals, and **MUST** refuse to run
-when an ID is unknown, deprecated or retired.
+when an ID is unknown, deprecated, or retired.
 
 #### Why
 
@@ -1785,7 +1826,7 @@ static table.
 #### Why `effort` Replaces `temperature`
 
 Claude 5 models reject non-default sampling parameters: setting `temperature`,
-`top_p` or `top_k` returns
+`top_p`, or `top_k` returns
 [HTTP 400](https://platform.claude.com/docs/en/models/sonnet-5/migration-guide).
 Thinking depth is controlled with the
 [effort parameter](https://platform.claude.com/docs/en/build-with-claude/effort)
@@ -1869,7 +1910,7 @@ The agent MUST:
 
 ### LLM Data Privacy
 
-Content **MUST** be sanitised before prompt construction, not after. Once a
+Content **MUST** be sanitized before prompt construction, not after. Once a
 credential reaches the provider it has left the trust boundary, and no
 downstream masking undoes that.
 
@@ -1919,7 +1960,7 @@ llm:
 #### Why Line-Oriented Regexes Are Not Enough
 
 The patterns this guide previously recommended — `password[=:].*`,
-`api[_-]?key[=:].*` and `secret[=:].*` — miss most real credential formats.
+`api[_-]?key[=:].*`, and `secret[=:].*` — miss most real credential formats.
 Executed against a 14-case corpus of ordinary credential shapes, **10 samples
 survived redaction intact**: uppercase `PASSWORD=`, quoted JSON
 `"password": "…"` and `"api_key": "…"`, `Authorization: Bearer …`, `token=…`,
@@ -1929,7 +1970,7 @@ or encoded; they are what configuration files and log lines normally look
 like.
 
 Path exclusions do not compensate. A credential pasted into a commit message,
-a test fixture or a stack trace lives outside `**/secrets/**`, and
+a test fixture, or a stack trace lives outside `**/secrets/**`, and
 `send_code: false` still ships summaries derived from that text.
 
 #### Reference Redaction
@@ -2184,7 +2225,7 @@ sum(release_manager_blockers_detected) by (severity)
 
 - [AI Workflows](ai-workflows.md) - General AI development patterns
 - [Claude Best Practices](claude.md) - LLM usage guidelines
-- [Versioning Guide](../process/versioning.md) - CalVer mechanics and the Go exception
+- [Versioning Guide](../process/versioning.md) - Library SemVer and CalVer mechanics
 - [CI Guide](../process/ci.md) - Continuous integration patterns
 - [GitHub Templates](../process/github-templates.md) - PR and issue templates
 

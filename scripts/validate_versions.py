@@ -65,7 +65,7 @@ KNOWN_UNPINNED: dict[str, str] = {
     "compilerla/conventional-pre-commit": "commit-message guide illustration",
     "dnephin/pre-commit-golang": "superseded by golangci-lint in the canonical config",
     "jendrikseipp/vulture": "optional Python dead-code hook",
-    "returntocorp/semgrep": "security guide illustration (former organisation name)",
+    "returntocorp/semgrep": "security guide illustration (former organization name)",
     "semgrep/semgrep": "security guide illustration",
     "thibaudcolas/pre-commit-stylelint": "optional CSS hook",
 }
@@ -105,7 +105,7 @@ HOOK_ID_RE = re.compile(r"^\s*(?:#\s*)?-\s*id:\s*(?P<id>\S+)\s*$")
 HOOK_ENTRY_RE = re.compile(r"^\s*(?:#\s*)?entry:\s*(?P<entry>\S.*?)\s*$")
 
 # A bare hostname followed by a path, used to decide whether the leading
-# segment of a normalised URL is a host or already the owner.
+# segment of a normalized URL is a host or already the owner.
 HOST_RE = re.compile(r"^[\w.-]+\.[\w.-]+/")
 
 

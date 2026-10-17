@@ -98,8 +98,8 @@ post_discord "$DISCORD_ALERTS_WEBHOOK" "$alert_payload"
 ### Creating Webhooks
 
 1. Open Discord -> Server Settings -> Integrations -> Webhooks
-2. Click "New Webhook"
-3. Name it (e.g., "Release Bot", "Alert Bot")
+2. Click `New Webhook`
+3. Name it (e.g., `Release Bot`, `Alert Bot`)
 4. Select target channel
 5. Copy webhook URL
 
@@ -134,7 +134,7 @@ Discord gates capability twice, and both gates **MUST** be satisfied:
 
 Permissions decide which endpoints succeed. Intents decide which data the
 payload contains. Without `MESSAGE_CONTENT` an app receives empty `content`,
-`embeds`, `attachments` and `components`, so `read_messages` returns messages
+`embeds`, `attachments`, and `components`, so `read_messages` returns messages
 with no text and the failure is silent — no error, just blank fields.
 
 Four documented exceptions deliver content without the intent: the app's own
@@ -227,7 +227,7 @@ before sending rather than discovering the limit from a failed alert:
 | `allowed_mentions.roles` / `.users` | 100 ids each |
 
 The 6,000-character total counts `title`, `description`, `field.name`,
-`field.value`, `footer.text` and `author.name` across every embed in the
+`field.value`, `footer.text`, and `author.name` across every embed in the
 message.
 
 Agents **MUST** truncate to the limit with a visible marker and **SHOULD**
@@ -392,12 +392,12 @@ id **MUST** be added to `allowed_mentions.roles`. A display name such as
 
 - **MUST NOT** post sensitive data (secrets, PII, credentials)
 - **MUST** set `allowed_mentions` explicitly on every payload
-- **MUST** sanitise any user-provided content before embedding it
+- **MUST** sanitize any user-provided content before embedding it
 - **MUST** include agent identifier in messages
 
 Embeds do **not** prevent injection. They constrain layout, not content: an
 embed field renders Markdown, renders links, and will happily carry text
-supplied by whoever filed the issue being summarised. The controls that do work
+supplied by whoever filed the issue being summarized. The controls that do work
 are mention suppression, length validation, and not turning untrusted strings
 into links.
 
@@ -412,7 +412,7 @@ With `{"parse": []}` the `@everyone` above renders as text and notifies nobody.
 Without it, a webhook still parses user mentions by default.
 
 Agents **SHOULD** strip or defang URLs taken from untrusted input, and
-**MUST NOT** place untrusted text into `embed.url`, `author.url` or
+**MUST NOT** place untrusted text into `embed.url`, `author.url`, or
 `footer.icon_url`, which are rendered as live links or fetched by Discord.
 
 ### Rate Limits

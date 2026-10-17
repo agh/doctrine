@@ -104,7 +104,7 @@ earlier files.
 
 **Why**: `sshd_config` is not last-wins. `sshd_config(5)` states that "for each
 keyword, the first obtained value will be used", and `Include` splices matching
-files in lexical order at the point of the `Include` directive. Debian, Ubuntu
+files in lexical order at the point of the `Include` directive. Debian, Ubuntu,
 and RHEL place `Include /etc/ssh/sshd_config.d/*.conf` at the top of
 `/etc/ssh/sshd_config`, so `50-cloud-init.conf` is read before
 `99-hardening.conf` and wins every directive both files set.
@@ -137,7 +137,7 @@ one that is merely present in a file.
 ### Validating and Rolling Out Changes
 
 Projects **MUST** follow this order when changing authentication, allowlists,
-the listening port or host keys. Every step **MUST** complete before the
+the listening port, or host keys. Every step **MUST** complete before the
 original administrative session is closed.
 
 ```bash
@@ -189,7 +189,7 @@ all access to the host, so the surviving session and the timed rollback are the
 recovery path.
 
 If step 9 fails, restore from `/root/ssh-backup` in the still-open session and
-reload. If both sessions are lost, recovery requires console, serial or
+reload. If both sessions are lost, recovery requires console, serial, or
 hypervisor access.
 
 ```bash
@@ -235,7 +235,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 ### Key Options
 
-Every `authorized_keys` record — options, key type, key material and comment —
+Every `authorized_keys` record — options, key type, key material, and comment —
 **MUST** occupy one physical line. Restricted keys **MUST** be built from
 `restrict`, re-enabling only the capabilities that key needs.
 
@@ -258,7 +258,7 @@ from="10.0.0.0/8",restrict,command="/usr/bin/rsync --server --sender ." ssh-ed25
 
 **Why**: `sshd(8)` specifies that each line of the file contains one key, with
 the optional options field on the same line as the key. There is no line
-continuation syntax. `restrict` (OpenSSH 7.2 and later) disables port, agent
+continuation syntax. `restrict` (OpenSSH 7.2 and later) disables port, agent,
 and X11 forwarding, PTY allocation and `~/.ssh/rc` execution, and automatically
 includes any restriction added by later releases; an explicit `no-*` list
 silently omits whatever it does not name.
@@ -276,7 +276,7 @@ command="internal-sftp",no-port-forwarding,no-agent-forwarding \
 ```
 
 The wrapped form is two records, not one. Line 1 is discarded as malformed and
-line 2 is accepted as a plain, unrestricted key: it grants a shell, forwarding
+line 2 is accepted as a plain, unrestricted key: it grants a shell, forwarding,
 and a PTY to anyone holding that private key.
 
 Verify authorized keys after every edit:
@@ -479,7 +479,7 @@ Match User tunnel-user
 **Why**: `ForceCommand` restricts the command, not the channels around it.
 Forwarding stays available unless it is disabled explicitly, and
 `AllowStreamLocalForwarding` (Unix-domain sockets) and `PermitUserRC` both
-default to `yes`. `DisableForwarding yes` closes TCP, Unix-socket, agent, X11
+default to `yes`. `DisableForwarding yes` closes TCP, Unix-socket, agent, X11,
 and tunnel forwarding in one directive, and covers any forwarding type added by
 a later release.
 
@@ -536,7 +536,7 @@ HostKey /etc/ssh/ssh_host_rsa_key
 A host key is a trust anchor that every existing client has already recorded.
 Rotation **MUST** be staged: advertise the replacement alongside the current
 key, let clients learn it, then retire the old key. Projects **MUST NOT** delete
-host keys before replacements are generated, configured and verified.
+host keys before replacements are generated, configured, and verified.
 
 **Why**: `ssh_config(5)` documents `UpdateHostKeys` — enabled by default for
 clients that have not overridden `UserKnownHostsFile` — as the option that

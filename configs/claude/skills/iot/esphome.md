@@ -53,7 +53,7 @@ exists for the Home Assistant integration until that migrates to the `/ws`
 multiplexed API.
 
 There are no per-device REST routes. `/devices/<name>/info`,
-`/devices/<name>/logs`, `/devices/<name>/compile` and `/devices/<name>/upload`
+`/devices/<name>/logs`, `/devices/<name>/compile`, and `/devices/<name>/upload`
 do not exist. An unmatched `GET` returns the front-end HTML shell rather than a
 `404`, so a script that only checks the status code will treat the failure as
 success.
@@ -660,7 +660,7 @@ type explicitly either way.
 
 **Why**: basic authentication sends the password in an easily reversible form
 on every request. Digest does not, and stating the type explicitly means the
-2027.1.0 default change cannot alter the device's behaviour unannounced.
+2027.1.0 default change cannot alter the device's behavior unannounced.
 
 Two settings are conditional rather than universal:
 

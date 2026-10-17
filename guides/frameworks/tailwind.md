@@ -556,10 +556,10 @@ function setTheme(choice) {
 }
 ```
 
-### Native Control Colours
+### Native Control Colors
 
 `color-scheme` is a separate CSS property that tells the browser which palette
-to use for scrollbars, form controls and system colours. It is not the `dark`
+to use for scrollbars, form controls, and system colors. It is not the `dark`
 variant. Projects **SHOULD** set it with the `scheme-*` utilities so native
 widgets follow the selected theme:
 
@@ -736,7 +736,7 @@ defines a variant and `@variant` applies one; neither generates a utility:
 ```
 
 The argument is brace-expanded, so this emits `bg-blue-500`, `bg-blue-600`,
-`bg-red-500`, `bg-red-600` and a `hover:` variant of each.
+`bg-red-500`, `bg-red-600`, and a `hover:` variant of each.
 
 ```css
 /* DON'T: variant directives do not safelist anything, and this fails the */
@@ -763,7 +763,7 @@ Projects **SHOULD** follow these bundle size best practices:
 Critical CSS **MUST** be extracted at build time from compiled Tailwind output.
 A browser resolves an `@import` string as a stylesheet URL, so an uncompiled
 `@import "tailwindcss"` inside a `style` element fetches nothing, generates no
-utilities and leaves the page unstyled.
+utilities, and leaves the page unstyled.
 
 Build a second entry point restricted to the above-the-fold templates:
 
@@ -803,7 +803,7 @@ leaves a `media="print"` sheet print-only forever:
 
 **Why build-time extraction:**
 
-- Correctness: Only the Tailwind CLI, Vite, PostCSS or webpack adapter turns
+- Correctness: Only the Tailwind CLI, Vite, PostCSS, or webpack adapter turns
   `@import "tailwindcss"` into utilities
 - Resilience: The full sheet loads without JavaScript, so a blocked or failed
   script cannot leave the page unstyled

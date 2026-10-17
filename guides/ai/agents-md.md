@@ -1101,8 +1101,8 @@ Locally the same scan runs from the pinned Gitleaks pre-commit hook in
 
 A hand-written pattern such as `grep -r "password.*=.*[^example]" AGENTS.md`
 does not do what it appears to do. `[^example]` is a negated *character* class:
-one character that is not `e`, `x`, `a`, `m`, `p` or `l`. It never means "not
-the word example". The pattern is also case-sensitive and knows only the word
+one character that is not `e`, `x`, `a`, `m`, `p`, or `l`. It never means "not
+the word example." The pattern is also case-sensitive and knows only the word
 `password`, so it misses every other credential shape.
 
 Measured on the same fixtures, `grep` against Gitleaks v8.30.1[^8]:

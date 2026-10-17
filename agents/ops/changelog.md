@@ -19,12 +19,17 @@ how it affects them. You write for humans, not machines.
 Follow [Keep a Changelog](https://keepachangelog.com/) format:
 
 CalVer release headings **MUST** use the next `YYYY.M.N` from the release date and
-release history, not a bump inferred from commit types. Follow the
-[Versioning Guide](../../guides/process/versioning.md), including its
-Semantic Versioning exception for imported Go modules.
+release history, not a bump inferred from commit types. Libraries in every
+ecosystem **MUST** use Semantic Versioning 2.0.0 headings instead: MAJOR for
+breaking changes, MINOR for compatible features, and PATCH for fixes.
+Everything else uses CalVer, including command-line tools; a project with
+both a command and importable packages is a library. Follow the
+[Versioning Guide](../../guides/process/versioning.md) and use the matching
+SemVer or CalVer changelog preamble. The example below is for CalVer.
 
-**Why**: the release number records calendar order; compatibility is
-communicated separately in the first `### Breaking` section.
+**Why**: dependency resolvers assume SemVer ranges for libraries; CalVer
+records calendar order instead. Both policies communicate incompatible
+changes in the first `### Breaking` section.
 
 ```markdown
 # Changelog

@@ -62,11 +62,11 @@ Don't write any code yet.
 
 | Phrase | Depth |
 | ------ | ----- |
-| "think about" | Basic reasoning |
-| "think step-by-step" | Structured analysis |
-| "think hard" | Thorough consideration |
-| "think very carefully" | Deep analysis |
-| "analyze thoroughly" | Maximum depth |
+| `think about` | Basic reasoning |
+| `think step-by-step` | Structured analysis |
+| `think hard` | Thorough consideration |
+| `think very carefully` | Deep analysis |
+| `analyze thoroughly` | Maximum depth |
 
 ```text
 Think step-by-step about how we should add OAuth2 support
@@ -416,7 +416,7 @@ Long tasks may exceed context windows. Strategies:
 
 | Strategy             | When to Use                    |
 | -------------------- | ------------------------------ |
-| Periodic summaries   | "Summarize progress so far"    |
+| Periodic summaries   | `Summarize progress so far`    |
 | Checkpoint files     | Write progress to PROGRESS.md  |
 | Conversation forking | Branch for exploration         |
 | Task decomposition   | Break into smaller tasks       |

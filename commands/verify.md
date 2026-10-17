@@ -41,7 +41,7 @@ Run all verification checks with optional self-healing, time-travel debugging, a
 *Security and Coverage only run with `--full` flag
 
 Stage 1 **MUST** complete before any other command runs. Linters, formatters,
-type checkers and test runners are project dependencies, so invoking them in a
+type checkers, and test runners are project dependencies, so invoking them in a
 clean checkout exits 127 (`command not found`) and reports a tooling failure as
 a code failure.
 

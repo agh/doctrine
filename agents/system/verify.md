@@ -128,7 +128,7 @@ rspec              # Ruby
 
 ### 6. Format Check
 
-Format checks **MUST** be read-only: they report offences and exit non-zero
+Format checks **MUST** be read-only: they report offenses and exit non-zero
 without touching the working tree. `rubocop -a` rewrites source files, and
 `rubocop -l` runs Lint cops only, so it passes badly formatted code.
 
@@ -487,8 +487,8 @@ if (!session) {
 
 #### Affected Tests
 
-- `auth.test.ts:45` - "should handle missing session"
-- `auth.test.ts:67` - "should redirect unauthenticated users"
+- `auth.test.ts:45` - `should handle missing session`
+- `auth.test.ts:67` - `should redirect unauthenticated users`
 
 [Apply fix automatically?]
 

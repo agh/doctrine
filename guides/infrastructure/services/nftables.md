@@ -67,7 +67,7 @@ Three `nft` properties make a safe procedure possible:
   firewalld, libvirt, podman, or a CNI plugin manages its own tables.
 - `nft flush ruleset` **MUST NOT** be run as a standalone command outside
   [Break-Glass Recovery](#break-glass-recovery).
-- The rollback **MUST** be armed before the candidate is loaded, and cancelled
+- The rollback **MUST** be armed before the candidate is loaded, and canceled
   only after management access has been reverified from a new session.
 - Rollback files **SHOULD** be kept in `/var/lib/nftables-rollback` with mode
   `0600`, because a captured ruleset discloses the host's entire access policy.
@@ -197,7 +197,7 @@ reach.
 `AccuracySec=1min`, and a rollback that drifts by up to a minute is a minute of
 lost management access.
 
-### Verify Before Cancelling the Rollback
+### Verify Before Canceling the Rollback
 
 Health checks **MUST** run in a connection opened after the change, not in the
 session that applied it: an established connection survives on the conntrack

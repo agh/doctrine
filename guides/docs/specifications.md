@@ -129,8 +129,8 @@ Every engineering organization needs these document types. Each serves a distinc
 
 - Defines the "what" without the "how"
 - Owned by Product Management
-- Versioned with the project's calendar releases; see the
-  [Versioning Guide](../process/versioning.md) for `YYYY.M.N` and the Go exception
+- Versioned with the project's releases; see the
+  [Versioning Guide](../process/versioning.md) for library SemVer and CalVer
 
 ### Tier 2: Tactical (What/How)
 

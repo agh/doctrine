@@ -483,5 +483,5 @@ build/
 ## See Also
 
 - [CI/CD Guide](ci.md) - CI workflow configuration and automation
-- [Versioning Guide](versioning.md) - CalVer, Go exception and changelog management
+- [Versioning Guide](versioning.md) - Library SemVer, CalVer, and changelog management
 - [Testing Guide](testing.md) - Testing strategy and best practices

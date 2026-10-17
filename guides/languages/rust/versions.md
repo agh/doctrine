@@ -10,15 +10,15 @@ BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
 [RFC 8174](https://datatracker.ietf.org/doc/html/rfc8174) when, and only
 when, they appear in all capitals, as shown here.
 
-This guide is the single table of the toolchain, crate, executable and action
+This guide is the single table of the toolchain, crate, executable, and action
 versions that every Rust guide quotes, with the date they were verified. The
-toolchain, lint, formatting and pre-commit rules in the [Rust Style
+toolchain, lint, formatting, and pre-commit rules in the [Rust Style
 Guide](../rust.md) apply and are not repeated here. Every entry was current on 8
 September 2026.
 
-Every version below was current on crates.io, the Rust release channel or the
+Every version below was current on crates.io, the Rust release channel, or the
 action's tag list on 8 September 2026, and the Rust examples across the Rust guides
-were compiled against them with `cargo check`, `cargo test` and
+were compiled against them with `cargo check`, `cargo test`, and
 `cargo clippy -- -D warnings` on Rust 1.98.1.
 
 Library requirements are written as caret ranges, which is what a manifest
@@ -100,5 +100,5 @@ pins here are proposed for review rather than discovered when they break.
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting and pre-commit
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, and pre-commit
 - [Rust topic guides](README.md) - The other Rust topic guides

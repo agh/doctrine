@@ -78,7 +78,7 @@ Classic style **MAY** only be used for simple scripts or prototypes.
 
 Response helpers **MUST** take the payload as a positional argument, and every
 code path **MUST** call `halt` at most once. Base controllers **MUST** parse
-request bodies through a helper that checks the media type, caps the body size
+request bodies through a helper that checks the media type, caps the body size,
 and maps parse failures to a 4xx response.
 
 ```ruby
@@ -166,7 +166,7 @@ handler also fires for a deliberate `halt 404` from a route and replaces its
 body, discarding the specific message. The exception-keyed handler only
 covers unmatched routes.
 
-Records **MUST NOT** be serialised with `to_h`: `ActiveRecord::Base` does not
+Records **MUST NOT** be serialized with `to_h`: `ActiveRecord::Base` does not
 define it. Models **MUST** expose an explicit allowlist instead.
 
 ```ruby
@@ -331,7 +331,7 @@ end
 an update that was rejected, and `500` for both a missing record and a
 malformed body, because `Article.find` raises `ActiveRecord::RecordNotFound`
 and `JSON.parse` raises `JSON::ParserError` with nothing to catch them. A
-client cannot distinguish "created" from "silently discarded".
+client cannot distinguish "created" from "silently discarded."
 
 `Article` defines `public_attributes` the same way as `User` above.
 
@@ -574,7 +574,7 @@ end
 
 **Why the explicit require and adapter?** `database_cleaner` is a family of
 gems; the `DatabaseCleaner` constant arrives with an adapter, not with
-Sinatra, ActiveRecord or rack-test. Without
+Sinatra, ActiveRecord, or rack-test. Without
 `gem "database_cleaner-active_record"` and its require, the `before(:suite)`
 hook above raises `NameError: uninitialized constant DatabaseCleaner` and no
 example in the suite runs. Selecting the cleaner with
@@ -719,7 +719,7 @@ class ApplicationController < Sinatra::Base
 end
 ```
 
-**Why explicit requires?** `Rack::Attack`, `Rack::Cors` and
+**Why explicit requires?** `Rack::Attack`, `Rack::Cors`, and
 `Sentry::Rack::CaptureExceptions` are not part of Rack or Sinatra; after
 `require "sinatra/base"` all three constants are undefined and `use` raises
 `NameError` at class-definition time. `Bundler.require` is not a substitute:
@@ -772,7 +772,7 @@ end
 ```
 
 **Why lower-case header names?** Rack 3 requires every response header name
-to be lower case so that servers no longer have to normalise them.[^8]
+to be lower case so that servers no longer have to normalize them.[^8]
 Returning `"Content-Type"` fails validation with
 `Rack::Lint::LintError: uppercase character in header name: Content-Type`,
 and Sinatra 4 runs on Rack 3.

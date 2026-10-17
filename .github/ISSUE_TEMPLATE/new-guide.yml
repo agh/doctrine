@@ -1,5 +1,5 @@
 name: New guide proposal
-description: Propose a language, framework, process or topic that crefft should cover.
+description: Propose a language, framework, process, or topic that crefft should cover.
 title: "feat(<scope>): add <topic> guide"
 labels: ["new-guide"]
 body:
@@ -48,7 +48,7 @@ body:
     attributes:
       label: Proposed toolchain
       description: >
-        Lint, format, type check, test, coverage, fuzz, package management and
+        Lint, format, type check, test, coverage, fuzz, package management, and
         vulnerability scanning. Name the tool, the version, and why it beats
         the alternatives. Every version MUST be pinned and sourced.
       render: markdown
@@ -61,7 +61,7 @@ body:
       label: Upstream style guides to reference
       description: >
         Existing authoritative guides for this topic, with URLs and their
-        licences. Anything vendored into `reference/` must have its licence
+        licenses. Anything vendored into `reference/` must have its license
         recorded in THIRD_PARTY_NOTICES.md.
 
   - type: textarea

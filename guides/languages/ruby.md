@@ -1276,7 +1276,7 @@ end
 
 - Exactly one claim per `(user_id, email_type)`, enforced by the database
 - Exactly one email, **provided the provider deduplicates on the idempotency
-  key**. Stripe's `Idempotency-Key` is the reference behaviour: the first
+  key**. Stripe's `Idempotency-Key` is the reference behavior: the first
   result is saved and replayed for every later request using the same key[^33]
 - If the provider does not deduplicate, a crash between the send and the
   `delivered_at` update **MAY** still produce a duplicate. Projects **MUST**
@@ -1695,7 +1695,7 @@ end
 [^14]: [Capybara](https://github.com/teamcapybara/capybara) - Acceptance test framework for web applications
 [^15]: [Cucumber](https://cucumber.io/) - BDD tool for Ruby
 [^16]: [Flipper](https://github.com/flippercloud/flipper) - Feature flags for Ruby
-[^17]: [RSpec](https://rspec.info/) - Behaviour Driven Development for Ruby
+[^17]: [RSpec](https://rspec.info/) - Behavior Driven Development for Ruby
 [^18]: [Spring](https://github.com/rails/spring) - Application preloader for Rails
 [^19]: [Toxiproxy](https://github.com/Shopify/toxiproxy) - A TCP proxy to simulate network and system conditions for chaos and resiliency testing
 [^20]: [Semian](https://github.com/Shopify/semian) - Resiliency toolkit for Ruby
@@ -1711,7 +1711,7 @@ end
 [^30]: [Ruby magic comments](https://docs.ruby-lang.org/en/4.0/syntax/comments_rdoc.html) - `frozen_string_literal` defaults to false in Ruby 4.0
 [^31]: [Ruby 3.4 NEWS](https://github.com/ruby/ruby/blob/ruby_3_4/NEWS.md) - Chilled string literals warn on mutation under `-W:deprecated`
 [^32]: [Sidekiq Best Practices](https://github.com/sidekiq/sidekiq/wiki/Best-Practices) - Sidekiq executes jobs at least once, never exactly once
-[^33]: [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests) - Reference behaviour for provider-side idempotency keys
+[^33]: [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests) - Reference behavior for provider-side idempotency keys
 
 ## See Also
 

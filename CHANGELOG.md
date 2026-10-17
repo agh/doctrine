@@ -7,6 +7,20 @@ and this project adheres to [calendar versioning (`YYYY.M.N`)](guides/process/ve
 
 ## [Unreleased]
 
+### Changed
+
+- Libraries in every ecosystem now use Semantic Versioning 2.0.0;
+  everything else uses calendar versioning (`YYYY.M.N`). Projects that
+  publish both commands and importable packages count as libraries, and
+  release automation selects the matching calculation.
+- Human-facing prose now uses US English spelling, including in Welsh-named
+  projects. Welsh names, proper nouns, quotations, and upstream tool and code
+  spellings remain unchanged.
+- First-party prose now uses serial commas, US quotation punctuation, and
+  code spans for literals. House rules and the pull request template record
+  all three conventions while preserving code, upstream quotations, and
+  historical entries.
+
 ## [2026.10.0] - 2026-10-17
 
 ### Breaking
@@ -54,16 +68,16 @@ and this project adheres to [calendar versioning (`YYYY.M.N`)](guides/process/ve
 ### Added
 
 - Rust guide: API design and documentation, dependency policy and supply
-  chain (cargo-deny, cargo-vet), property, mutation, SemVer and benchmark
+  chain (cargo-deny, cargo-vet), property, mutation, SemVer, and benchmark
   testing, and a tested version matrix. Axum guide: HTTP hardening, WebSocket
   controls, RFC 9457 problem details, negative and lifecycle tests.
 - `LICENSE` (MIT) for crefft-authored content and `THIRD_PARTY_NOTICES.md`
-  recording the licence, upstream and required attribution of every vendored
-  source, with licence texts and NOTICE files placed next to the material
+  recording the license, upstream, and required attribution of every vendored
+  source, with license texts and NOTICE files placed next to the material
   under `reference/`.
 - Community files mandated by the GitHub templates guide: `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md` (Contributor Covenant 3.0), `SECURITY.md`, three
-  issue forms and a pull request template.
+  issue forms, and a pull request template.
 - `scripts/check_vendored.py` and `reference/UPSTREAM.json`: checksum
   verification of vendored files against their recorded upstream commits.
 - `scripts/check_snippets.py`: syntax checks for fenced code in every guide
@@ -82,7 +96,7 @@ and this project adheres to [calendar versioning (`YYYY.M.N`)](guides/process/ve
 
 - CI: the external URL check moved out of `doc-lint.yml` into a weekly
   `external-links.yml` workflow (also on demand), with a 10 s timeout, one
-  retry and four files checked in parallel; pull requests and pushes now run
+  retry, and four files checked in parallel; pull requests and pushes now run
   only the deterministic internal link check. The vendored-checksum step,
   previously inside that advisory job where it could never fail the run, is a
   blocking job of its own.
@@ -102,10 +116,10 @@ and this project adheres to [calendar versioning (`YYYY.M.N`)](guides/process/ve
   `ServiceBuilder` layer-order rules corrected.
 - `CLAUDE.md` and `GEMINI.md` are real files importing `AGENTS.md` instead
   of symlinks, and the `configs/claude/agents` and `configs/claude/commands`
-  symlinks are removed in favour of the root `agents/` and `commands/`
+  symlinks are removed in favor of the root `agents/` and `commands/`
   directories, so source archives and Windows clones work.
 - `AGENTS.md` now describes the actual repository tree, adds a Commands
-  section, uses the full BCP 14 boilerplate (RFC 2119 and RFC 8174) and
+  section, uses the full BCP 14 boilerplate (RFC 2119 and RFC 8174), and
   states that Codex and Copilot read it natively.
 - Documentation CI rebuilt: Node 24 and Python 3.14, SHA-pinned actions,
   read-only token permissions, Gitleaks replacing the secrets grep that
@@ -114,9 +128,9 @@ and this project adheres to [calendar versioning (`YYYY.M.N`)](guides/process/ve
   reference monitor reads SLSA from tags and fails on HTTP errors.
 - `sync-crefft.yml` and `doc-sync.yml` moved to
   `configs/github/workflows/` as downstream templates, with the Boolean
-  `dry_run` comparison, `rsync --delete` synchronisation and complete
+  `dry_run` comparison, `rsync --delete` synchronization, and complete
   change reporting fixed.
-- `reference/security/manifest.json` licence fields corrected (MITRE terms,
+- `reference/security/manifest.json` license fields corrected (MITRE terms,
   Apache-2.0 for ATLAS, DRL 1.1 for Sigma, FoxIO 1.1 for JA4+, Community
   Specification 1.0 for SLSA) and review dates brought forward.
 
@@ -125,7 +139,7 @@ and this project adheres to [calendar versioning (`YYYY.M.N`)](guides/process/ve
 - Rust guide: `[lints.clippy]` priority, rustfmt options ignored on stable,
   the orphan-rule rationale, Loom activation, `cargo audit fix` shown before
   its dry run, and a write-capable token handed to a third-party audit
-  action. Axum guide: one `AppError` across every example, Casbin, cache and
+  action. Axum guide: one `AppError` across every example, Casbin, cache, and
   upstream failures propagated, password minimum and RSA key size enforced
   in code, circuit-breaker status classification, Sidekiq queue argument.
 - The five vendored Google style guides were corrupted by the January

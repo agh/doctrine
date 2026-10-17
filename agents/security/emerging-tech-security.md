@@ -57,7 +57,7 @@ technique identifiers; that file is generated from a named ATLAS release. ATLAS
 2026.08 defines 16 tactics, including AI Model Access, AI Attack Adaptation,
 Reconnaissance, Resource Development, Initial Access, Execution, Persistence,
 Privilege Escalation, Defense Evasion, Credential Access, Discovery, Collection,
-Lateral Movement, Command and Control, Exfiltration and Impact.
+Lateral Movement, Command and Control, Exfiltration, and Impact.
 
 **MUST NOT** cite an ATLAS identifier from memory: names have been reassigned
 between releases (for example AML.TA0001 is AI Attack Adaptation, not

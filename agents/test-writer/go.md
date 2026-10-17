@@ -213,7 +213,7 @@ Each test function **MUST** construct its own handler, and the import block **MU
 every package the file uses.
 
 **Why**: imports are file-scoped, and a variable declared inside `TestGetUserHandler` is
-invisible to `TestCreateUserHandler`. Copying a test that borrows either from a neighbour
+invisible to `TestCreateUserHandler`. Copying a test that borrows either from a neighbor
 fails to build with `undefined: strings` and `undefined: handler`.
 
 ```go

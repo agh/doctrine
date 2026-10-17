@@ -78,7 +78,7 @@ def create_app(config: dict | None = None) -> Flask:
 **Why**: The application factory pattern enables multiple app instances with
 different configurations, facilitates testing, and defers extension
 initialization until configuration is loaded. Every extension instance
-**MUST** be initialised here: an extension that is only constructed in
+**MUST** be initialized here: an extension that is only constructed in
 `extensions.py` is never attached to the app, and the first request that
 depends on it fails at runtime.
 
@@ -471,7 +471,7 @@ def logout() -> tuple[dict, int]:
 session cookie and rebuilds `current_user` from it through the `user_loader`.
 Constructing `LoginManager()` in `extensions.py` only creates the object;
 `init_app` is what attaches it to an application instance[^7]. An
-uninitialised manager is not a login failure but a server error: every
+uninitialized manager is not a login failure but a server error: every
 `login_required` route returns 500 with `AttributeError: 'Flask' object has
 no attribute 'login_manager'`.
 
@@ -908,10 +908,10 @@ The `async_mode` passed to `socketio.init_app` **MUST** match the deployed
 worker: `"threading"` for the command above, `"gevent"` for a greenlet stack.
 
 **Why**: The gevent WebSocket worker requires five packages that must all be
-present — Flask-SocketIO, gevent, gevent-websocket, `packaging` and Gunicorn
+present — Flask-SocketIO, gevent, gevent-websocket, `packaging`, and Gunicorn
 itself — and its WebSocket layer, `gevent-websocket`, has been archived by its
 author[^29], so it receives no compatibility fixes. Installing only
-Flask-SocketIO, gevent and gevent-websocket leaves no `gunicorn` executable
+Flask-SocketIO, gevent, and gevent-websocket leaves no `gunicorn` executable
 and makes the documented worker import fail with `ModuleNotFoundError: No
 module named 'gunicorn'`. The threaded worker with `simple-websocket` is a
 maintained path documented by Flask-SocketIO[^13] and avoids monkey patching
@@ -1762,7 +1762,7 @@ data" and "the service is broken" with `HTTPError`. Excluding the class means
 five consecutive 500 responses leave the breaker closed with `fail_counter`
 at 0, so the breaker never opens and every request keeps paying the full
 timeout. A predicate that reads `exc.response.status_code` excludes only the
-4xx range and leaves 5xx, `ConnectionError` and `Timeout` counting. Because a
+4xx range and leaves 5xx, `ConnectionError`, and `Timeout` counting. Because a
 payment request may have been processed before the response failed, replaying
 it without the original idempotency key can charge the customer twice; the
 key makes the retry safe to repeat.

@@ -39,8 +39,8 @@ MANIFEST_FILE = PROJECT_ROOT / "reference/UPSTREAM.json"
 COMMITS_API = "https://api.github.com/repos/{repo}/commits"
 NETWORK_TIMEOUT = 30
 
-# A markdown link target that is a bare chapter slug plus ".html": the shape
-# mdBook produces from "naming.md". Targets containing "/" or an extra "."
+# A markdown link target that is a bare chapter slug plus `.html`: the shape
+# mdBook produces from `naming.md`. Targets containing `/` or an extra `.`
 # (../enum.Value.html, trait.Deserialize.html) are rustdoc illustrations
 # inside code fences, not navigation, and are deliberately left alone.
 CHAPTER_LINK_RE = re.compile(

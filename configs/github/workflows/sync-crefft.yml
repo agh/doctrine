@@ -71,7 +71,7 @@ jobs:
           set -euo pipefail
 
           # Read the upstream version before the checkout is removed, so the
-          # commit message cannot say "unknown".
+          # commit message cannot say `unknown`.
           version="$(cat .crefft-upstream/VERSION 2>/dev/null || echo unknown)"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
@@ -105,7 +105,7 @@ jobs:
 
           rm -rf .crefft-upstream
 
-          # git status --porcelain reports additions, modifications *and*
+          # git status --porcelain reports additions, modifications, *and*
           # deletions, which a diff of tracked files alone would miss.
           changed="$(git status --porcelain)"
           if [ -n "${changed}" ]; then
@@ -122,7 +122,7 @@ jobs:
 
       - name: Dry run summary
         # workflow_dispatch delivers a real Boolean, so compare against true
-        # rather than the string 'true'. On a scheduled run inputs.dry_run is
+        # rather than the string `true`. On a scheduled run inputs.dry_run is
         # null and this step is skipped.
         if: inputs.dry_run == true
         run: |

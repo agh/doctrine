@@ -52,7 +52,7 @@ project/
 Projects **MUST** keep secret material out of both version control and every
 build context, and **MUST** read production secrets from a path outside the
 context (for example `/etc/myapp/secrets/`) that deployment tooling
-materialises from a secret manager.
+materializes from a secret manager.
 
 **Why**: A `secrets/` directory inside the project root is inside the default
 build context, so `COPY . .` copies it into an image layer unless
@@ -504,7 +504,7 @@ the plaintext stays on the host disk for as long as that file exists.
 Projects **MUST NOT** treat a Compose secret as protected storage. Projects
 **MUST** protect the source file (mode `0400`, owned by the account that runs
 the stack, on a directory excluded from Git and from every build context) or
-materialise it at deploy time from an external secret manager such as SOPS,
+materialize it at deploy time from an external secret manager such as SOPS,
 Vault, or a cloud secrets service, and remove it when the stack stops.
 
 Compose secrets work with Linux containers only: Compose delivers each secret

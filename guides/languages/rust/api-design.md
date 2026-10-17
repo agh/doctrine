@@ -10,9 +10,9 @@ BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
 when, they appear in all capitals, as shown here.
 
 This guide covers the traits a public type **MUST** implement and the naming,
-documentation and type-safety rules for a published Rust API, organised around
+documentation, and type-safety rules for a published Rust API, organized around
 the vendored [Rust API Guidelines](../../../reference/rust/checklist.md). The
-toolchain, lint, formatting and pre-commit rules in the
+toolchain, lint, formatting, and pre-commit rules in the
 [Rust Style Guide](../rust.md) apply and are not repeated here, and so do the
 [dependency](dependencies.md) and [CI](ci.md) rules; every version quoted is
 listed in the [Tested Version Matrix](versions.md#tested-version-matrix) and was
@@ -29,16 +29,16 @@ downstream crate cannot supply the implementation you left out.
   trait or the type. If your crate publishes `Config` and a user wants
   `Display` for it, the user owns neither `Display` nor `Config` and cannot
   write that implementation at all; the vendored reference works the same
-  example through with `webapp`, `url::Url` and `Display`.[^37]
+  example through with `webapp`, `url::Url`, and `Display`.[^37]
 - **You keep the ability, at a cost**: the defining crate *can* add
   implementations later, but adding one is a compatibility event — inherent
-  method resolution, inference and downstream blanket implementations can all
+  method resolution, inference, and downstream blanket implementations can all
   change — so adding `Debug` in 0.4 is not free either.
 - **Ecosystem compatibility**: types without `Debug` cannot be used in `Result`
   error positions, and `#[derive(Debug)]` on a struct fails if any field is not
   `Debug`, so one missing implementation propagates outwards.
 - **User expectations**: Rust developers expect types to be debuggable,
-  cloneable and comparable.
+  cloneable, and comparable.
 
 ```rust
 // GOOD: derive the full set up front. Users who need `Display` for their own
@@ -234,7 +234,7 @@ impl Config {
 ### Documentation
 
 Every public item **MUST** carry rustdoc. Documentation **MUST** state error,
-panic and safety conditions, and examples **MUST** use `?` rather than
+panic, and safety conditions, and examples **MUST** use `?` rather than
 `unwrap`.[^39]
 
 ```rust
@@ -372,19 +372,23 @@ save(path, Overwrite::Yes)?;
 pub fn save(path: &Path, overwrite: bool, fsync: bool) -> io::Result<()> { /* ... */ }
 ```
 
-The full checklist, including predictability, dependability and debuggability
+The full checklist, including predictability, dependability, and debuggability
 rules not repeated here, is in
 [`reference/rust/checklist.md`](../../../reference/rust/checklist.md).
 
 ## References
 
-[^37]: [Interoperability](../../../reference/rust/interoperability.md) - Rust API Guidelines, C-COMMON-TRAITS and the orphan rule
-[^38]: [Naming](../../../reference/rust/naming.md) - Rust API Guidelines, RFC 430 casing and conversion prefixes
+[^37]: [Interoperability](../../../reference/rust/interoperability.md) - Rust API Guidelines,
+    C-COMMON-TRAITS, and the orphan rule
+[^38]: [Naming](../../../reference/rust/naming.md) - Rust API Guidelines, RFC 430 casing, and
+    conversion prefixes
 [^39]: [Documentation](../../../reference/rust/documentation.md) - Rust API Guidelines, rustdoc requirements
-[^40]: [Flexibility](../../../reference/rust/flexibility.md) - Rust API Guidelines, C-OBJECT and generic API design
-[^41]: [Type safety](../../../reference/rust/type-safety.md) - Rust API Guidelines, newtypes and custom argument types
+[^40]: [Flexibility](../../../reference/rust/flexibility.md) - Rust API Guidelines, C-OBJECT, and
+    generic API design
+[^41]: [Type safety](../../../reference/rust/type-safety.md) - Rust API Guidelines, newtypes, and
+    custom argument types
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies and CI
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies, and CI
 - [Rust topic guides](README.md) - The other Rust topic guides

@@ -310,7 +310,7 @@ statement that turns out to rewrite a large table cannot hold the lock for
 minutes.
 
 The distinction that matters for column additions is the default value.
-A constant default is recorded in the catalogue and applied on read, so the
+A constant default is recorded in the catalog and applied on read, so the
 statement is fast on any table size. A volatile default, such as
 `clock_timestamp()`, updates every row while holding the lock.[^10]
 
@@ -352,7 +352,7 @@ COMMIT;
 
 `ALTER COLUMN ... SET NOT NULL` on its own checks every row while holding the
 `ACCESS EXCLUSIVE` lock. Splitting the change moves the scan out of that lock:
-adding the constraint `NOT VALID` is a catalogue change, and validating it
+adding the constraint `NOT VALID` is a catalog change, and validating it
 takes only a `SHARE UPDATE EXCLUSIVE` lock, which permits reads and writes.
 PostgreSQL then uses the validated constraint to skip the scan `SET NOT NULL`
 would otherwise perform. Measured on PostgreSQL 18.6 with 3,000,000 rows:
@@ -381,7 +381,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_phone_number
 A failed concurrent build leaves an `INVALID` index that keeps its name,
 is ignored by queries, and still costs write overhead.[^11] `IF NOT EXISTS`
 matches that name, so a rerun reports success while the index remains
-unusable. After any failed build you **MUST** check the catalogue and drop
+unusable. After any failed build you **MUST** check the catalog and drop
 the invalid index before rebuilding.
 
 ```sql

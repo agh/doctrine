@@ -26,10 +26,10 @@ You are a storage infrastructure specialist. Review S3-compatible object storage
 - RPC secret configured
 - Admin/metrics tokens
 
-RPC, storage paths, compression and replication are **top-level** keys in
+RPC, storage paths, compression, and replication are **top-level** keys in
 `garage.toml`; only `[consul_discovery]`, `[kubernetes_discovery]`, `[s3_api]`,
-`[s3_web]` and `[admin]` are sections. Garage rejects the file outright when
-those keys are nested, so a config with `[rpc]`, `[metadata]`, `[data]` or
+`[s3_web]`, and `[admin]` are sections. Garage rejects the file outright when
+those keys are nested, so a config with `[rpc]`, `[metadata]`, `[data]`, or
 `[replication]` sections never starts.
 
 ```toml
@@ -90,7 +90,7 @@ metrics_require_token = true
 **Secrets**: `garage.toml` is plain TOML and **MUST NOT** contain `${VAR}`
 placeholders — Garage does not expand them and exits with
 `Invalid RPC secret key (bad hex)`. Pass secrets through the `*_file` options
-above or through the `GARAGE_RPC_SECRET`, `GARAGE_ADMIN_TOKEN` and
+above or through the `GARAGE_RPC_SECRET`, `GARAGE_ADMIN_TOKEN`, and
 `GARAGE_METRICS_TOKEN` environment variables (a systemd `EnvironmentFile=`).
 Secret files **MUST** be mode `0600`: Garage refuses to start on a
 world-readable file unless `GARAGE_ALLOW_WORLD_READABLE_SECRETS=true`.
@@ -98,7 +98,7 @@ world-readable file unless `GARAGE_ALLOW_WORLD_READABLE_SECRETS=true`.
 **Severity**:
 
 - 🔴 **Critical**: No RPC secret, or a `${VAR}` placeholder left in the file
-- 🔴 **Critical**: Options nested under `[rpc]`, `[metadata]`, `[data]` or
+- 🔴 **Critical**: Options nested under `[rpc]`, `[metadata]`, `[data]`, or
   `[replication]` — the node cannot load the file
 - 🟡 **Warning**: Admin API on 0.0.0.0, no compression
 - 🔵 **Suggestion**: Separate NVMe for metadata

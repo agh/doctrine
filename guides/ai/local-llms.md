@@ -97,7 +97,7 @@ processing[^12]. The UK ICO publishes equivalent guidance for UK GDPR[^13].
 
 **Why**: A categorical "self-host for regulated data" rule fails in both
 directions. It blocks compliant managed deployments that already hold the
-required authorisations, and it implies that an on-premises deployment is
+required authorizations, and it implies that an on-premises deployment is
 compliant by virtue of its location, which hides the access control, key
 management, logging, retention, and breach-notification obligations that
 actually carry the audit.
@@ -110,8 +110,8 @@ outcome with the legal and security owners who sign it off:
    data, classified material) and the lawful basis for processing it.
 2. **Identify the obligations.** Derive the concrete obligations from the
    applicable regime, not from the deployment model: contracts (DPA, BAA,
-   standard contractual clauses), authorisation status (for example a FedRAMP
-   authorisation at the required impact level), residency, retention, and
+   standard contractual clauses), authorization status (for example a FedRAMP
+   authorization at the required impact level), residency, retention, and
    breach notification.
 3. **Test each candidate deployment against those obligations.** A managed
    provider **MAY** satisfy them; an on-premises deployment **MAY** fail them.
@@ -129,7 +129,7 @@ outcome with the legal and security owners who sign it off:
 
 Export-controlled work is the narrow case where jurisdiction usually decides
 the outcome: ITAR-controlled technical data **MUST** stay within an
-authorised jurisdiction and population, which constrains provider choice and
+authorized jurisdiction and population, which constrains provider choice and
 support arrangements rather than ruling out managed services outright.
 
 ### Use Self-Hosted When
@@ -139,7 +139,7 @@ Organizations SHOULD deploy self-hosted LLMs when:
 1. **Air-Gapped or Sovereign Operation**
    - No approved network path to any external provider
    - Contractual or jurisdictional limits that no available provider meets
-   - Export-controlled technical data with no authorised managed offering
+   - Export-controlled technical data with no authorized managed offering
    - Regulator-accepted architecture already built around on-premises hosting
 
 2. **Intellectual Property Protection**
@@ -223,7 +223,7 @@ Organizations **MAY** implement a hybrid approach:
 
 Routing inputs **MUST** be explicit parameters. The volume threshold **MUST**
 be configurable, because the break-even point depends on hardware cost,
-utilisation, and provider pricing rather than on a constant baked into code.
+utilization, and provider pricing rather than on a constant baked into code.
 
 **Why**: An implicit global makes the branch unreachable in tests and raises
 `NameError` at runtime the first time a production request with public data is
@@ -911,7 +911,7 @@ NOT** copy llama.cpp option names into a Modelfile: `gpu_layers` and
 `unknown parameter '<name>'` when it meets them.
 
 **Why**: Ollama validates every `PARAMETER` key against its own options
-struct. Unrecognised keys abort model creation rather than being ignored, so
+struct. Unrecognized keys abort model creation rather than being ignored, so
 an invalid key is a broken build step, not a no-op.
 
 #### Selecting GPUs
@@ -1090,7 +1090,7 @@ requires a source build instead.
 
 #### Migrating From vLLM 0.6.x
 
-Teams upgrading from a 0.6.x pin **MUST** account for these behavioural
+Teams upgrading from a 0.6.x pin **MUST** account for these behavioral
 changes:
 
 - The V0 engine has been removed: `vllm.engine.llm_engine.LLMEngine` is now an
@@ -1130,7 +1130,7 @@ separate commands and fail with `command not found`. Explanatory comments
 **MUST** sit above the command.
 
 **Why**: The shell joins a line ending in `\` with the next line before
-tokenising. A `#` line still terminates the logical command, which silently
+tokenizing. A `#` line still terminates the logical command, which silently
 starts the server with a truncated argument list instead of raising an error
 about the missing flags.
 
@@ -1177,7 +1177,7 @@ load[^14].
 Teams **MAY** enable it only when all of the following hold, and **MUST**
 record the review:
 
-1. The model genuinely needs custom modelling code that vLLM does not ship.
+1. The model genuinely needs custom modeling code that vLLM does not ship.
 2. A named reviewer has read the repository's Python at a specific commit.
 3. That commit is pinned, so the reviewed code is the code that runs.
 4. Weights are `safetensors`.
@@ -2704,7 +2704,7 @@ class ChatCompletionRequest(BaseModel):
 
 Prompt injection is a standing risk to be contained, not a string-matching
 problem to be solved[^15]. Teams **MUST NOT** treat a pattern blacklist as an
-authorisation boundary, and **MUST NOT** present one as sanitisation: the
+authorization boundary, and **MUST NOT** present one as sanitization: the
 patterns are trivially paraphrased, encoded, or translated, while legitimate
 inputs — a code review of a prompt-handling module, a bug report quoting an
 attack, a document about LLM security — match them and are rejected.
@@ -2776,7 +2776,7 @@ def lookup_order(args: LookupOrderArgs, caller_id: str) -> dict:
     return db.fetch_order(order_id=args.order_id, owner_id=caller_id)
 ```
 
-**3. Authorise outside the model.** Every privileged call **MUST** be checked
+**3. Authorize outside the model.** Every privileged call **MUST** be checked
 against the authenticated principal by deterministic code. The model
 **MUST NOT** supply the identity, the tenant, or the permission being claimed.
 
@@ -2805,7 +2805,7 @@ outbound mail, and permission changes **SHOULD** require an out-of-band
 confirmation that shows the concrete action, not the model's summary of it.
 
 **6. Monitor and test.** Teams **MUST** log tool calls with their trust
-labels and their authorisation outcome, alert on refusals and on unusual tool
+labels and their authorization outcome, alert on refusals and on unusual tool
 sequences, and maintain an adversarial corpus that runs in CI.
 
 ```python
@@ -3244,7 +3244,7 @@ class RequestQueue:
         raise NotImplementedError
 ```
 
-Both behaviours **MUST** be covered by tests, because neither is visible from
+Both behaviors **MUST** be covered by tests, because neither is visible from
 reading the call site:
 
 ```python

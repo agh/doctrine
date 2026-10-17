@@ -225,7 +225,7 @@ Typical scenarios:
 Every API example in this guide pins a model ID. Teams MUST understand the two
 ID formats before copying one into production code[^12].
 
-| Generation | ID format | Example | Behaviour |
+| Generation | ID format | Example | Behavior |
 | ---------- | --------- | ------- | --------- |
 | 4.6 and later | `claude-{name}-{major}[-{minor}]` | `claude-opus-5`, `claude-sonnet-5` | Dateless, but still a pinned snapshot |
 | Before 4.6 | `claude-{name}-{major}-{minor}-{YYYYMMDD}` | `claude-haiku-4-5-20251001` | Dated snapshot |
@@ -247,7 +247,7 @@ Three rules follow:
 **Why**: Copy-pasted model IDs are the most common way a working integration
 breaks silently. A malformed or retired ID fails at request time, and an alias
 that quietly advances to a newer snapshot of the same minor version changes
-behaviour without a code change.
+behavior without a code change.
 
 The examples in this guide use `claude-opus-5`, `claude-sonnet-5`, and
 `claude-haiku-4-5-20251001`. On Amazon Bedrock and Google Cloud the same models

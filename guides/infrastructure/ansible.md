@@ -725,7 +725,7 @@ Complex error handling **SHOULD** use `block/rescue/always`:
 `started` as an idempotent action that runs no command when the service is
 already up[^17]. The health check only fails *after* the service has started,
 so at rescue time the failed version is still running. Restoring the previous
-artefact on disk and then asking for `started` reports `changed=0` and leaves
+artifact on disk and then asking for `started` reports `changed=0` and leaves
 the broken build serving traffic — the rollback appears to succeed while
 changing nothing. `restarted` always bounces the service, and the follow-up
 health check proves the restored version actually works.
@@ -1198,7 +1198,7 @@ cosign verify-blob \
 ansible-galaxy collection install community.sops:2.4.0
 ```
 
-Release artefacts **MUST** be pinned to a version and verified before
+Release artifacts **MUST** be pinned to a version and verified before
 installation. The unversioned `releases/latest/download/sops-linux-amd64`
 path returns HTTP 404: SOPS renamed its assets to include the version and
 platform, so the old name no longer exists in any current release. Without

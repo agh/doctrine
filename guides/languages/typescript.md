@@ -431,15 +431,15 @@ Standard mode. Cross-cutting decorators change the lifetime and failure
 semantics of every method they wrap, so each one **MUST** state its cache scope,
 key derivation, and error classification explicitly.
 
-#### Memoisation
+#### Memoization
 
-A memoisation decorator **MUST** scope its cache per instance and **MUST** take
+A memoization decorator **MUST** scope its cache per instance and **MUST** take
 an explicit key function. A module-level `Map` keyed by `JSON.stringify(args)`
 shares one entry across every instance, so a receiver-dependent method returns
 another object's result; `JSON.stringify` also throws on `BigInt` and cyclic
 arguments and maps `undefined` onto `null`.
 
-A memoised method **MUST NOT** return a single-use value such as a `Response`,
+A memoized method **MUST NOT** return a single-use value such as a `Response`,
 a `ReadableStream`, or an iterator: the second caller receives an already
 consumed object.
 
@@ -475,7 +475,7 @@ function Memoize<This extends object, Args extends unknown[], Return>(
 #### Retry
 
 A retry decorator **MUST** retry only classified transient failures on
-idempotent operations, **MUST** back off between attempts, and **MUST** honour
+idempotent operations, **MUST** back off between attempts, and **MUST** honor
 an `AbortSignal`. Retrying every exception immediately turns a permanent
 `TypeError` into `n` synchronous failures and makes cancellation impossible.
 
@@ -1522,7 +1522,7 @@ steps:
 units, so the astral-plane 🌍 counts as two. Iteration yields code points, and
 neither figure matches user-perceived characters — combining marks, emoji
 sequences, and Hangul jamo all span several code points. Use `Intl.Segmenter`
-whenever the answer is meant to be "how many characters would a reader see".
+whenever the answer is meant to be "how many characters would a reader see."
 
 ```typescript
 test('handles unicode correctly', () => {

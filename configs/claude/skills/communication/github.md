@@ -93,7 +93,7 @@ repositories.
 
 Read-only mode takes priority: write tools stay unregistered even when
 `--tools` names one. Lockdown mode is a best-effort content filter against
-prompt injection from public repository content, not an authorisation boundary —
+prompt injection from public repository content, not an authorization boundary —
 it does not change what the credential can read or write.
 
 ## Access Levels
@@ -107,7 +107,7 @@ The two vocabularies **MUST NOT** be mixed in one row.
 | `readonly` | Metadata: Read, Contents: Read, Issues: Read, Pull requests: Read | Analysis |
 | `read-write` | above, plus Issues: Write, Pull requests: Write | Automation |
 | `releases` | Metadata: Read, Contents: **Write** | Release mgmt |
-| `admin` | Administration: Write (organisation or repository) | Rarely needed |
+| `admin` | Administration: Write (organization or repository) | Rarely needed |
 
 Releases are created through the Contents permission. `write:packages` is a
 classic scope for publishing **packages**; it does not create releases, and
@@ -129,7 +129,7 @@ write access turns a review agent into an agent that can push.
    a leaving employee's account.
 2. Otherwise go to GitHub -> Settings -> Developer Settings -> Personal Access
    Tokens -> **Fine-grained tokens**.
-3. Select the specific repositories, never "All repositories".
+3. Select the specific repositories, never `All repositories`.
 4. Set an expiry. 90 days or less is **REQUIRED**.
 
 **For readonly analysis:**
@@ -171,7 +171,7 @@ marked read-write or releases stays unregistered under `--read-only`.
 | `list_releases` | `repos` | readonly | List releases |
 | `get_latest_release` | `repos` | readonly | Newest published release |
 | `list_commits` | `repos` | readonly | Commit history for a branch |
-| `actions_list` | `actions` | readonly | Workflows, runs and job status |
+| `actions_list` | `actions` | readonly | Workflows, runs, and job status |
 | `issue_write` | `issues` | read-write | Create and update issues |
 | `create_pull_request` | `pull_requests` | read-write | Open a pull request |
 | `merge_pull_request` | `pull_requests` | read-write | Merge a pull request |
@@ -266,7 +266,7 @@ GitHub applies several independent limits. The values below were read from
 
 | Resource | Limit | Applies to |
 | -------- | ----- | ---------- |
-| `core` | 5,000/hour | REST, user-to-server and PAT requests |
+| `core` | 5,000/hour | REST, user-to-server, and PAT requests |
 | `graphql` | 5,000/hour | GraphQL API |
 | `search` | 30/minute | Search API |
 | `code_search` | 10/minute | Code search |
@@ -276,7 +276,7 @@ GitHub App installation tokens scale with installation size rather than using a
 flat 5,000, so an App is also the answer when a fixed hourly ceiling is the
 constraint.
 
-Separately, **secondary rate limits** cap concurrency, per-minute request bursts
+Separately, **secondary rate limits** cap concurrency, per-minute request bursts,
 and content-creation actions such as opening issues or comments. They are not
 reported by `GET /rate_limit` and they return `403` or `429`.
 
@@ -285,10 +285,10 @@ Agents **MUST**:
 - Read `retry-after` first, then `x-ratelimit-reset`, and wait the stated time.
   Retrying sooner extends the block.
 - Treat `403` and `429` with `x-ratelimit-remaining: 0` as rate limiting, not
-  as authorisation failure.
+  as authorization failure.
 - Use conditional requests (`If-None-Match`); `304` responses do not count
   against the primary limit.
-- Serialise writes rather than issuing them concurrently.
+- Serialize writes rather than issuing them concurrently.
 
 **Why**: secondary limits punish retry storms. A client that backs off on the
 server's own schedule recovers; one that retries immediately is blocked longer.
@@ -434,5 +434,5 @@ fail there. Use `pull_request_target` only with an explicit, reviewed checkout
 of the base ref; it runs with repository secrets against untrusted code.
 
 **Why**: `permissions` is declared per workflow because repository defaults
-differ between organisations. Declaring it makes the job's authority explicit
+differ between organizations. Declaring it makes the job's authority explicit
 and independent of a setting the workflow author cannot see.

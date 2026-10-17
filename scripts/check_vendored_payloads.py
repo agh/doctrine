@@ -2,7 +2,7 @@
 """Guard the verbatim third-party payloads under reference/.
 
 Vendored payloads are upstream documents. They are not crefft prose and MUST
-NOT be reformatted by markdownlint, prettier or any other auto-fixer: commit
+NOT be reformatted by markdownlint, prettier, or any other auto-fixer: commit
 b6f870a stripped the whitespace after 474 list markers in the Google guides,
 which stopped them rendering as lists at all.
 

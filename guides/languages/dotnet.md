@@ -254,7 +254,7 @@ dotnet test -e ASPNETCORE_ENVIRONMENT=Testing
 `MSBUILD : error MSB1001: Unknown switch`. Parallelism **MUST** be configured
 through the runner, and the .NET 10 SDK offers two.[^33]
 
-**VSTest mode (the default):** xUnit parallelises test collections inside an
+**VSTest mode (the default):** xUnit parallelizes test collections inside an
 assembly. Configure it in `xunit.runner.json` and copy the file to the output
 directory:
 
@@ -618,7 +618,7 @@ You SHOULD use Central Package Management for solutions with multiple projects:
 ```
 
 Once `ManagePackageVersionsCentrally` is set, **no** `PackageReference` anywhere
-in the tree may carry a `Version` attribute — including analyser and build-only
+in the tree may carry a `Version` attribute — including analyzer and build-only
 references inherited from `Directory.Build.props`. Restore fails otherwise:
 
 ```text
@@ -1206,7 +1206,7 @@ cannot serve traffic:
 
 A load balancer reading the untagged readiness probe admits traffic to an
 instance whose database is unreachable. Liveness keeps the empty predicate on
-purpose: it answers "is this process running", and adding dependency checks to
+purpose: it answers "is this process running," and adding dependency checks to
 it turns a database outage into a restart loop.
 
 **Custom health check:**
@@ -1650,7 +1650,7 @@ public class UserServiceTests
 #### Why
 
 The parameter **MUST** be `string?` whenever `[InlineData(null)]` supplies it.
-With `Nullable` enabled the xUnit analyser rejects the mismatch, and
+With `Nullable` enabled the xUnit analyzer rejects the mismatch, and
 `TreatWarningsAsErrors` turns that into a build failure:
 
 ```text
@@ -2649,17 +2649,23 @@ docker-compose down -v
 
 ### Versioning
 
-Projects **MUST** use calendar versioning (`YYYY.M.N`) from the
-[Versioning Guide](../process/versioning.md) and embed the selected release
-version in assemblies.
+Libraries published for other code to depend on through NuGet or another
+package manager **MUST** use Semantic Versioning 2.0.0. Everything else
+**MUST** use calendar versioning (`YYYY.M.N`) from the
+[Versioning Guide](../process/versioning.md). A project with both a command
+and importable packages is a library. Projects **MUST** embed the selected
+release version in assemblies.
 
 #### Why
 
-An assembly and its package need to identify the same calendar release.
-The number does not promise API compatibility; incompatible changes belong
-under `### Breaking` in the changelog.
+An assembly and its package need to identify the same release. Dependency
+resolvers assume SemVer compatibility ranges for libraries; CalVer records
+release order instead. Incompatible changes belong under `### Breaking`
+in the changelog under either policy.
 
 **Directory.Build.props:**
+
+For a CalVer application:
 
 ```xml
 <PropertyGroup>
@@ -2694,9 +2700,12 @@ Under Central Package Management, drop the `Version` attribute here and declare
 </ItemGroup>
 ```
 
-With either package-reference form, set the `v` tag prefix and supply the
-calendar version explicitly; MinVer's inferred next version is not the
-project's calendar-release calculation:
+With either package-reference form, set the `v` tag prefix. CalVer
+applications **MUST** supply the calendar version explicitly; MinVer's
+inferred next version is not the project's calendar-release calculation.
+Libraries **MUST** select a SemVer bump from breaking, compatible feature,
+or fix changes and verify that the resulting package version matches it.
+The following override is for a CalVer application:
 
 ```xml
 <PropertyGroup>
@@ -2718,20 +2727,22 @@ dotnet build -p:MinVerVersionOverride=2026.10.0
 
 You SHOULD publish reusable libraries to NuGet[^26].
 
+Library packages **MUST** use SemVer versions:
+
 ```bash
 # Pack
 dotnet pack -c Release
 
 # Pack with version
-dotnet pack -c Release /p:Version=2026.10.0
+dotnet pack -c Release /p:Version=1.4.2
 
 # Publish to NuGet.org
-dotnet nuget push bin/Release/MyLibrary.2026.10.0.nupkg \
+dotnet nuget push bin/Release/MyLibrary.1.4.2.nupkg \
   --api-key $NUGET_API_KEY \
   --source https://api.nuget.org/v3/index.json
 
 # Publish to private feed
-dotnet nuget push bin/Release/MyLibrary.2026.10.0.nupkg \
+dotnet nuget push bin/Release/MyLibrary.1.4.2.nupkg \
   --api-key $FEED_API_KEY \
   --source https://pkgs.dev.azure.com/myorg/_packaging/myfeed/nuget/v3/index.json
 ```
@@ -2741,7 +2752,7 @@ dotnet nuget push bin/Release/MyLibrary.2026.10.0.nupkg \
 ```xml
 <PropertyGroup>
   <PackageId>MyCompany.MyLibrary</PackageId>
-  <Version>2026.10.0</Version>
+  <Version>1.4.2</Version>
   <Authors>My Company</Authors>
   <Company>My Company</Company>
   <Product>My Library</Product>

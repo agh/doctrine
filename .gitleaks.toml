@@ -35,7 +35,7 @@ paths = [
 # 2. Placeholder idioms inside documentation.
 #
 # Scoped with condition = "AND" so these relaxations apply *only* to Markdown
-# under the documentation trees. Source, configuration and vendored data are
+# under the documentation trees. Source, configuration, and vendored data are
 # still scanned with the unmodified upstream ruleset.
 # ---------------------------------------------------------------------------
 [[allowlists]]
@@ -73,7 +73,7 @@ regexes = [
   '''ak_live_9j2k4n5m6l7k8j9h0g1f2d3s4a5s6d7f''',
   # guides/ai/security.md — fabricated Stripe key; body is a1b2c3... sequence.
   '''sk_live_51Hx7y8z9A0b1C2d3E4f5G6h7I8j9K0l1M2n3O4p5Q6r7S8t9U0v1W2x3Y4z5''',
-  # agents/system/messaging.md — an ActiveMQ authorisation flag, not a secret.
+  # agents/system/messaging.md — an ActiveMQ authorization flag, not a secret.
   '''allow\.everyone\.if\.no\.acl\.found''',
   # guides/api/rest.md — an Idempotency-Key header example (sequential nibbles).
   '''a1b2c3d4-e5f6-7890-abcd-ef1234567890''',

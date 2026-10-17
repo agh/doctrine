@@ -18,7 +18,7 @@ interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc
 | [local-llms.md](./local-llms.md) | Self-hosted models: Ollama, vLLM, Docker Model Runner |
 | [agents-md.md](./agents-md.md) | AGENTS.md project instruction files and tool compatibility |
 | [code-agents.md](./code-agents.md) | Code agent family: review, performance, accessibility, API, tests |
-| [security-agents.md](./security-agents.md) | Security agent family: threat modelling, compliance, detection |
+| [security-agents.md](./security-agents.md) | Security agent family: threat modeling, compliance, detection |
 | [system-agents.md](./system-agents.md) | System agent family: Docker, Ansible, Linux, networking, storage |
 | [release-manager-agent.md](./release-manager-agent.md) | Release automation, quality gates, changelog generation |
 | [security.md](./security.md) | LLM security: prompt injection, data handling, supply chain |
@@ -438,7 +438,7 @@ retired model fail[^15]. `claude-haiku-4-5-20251001` is Anthropic's named
 replacement and offers a 200K-token context window with a 64K-token maximum
 output[^16]. Teams migrating MUST re-run their own evaluations rather than
 swapping the identifier in place, because output limits, pricing, and thinking
-behaviour differ between the two models.
+behavior differ between the two models.
 
 **Why**: Retirement dates on Anthropic's deprecation page apply to
 Anthropic-operated platforms (the Claude API, Claude Platform on AWS, and
@@ -492,11 +492,11 @@ shutdown date for any of the three[^13].
 
 **Migration from Gemini 1.5**: `gemini-1.5-pro`, `gemini-1.5-flash`, and
 `gemini-1.5-flash-8b` are shut down; they no longer appear in the model
-catalogue or the deprecation schedule, and their endpoints are gone[^4][^13].
+catalog or the deprecation schedule, and their endpoints are gone[^4][^13].
 Teams MUST re-test the application, not just swap the identifier: on Gemini 3
 and later the API replaces `thinking_budget` with a `thinking_level` enum,
 rejects `temperature`, `top_p`, `top_k`, and `candidate_count`, and tightens
-turn-validation and function-calling rules[^17]. Prompt behaviour, output
+turn-validation and function-calling rules[^17]. Prompt behavior, output
 limits, and cost forecasts all need re-baselining against the replacement.
 
 **Why**: A shut-down endpoint fails closed. Code still naming a 1.5 model
@@ -504,7 +504,7 @@ returns an error rather than a worse answer, so every guide recommendation
 pointing at 1.5 is an outage waiting for the next deployment.
 
 **Data use — decide before sending code**[^14]: Google's Gemini API Additional
-Terms of Service split behaviour by *contractual service status*, not by
+Terms of Service split behavior by *contractual service status*, not by
 whether a given request happens to cost money.
 
 | Service status | How Google uses prompts and responses |
@@ -2644,7 +2644,7 @@ function createUser(type: string): User {
 
 **Prevention**:
 
-- Specify "simple" or "minimal" in prompts
+- Specify `simple` or `minimal` in prompts
 - Provide simple examples as templates
 - Request explanation of design choices
 

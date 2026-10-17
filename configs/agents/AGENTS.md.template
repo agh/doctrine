@@ -91,7 +91,7 @@ This project follows [crefft](https://github.com/agh/crefft) for all coding stan
 
 ## Tool Compatibility
 
-Codex, GitHub Copilot and Cursor read this file directly. Tools with a
+Codex, GitHub Copilot, and Cursor read this file directly. Tools with a
 different default filename need a link or an import:
 
 ```bash

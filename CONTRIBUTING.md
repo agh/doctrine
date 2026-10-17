@@ -7,7 +7,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 crefft is a style-guide repository. Contributions are prose, tables, code
-examples and configuration files — not application code. This document
+examples, and configuration files — not application code. This document
 explains how to propose a change and what a change **MUST** satisfy before it
 is merged.
 
@@ -34,8 +34,8 @@ A proposal **SHOULD** fall into one of four shapes:
    command that no longer exists, a broken link.
 2. **Update a version** — a pinned tool version that has moved on, or a tool
    that is now deprecated.
-3. **Add a guide** — a language, framework or topic crefft does not cover.
-4. **Correct provenance** — attribution, licence or notice problems in
+3. **Add a guide** — a language, framework, or topic crefft does not cover.
+4. **Correct provenance** — attribution, license, or notice problems in
    `reference/` or [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Open an issue first for anything larger than a fix. The issue forms in
@@ -56,33 +56,42 @@ These are the rules a reviewer will check. They are not negotiable.
   stating the version it was verified against.
 - **MUST** include a Quick Reference table at the top of every language guide,
   and a navigation breadcrumb immediately after the title.
-- **MUST NOT** use vague language: "consider", "you might want to", "it is
-  generally recommended".
+- **MUST NOT** use vague language: "consider," "you might want to," "it is
+  generally recommended."
 - **MUST NOT** recommend a deprecated tool without a migration path.
 - **SHOULD** keep lines at or below 100 characters, including code blocks.
 - **SHOULD** link to an existing guide rather than duplicating its content.
-- **SHOULD** use British English in prose. Tool names, flags and code keep
-  their upstream spelling.
+- **SHOULD** use US English spelling in all human-facing prose, including
+  Welsh-named projects. Welsh names, proper nouns, quotations, and upstream
+  tool and code spellings stay unchanged.
+- **MUST** use a serial comma in lists of three or more items joined by
+  "and" or "or"; two-item phrases take no serial comma.
+- **MUST** put commas and periods inside closing quotation marks. Colons
+  and semicolons stay outside; question and exclamation marks go inside only
+  when they belong to the quoted text.
+- **MUST** put literals in code spans, not quotation marks, including
+  commands, flags, file names, paths, configuration values, and text to type
+  or search for. Surrounding punctuation stays outside the code span.
 
 ### Verifying Time-Sensitive Claims
 
-Version numbers, release dates and deprecation timelines **MUST** be checked
+Version numbers, release dates, and deprecation timelines **MUST** be checked
 against a current source before they are written down, and the source
 **SHOULD** be cited in the pull request. Model knowledge and memory are not
 evidence. This applies to human and AI contributors alike.
 
 ### Vendored Material
 
-`reference/` holds third-party work under third-party licences.
+`reference/` holds third-party work under third-party licenses.
 
 - **MUST NOT** add material to `reference/` without also recording its
-  upstream URL, licence, licence URL and required attribution in
-  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and copying the licence
-  text into the vendor directory where the licence requires it.
+  upstream URL, license, license URL, and required attribution in
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and copying the license
+  text into the vendor directory where the license requires it.
 - **MUST NOT** edit `reference/security/cis/` — that material is
   CC BY-NC-ND 4.0 and carries a NoDerivatives condition. See
   [`reference/security/cis/NOTICE`](reference/security/cis/NOTICE).
-- **MUST** record modifications to CC BY, CC BY-SA and Apache-2.0 material in
+- **MUST** record modifications to CC BY, CC BY-SA, and Apache-2.0 material in
   the vendor directory's `NOTICE` file.
 
 ## Development Workflow
@@ -96,7 +105,7 @@ evidence. This applies to human and AI contributors alike.
 
 ### Checks
 
-`make check` runs Markdown linting, JSON validation and the tool-version
+`make check` runs Markdown linting, JSON validation, and the tool-version
 validator. Run it before every push. If you do not have `make`, run the
 underlying commands:
 
@@ -138,12 +147,16 @@ Every user-visible change **MUST** add an entry to [CHANGELOG.md](CHANGELOG.md)
 under `## [Unreleased]`, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Do not edit `VERSION`
 in a pull request; releases are cut separately following
-[calendar versioning (`YYYY.M.N`)](guides/process/versioning.md).
+[calendar versioning (`YYYY.M.N`)](guides/process/versioning.md) for crefft
+itself. The guides require Semantic Versioning 2.0.0 for libraries in every
+ecosystem and CalVer for everything else. A project that publishes both a
+command and importable packages is a library.
 Breaking changes **MUST** go under `### Breaking`, first in the release
 section, and commits **MUST** retain `!` or a `BREAKING CHANGE:` footer.
 
-**Why**: a calendar version records when a release was made, not whether it
-is compatible; migration notes make incompatible changes explicit.
+**Why**: dependency resolvers assume SemVer compatibility ranges for libraries.
+A calendar version records release order instead; migration notes make
+incompatible changes explicit under either policy.
 
 ## Adding a New Guide
 
@@ -161,10 +174,10 @@ is compatible; migration notes make incompatible changes explicit.
 
 Use the issue forms:
 
-- **Bug in a guide** — a rule, example or command that is wrong.
+- **Bug in a guide** — a rule, example, or command that is wrong.
 - **Outdated version** — a pinned version that has moved on. Include the
   current version and the URL you checked.
-- **New guide proposal** — a language, framework or topic crefft should
+- **New guide proposal** — a language, framework, or topic crefft should
   cover.
 
 Security vulnerabilities **MUST NOT** be reported in public issues. See
@@ -173,5 +186,5 @@ Security vulnerabilities **MUST NOT** be reported in public issues. See
 ## Review
 
 crefft has one maintainer. Review is best effort, in the maintainer's own
-time. A pull request that follows the house rules, cites its sources and
+time. A pull request that follows the house rules, cites its sources, and
 passes `make check` will be reviewed faster than one that does not.

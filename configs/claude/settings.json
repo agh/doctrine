@@ -3,7 +3,7 @@
   "_comment": "crefft standard Claude Code configuration - https://github.com/agh/crefft",
   "_comment_secrets": [
     "Secret paths are denied for Read as well as Edit: a Read deny also blocks",
-    "Edit and Write, and covers the file commands Claude Code recognises in Bash.",
+    "Edit and Write, and covers the file commands Claude Code recognizes in Bash.",
     "NotebookEdit is not covered by a Read deny, so the Edit denies are kept.",
     "The *secret*, *password*, *credential* and *token* patterns are deliberately",
     "broad and also match source files such as tokenizer.ts; narrow them per",

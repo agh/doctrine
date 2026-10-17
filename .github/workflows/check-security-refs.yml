@@ -20,7 +20,7 @@
 # CWE Top 25 rankings and the OWASP Top 10 families have no stable machine
 # endpoint and remain manual items in the issue body.
 #
-# Any transport, HTTP or parse failure fails the job. A missing or null
+# Any transport, HTTP, or parse failure fails the job. A missing or null
 # version is never reported as drift.
 
 name: Check Security References
@@ -74,8 +74,8 @@ jobs:
 
             const strip = (tag) => String(tag).replace(/^(ATT&CK-)?v/i, '');
 
-            // Every adapter throws on transport, HTTP or parse failure. A null
-            // or empty result is a failure, never "up to date".
+            // Every adapter throws on transport, HTTP, or parse failure. A null
+            // or empty result is a failure, never "up to date."
             const latestRelease = async (owner, repo) => {
               const { data } = await github.rest.repos.getLatestRelease({ owner, repo });
               if (!data?.tag_name) {

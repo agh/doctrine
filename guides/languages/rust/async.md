@@ -12,7 +12,7 @@ when, they appear in all capitals, as shown here.
 This guide covers choosing and configuring an async runtime, Tokio feature
 selection for applications and libraries, runtime-agnostic library design, and
 the migration away from the discontinued async-std. The toolchain, lint,
-formatting and pre-commit rules in the [Rust Style Guide](../rust.md) apply and
+formatting, and pre-commit rules in the [Rust Style Guide](../rust.md) apply and
 are not repeated here, and so do the [dependency](dependencies.md) and
 [CI](ci.md) rules; every version quoted is listed in the
 [Tested Version Matrix](versions.md#tested-version-matrix) and was current on 8
@@ -292,13 +292,13 @@ where
 
 ## Selecting a Backend with cfg
 
-Where a library genuinely must call runtime-specific APIs — spawning, file or
+Where a library genuinely must call runtime-specific APIs — spawning, file, or
 socket I/O — injection is not enough and a `cfg` selection is the remaining
 option. Such a crate is *multi-runtime*, not runtime-agnostic, and **MUST** say
 so. Every `cfg` configuration **MUST** then produce a return path, and the
 backends **MUST** have a documented precedence.
 
-**Why**: Cargo features are additive, so a workspace, a transitive dependency
+**Why**: Cargo features are additive, so a workspace, a transitive dependency,
 or `--all-features` can enable both backends at once. Arms written as mutually
 exclusive alternatives are then both compiled, and the first `return` silently
 wins. With neither feature enabled the body evaluates to `()` and the function
@@ -354,7 +354,7 @@ where
 A `JoinHandle` resolves to `Result<T, JoinError>`. Production code **MUST**
 handle that error rather than unwrapping it.
 
-**Why**: `JoinError` means the task panicked or was cancelled. Unwrapping it
+**Why**: `JoinError` means the task panicked or was canceled. Unwrapping it
 turns one task's panic into the caller's panic, which in an `async fn` running
 on a shared runtime takes down the request that happened to be awaiting it and
 loses the original panic message.
@@ -445,5 +445,5 @@ fn test_with_custom_runtime() -> Result<(), Box<dyn std::error::Error>> {
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies and CI
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies, and CI
 - [Rust topic guides](README.md) - The other Rust topic guides

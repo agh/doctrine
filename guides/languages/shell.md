@@ -198,8 +198,8 @@ Copy it verbatim and delete what you do not need.
 
 ### Why
 
-`readonly NAME="$(command)"`, `local name="$(command)"` and
-`declare -r NAME="$(command)"` return the status of `readonly`, `local` or
+`readonly NAME="$(command)"`, `local name="$(command)"`, and
+`declare -r NAME="$(command)"` return the status of `readonly`, `local`, or
 `declare`, never the status of `command`. A failed substitution is therefore
 invisible to `set -e`
 ([SC2155](https://www.shellcheck.net/wiki/SC2155)). Under Bash 5.3.15,

@@ -5,7 +5,7 @@ contact_links:
     about: Report privately. Do not open a public issue for a security problem.
   - name: Contributing guide
     url: https://github.com/agh/crefft/blob/main/CONTRIBUTING.md
-    about: House rules, checks and workflow. Read this before opening an issue.
+    about: House rules, checks, and workflow. Read this before opening an issue.
   - name: Code of Conduct
     url: https://github.com/agh/crefft/blob/main/CODE_OF_CONDUCT.md
     about: Community expectations and how to report a violation.

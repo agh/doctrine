@@ -114,7 +114,7 @@ deadlines, cancellation signals, and request-scoped values.
 
 ### Why Context Matters
 
-- **Cancellation**: Allows graceful shutdown when requests are cancelled
+- **Cancellation**: Allows graceful shutdown when requests are canceled
 - **Timeouts**: Prevents runaway operations from consuming resources
 - **Tracing**: Carries request IDs and tracing information across service boundaries
 
@@ -1692,8 +1692,8 @@ func TestRuneIteration(t *testing.T) {
 ### golang.org/x/text for i18n
 
 golang.org/x/text[^13] (v0.41.0) supplies locale-aware formatting.
-`message.Printer` localises number formatting and looks translations up in a
-catalogue; it does **not** infer plural forms from a source string such as
+`message.Printer` localizes number formatting and looks translations up in a
+catalog; it does **not** infer plural forms from a source string such as
 `"%d item(s)"`. Plural selection **MUST** be registered explicitly with
 `plural.Selectf`, otherwise the printer falls back to the untranslated format
 string and returns `"1 item(s)"` for every count.
@@ -1860,7 +1860,7 @@ a package that only uses URL construction **MUST** import it blank
 
 Migration tests **MUST** run against a database of their own, since `Up` and
 `Down` rewrite the whole schema, and **MUST** check every `Up`, `Down`,
-`Version` and `Close` result. Only the first `Up` may legitimately return
+`Version`, and `Close` result. Only the first `Up` may legitimately return
 `migrate.ErrNoChange`. The `database/sql` driver lib/pq[^18] (v1.12.3) is
 imported explicitly rather than relied on transitively through
 `database/postgres`.

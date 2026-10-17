@@ -3671,7 +3671,7 @@ Projects **SHOULD** use sony/gobreaker[^16] for circuit breaker patterns when ca
 Circuit breakers prevent cascading failures by temporarily stopping requests to failing
 services. This allows the failing service time to recover while maintaining system stability.
 
-A registry shared between request goroutines **MUST** synchronise creation, or be built in full
+A registry shared between request goroutines **MUST** synchronize creation, or be built in full
 before the server starts serving.
 
 ```go
@@ -4062,7 +4062,7 @@ shutdown explicit, and it lets tests point at a stub Unleash API. A listener **M
 registered, or the caller **MUST** drain every channel the client exposes; the SDK's worker
 goroutines block otherwise. Unresolvable flags evaluate to `false` unless `FeatureOptions.Fallback`
 or `FallbackFunc` says otherwise, so a flag **MUST** be written such that the default is the safe
-behaviour.
+behavior.
 
 ```go
 // internal/api/middleware/featureflags.go
@@ -4738,7 +4738,7 @@ func NewRouter(cfg *config.Config) (*gin.Engine, error) {
 `/api/v1/users/:id`, and is empty when no route matched. Comparing that template plus the
 method exempts exactly the routes named and nothing else, and it is unaffected by percent
 encoding or `..` segments in the raw URL, because matching happens after the router has
-normalised and resolved the request. Prefix matching, by contrast, grants an exemption to every
+normalized and resolved the request. Prefix matching, by contrast, grants an exemption to every
 future route that happens to share a textual prefix, and the failure is silent.
 
 ### Short-Circuiting Middleware
@@ -4804,7 +4804,9 @@ efficient middleware composition, and conditional execution for complex routing 
 
 [^5]: **swaggo/swag** - Automatically generate RESTful API documentation with Swagger 2.0 for Go. [GitHub](https://github.com/swaggo/swag)
 
-[^6]: **go-playground/validator** - Go Struct and Field validation, including Cross Field, Cross Struct, Map, Slice and Array diving. [GitHub](https://github.com/go-playground/validator)
+[^6]: **go-playground/validator** - Go Struct and Field validation, including Cross Field,
+    Cross Struct, Map, Slice, and Array diving.
+    [GitHub](https://github.com/go-playground/validator)
 
 [^7]: **golang-jwt/jwt** - Go implementation of JSON Web Tokens (JWT). v5 is the current stable version with improved validation and security. [GitHub](https://github.com/golang-jwt/jwt) | [pkg.go.dev](https://pkg.go.dev/github.com/golang-jwt/jwt/v5)
 

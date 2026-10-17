@@ -26,7 +26,7 @@ collections:
   - name: community.postgresql
     version: ">=4.2.0"
 
-  # community.mysql was deprecated in favour of ansible.mysql
+  # community.mysql was deprecated in favor of ansible.mysql
   - name: ansible.mysql
     version: ">=5.2.0"
 

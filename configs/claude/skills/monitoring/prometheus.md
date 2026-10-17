@@ -55,7 +55,7 @@ tls_config:
 ```
 
 `--mcp.tools=core` loads only `docs_list`, `docs_read`, `docs_search`, `query`,
-`range_query`, `metric_metadata`, `label_names`, `label_values` and `series`.
+`range_query`, `metric_metadata`, `label_names`, `label_values`, and `series`.
 Without it the server registers every tool.
 
 TSDB administration — `delete_series`, `snapshot`, `clean_tombstones` — stays
@@ -120,7 +120,7 @@ Tool names are those registered by `prometheus-mcp-server` v0.18.0 under
 | `metric_metadata` | Type and help text for a metric |
 | `docs_search` | Search official Prometheus documentation |
 
-`targets`, `rules` and `alerts` are real tools but are not in the core set;
+`targets`, `rules`, and `alerts` are real tools but are not in the core set;
 add them explicitly with `--mcp.tools=targets --mcp.tools=rules` when needed.
 
 ## PromQL Patterns for Agents

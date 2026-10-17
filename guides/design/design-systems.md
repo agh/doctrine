@@ -442,7 +442,7 @@ MUST flip together.
 **Why `:root[data-theme="dark"]` rather than `[data-theme="dark"]`?** A bare
 attribute selector has the same specificity as `:root`, so any later `:root`
 block that touches a themed token silently defeats the theme — the token
-reverts while its neighbours do not, which is the same broken pairing by
+reverts while its neighbors do not, which is the same broken pairing by
 another route. Theme selectors MUST out-specify the base `:root` block.
 
 ```css
@@ -479,7 +479,7 @@ Three further rules apply:
 
 - Ratios MUST NOT be rounded up. WCAG treats the thresholds as exact, so
   4.499:1 fails 4.5:1.
-- Very thin or unusual faces render fainter than their declared colour. Such
+- Very thin or unusual faces render fainter than their declared color. Such
   faces SHOULD exceed the normative ratio rather than sit on it.
 - Placeholder text, hover text, and focus-revealed text are text. Only
   genuinely inactive controls are exempt.

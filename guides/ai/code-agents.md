@@ -468,7 +468,7 @@ the team bills through.
   deprecated on 19 December 2025 and retired on the Claude API on 19 February
   2026; requests to retired models fail.
 - Those dates cover Anthropic-operated platforms only — the Claude API, Claude
-  Platform on AWS and Microsoft Foundry. Amazon Bedrock and Google Cloud set
+  Platform on AWS, and Microsoft Foundry. Amazon Bedrock and Google Cloud set
   their own retirement schedules and still serve Haiku 3.5, so teams on a
   partner platform **MUST** take the lifecycle date from that platform's own
   model table.
@@ -577,7 +577,7 @@ advertises a subcommand with no agent behind it.
 
 **Why the subdirectories are safe**: Claude Code scans `.claude/agents/`
 recursively and takes a subagent's identity from its `name` frontmatter field,
-not from its path, so `code/` and `docs/` are organisation only and do not
+not from its path, so `code/` and `docs/` are organization only and do not
 change how an agent is invoked.[^subagents]
 
 ### Installation Scopes
@@ -615,7 +615,7 @@ commands have been merged into skills, `.claude/skills/code/SKILL.md` and
 exist. A skill directory also carries supporting files and controls whether
 Claude may invoke it without being asked.[^skills]
 
-### Verify, Update and Remove
+### Verify, Update, and Remove
 
 Restart Claude Code after creating `.claude/agents/` for the first time: a
 running session does not pick up an agents directory that did not exist when it
@@ -652,7 +652,7 @@ rm -rf .claude/agents/code .claude/agents/docs/writer.md .claude/commands/code.m
 `.claude/settings.json` **MUST NOT** be used to enable or install this family.
 The settings schema has no `agents` key: the top-level `agent` key it does
 define selects one agent for the main thread and does not register anything.
-Settings change runtime behaviour — permissions, hooks, sandboxing, plugin
+Settings change runtime behavior — permissions, hooks, sandboxing, plugin
 enablement — for definitions that are already installed:
 
 ```json
@@ -696,7 +696,7 @@ or name a subagent to block just that one.[^subagents]
 ## References
 
 [^subagents]: [Create custom subagents](https://code.claude.com/docs/en/sub-agents)
-    — discovery locations, scopes, frontmatter fields and permission rules.
+    — discovery locations, scopes, frontmatter fields, and permission rules.
 [^skills]: [Extend Claude with skills](https://code.claude.com/docs/en/skills)
     — skill locations and the merge of custom commands into skills.
 

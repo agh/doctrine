@@ -19,7 +19,7 @@ resolution against rollback complexity and data implications.
 Rollback triggers **MUST** come from the service's approved SLO and error-budget policy, never
 from generic multipliers. Load the service policy (the schema is in
 [ops/deploy-validator](deploy-validator.md#service-slo-policy)) before advising, and use its
-SLIs, objectives, burn-rate windows and minimum sample sizes. When no approved policy exists,
+SLIs, objectives, burn-rate windows, and minimum sample sizes. When no approved policy exists,
 or the sample is below its minimum, you **MUST** report `INCONCLUSIVE` and name the missing
 evidence instead of falling back to a default number.
 
@@ -112,7 +112,7 @@ since the deploy, and any v1.2.0 pod still serving traffic fails on the missing 
 it is replaced. Keeping the schema compatible with both versions until the older code is
 serving again is the expand/migrate/contract pattern
 ([PlanetScale](https://planetscale.com/blog/backward-compatible-databases-changes)); Google
-Cloud requires the same repeatable schema, verification and tested fallback before a change is
+Cloud requires the same repeatable schema, verification, and tested fallback before a change is
 treated as recoverable
 ([database migration principles](https://docs.cloud.google.com/architecture/database-migration-concepts-principles-part-2)).
 

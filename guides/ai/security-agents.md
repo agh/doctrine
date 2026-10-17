@@ -557,7 +557,7 @@ Security agents **MUST** apply framework-specific checks based on the detected s
 | **Redirect** | `redirect()` with user input | Validate destination path |
 | **Cache** | Caching authenticated data | Use `revalidate: 0` or `no-store` |
 
-#### Server Function CSRF and Authorisation
+#### Server Function CSRF and Authorization
 
 Reviewers **MUST NOT** report a missing handwritten `Origin` check in a Server
 Function as a CSRF finding. Next.js 16.3.4 compares the host in the request's
@@ -590,11 +590,11 @@ Second, the built-in check has a documented gap: a request carrying no `Origin`
 header at all is **allowed through with a warning** rather than rejected. An
 application with a stricter policy **SHOULD** reject `Origin`-absent
 state-changing requests in middleware, and **MUST NOT** rely on the framework
-check as its only authorisation.
+check as its only authorization.
 
 Every Server Function is a public HTTP endpoint. Rendering a form only on an
 authenticated page is not a security boundary, so each function **MUST**
-authenticate, **MUST** authorise the specific object it touches, and **MUST**
+authenticate, **MUST** authorize the specific object it touches, and **MUST**
 treat `FormData`, parameters, and headers as untrusted.
 See [Server Actions](https://nextjs.org/docs/app/guides/server-actions).
 
@@ -626,7 +626,7 @@ export async function completeItem(itemId: string) {
 }
 ```
 
-Return values are serialised to the client, so actions **SHOULD** return the
+Return values are serialized to the client, so actions **SHOULD** return the
 minimum the UI renders rather than raw database records.
 See [Data Security](https://nextjs.org/docs/app/guides/data-security).
 
@@ -855,7 +855,7 @@ Only the Remediation Generator needs `Edit`.
 
 | Agent role | `tools` frontmatter |
 |------------|---------------------|
-| Reviewers, auditors, modellers, reporters | `Read, Grep, Glob` |
+| Reviewers, auditors, modelers, reporters | `Read, Grep, Glob` |
 | Red Team Operator (needs command output) | `Read, Grep, Glob, Bash` |
 | Remediation Generator | `Read, Grep, Glob, Edit` |
 
@@ -966,7 +966,7 @@ sets the bar in both places.
 |-------|---------------------------|--------|
 | Critical only | `critical` | Blocks on Critical |
 | Default | `high` | Blocks on Critical and High |
-| Strict | `medium` | Blocks on Critical, High and Medium |
+| Strict | `medium` | Blocks on Critical, High, and Medium |
 
 ## Integration
 
@@ -1051,7 +1051,7 @@ jobs:
   job grants back only `contents: read` and `pull-requests: write`, so a
   prompt injection in the diff cannot reach anything else.
 - Actions are pinned to full commit SHAs. A tag is a mutable pointer; a SHA is
-  the artefact you reviewed.
+  the artifact you reviewed.
 - `--json-schema` is what makes `steps.review.outputs.structured_output`
   populate. It **MUST** stay on one line: the action splits `claude_args` on
   whitespace.
@@ -1085,7 +1085,7 @@ repos:
 ```
 
 **Why**: `types: [python, javascript, typescript]` fails two ways. `typescript`
-is not a recognised tag, so pre-commit aborts with
+is not a recognized tag, so pre-commit aborts with
 `Type tag 'typescript' is not recognized`; and once the spelling is corrected
 to `ts`, `types` is an AND across tags, so no file is both Python and
 JavaScript and the hook is reported as `(no files to check) Skipped` with exit
@@ -1145,7 +1145,7 @@ A hook whose path is wrong or not executable exits 127, which Claude Code
 records as a non-blocking error, so watch the first run. They need `jq` and a
 Claude Code installation that is authenticated non-interactively;
 `claude setup-token` produces a long-lived token for that. Teams **SHOULD**
-pin the Claude Code version in their bootstrap so the hook's behaviour does not
+pin the Claude Code version in their bootstrap so the hook's behavior does not
 drift under contributors.
 
 ## Best Practices

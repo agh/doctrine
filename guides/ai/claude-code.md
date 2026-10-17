@@ -191,7 +191,7 @@ Make it executable with `chmod +x .claude/hooks/check-file.sh`.
 #### Why
 
 `args` selects Claude Code's exec form, so the script path and each argument
-are passed verbatim with no shell tokenisation — the correct form whenever a
+are passed verbatim with no shell tokenization — the correct form whenever a
 command references a path placeholder such as `${CLAUDE_PROJECT_DIR}`[^3].
 Reading `.tool_input.file_path` into a quoted variable keeps paths containing
 spaces intact. Truncating to the last 20 lines keeps the feedback short enough
@@ -474,7 +474,7 @@ Secret material **MUST** be denied for reads as well as edits:
 #### Why
 
 A `Read` deny rule blocks Claude's file tools, the file commands Claude Code
-recognises in Bash such as `cat`, `head`, and `sed`, and Bash redirection
+recognizes in Bash such as `cat`, `head`, and `sed`, and Bash redirection
 targets. It also blocks Edit from v2.1.208 and Write from v2.1.228, but it
 never covers NotebookEdit, so keep the paired `Edit` denies.[^4] Bare
 filenames follow gitignore semantics: `Read(.env)` and `Read(**/.env)` are
@@ -757,7 +757,7 @@ Take a screenshot of http://localhost:3000/login
 **Prerequisite.** `@playwright/mcp` 0.0.80 requires Node.js 18 or newer.[^8]
 
 **Pin the version.** `@playwright/mcp@latest` re-resolves on every start, so a
-release can change agent behaviour between two runs of the same task. Pin the
+release can change agent behavior between two runs of the same task. Pin the
 version and bump it deliberately. `--isolated` keeps the browser profile in
 memory, and `--headless` overrides the headed default.[^8]
 
@@ -862,7 +862,7 @@ Two details make this recipe work on GNU coreutils, which is what
 - **`-L`** — `configs/claude/agents` and `configs/claude/commands` are
   relative symlinks into the crefft repository root. GNU `cp -r` copies them
   as symlinks, and they dangle at the destination, so no agent or command file
-  is installed. `-L` dereferences them and materialises the real trees.
+  is installed. `-L` dereferences them and materializes the real trees.
 
 Verify a sync with the files the links are supposed to provide:
 
@@ -914,7 +914,7 @@ files at the paths Claude Code loads.[^9]
 Use the maintained template at
 [`.github/workflows/sync-crefft.yml`](../../configs/github/workflows/sync-crefft.yml)
 rather than hand-rolling a workflow. Copy it into your project's
-`.github/workflows/`, then customise `SYNC_PATHS`:
+`.github/workflows/`, then customize `SYNC_PATHS`:
 
 ```yaml
 # .github/workflows/sync-crefft.yml

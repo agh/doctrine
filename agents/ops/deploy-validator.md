@@ -21,7 +21,7 @@ below). Absolute numbers shown here are illustrations, not defaults.
 
 ### Why
 
-A promotion decision needs an objective, a comparison population and a sample size. Google SRE
+A promotion decision needs an objective, a comparison population, and a sample size. Google SRE
 defines canarying as a partial, time-limited deployment evaluated against the unchanged control
 ([Canarying Releases](https://sre.google/workbook/canarying-releases/)), and makes approved
 SLOs and an error-budget policy the basis for release decisions
@@ -162,11 +162,11 @@ a fixed number alone. Every run ends as one of three outcomes, and an inconclusi
 
 ### Why
 
-Traffic mix, cache warmth and time of day move both populations together, so only a
+Traffic mix, cache warmth, and time of day move both populations together, so only a
 candidate/control comparison isolates the release
 ([Canarying Releases](https://sre.google/workbook/canarying-releases/)). Argo Rollouts encodes
-the same contract: an AnalysisRun completes Successful, Failed or Inconclusive, which
-continues, aborts or pauses the rollout
+the same contract: an AnalysisRun completes Successful, Failed, or Inconclusive, which
+continues, aborts, or pauses the rollout
 ([Analysis and Progressive Delivery](https://argo-rollouts.readthedocs.io/en/stable/features/analysis/)).
 
 A canary **MUST NOT** start until these are fixed in writing:
@@ -360,8 +360,8 @@ it, record its version in every report, and refuse to promote when it is missing
 ### Why
 
 Absolute numbers such as "2% error rate" or "500ms p95" encode assumptions about traffic,
-criticality and cost that differ per service. An error-budget policy makes the target explicit,
-approved and reviewable, and multi-window burn rates convert it into alerting that scales with
+criticality, and cost that differ per service. An error-budget policy makes the target explicit,
+approved, and reviewable, and multi-window burn rates convert it into alerting that scales with
 severity: Google SRE's starting points are 14.4x over one hour and 6x over six hours for
 paging, and 1x over three days for a ticket
 ([Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)).

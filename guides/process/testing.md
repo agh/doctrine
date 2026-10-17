@@ -192,7 +192,7 @@ naming or configuration convention. You **MUST** choose one of these:
   (`--testNamePattern`), which matches the full name as a regular expression.
 - Declare named projects in `vitest.config.ts` and filter with `--project`,
   which binds the category to a file glob and leaves the test name free to
-  describe behaviour.
+  describe behavior.
 
 ```ts
 // vitest.config.ts
@@ -302,7 +302,7 @@ jobs:
 ```
 
 The `postgres` service **MUST** set `POSTGRES_PASSWORD`: the official image
-refuses to initialise without it, so the job has no database to reach. The
+refuses to initialize without it, so the job has no database to reach. The
 service **MUST** declare a health check, which is what makes the runner wait
 until PostgreSQL accepts connections instead of merely until the container
 starts. Because these jobs run directly on the runner rather than in a job
@@ -344,7 +344,7 @@ fixtures for complex scenarios that need exact reproduction.
 ## See Also
 
 - [CI/CD Guide](ci.md) - CI workflow configuration and best practices
-- [Versioning Guide](versioning.md) - CalVer, Go exception and changelog management
+- [Versioning Guide](versioning.md) - Library SemVer, CalVer, and changelog management
 - [GitHub Templates](github-templates.md) - Issue and PR templates
 
 ## References

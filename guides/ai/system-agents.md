@@ -595,7 +595,7 @@ Copying the same 14 files into `.claude/agents/system/` made all 14 discoverable
 other change. The [settings reference](https://code.claude.com/docs/en/settings-reference)
 has no `agents` registry: its only related key is `agent`, a string naming the subagent the
 main thread runs as. Earlier revisions of this guide showed `agents.system.enabled`,
-`agents.system.productionStrict` and `agents.system.defaultMode`; none of the three is a
+`agents.system.productionStrict`, and `agents.system.defaultMode`; none of the three is a
 documented key. The failure above is identical when all three are passed and identical when
 the settings object is omitted, so the keys install nothing.
 
@@ -609,7 +609,7 @@ the settings object is omitted, so the keys install nothing.
 
 Teams **MUST** use project scope so the review contract is versioned with the infrastructure
 it reviews. Individuals working across unrelated repositories **SHOULD** use user scope.
-Plugin scope **SHOULD** be used when the family is distributed to other organisations,
+Plugin scope **SHOULD** be used when the family is distributed to other organizations,
 because plugin subagents load under a `<plugin>:<name>` namespace and cannot collide with a
 project's own definitions.
 
@@ -689,7 +689,7 @@ Not logged in · Please run /login
 ```
 
 `--safe-mode` disables every custom and bundled skill, and `/system` still resolves past
-command lookup while `/systemx`, `/syste` and `/systems` do not. The
+command lookup while `/systemx`, `/syste`, and `/systems` do not. The
 [skills reference](https://code.claude.com/docs/en/skills) documents precedence for a custom
 skill against a bundled skill and against `.claude/commands/`, but not against a built-in
 command, so the outcome of the collision is undefined.

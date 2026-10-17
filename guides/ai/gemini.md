@@ -215,8 +215,8 @@ knowledge cutoff January 2025[^5]
 
 - Strongest reasoning in the Gemini 3 family for broad world knowledge
 - Improved token efficiency and factual consistency over Gemini 3 Pro
-- Optimised for agentic workflows needing precise tool usage
-- A companion `gemini-3.1-pro-preview-customtools` endpoint that prioritises
+- Optimized for agentic workflows needing precise tool usage
+- A companion `gemini-3.1-pro-preview-customtools` endpoint that prioritizes
   caller-defined tools such as `view_file` or `search_code`[^5]
 
 **Use Cases**:
@@ -600,7 +600,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/etc/gemini/key.json"
 ```
 
 You SHOULD block the exception from becoming the habit by setting the
-organisation policy constraint that disables service account key creation, and
+organization policy constraint that disables service account key creation, and
 granting exemptions only to projects that have demonstrated they cannot use a
 safer method[^24].
 
@@ -679,7 +679,7 @@ Footnote markers MUST stay in the surrounding prose. A marker such as
 `[^n]` inside a command changes what the command means: `pip` reads
 `google-cloud-aiplatform[^n]` as a malformed extras group and refuses the
 requirement, and a shell reads `aiplatform.googleapis.com[^n]` as a bracket
-glob that can expand to a neighbouring filename.
+glob that can expand to a neighboring filename.
 
 #### SDK Installation
 
@@ -1764,7 +1764,7 @@ lifecycle dates.
 | `gemini-3.1-pro-preview`[^5] | 1,048,576 | 65,536        | ~800K words or ~3500 pages |
 
 No current Gemini model accepts more than 1M input tokens. Inputs larger than
-that MUST be split, summarised, or retrieved selectively; see
+that MUST be split, summarized, or retrieved selectively; see
 [Long Context Strategies](#long-context-strategies).
 
 **Token Estimation**:
@@ -3315,13 +3315,18 @@ test_safety_filter("Analyze this SQL injection vulnerability: {code}")
 
 ## References
 
-[^1]: [Gemini API Models](https://ai.google.dev/gemini-api/docs/models) - Model list and stable, preview, latest and experimental version naming
+[^1]: [Gemini API Models](https://ai.google.dev/gemini-api/docs/models) - Model list and
+    stable, preview, latest, and experimental version naming
 [^2]: [Google AI Studio](https://aistudio.google.com/) - Web-based IDE and API access for Gemini
 [^3]: [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs) - Enterprise platform for Gemini deployment
-[^4]: [Gemini 3.8 Flash (Latest model)](https://ai.google.dev/gemini-api/docs/latest-model) - Specifications, thinking levels and migration checklist for `gemini-3.8-flash`
-[^5]: [Gemini 3 Developer Guide](https://ai.google.dev/gemini-api/docs/gemini-3) - Context windows, thinking levels and pricing for the Gemini 3 family
-[^6]: [Gemini API Deprecations](https://ai.google.dev/gemini-api/docs/deprecations) - Release dates, shutdown dates and recommended replacements
-[^7]: [Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing) - Per-model token, caching and grounding prices, including introductory rates
+[^4]: [Gemini 3.8 Flash (Latest model)](https://ai.google.dev/gemini-api/docs/latest-model) -
+    Specifications, thinking levels, and migration checklist for `gemini-3.8-flash`
+[^5]: [Gemini 3 Developer Guide](https://ai.google.dev/gemini-api/docs/gemini-3) - Context windows,
+    thinking levels, and pricing for the Gemini 3 family
+[^6]: [Gemini API Deprecations](https://ai.google.dev/gemini-api/docs/deprecations) - Release dates,
+    shutdown dates, and recommended replacements
+[^7]: [Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing) - Per-model token,
+    caching, and grounding prices, including introductory rates
 [^8]: [Grounding with Google Search](https://cloud.google.com/vertex-ai/docs/generative-ai/grounding/ground-with-google-search) - Search grounding documentation
 [^9]: [Context Caching](https://ai.google.dev/gemini-api/docs/caching) - Prompt caching guide for cost optimization
 [^10]: [Code Execution](https://cloud.google.com/vertex-ai/docs/generative-ai/code/code-execution-overview) - Python code execution feature
@@ -3334,11 +3339,13 @@ test_safety_filter("Analyze this SQL injection vulnerability: {code}")
     Guide to streaming API responses
 [^20]: [JSON Mode](https://ai.google.dev/gemini-api/docs/json-mode) - Controlled generation with JSON schema
 [^21]: [Gemini Enterprise Agent Platform model versions](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions) - Release and retirement dates for Gemini models on Vertex AI
-[^22]: [Gemini API keys](https://ai.google.dev/gemini-api/docs/api-key) - Standard versus authorization keys, the September 2026 cut-off and key restrictions
+[^22]: [Gemini API keys](https://ai.google.dev/gemini-api/docs/api-key) - Standard versus
+    authorization keys, the September 2026 cut-off, and key restrictions
 [^23]: [Provide credentials to Application Default Credentials](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc) - Setting up ADC per environment
 [^24]: [Best practices for managing service account keys](https://docs.cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys) - Threats from downloaded keys and safer alternatives
 [^25]: [Choose an authentication method](https://docs.cloud.google.com/docs/authentication) - Decision tree covering attached service accounts and workload identity federation
-[^26]: [Gemini API logs policy](https://ai.google.dev/gemini-api/docs/logs-policy) - Log retention, dataset sharing and data-use terms
+[^26]: [Gemini API logs policy](https://ai.google.dev/gemini-api/docs/logs-policy) - Log retention,
+    dataset sharing, and data-use terms
 
 ### Additional Resources
 

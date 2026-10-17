@@ -11,7 +11,7 @@ when, they appear in all capitals, as shown here.
 
 This guide covers when `unsafe` is justified, the invariants every unsafe block
 **MUST** document, Edition 2024 rules for `extern` and unsafe attributes, FFI,
-and checking with Miri. The toolchain, lint, formatting and pre-commit rules in
+and checking with Miri. The toolchain, lint, formatting, and pre-commit rules in
 the [Rust Style Guide](../rust.md) apply and are not repeated here, and so do
 the [dependency](dependencies.md) and [CI](ci.md) rules; every version quoted is
 listed in the [Tested Version Matrix](versions.md#tested-version-matrix) and was
@@ -81,15 +81,15 @@ pub fn get_unchecked(slice: &[u8], index: usize) -> u8 {
 ```
 
 An abstraction over a raw allocation **MUST** handle allocation failure,
-initialise memory before it is read, and free the allocation in `Drop`.
+initialize memory before it is read, and free the allocation in `Drop`.
 
-**Why**: `std::alloc::alloc` returns uninitialised memory and a null pointer on
+**Why**: `std::alloc::alloc` returns uninitialized memory and a null pointer on
 failure, and it never frees anything. Reading such a byte through a safe method
-is undefined behaviour even when the allocation succeeds: on the `SafeBuffer`
+is undefined behavior even when the allocation succeeds: on the `SafeBuffer`
 shown below, Miri reports "Undefined Behavior: reading memory ..., but memory is
 uninitialized ..., and this operation requires initialized memory" for
 `SafeBuffer::new(1).get(0)`.[^26]
-`alloc_zeroed` initialises the whole block, `handle_alloc_error` reports failure
+`alloc_zeroed` initializes the whole block, `handle_alloc_error` reports failure
 without producing a dangling `NonNull`, and `Drop` returns the memory.
 
 ```rust
@@ -246,7 +246,7 @@ In Edition 2024 an `extern` block is itself unsafe and **MUST** be written
 
 **Why**: nothing checks that a declaration matches the library actually linked.
 Declaring `fn strlen(s: *const c_char) -> usize` with the wrong signature is
-undefined behaviour at every call site, and before Edition 2024 the declaration
+undefined behavior at every call site, and before Edition 2024 the declaration
 itself needed no `unsafe`. Plain `extern "C" { ... }` in an Edition 2024 crate
 fails with "error: extern blocks must be unsafe", and `#[no_mangle]` with
 "error: unsafe attribute used without unsafe".[^36]
@@ -371,13 +371,13 @@ mod tests {
 
 Tests over `unsafe` code **MUST** assert on values, not merely on
 `is_some()`. `assert!(buffer.get(0).is_some())` passes just as happily when the
-byte behind it is uninitialised, so it cannot distinguish a sound
+byte behind it is uninitialized, so it cannot distinguish a sound
 implementation from an unsound one; only Miri or a value assertion can.
 
-## Miri for Undefined Behaviour Detection
+## Miri for Undefined Behavior Detection
 
 Projects with `unsafe` code **SHOULD** run Miri[^26] to detect undefined
-behaviour. The nightly toolchain **MUST** be pinned by date, exactly as for
+behavior. The nightly toolchain **MUST** be pinned by date, exactly as for
 fuzzing.
 
 **Why**: Miri ships only on nightly and is occasionally missing from a given
@@ -460,9 +460,9 @@ unsafe impl<T: Sync> Sync for MyWrapper<T> {}
 ## References
 
 [^26]: [Miri](https://github.com/rust-lang/miri) - Experimental interpreter for Rust's mid-level intermediate representation
-[^36]: [Announcing Rust 1.85.0 and Rust 2024](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/) - Edition 2024 stabilisation, 20 February 2025; see the [Edition Guide](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
+[^36]: [Announcing Rust 1.85.0 and Rust 2024](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/) - Edition 2024 stabilization, 20 February 2025; see the [Edition Guide](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies and CI
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, dependencies, and CI
 - [Rust topic guides](README.md) - The other Rust topic guides

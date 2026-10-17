@@ -73,12 +73,12 @@ declaration cannot be consumed as an integration schema.
 }
 ```
 
-#### Artefact boundaries
+#### Artifact boundaries
 
 This command emits tool declarations only. It **MUST NOT** label its output an
-"MCP config", because three distinct artefacts exist:
+"MCP config," because three distinct artifacts exist:
 
-| Artefact | Shape | Produced by |
+| Artifact | Shape | Produced by |
 | -------- | ----- | ----------- |
 | Tool declaration | `Tool` object | `/doc-publish --mcp` |
 | `tools/list` result | `resultType`, `tools`, `ttlMs`, `cacheScope` | MCP server |

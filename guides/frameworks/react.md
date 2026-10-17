@@ -128,7 +128,7 @@ convert them when the surrounding code changes for another reason.
 
 Error boundaries are the sole exception to the rule above. `static getDerivedStateFromError` and
 `componentDidCatch` have no function-component equivalent, so React's own guidance is to write one
-`ErrorBoundary` class and reuse it, or to take that behaviour from a library[^react-component].
+`ErrorBoundary` class and reuse it, or to take that behavior from a library[^react-component].
 
 Applications **MUST** render at least one error boundary above the route tree and **SHOULD** add
 one per route so that a failure in a single view does not blank the whole application. Every

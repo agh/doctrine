@@ -252,7 +252,7 @@ it, and **MUST** treat `Failed to parse` output as an error:
 systemd-analyze verify /etc/systemd/system/myapp.service
 ```
 
-### Analysing Service Security
+### Analyzing Service Security
 
 `systemd-analyze security` reports an **exposure level** between 0.0 and 10.0.
 **Lower is better**: 0.0 means the tightest sandboxing, and 10.0 means almost
@@ -495,7 +495,7 @@ nstat -az | grep -E 'IpInAddrErrors|IpExtInNoRoutes'
 which is not the best return path. The kernel documentation recommends strict
 mode under RFC 3704 for symmetric networks but recommends loose mode "if using
 asymmetric routing or other complicated routing". The kernel default is 0, so a
-blanket `1` is a behaviour change, not a hardening of an existing default.
+blanket `1` is a behavior change, not a hardening of an existing default.
 
 Measured on Linux 6.12 with a veth pair, sending packets whose source address
 was routable only via a different interface:
@@ -592,8 +592,8 @@ grep -E '^net\.(core\.[rw]mem_max|ipv4\.tcp_[rw]mem) ' baseline-sysctl.txt \
 sysctl --system
 ```
 
-**Why**: `tcp_tw_reuse`, `tcp_fin_timeout`, `tcp_slow_start_after_idle` and the
-keepalive timers change TCP's correctness-relevant behaviour, not just its
+**Why**: `tcp_tw_reuse`, `tcp_fin_timeout`, `tcp_slow_start_after_idle`, and the
+keepalive timers change TCP's correctness-relevant behavior, not just its
 buffer sizes, and the kernel documentation asks for expert justification before
 they are touched. Publishing them as a default profile turns a workload-specific
 experiment into an unreviewed change on every host.
@@ -687,7 +687,7 @@ Debian 13+ uses nftables (Debian 13 ships nftables 1.1.3). Projects **MUST**
 configure a default-deny input policy.
 
 Projects **MUST NOT** use `flush ruleset` in a host firewall file. Docker,
-firewalld, libvirt and Kubernetes CNI plugins install and own their own
+firewalld, libvirt, and Kubernetes CNI plugins install and own their own
 nftables tables; flushing destroys them, taking published container ports and
 NAT rules with them. The host **MUST** own exactly one named table and
 **MUST** leave every other table alone.
@@ -943,7 +943,7 @@ removed from the system; nothing else re-adds it.
 
 **Why**: the archive metadata and the codename metadata are different fields.
 On Debian 13 the three repositories publish
-`a=stable,n=trixie,l=Debian`, `a=stable-updates,n=trixie-updates,l=Debian` and
+`a=stable,n=trixie,l=Debian`, `a=stable-updates,n=trixie-updates,l=Debian`, and
 `a=stable-security,n=trixie-security,l=Debian-Security`. Archive-based
 selectors also follow the suite rather than the release, so `a=stable` silently
 starts upgrading to Debian 14 when trixie stops being stable.

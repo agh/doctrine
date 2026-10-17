@@ -1103,7 +1103,7 @@ public class GreetingTests
 `CultureInfo.CurrentUICulture`. Setting only `CurrentCulture` leaves the
 lookup on the neutral resources, so a correctly localized application still
 returns the fallback string and the test fails. `CurrentCulture` is still
-needed when the assertion covers number, date or currency formatting.
+needed when the assertion covers number, date, or currency formatting.
 Compare `LocalizedString.Value` rather than the `LocalizedString` itself,
 which does not compare equal to a `string`.
 
@@ -1290,7 +1290,8 @@ outcomes and still exercise the real `PercentageFilter`.
 
 ## References
 
-[^1]: [Roslynator](https://github.com/dotnet/roslynator) - A collection of 500+ analyzers, refactorings and fixes for C#
+[^1]: [Roslynator](https://github.com/dotnet/roslynator) - A collection of 500+ analyzers,
+    refactorings, and fixes for C#
 [^2]: [dotnet format](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format) - Code formatter for .NET
 [^3]: [SonarAnalyzer.CSharp](https://github.com/SonarSource/sonar-dotnet) - Static code analyzer for C# code quality and security
 [^4]: [coverlet](https://github.com/coverlet-coverage/coverlet) - Cross platform code coverage framework for .NET

@@ -16,7 +16,7 @@ These examples target Hanami 3.0 and were written and run against Hanami
 3.0.2[^4] with hanami-db 3.0.0, hanami-view 3.0.2 and hanami-router 3.0.0.
 Projects **MUST NOT** target Hanami 2.2 while using them: the
 `resource`/`resources` routing DSL used under [Routing](#routing) was added in
-Hanami 2.3.0, and the persistence, view and settings APIs shown here are the
+Hanami 2.3.0, and the persistence, view, and settings APIs shown here are the
 3.0 ones.
 
 ## Quick Reference
@@ -181,11 +181,11 @@ end
 Sessions are disabled by default, so an action that reads `request.session`
 **MUST** be backed by session configuration in the app class, and every
 collaborator a callback uses **MUST** be declared through `Deps`. Callbacks
-**MUST NOT** store per-request state in instance variables: Hanami memoises one
+**MUST NOT** store per-request state in instance variables: Hanami memoizes one
 action instance per component key and reuses it across requests. Pass state
 between callbacks through `response[]` instead.
 
-**Why**: an action that reads a disabled session, calls an undeclared method or
+**Why**: an action that reads a disabled session, calls an undeclared method, or
 mutates shared instance state either raises on the first request or leaks one
 visitor's identity into another's.
 
@@ -312,7 +312,7 @@ end
 
 Views **SHOULD** contain presentation logic only, never business logic.
 
-Presentation behaviour attached to a domain object **MUST** live in a Hanami
+Presentation behavior attached to a domain object **MUST** live in a Hanami
 View part rather than an ad hoc presenter class. Exposures are undecorated by
 default in Hanami 3, so a view **MUST** ask for decoration explicitly with
 `decorate` or `decorate: true`.
@@ -442,11 +442,11 @@ Hanami uses ROM (Ruby Object Mapper)[^3] for data persistence. Repositories **MU
 all data access. Relations **SHOULD** define queries and transformations.
 
 Hanami 3 has no `Hanami::Entity` and no `Hanami::DB::Repository`. The three
-persistence base classes are `Hanami::DB::Relation`, `Hanami::DB::Repo` and
+persistence base classes are `Hanami::DB::Relation`, `Hanami::DB::Repo`, and
 `Hanami::DB::Struct`, each subclassed once per app or slice in
 `app/db/{relation,repo,struct}.rb` by `hanami new`. Concrete classes **MUST**
 inherit from those local base classes and live in the generated `Relations`,
-`Repos` and `Structs` namespaces.
+`Repos`, and `Structs` namespaces.
 
 **Why**: `Hanami::Entity` and `Hanami::DB::Repository` do not exist — referencing
 either raises `NameError` before any query runs. The namespaces are the
@@ -458,7 +458,7 @@ auto-registration and struct lookup expect (`repos.post_repo`,
 
 Structs are the output of a repository: immutable projections of requested data,
 with no persistence logic. Attribute types come from the relation schema, so a
-struct class is only needed when adding behaviour.
+struct class is only needed when adding behavior.
 
 ```ruby
 # app/structs/post.rb
@@ -599,7 +599,7 @@ result — never the raw request hash — to the repository.
 **Why**: `repo.create(request.params[:post])` forwards every key the client
 sent. Posting `post[id]=4321&post[author_id]=1&post[published]=true` against that
 action writes all three straight into the row, letting a visitor choose primary
-keys, reassign authorship and publish without review. A schema discards anything
+keys, reassign authorship, and publish without review. A schema discards anything
 it does not name.
 
 ```ruby

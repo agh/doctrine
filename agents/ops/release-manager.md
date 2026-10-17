@@ -31,7 +31,7 @@ The agent **MUST NOT** use `claude-3-5-haiku-20241022`: it retired on
 ID against the [Models API](https://platform.claude.com/docs/en/api/models/list)
 before collecting signals, and **MUST** stop when an ID is absent.
 
-The agent **MUST NOT** set `temperature`, `top_p` or `top_k`. Claude 5 models
+The agent **MUST NOT** set `temperature`, `top_p`, or `top_k`. Claude 5 models
 reject non-default sampling parameters with HTTP 400; use the
 [effort parameter](https://platform.claude.com/docs/en/build-with-claude/effort)
 to control thinking depth instead.
@@ -109,27 +109,36 @@ Confidence Score = weighted_average(
 
 ## Version Calculation
 
-For CalVer projects, the agent **MUST** calculate the next `YYYY.M.N` from
+The agent **MUST** first classify the project using the
+[Versioning Guide](../../guides/process/versioning.md). Libraries in every
+ecosystem use Semantic Versioning 2.0.0: MAJOR for breaking changes, MINOR
+for compatible features, and PATCH for fixes, with breaking changes taking
+precedence. A project that ships both a command and importable packages is
+a library.
+
+For everything else, the agent **MUST** calculate the next `YYYY.M.N` from
 the release date and the versions already released. Use the four-digit
 year and unpadded month; start the monthly counter at 0 or increment the
 highest released counter for that month. Commit types **MUST NOT** select
-major, minor or patch bumps.
+major, minor, or patch bumps.
 
-Follow the [Versioning Guide](../../guides/process/versioning.md). Imported
-Go modules retain Semantic Versioning (`v0.x.y` or `v1.x.y`); command-only Go
-tools using calendar tags **MUST** be built from checkouts or shipped as
-release artefacts.
+Go libraries use SemVer tags such as `v0.x.y` or `v1.x.y` with `/vN` module
+paths at major version 2 or higher. Command-only Go tools use calendar tags
+and **MUST** be built from checkouts or shipped as release artifacts.
 
 ### Why
 
-A release number identifies calendar order, not compatibility. The agent
+Dependency resolvers assume SemVer ranges for libraries, while CalVer
+identifies calendar order, not compatibility. The agent
 **MUST** flag breaking changes separately under `### Breaking`, first in
 the changelog release section, and preserve the Conventional Commits `!`
 marker or `BREAKING CHANGE:` footer.
 
 ```text
 Do:    second October release -> 2026.10.1, even with breaking changes
-Don't: breaking commit -> major bump
+       library 1.4.2 + breaking change -> 2.0.0
+Don't: application + breaking commit -> major bump
+       library + breaking change -> calendar counter increment
 ```
 
 Breaking change indicators:
@@ -230,7 +239,7 @@ Modes are described in the prompt, not passed as flags:
 
 | Mode | Prompt | Effect |
 | ---- | ------ | ------ |
-| Analyse | "Assess release readiness for `<sha>`. Do not change any files." | Assessment only |
+| Analyze | "Assess release readiness for `<sha>`. Do not change any files." | Assessment only |
 | Changelog | "Generate the changelog entry for `<version>`." | Returns entry text |
 | Dry run | "Simulate the release of `<version>` and report every action." | No mutation |
 | Execute | "Execute the release of `<version>` after I confirm." | Mutates on confirmation |
@@ -240,9 +249,9 @@ Modes are described in the prompt, not passed as flags:
 For every mode the agent:
 
 1. **Collects** signals from all sources, each bound to the release SHA
-2. **Analyses** changes semantically
+2. **Analyzes** changes semantically
 3. **Calculates** the confidence score
-4. **Calculates** the release number from date and release history
+4. **Calculates** a library's SemVer bump or anything else's next CalVer number
 5. **Generates** a changelog preview with `### Breaking` first when present
 6. **Recommends** an action with rationale
 
@@ -419,5 +428,5 @@ Three separate failures:
 
 The steps above address each: print mode with a resolvable `--agent`, a JSON
 Schema plus `.structured_output` parsing, an explicit `exit 1` on `block` or
-`hold`, and a changelog write that is validated for heading, version and
+`hold`, and a changelog write that is validated for heading, version, and
 duplication before an atomic `mv`.

@@ -223,7 +223,7 @@ zigbee2mqtt/bridge/logging:
   namespace: "z2m"
 ```
 
-Current measured values — `battery`, `linkquality`, `temperature` and the rest
+Current measured values — `battery`, `linkquality`, `temperature`, and the rest
 — arrive only on each device's own state topic,
 `zigbee2mqtt/{friendly_name}`, when the device reports. They are not in
 `bridge/devices`.
@@ -348,7 +348,7 @@ mosquitto_sub -h emqx.local -t "zigbee2mqtt/bridge/health" -C 1 | jq -r '
 
 ### Topology and LQI
 
-Per-neighbour link quality and routes come from the network map, not from any
+Per-neighbor link quality and routes come from the network map, not from any
 state topic:
 
 ```bash

@@ -10,10 +10,10 @@ cross-platform setup with platform-specific sections where needed.
 | Service | Guide | Status | Description |
 | ------- | ----- | ------ | ----------- |
 | SSH | [ssh.md](ssh.md) | Complete | SSH server hardening and configuration |
-| NTP | [ntp.md](ntp.md) | Draft | Time synchronisation with chrony |
+| NTP | [ntp.md](ntp.md) | Draft | Time synchronization with chrony |
 | DNS | [dns.md](dns.md) | Draft | Resolver configuration, local DNS |
 | Firewall | [nftables.md](nftables.md) | Draft | nftables firewall configuration |
-| Logging | [logging.md](logging.md) | Draft | Centralised logging and log rotation |
+| Logging | [logging.md](logging.md) | Draft | Centralized logging and log rotation |
 
 **Draft** means the guide has a Quick Reference table and section headings but
 unwritten bodies marked `TODO`. Draft guides **MUST NOT** be treated as

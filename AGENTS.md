@@ -75,7 +75,7 @@ crefft/
 Everything under `reference/` except `reference/security/` is a verbatim
 third-party document.
 
-- **MUST NOT** run markdownlint, prettier or any other formatter or auto-fixer
+- **MUST NOT** run markdownlint, prettier, or any other formatter or auto-fixer
   over `reference/`; the root `.markdownlint-cli2.jsonc` ignores it and CI lints
   with `#reference/**`
 - **MUST NOT** apply crefft house style (breadcrumbs, RFC 2119 boilerplate,
@@ -198,19 +198,25 @@ pipx run grip==4.6.2
 
 ### Versioning
 
-- Releases **MUST** follow [calendar versioning](guides/process/versioning.md)
-  (`YYYY.M.N`).
-- Use the four-digit release year, month without a leading zero and a
+- Libraries in every ecosystem **MUST** use Semantic Versioning 2.0.0;
+  everything else **MUST** use [calendar versioning](guides/process/versioning.md)
+  (`YYYY.M.N`), including crefft itself.
+- A library is a package published for other code to depend on through a
+  package manager or module system. A project with both a command and
+  importable packages is a library.
+- Libraries increment MAJOR for breaking changes, MINOR for compatible
+  features, and PATCH for fixes.
+- CalVer projects use the four-digit release year, month without a leading zero, and a
   monthly counter starting at 0; increment the counter for each further
   release that month, regardless of commit type.
 - Breaking changes **MUST** appear under `### Breaking`, first in the
   release section, and retain `!` or `BREAKING CHANGE:` in commits.
-- Imported Go modules remain on Semantic Versioning (`v0.x.y` or `v1.x.y`);
-  the guide defines this exception and the command-only distribution rules.
+- Go libraries use SemVer tags such as `v0.x.y` or `v1.x.y`; the guide defines
+  the `/vN` module path rule and the CalVer command-only distribution rules.
 
-**Why**: the version identifies release order, not compatibility. Separate
-breaking-change notes preserve migration information without changing the
-calendar calculation.
+**Why**: dependency resolvers assume SemVer compatibility ranges for libraries.
+CalVer identifies release order instead. Both policies require explicit
+breaking-change notes so consumers can migrate.
 
 ### Commit Messages
 
@@ -225,7 +231,7 @@ chore: bump tool versions for Q4 2025
 
 ## Time-Sensitive Information
 
-- **MUST** use Web Search for "current date and time" at the start of each
+- **MUST** use Web Search for `current date and time` at the start of each
   session
 - **MUST** use Web Search to verify release dates, version status, and
   deprecation timelines
@@ -239,7 +245,7 @@ unreliable. Always verify time-sensitive claims against current sources.
 
 ## Do Not
 
-- **MUST NOT** use vague language ("consider", "you might want to")
+- **MUST NOT** use vague language ("consider," "you might want to")
 - **MUST NOT** omit rationale for recommendations
 - **MUST NOT** include tool-specific config without version pinning
 - **MUST NOT** reformat or lint-fix anything under `reference/`

@@ -10,13 +10,13 @@ BCP 14 [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
 when, they appear in all capitals, as shown here.
 
 This guide covers the GitHub Actions workflow for a Rust project: the lint,
-test, coverage and security lanes, pinning every action to a commit SHA, and
+test, coverage, and security lanes, pinning every action to a commit SHA, and
 auditing without handing a token to a third-party action. The toolchain, lint,
-formatting and pre-commit rules in the [Rust Style Guide](../rust.md) apply and
+formatting, and pre-commit rules in the [Rust Style Guide](../rust.md) apply and
 are not repeated here; every version quoted is listed in the [Tested Version
 Matrix](versions.md) and was current on 8 September 2026.
 
-Generic pipeline structure, caching and branch protection are in the
+Generic pipeline structure, caching, and branch protection are in the
 [CI Guide](../../process/ci.md). This section covers only what is specific to
 Rust: toolchain lanes, action pinning, and the audit job's permissions.
 
@@ -121,7 +121,7 @@ grants both writes on every run, and each individual run uses at most one of
 them. `cargo audit` needs no token at all, exits non-zero when the advisory
 database matches a locked crate, and therefore works unchanged on pull requests
 from forks, where the workflow token is read-only. `--deny warnings` extends
-the failure to unmaintained, unsound and yanked crates.
+the failure to unmaintained, unsound, and yanked crates.
 
 This matches the canonical Rust pipeline in the
 [CI Guide](../../process/ci.md#rust); the two **MUST NOT** diverge.
@@ -145,5 +145,5 @@ steps:
 
 ## See Also
 
-- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting and pre-commit
+- [Rust Style Guide](../rust.md) - Toolchain, lints, formatting, and pre-commit
 - [Rust topic guides](README.md) - The other Rust topic guides

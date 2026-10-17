@@ -17,7 +17,8 @@ document are to be interpreted as described in [RFC 2119](https://datatracker.ie
 
 **All projects MUST follow:**
 
-- [Calendar versioning (`YYYY.M.N`)](guides/process/versioning.md), with imported Go modules excepted
+- [Versioning](guides/process/versioning.md): Semantic Versioning 2.0.0 for
+  libraries in every ecosystem; calendar versioning (`YYYY.M.N`) for everything else
 - [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
 
@@ -279,24 +280,30 @@ Three directories are indexed rather than listed file by file:
 | --------- | -------- | ---------- |
 | [reference/ietf/](reference/ietf/) | RFC 2119 plus a crefft-written index | [reference/ietf/README.md](reference/ietf/README.md) |
 | [reference/rust/](reference/rust/) | Rust API Guidelines plus a crefft 2024 supplement | [reference/rust/README.md](reference/rust/README.md) |
-| [reference/security/](reference/security/) | Security corpora (MITRE, OWASP, NIST, CIS, CWE, KEV) | [reference/security/manifest.json](reference/security/manifest.json) records the upstream, version and licence of every source |
+| [Security][sec] | Security corpora | [Manifest][sec-manifest] |
+
+The security corpora cover MITRE, OWASP, NIST, CIS, CWE, and KEV. The manifest
+records the upstream, version, and license of every source.
+
+[sec]: reference/security/
+[sec-manifest]: reference/security/manifest.json
 
 ---
 
-## Licence
+## License
 
-crefft's own guides, configuration files and agent definitions are licensed
+crefft's own guides, configuration files, and agent definitions are licensed
 under the [MIT Licence](LICENSE), Copyright (c) 2026 Alex Howells.
 
 Everything under `reference/` is third-party material and is **NOT** covered
-by that grant. Each vendored source keeps its own licence:
+by that grant. Each vendored source keeps its own license:
 
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) records every source, its
-  licence and licence URL, what crefft changed, and the attribution that
+  license and license URL, what crefft changed, and the attribution that
   **MUST** travel with the material.
-- Licence texts sit next to the material they cover, in
+- License texts sit next to the material they cover, in
   `reference/<vendor>/LICENSE*` and `reference/security/LICENSES/`.
-- Machine-readable licence fields for the security data are in
+- Machine-readable license fields for the security data are in
   [reference/security/manifest.json](reference/security/manifest.json).
 
 Two sources restrict commercial use and **MUST** be excluded from commercial

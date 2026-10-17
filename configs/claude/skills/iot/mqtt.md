@@ -144,7 +144,7 @@ The shipped `acl.conf` ends with:
 `EMQX_SECURITY_PROFILE` defaults to `legacy` in the container entrypoint
 (`export EMQX_SECURITY_PROFILE="${EMQX_SECURITY_PROFILE:-legacy}"`), so that
 final rule matches and permits everything the earlier rules did not decide —
-including `config/#`, `firmware/#` and `admin/#`.
+including `config/#`, `firmware/#`, and `admin/#`.
 
 **Why**: an operator who loads no ACL, or whose `PUT` silently failed, has a
 broker that accepts every publish from every anonymous client. Replacing the
@@ -409,7 +409,7 @@ returns `HTTP 200` and the unfiltered result set:
 | `match_type=filter` | none | No wildcard matching |
 
 `GET /clients` supports `node`, `username`, `ip_address`, `conn_state`,
-`clean_start`, `proto_ver`, `like_clientid`, `like_username`, `clientid` and
+`clean_start`, `proto_ver`, `like_clientid`, `like_username`, `clientid`, and
 the `gte_`/`lte_` time bounds. `GET /topics` supports only `topic` and `node`.
 
 There is no server-side ordering parameter. Agents needing "top N by message
@@ -464,7 +464,7 @@ restricted_topics:
 
 ### Rate Limiting
 
-`max_publish_rate`, `max_subscribe_rate` and `max_message_size` are not EMQX
+`max_publish_rate`, `max_subscribe_rate`, and `max_message_size` are not EMQX
 settings. Sending them returns `HTTP 400`:
 
 ```json

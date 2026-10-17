@@ -664,7 +664,7 @@ a handwritten pattern list.
 Provider token formats change without notice: a case-sensitive regex for
 `api_key` misses `API_KEY`, and a fixed-length rule written for classic
 `ghp_`-prefixed tokens misses fine-grained `github_pat_` tokens. GitHub publishes
-the current partner catalogue,[^11] and engines such as Gitleaks track it. Two
+the current partner catalog,[^11] and engines such as Gitleaks track it. Two
 further properties matter as much as coverage: a finding **MUST NOT** carry the
 secret itself, because findings are logged and forwarded; and a scan that fails
 **MUST** be distinguishable from a scan that found nothing.
@@ -784,7 +784,7 @@ scanner before it leaves the machine.
 Redaction driven only by a few assignment patterns fails on the shapes that
 actually occur. A closing quote in JSON (`"api_key": "..."`) defeats a pattern
 that expects the key name to be followed directly by the separator; authorization
-headers, cookies and connection strings are not assignments at all; and
+headers, cookies, and connection strings are not assignments at all; and
 shape-only provider tokens carry no key name to anchor on. The masker below
 covers each of those classes, keeps surrounding structure so the snippet stays
 useful for debugging, and then re-scans its own output so that anything it missed
@@ -898,7 +898,7 @@ def prepare_for_llm(text: str, *, suffix: str = ".txt") -> str:
 ```
 
 **Don't**: transmit the output of `redact()` directly, and don't describe it as
-sanitised. Redaction reduces disclosure risk; it never demonstrates that the
+sanitized. Redaction reduces disclosure risk; it never demonstrates that the
 remaining text is free of sensitive data. Teams **MUST** treat
 `SecretsRemainError` as a hard stop rather than a warning, and **MUST** re-test
 this masker whenever a new secret class enters the codebase.
@@ -1089,10 +1089,10 @@ Organizations SHOULD integrate automated security scanning into CI/CD:[^9]
 #### Why
 
 Each scanner in the workflow below has a distinct, non-interchangeable interface.
-CodeQL cannot analyse a repository it has not first initialised: `languages` and
+CodeQL cannot analyze a repository it has not first initialized: `languages` and
 `build-mode` are inputs to `init`, which builds the database that `analyze`
 consumes, so a workflow that calls `analyze` alone never scans anything.
-`returntocorp/semgrep-action` is deprecated in favour of the maintained Semgrep
+`returntocorp/semgrep-action` is deprecated in favor of the maintained Semgrep
 CLI image.[^13] The Semgrep image and the Trivy action are pinned to exact
 releases so that a result corresponds to a known scanner version, and permissions
 are declared per job so that each job holds only what it needs.
@@ -1197,7 +1197,7 @@ uploads instead of aborting the run at the first finding. Teams that want a
 blocking gate **SHOULD** add `--error` to the Semgrep command, or set the Trivy
 `exit-code` to `1`, once the existing backlog is triaged. Compiled languages
 **MUST** use `build-mode: autobuild` or `manual` with explicit build steps between
-`init` and `analyze`; `none` is only valid for languages CodeQL can analyse
+`init` and `analyze`; `none` is only valid for languages CodeQL can analyze
 without a build.[^14]
 
 ### Manual Review Process
@@ -1477,7 +1477,7 @@ For higher security requirements, use VM-based sandboxes. Firecracker has no
 command-line interface for running a program: it boots a microVM from a kernel
 and a root filesystem, and is driven through its API socket or a configuration
 file.[^15] Production deployments **MUST** wrap it in the `jailer`, which builds
-the chroot, drops to an unprivileged uid/gid and applies resource limits.[^16]
+the chroot, drops to an unprivileged uid/gid, and applies resource limits.[^16]
 
 ##### Why
 
@@ -1673,7 +1673,7 @@ The jailer creates `<chroot-base-dir>/<exec-file-name>/<id>/root`, so resources
 staged there before launch are visible to the guest at the paths named in the
 configuration file.[^16] The root filesystem **MUST** ship the guest agent that
 listens on the vsock port; the host never gains a shell in the guest. Teams
-without capacity to operate kernels, root filesystems and guest agents **SHOULD**
+without capacity to operate kernels, root filesystems, and guest agents **SHOULD**
 use a maintained sandbox service or a container runtime with a syscall boundary
 such as gVisor or Kata Containers instead of building this themselves.
 
@@ -2732,7 +2732,7 @@ appropriate safeguards at every layer.
     used throughout this document.
     [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)
 
-[^11]: **GitHub supported secret scanning patterns**: the maintained catalogue of
+[^11]: **GitHub supported secret scanning patterns**: the maintained catalog of
     partner and generic secret formats, including fine-grained `github_pat_`
     tokens.
     [Supported secret scanning patterns](https://docs.github.com/en/code-security/reference/secret-security/supported-secret-scanning-patterns)
@@ -2742,7 +2742,7 @@ appropriate safeguards at every layer.
     [Gitleaks v8.30.1 release](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1)
 
 [^13]: **Semgrep CI integration**: `returntocorp/semgrep-action` is deprecated in
-    favour of running the maintained Semgrep CLI image.
+    favor of running the maintained Semgrep CLI image.
     [Sample CI configurations](https://docs.semgrep.dev/semgrep-ci/sample-ci-configs)
 
 [^14]: **CodeQL build modes**: `languages` and `build-mode` are inputs to
@@ -2755,7 +2755,7 @@ appropriate safeguards at every layer.
     requires.
     [Getting started](https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md)
 
-[^16]: **Firecracker jailer**: chroot layout, uid/gid drop, resource limits and
+[^16]: **Firecracker jailer**: chroot layout, uid/gid drop, resource limits, and
     the `--` convention for forwarding arguments to Firecracker.
     [Jailer documentation](https://github.com/firecracker-microvm/firecracker/blob/main/docs/jailer.md)
 

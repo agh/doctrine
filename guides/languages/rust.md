@@ -32,7 +32,7 @@ here is listed in [Tested Version Matrix](rust/versions.md#tested-version-matrix
 | Public API compatibility | cargo-semver-checks[^34] | `cargo semver-checks` |
 | Test suite throughput | cargo-nextest[^11] | `cargo nextest run --all-features` |
 | Benchmarks | Criterion[^35] | `cargo bench` |
-| Undefined behaviour | Miri[^26] | `cargo +nightly-2026-09-01 miri test` |
+| Undefined behavior | Miri[^26] | `cargo +nightly-2026-09-01 miri test` |
 
 `cargo test -- --test-threads=N` controls libtest concurrency, not performance. Measure
 performance with Criterion[^35] and suite wall-clock time with cargo-nextest[^11]; the two
@@ -50,17 +50,20 @@ task needs. Each topic guide assumes this one and does not repeat it.
 | Async Runtimes | using Tokio or smol, writing async libraries, or migrating from async-std | [rust/async.md](rust/async.md) |
 | CI Pipeline | writing or reviewing a Rust CI workflow | [rust/ci.md](rust/ci.md) |
 | Dependencies and Supply Chain | adding or updating a dependency, choosing a Cargo.lock strategy, or auditing the graph | [rust/dependencies.md](rust/dependencies.md) |
-| Cargo Features | adding, testing or unifying Cargo features | [rust/features.md](rust/features.md) |
+| Cargo Features | adding, testing, or unifying Cargo features | [Guide][rust-features] |
 | Procedural Macros | writing or maintaining a proc-macro crate | [rust/macros.md](rust/macros.md) |
 | Rust Testing Tools | writing tests, measuring coverage, fuzzing, benchmarking, or checking SemVer | [rust/testing.md](rust/testing.md) |
-| Rust Testing Scenarios | adding E2E, resilience, compatibility, i18n or data-integrity tests | [rust/testing-scenarios.md](rust/testing-scenarios.md) |
+| Scenarios | E2E, resilience, compatibility, i18n, or data integrity | [Guide][rust-scenarios] |
 | Unsafe Rust | writing or reviewing `unsafe` code, FFI bindings, or raw-pointer APIs | [rust/unsafe.md](rust/unsafe.md) |
 | Tested Version Matrix | pinning or updating any version quoted in the Rust guides | [rust/versions.md](rust/versions.md) |
 | WebAssembly (WASM) | compiling to wasm32, using wasm-bindgen, or shipping a WASM package | [rust/wasm.md](rust/wasm.md) |
 
 The [topic index](rust/README.md) lists the same guides.
 
-## Toolchain, Edition and MSRV
+[rust-features]: rust/features.md
+[rust-scenarios]: rust/testing-scenarios.md
+
+## Toolchain, Edition, and MSRV
 
 New crates **MUST** use Edition 2024. Every crate **MUST** declare
 `package.edition` and `package.rust-version`. Projects **MUST** pin the
@@ -120,7 +123,7 @@ cargo metadata --format-version 1 --locked \
 
 MSRV and stable **MUST** be separate jobs. A single "stable" lane proves
 nothing about the MSRV, and an MSRV-only lane misses new lints and new
-compiler behaviour.
+compiler behavior.
 
 ```yaml
 jobs:
@@ -255,7 +258,7 @@ stops Clippy suggesting a replacement that the MSRV compiler does not have.
 ### Recommended Lint Groups
 
 Projects **SHOULD** enable pedantic and nursery lint groups, and **MUST** deny
-unwrap, expect and panic in production code. Test code **MUST** scope its
+unwrap, expect, and panic in production code. Test code **MUST** scope its
 exception explicitly rather than relaxing the crate-wide policy:
 
 ```rust
@@ -325,7 +328,7 @@ cargo fmt -- --check
 ### Configuration (rustfmt.toml)
 
 `rustfmt.toml` **MUST** contain only options that are stable on the channel CI
-runs. Nightly-only options **MUST** be isolated in a separate, clearly labelled
+runs. Nightly-only options **MUST** be isolated in a separate, clearly labeled
 configuration together with a pinned nightly toolchain.
 
 **Why**: rustfmt silently degrades. Running `cargo fmt` on stable 1.9.0 with
@@ -416,21 +419,22 @@ repos:
 [^26]: [Miri](https://github.com/rust-lang/miri) - Experimental interpreter for Rust's mid-level intermediate representation
 [^27]: [The `edition` field](https://doc.rust-lang.org/cargo/reference/manifest.html#the-edition-field) - Cargo manifest reference
 [^30]: [Rust stable channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml) - `[pkg.rust] version = "1.98.1 (48a229cea 2026-09-01)"`, manifest dated 2026-09-03
-[^31]: [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) - Advisory, licence, ban and source policy for Cargo dependencies
+[^31]: [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) - Advisory, license, ban, and
+    source policy for Cargo dependencies
 [^32]: [proptest](https://github.com/proptest-rs/proptest) - Hypothesis-style property testing with shrinking
 [^33]: [cargo-mutants](https://github.com/sourcefrog/cargo-mutants) - Mutation testing for Rust
 [^34]: [cargo-semver-checks](https://github.com/obi1kenobi/cargo-semver-checks) - Public API SemVer compliance checking
 [^35]: [Criterion](https://github.com/criterion-rs/criterion.rs) - Statistics-driven benchmarking harness
-[^36]: [Announcing Rust 1.85.0 and Rust 2024](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/) - Edition 2024 stabilisation, 20 February 2025; see the [Edition Guide](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
+[^36]: [Announcing Rust 1.85.0 and Rust 2024](https://blog.rust-lang.org/2025/02/20/Rust-1.85.0/) - Edition 2024 stabilization, 20 February 2025; see the [Edition Guide](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
 
 ## See Also
 
 - [Rust API Guidelines](../../reference/rust/checklist.md) - The vendored
-  upstream checklist this guide's API section is organised around
-- [Testing Guide](../process/testing.md) - Test pyramid, coverage targets and
+  upstream checklist this guide's API section is organized around
+- [Testing Guide](../process/testing.md) - Test pyramid, coverage targets, and
   flaky-test policy, which this guide does not repeat
-- [CI Guide](../process/ci.md) - Pipeline structure, caching and branch
+- [CI Guide](../process/ci.md) - Pipeline structure, caching, and branch
   protection
-- [Versioning Guide](../process/versioning.md) - CalVer numbering, breaking
-  changes and the Go exception; API compatibility is checked separately
+- [Versioning Guide](../process/versioning.md) - SemVer for libraries, CalVer
+  for everything else, and breaking-change reporting
 - [Languages index](README.md) - The other language style guides

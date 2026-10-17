@@ -1,5 +1,5 @@
 name: Outdated version
-description: A pinned tool, action or reference version in crefft has moved on.
+description: A pinned tool, action, or reference version in crefft has moved on.
 title: "chore(<scope>): update <tool> to <version>"
 labels: ["outdated-version"]
 body:
@@ -13,7 +13,7 @@ body:
   - type: input
     id: tool
     attributes:
-      label: Tool, action or reference
+      label: Tool, action, or reference
       placeholder: markdownlint-cli2
     validations:
       required: true
@@ -39,7 +39,7 @@ body:
     attributes:
       label: Source URL for the current version
       description: >
-        Registry page, releases page or changelog that shows the version and
+        Registry page, releases page, or changelog that shows the version and
         its release date.
       placeholder: https://www.npmjs.com/package/markdownlint-cli2
     validations:
@@ -64,7 +64,7 @@ body:
     attributes:
       label: Kind of change
       options:
-        - Patch or minor bump, no behaviour change
+        - Patch or minor bump, no behavior change
         - Major bump, breaking changes
         - Tool deprecated or replaced
         - Security release
@@ -76,7 +76,7 @@ body:
     attributes:
       label: Breaking changes or migration notes
       description: >
-        Required if this is a major bump, a deprecation or a replacement.
+        Required if this is a major bump, a deprecation, or a replacement.
         crefft MUST NOT recommend a deprecated tool without a migration
         path.
 

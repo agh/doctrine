@@ -372,7 +372,7 @@ the entire app client-side.
 Next.js 16 removed the experimental Partial Prerendering[^ppr] controls.
 Projects **MUST NOT** set `experimental.ppr` and **MUST NOT** export
 `experimental_ppr` from a route segment. Partial Prerendering is now the
-default App Router behaviour once Cache Components is enabled, which projects
+default App Router behavior once Cache Components is enabled, which projects
 **SHOULD** do:
 
 ```typescript
@@ -485,7 +485,7 @@ nextConfig.cacheComponents`.
 **Why**: Traditional SSR waits for all data before sending HTML. Partial
 Prerendering sends a static shell instantly (best TTFB) while streaming
 dynamic content as it resolves, giving the speed of static sites with the
-personalisation of dynamic pages. Cache Components replaces the removed
+personalization of dynamic pages. Cache Components replaces the removed
 per-route flag with an explicit, composable choice of what is cached and for
 how long.
 
@@ -628,14 +628,14 @@ revalidateTag('posts', { expire: 0 });
 ```
 
 **Why**: The single-argument form still runs if the TypeScript error is
-suppressed, but the vendor documents that behaviour as deprecated and subject
+suppressed, but the vendor documents that behavior as deprecated and subject
 to removal. Choosing explicitly also forces the decision that the old call hid:
 whether a reader may be served stale data after a mutation.
 
 ## Server Actions
 
 Projects **SHOULD** use Server Actions for mutations. Every Server Action
-**MUST** authenticate the caller, **MUST** authorise the specific operation,
+**MUST** authenticate the caller, **MUST** authorize the specific operation,
 **MUST** validate its input, and **MUST** return only the data the client
 needs.
 
@@ -968,7 +968,7 @@ protecting against abuse. Multi-region Redis minimizes latency globally.
 ## API Routes (Route Handlers)
 
 Projects **MAY** use Route Handlers for API endpoints. A Route Handler is a
-public endpoint: it **MUST** authenticate the caller, **MUST** authorise the
+public endpoint: it **MUST** authenticate the caller, **MUST** authorize the
 specific resource and operation, **MUST** validate its body, and **MUST**
 return a projection rather than a whole database row.
 
@@ -1085,7 +1085,7 @@ export async function DELETE(
 **Why**: Route Handlers provide REST API endpoints when needed. For form submissions and
 mutations, prefer Server Actions for better type safety and progressive enhancement.
 
-**Why these checks**: An authorisation check performed in a page, a layout, or
+**Why these checks**: An authorization check performed in a page, a layout, or
 middleware protects only that render path. `DELETE /api/users/:id` is reachable
 directly with `curl`, so the identity and permission checks **MUST** live in
 the handler body. Returning `db.users.findUnique(...)` verbatim also leaks
@@ -1715,25 +1715,25 @@ const config: NextConfig = {
 
 **Why**: Next.js Image automatically optimizes images, serves modern formats (WebP),
 generates responsive sizes, and lazy loads by default. `remotePatterns` is scoped to a
-single host and path prefix so the optimiser cannot be pointed at arbitrary URLs.
+single host and path prefix so the optimizer cannot be pointed at arbitrary URLs.
 
 #### Image Format Security
 
 Projects **MUST** run Next.js 16.3.3 or later on the 16.x line, or 15.5.24 or
 later on the 15.x line. Projects **MUST NOT** list `image/avif` in
-`images.formats` until a Next.js release re-enables AVIF optimisation with the
+`images.formats` until a Next.js release re-enables AVIF optimization with the
 fixed upstream `libheif`.
 
 **Why**: The August 2026 security release[^avifadvisory] documents an
 unauthenticated remote code execution (GHSA-2xp9-vwfh-vxw4 /
 GHSA-g89c-p67h-r497): a flaw in the `libheif` library used by `sharp` is
-reachable whenever Next.js optimises an attacker-controlled AVIF image. Any
-remote image the optimiser accepts is attacker-controlled input.
+reachable whenever Next.js optimizes an attacker-controlled AVIF image. Any
+remote image the optimizer accepts is attacker-controlled input.
 
 Removing `image/avif` from `formats` is **not** a substitute for the patch.
-`formats` governs the output format the optimiser prefers, not the input
-formats it will decode; only the patched releases disable AVIF optimisation.
-Upgrade first, then treat the format list as defence in depth.
+`formats` governs the output format the optimizer prefers, not the input
+formats it will decode; only the patched releases disable AVIF optimization.
+Upgrade first, then treat the format list as defense in depth.
 
 ```json
 // package.json - pin at or above the patched release
@@ -2693,9 +2693,9 @@ guard, Next.js 16.3.4 returns HTTP 500 with `TypeError: dictionaries[locale]
 is not a function`; with it, the same request returns 404. Never rely on a
 TypeScript annotation to constrain a value that arrives from a URL.
 
-Applications needing message extraction, pluralisation, ICU formatting, or
+Applications needing message extraction, pluralization, ICU formatting, or
 typed navigation helpers **SHOULD** use next-intl[^nextintl] instead of
-extending this hand-rolled catalogue.
+extending this hand-rolled catalog.
 
 ### Language Switcher
 
@@ -2859,7 +2859,7 @@ bundle impact.
 [^5]: [eslint-config-next](https://nextjs.org/docs/app/api-reference/config/eslint) - Next.js ESLint configuration with framework-specific rules
 [^6]: [Next.js](https://nextjs.org/) - The React Framework for the Web
 [^7]: [Vercel](https://vercel.com/) - Platform for deploying Next.js applications with zero configuration
-[^avifadvisory]: [August 2026 Security Release](https://nextjs.org/blog/august-2026-security-release) - Critical AVIF image-optimisation and Windows RCE fixes in 16.3.3 and 15.5.24
+[^avifadvisory]: [August 2026 Security Release](https://nextjs.org/blog/august-2026-security-release) - Critical AVIF image-optimization and Windows RCE fixes in 16.3.3 and 15.5.24
 [^ppr]: [Cache Components](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents) - Enables Partial Prerendering and the `use cache` directive
 [^ratelimit]: [Upstash Ratelimit](https://github.com/upstash/ratelimit-js) - Rate limiting library for serverless runtimes using HTTP-based Redis
 [^authjs]: [Auth.js](https://authjs.dev/) - Authentication for the Web, formerly NextAuth.js
@@ -2867,7 +2867,7 @@ bundle impact.
 [^pusher]: [Pusher](https://pusher.com/) - Managed real-time messaging service with pub/sub channels
 [^ably]: [Ably](https://ably.com/) - Enterprise real-time messaging platform with presence and history
 [^socketio]: [Socket.IO](https://socket.io/) - Bidirectional event-based communication library (requires persistent server)
-[^nextintl]: [next-intl](https://next-intl.dev/docs/getting-started/app-router) - App Router internationalisation with typed messages, ICU formatting, and locale-aware navigation
+[^nextintl]: [next-intl](https://next-intl.dev/docs/getting-started/app-router) - App Router internationalization with typed messages, ICU formatting, and locale-aware navigation
 [^inngest]: [Inngest](https://www.inngest.com/) - Workflow orchestration platform for background jobs and AI pipelines
 [^triggerdev]: [Trigger.dev](https://trigger.dev/) - Open-source platform for background jobs and long-running tasks
 [^vercelcron]: [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) - Native scheduled tasks for Vercel deployments
